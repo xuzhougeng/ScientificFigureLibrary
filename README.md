@@ -13,9 +13,16 @@ The first release has two template sources:
   the MCP host.
 
 The host Agent analyzes an uploaded image, a natural-language request, or a data
-file. It sends only compact visual/data profiles to the search tool, compares
-data compatibility before visual similarity, and materializes the selected
-reference for the next plotting step.
+file. It builds a compact retrieval intent, searches both sources, inspects the
+top preview, and decides whether that candidate actually matches before
+materializing anything. The catalog score orders retrieval candidates; it is
+not a recommendation or visual-similarity score.
+
+For image input, the Agent must first inspect the user's image with the host's
+`view_image`, then inspect the top candidate with `figure_library_preview`.
+The final recommendation includes an Agent-produced visual pass/reject score
+covering chart family, layout, axes/geometry, encodings, and annotations/style,
+plus a separate data-compatibility verdict.
 
 ## Safety contract
 
@@ -61,15 +68,25 @@ npm run check
 - `figure_library_search` — search FigureYa and/or the user library.
 - `figure_library_import` — safely copy a user figure and/or code into the
   library.
+- `figure_library_preview` — return a candidate as MCP image content and,
+  optionally, a checked project-local preview path for Agent inspection.
 - `figure_library_source_status` — inspect the user library and a FigureYa
   Source Pack.
 - `figure_library_describe` — inspect one exact template.
 - `figure_library_materialize` — write one selected reference to a project.
 
-The MCP server does not contain a second model. For attachments, the host makes
-files available locally and the Agent passes those paths to
-`figure_library_import`. For search, the Agent passes compact descriptions, not
-raw datasets.
+The MCP server does not contain a second model. Agent reasoning stays in the
+host: understand input → build retrieval intent → search → view the top
+candidate → visually and semantically audit it → materialize only an accepted
+template. For attachments, the host makes files available locally and the Agent
+passes those paths to `figure_library_import`. For search, the Agent passes
+compact descriptions, not raw datasets.
+
+`figure_library_preview` returns standard MCP image content. In Wisp, pass an
+absolute project-local `destination` (for example,
+`/project/.wisp/figure-library-previews`) and call `view_image` on the returned
+path. This keeps visual judgment with the Agent even when the host exposes only
+the text portion of an MCP tool result.
 
 Example import arguments:
 
@@ -98,7 +115,7 @@ and thumbnails, but not the large archive collection:
 
 ```bash
 npm run package:npm
-npm install --global ./release/scientific-figure-library-0.1.0.tgz
+npm install --global ./release/scientific-figure-library-0.1.1.tgz
 ```
 
 Use `scientific-figure-library` as the MCP command after installation.
@@ -109,7 +126,7 @@ For Wisp:
 npm run package:wisp
 ```
 
-Install `release/scientific-figure-library-wisp-0.1.0.zip` from Wisp
+Install `release/scientific-figure-library-wisp-0.1.1.zip` from Wisp
 **Settings → Plugins**, enable it for a project, and start a fresh session.
 
 ## FigureYa Source Pack
@@ -145,7 +162,7 @@ npm run package:source-pack -- \
 
 The helper verifies every selected ZIP and caps one transport pack at 200 MiB.
 Extract the resulting
-`release/figure-library-source-pack-volcano-0.1.0.zip` before use.
+`release/figure-library-source-pack-volcano-0.1.1.zip` before use.
 
 ## Materialized layouts
 

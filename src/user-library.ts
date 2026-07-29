@@ -2,7 +2,7 @@ import { createHash, randomUUID } from "node:crypto";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { normalizeSearchText, searchTerms } from "./catalog.ts";
+import { buildSearchIntent, scoreSearchableTemplate } from "./catalog.ts";
 import type {
   SearchRequest,
   StoredFile,
@@ -189,7 +189,10 @@ async function checkedStoredBytes(directory: string, stored: StoredFile, maxByte
   return bytes;
 }
 
-function userCandidate(template: UserTemplate, relevance: number, matchedTerms: string[]) {
+function userCandidate(
+  template: UserTemplate,
+  evidence: ReturnType<typeof scoreSearchableTemplate>,
+) {
   const warnings = [];
   if (template.code.length === 0) {
     warnings.push("只有视觉参考，没有附带绘图代码");
@@ -199,11 +202,9 @@ function userCandidate(template: UserTemplate, relevance: number, matchedTerms: 
     sourceId: "user",
     sourceLabel: "User Library",
     title: template.title,
-    relevance,
-    matchedTerms: matchedTerms.slice(0, 12),
-    reasons: matchedTerms.length
-      ? [`用户模板元数据匹配：${matchedTerms.slice(0, 5).join("、")}`]
-      : [],
+    retrievalScore: evidence.score,
+    matchedTerms: evidence.matchedTerms.slice(0, 12),
+    reasons: evidence.reasons,
     warnings,
     excerpt: template.description.slice(0, 420),
     description: template.description,
@@ -213,6 +214,9 @@ function userCandidate(template: UserTemplate, relevance: number, matchedTerms: 
     codeFiles: template.code.map((file) => path.posix.basename(file.file)),
     packages: template.packages,
     materializable: true,
+    previewAvailable: Boolean(
+      template.preview && EMBEDDABLE_IMAGE_TYPES.has(template.preview.mediaType),
+    ),
     license: template.license,
   } satisfies TemplateCandidate;
 }
@@ -374,47 +378,36 @@ export class UserTemplateLibrary {
 
   async search(request: SearchRequest): Promise<TemplateCandidate[]> {
     const limit = Math.min(Math.max(request.limit ?? 6, 1), 12);
-    const terms = searchTerms(request);
+    const intent = buildSearchIntent(request);
     const scored = (await this.list()).map(({ template, directory }) => {
-      const fields = {
-        title: normalizeSearchText(template.title),
-        description: normalizeSearchText(template.description),
-        tags: normalizeSearchText(template.tags.join(" ")),
-        visual: normalizeSearchText(template.visualProfile),
-        data: normalizeSearchText(template.dataProfile),
-        packages: normalizeSearchText(template.packages.join(" ")),
-      };
-      const matchedTerms = terms.filter((term) => Object.values(fields).some((field) => field.includes(term)));
-      const score = matchedTerms.reduce(
-        (total, term) =>
-          total +
-          (fields.title.includes(term) ? 5 : 0) +
-          (fields.tags.includes(term) ? 3 : 0) +
-          (fields.visual.includes(term) ? 2 : 0) +
-          (fields.data.includes(term) ? 2 : 0) +
-          (fields.description.includes(term) ? 1 : 0) +
-          (fields.packages.includes(term) ? 1 : 0),
-        0,
+      const evidence = scoreSearchableTemplate(
+        {
+          templateId: template.templateId,
+          title: template.title,
+          description: template.description,
+          application: template.visualProfile,
+          dataProfile: template.dataProfile,
+          inputFiles: [],
+          codeFiles: template.code.map((file) => path.posix.basename(file.file)),
+          packages: template.packages,
+          tags: template.tags,
+        },
+        intent,
       );
-      return { template, directory, matchedTerms, score };
+      return { template, directory, evidence };
     });
     const ranked = scored
-      .filter((item) => item.score > 0)
+      .filter((item) => item.evidence.score > 0)
       .sort(
         (left, right) =>
-          right.score - left.score ||
+          right.evidence.score - left.evidence.score ||
           left.template.templateId.localeCompare(right.template.templateId),
       )
       .slice(0, limit);
-    const topScore = Math.max(ranked[0]?.score ?? 1, 1);
 
     return Promise.all(
-      ranked.map(async ({ template, directory, matchedTerms, score }) => {
-        const candidate = userCandidate(
-          template,
-          Math.round((score / topScore) * 100),
-          matchedTerms,
-        );
+      ranked.map(async ({ template, directory, evidence }) => {
+        const candidate = userCandidate(template, evidence);
         if (!template.preview || !EMBEDDABLE_IMAGE_TYPES.has(template.preview.mediaType)) {
           return candidate;
         }
@@ -432,6 +425,17 @@ export class UserTemplateLibrary {
         }
       }),
     );
+  }
+
+  async preview(templateId: string) {
+    const loaded = await this.get(templateId);
+    const stored = loaded?.template.preview;
+    if (!loaded || !stored || !EMBEDDABLE_IMAGE_TYPES.has(stored.mediaType)) return;
+    return {
+      bytes: await checkedStoredBytes(loaded.directory, stored, MAX_IMAGE_BYTES),
+      extension: path.extname(stored.file).toLocaleLowerCase(),
+      mimeType: stored.mediaType,
+    };
   }
 
   async materialize(templateId: string, destination: string) {

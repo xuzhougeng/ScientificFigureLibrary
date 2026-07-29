@@ -12,7 +12,7 @@ interface Candidate {
   sourceId: "figureya" | "user";
   sourceLabel: string;
   title: string;
-  relevance: number;
+  retrievalScore: number;
   reasons: string[];
   warnings: string[];
   excerpt: string;
@@ -20,12 +20,15 @@ interface Candidate {
   inputFiles: string[];
   packages: string[];
   materializable: boolean;
+  previewAvailable: boolean;
   previewDataUrl?: string;
 }
 
 interface SearchResult {
   query: string;
   libraryVersion: string;
+  intentFamilies: string[];
+  reviewRequired: boolean;
   candidates: Candidate[];
 }
 
@@ -34,7 +37,7 @@ const cards = document.getElementById("cards")!;
 const empty = document.getElementById("empty")!;
 const query = document.getElementById("query")!;
 const status = document.getElementById("status")!;
-const app = new App({ name: "Scientific Figure Library", version: "0.1.0" });
+const app = new App({ name: "Scientific Figure Library", version: "0.1.1" });
 
 function element<K extends keyof HTMLElementTagNameMap>(
   tag: K,
@@ -58,7 +61,7 @@ function chips(values: string[]) {
 async function selectCandidate(candidate: Candidate, button: HTMLButtonElement) {
   document.querySelectorAll<HTMLButtonElement>("button[aria-pressed]").forEach((item) => {
     item.setAttribute("aria-pressed", String(item === button));
-    item.textContent = item === button ? "已选择" : "选择这个模板";
+    item.textContent = item === button ? "等待审核" : "交给 Agent 审核";
   });
 
   const markdown = `---
@@ -67,10 +70,10 @@ selectedTemplate: ${candidate.templateId}
 templateSource: ${candidate.sourceId}
 ---
 
-The user selected **${candidate.templateId}** from **${candidate.sourceLabel}** as the reference template.
-Relevance is ${candidate.relevance}/100 (ranking score, not confidence).
-Reasons: ${candidate.reasons.join("; ") || "catalog full-text match"}.
-Next, confirm data compatibility and call figure_library_describe or figure_library_materialize as appropriate.`;
+The user asked the Agent to review **${candidate.templateId}** from **${candidate.sourceLabel}**.
+Retrieval score is ${candidate.retrievalScore}/100; it is not a final recommendation or confidence.
+Reasons: ${candidate.reasons.join("; ") || "catalog metadata match"}.
+Next, call figure_library_preview, inspect it with view_image, and report a visual pass/reject score before figure_library_describe or figure_library_materialize.`;
 
   try {
     if (app.getHostCapabilities()?.updateModelContext?.text) {
@@ -110,7 +113,7 @@ function render(result: SearchResult) {
     );
     top.append(
       heading,
-      element("span", "score", `${candidate.relevance}/100`),
+      element("span", "score", `召回 ${candidate.retrievalScore}`),
     );
     const description = candidate.description || candidate.excerpt || "查看模板详情以确认输入要求。";
     content.append(top, element("p", "description", description));
@@ -123,7 +126,7 @@ function render(result: SearchResult) {
     if (candidate.reasons[0]) content.append(element("p", "reason", candidate.reasons[0]));
     if (candidate.warnings[0]) content.append(element("p", "warning", candidate.warnings[0]));
 
-    const button = element("button", undefined, "选择这个模板");
+    const button = element("button", undefined, "交给 Agent 审核");
     button.type = "button";
     button.setAttribute("aria-pressed", "false");
     button.addEventListener("click", () => void selectCandidate(candidate, button));
@@ -139,6 +142,10 @@ function parseResult(result: CallToolResult): SearchResult | undefined {
   return {
     query: value.query,
     libraryVersion: typeof value.libraryVersion === "string" ? value.libraryVersion : "unknown",
+    intentFamilies: Array.isArray(value.intentFamilies)
+      ? value.intentFamilies.filter((item): item is string => typeof item === "string")
+      : [],
+    reviewRequired: value.reviewRequired === true,
     candidates: value.candidates as Candidate[],
   };
 }

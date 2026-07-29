@@ -22,7 +22,7 @@ const childEnvironment = Object.fromEntries(
 );
 childEnvironment.FIGURE_LIBRARY_DIR = libraryDirectory;
 
-const client = new Client({ name: "scientific-figure-library-smoke", version: "0.1.0" });
+const client = new Client({ name: "scientific-figure-library-smoke", version: "0.1.1" });
 const transport = new StdioClientTransport({
   command: process.execPath,
   args: [serverEntry],
@@ -39,6 +39,7 @@ try {
     "figure_library_open",
     "figure_library_search",
     "figure_library_import",
+    "figure_library_preview",
     "figure_library_source_status",
     "figure_library_describe",
     "figure_library_materialize",
@@ -54,11 +55,53 @@ try {
     throw new Error("open smoke call did not return an empty workbench");
   }
 
+  const volcanoResult = await client.callTool({
+    name: "figure_library_search",
+    arguments: {
+      query: "volcano differential expression",
+      dataProfile: "gene; log2FC; pvalue; padj",
+      visualProfile:
+        "single panel; x=log2FC; y=-log10(padj); threshold lines; up/down colors; labels",
+      sourceIds: ["figureya", "user"],
+      limit: 6,
+    },
+  });
+  if (
+    volcanoResult.isError ||
+    volcanoResult.structuredContent?.candidates?.[0]?.templateId !==
+      "FigureYa59volcanoV2" ||
+    volcanoResult.structuredContent?.reviewRequired !== true
+  ) {
+    throw new Error("volcano retrieval did not return the expected review candidate");
+  }
+
+  const previewDirectory = path.join(smokeRoot, "previews");
+  const previewed = await client.callTool({
+    name: "figure_library_preview",
+    arguments: {
+      templateId: "FigureYa59volcanoV2",
+      destination: previewDirectory,
+    },
+  });
+  const previewPath = previewed.structuredContent?.path;
+  if (
+    previewed.isError ||
+    typeof previewPath !== "string" ||
+    !previewed.content?.some((item) => item.type === "image")
+  ) {
+    throw new Error("preview smoke call did not return image content and a local path");
+  }
+  const previewStat = await fs.stat(previewPath);
+  if (!previewStat.isFile() || path.dirname(previewPath) !== previewDirectory) {
+    throw new Error("preview smoke call wrote an unexpected local file");
+  }
+
   const imported = await client.callTool({
     name: "figure_library_import",
     arguments: {
       title: "Unique smoke ridge reference",
-      description: "A unique-smoke-ridge-reference for MCP verification.",
+      description:
+        "A unique-smoke-ridge-reference for MCP verification; explicitly not a volcano plot.",
       tags: ["unique-smoke-ridge-reference"],
       codePaths: [codePath],
     },
@@ -66,6 +109,22 @@ try {
   const userTemplateId = imported.structuredContent?.templateId;
   if (imported.isError || typeof userTemplateId !== "string") {
     throw new Error(`user import smoke call failed: ${JSON.stringify(imported.content)}`);
+  }
+
+  const mergedResult = await client.callTool({
+    name: "figure_library_search",
+    arguments: {
+      query: "volcano differential expression",
+      sourceIds: ["figureya", "user"],
+      limit: 3,
+    },
+  });
+  if (
+    mergedResult.isError ||
+    mergedResult.structuredContent?.candidates?.[0]?.templateId !==
+      "FigureYa59volcanoV2"
+  ) {
+    throw new Error("cross-source retrieval scores were not globally comparable");
   }
 
   const result = await client.callTool({
@@ -156,7 +215,7 @@ try {
   }
 
   console.log(
-    `OK: ${names.join(", ")}; user import/search/materialization; app resource; hard stop${materialized}`,
+    `OK: ${names.join(", ")}; Agent review preview; user import/search/materialization; app resource; hard stop${materialized}`,
   );
 } finally {
   await client.close().catch(() => undefined);

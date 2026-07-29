@@ -1,6 +1,6 @@
 {
   "name": "scientific-figure-library",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "A portable MCP server and MCP App for searching, importing, and materializing scientific figure templates.",
   "type": "module",
   "bin": {
@@ -32,7 +32,6 @@
     "@types/node": "^22.19.5",
     "esbuild": "^0.25.0",
     "fflate": "^0.8.2",
-    "fuse.js": "^7.1.0",
     "typescript": "^5.9.3",
     "vite": "^6.0.0",
     "vite-plugin-singlefile": "^2.3.0",

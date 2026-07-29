@@ -2,7 +2,7 @@
   "schema": "wisp.plugin.v1",
   "id": "figure-library",
   "display_name": "Scientific Figure Library",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Search FigureYa and user-supplied figures/code as reusable scientific plotting references.",
   "author": "xuzhougeng and contributors",
   "license": "MIT (code); CC BY-NC-SA 4.0 (FigureYa assets)",

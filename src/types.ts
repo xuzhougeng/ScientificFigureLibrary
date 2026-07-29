@@ -49,7 +49,7 @@ export interface TemplateCandidate {
   sourceId: "figureya" | "user";
   sourceLabel: string;
   title: string;
-  relevance: number;
+  retrievalScore: number;
   matchedTerms: string[];
   reasons: string[];
   warnings: string[];
@@ -61,6 +61,7 @@ export interface TemplateCandidate {
   codeFiles: string[];
   packages: string[];
   materializable: boolean;
+  previewAvailable: boolean;
   license: string;
   sourceUrl?: string;
   reportUrl?: string;

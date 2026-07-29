@@ -4,7 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 import { strToU8, zipSync } from "fflate";
-import { CatalogIndex } from "../src/catalog.ts";
+import { buildSearchIntent, CatalogIndex } from "../src/catalog.ts";
 import {
   gitBlobSha1,
   inspectFigureYaSourcePack,
@@ -27,12 +27,66 @@ test("FigureYa source retrieves common plot families", async () => {
   for (const [query, expected] of cases) {
     const results = index.search({ query, limit: 10 });
     assert.ok(results.length > 0, `no results for ${query}`);
-    assert.ok(
-      results.some((result) => expected.test(result.templateId)),
-      `${query} did not retrieve ${expected}: ${results.map((item) => item.templateId).join(", ")}`,
+    assert.match(
+      results[0]?.templateId ?? "",
+      expected,
+      `${query} ranked the wrong family first: ${results.map((item) => item.templateId).join(", ")}`,
     );
     assert.ok(results.every((result) => result.sourceId === "figureya"));
   }
+});
+
+test("real Wisp volcano requests rank the standard template first", async () => {
+  const index = await CatalogIndex.load();
+  const requests = [
+    {
+      query:
+        "火山图 volcano plot，用于展示差异分析结果：横轴 log2 fold change，纵轴 -log10 adjusted p-value/p-value，突出显著上调和下调特征，适合转录组/蛋白组/代谢组差异结果可视化",
+      visualProfile:
+        "Scatter volcano plot: x-axis log2FC centered at 0, y-axis -log10(padj or pvalue), vertical threshold lines for fold-change cutoffs, horizontal threshold line for significance cutoff, points colored by up/down/not significant, optional labels for top significant genes/features; publication-style clean theme.",
+    },
+    {
+      query:
+        "volcano plot differential expression 火山图 差异表达 RNA-seq DEG proteomics; scatter plot with log2FoldChange versus -log10 adjusted p-value, highlight up-regulated and down-regulated genes",
+      dataProfile:
+        "Differential analysis result table with one row per gene/feature; columns typically include gene symbol/id, log2FoldChange/log2FC, pvalue, padj/FDR; continuous x variable log2FC and p-value transformed y variable -log10(padj).",
+      visualProfile:
+        "Volcano plot / differential expression scatter: x=log2FoldChange, y=-log10(adjusted p-value), symmetric x limits around zero, vertical cutoff lines at ±1 log2FC, horizontal cutoff at adjusted p-value 0.05, colored significant up/down/non-significant points, optional gene labels for top hits.",
+    },
+  ];
+
+  for (const request of requests) {
+    assert.deepEqual(buildSearchIntent(request).families, ["volcano"]);
+    const results = index.search({ ...request, limit: 6 });
+    assert.equal(
+      results[0]?.templateId,
+      "FigureYa59volcanoV2",
+      results.map((item) => item.templateId).join(", "),
+    );
+  }
+});
+
+test("retrieval respects figure families and explicit specialized variants", async () => {
+  const index = await CatalogIndex.load();
+  assert.equal(buildSearchIntent({ query: "threshold" }).families.includes("forest"), false);
+  assert.equal(
+    index.search({ query: "multi volcano multiple groups", limit: 1 })[0]?.templateId,
+    "FigureYa135multiVolcano",
+  );
+  assert.equal(
+    index.search({ query: "bubble volcano point size", limit: 1 })[0]?.templateId,
+    "FigureYa75bubble_volcano",
+  );
+});
+
+test("FigureYa previews can be handed to an Agent for visual review", async () => {
+  const index = await CatalogIndex.load();
+  const preview = await index.preview("FigureYa59volcanoV2");
+  assert.ok(preview);
+  assert.equal(preview.mimeType, "image/webp");
+  assert.equal(preview.extension, ".webp");
+  assert.equal(Buffer.from(preview.bytes.subarray(0, 4)).toString("ascii"), "RIFF");
+  assert.equal(Buffer.from(preview.bytes.subarray(8, 12)).toString("ascii"), "WEBP");
 });
 
 test("archive paths and template-mode files are bounded", () => {
@@ -165,6 +219,9 @@ test("user figures and code import, search, and materialize without executing", 
     const results = await library.search({ query: "single cell ridge plot", limit: 3 });
     assert.equal(results[0]?.templateId, imported.template.templateId);
     assert.match(results[0]?.previewDataUrl ?? "", /^data:image\/png;base64,/u);
+    const preview = await library.preview(imported.template.templateId);
+    assert.equal(preview?.mimeType, "image/png");
+    assert.equal(Buffer.from(preview?.bytes ?? []).subarray(0, 4).toString("hex"), "89504e47");
 
     const materialized = await library.materialize(
       imported.template.templateId,

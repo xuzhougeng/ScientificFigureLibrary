@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
 import {
@@ -8,7 +9,7 @@ import {
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { CallToolResult, ReadResourceResult } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
-import { CatalogIndex } from "./catalog.ts";
+import { buildSearchIntent, CatalogIndex } from "./catalog.ts";
 import {
   inspectFigureYaSourcePack,
   materializeFigureYaTemplate,
@@ -16,7 +17,7 @@ import {
 import type { TemplateCandidate } from "./types.ts";
 import { UserTemplateLibrary } from "./user-library.ts";
 
-const VERSION = "0.1.0";
+const VERSION = "0.1.1";
 const RESOURCE_URI = "ui://figure-library/candidates.html";
 const APP_HTML = path.resolve(import.meta.dirname, "mcp-app.html");
 
@@ -25,7 +26,7 @@ const CandidateSchema = z.object({
   sourceId: z.enum(["figureya", "user"]),
   sourceLabel: z.string(),
   title: z.string(),
-  relevance: z.number(),
+  retrievalScore: z.number(),
   matchedTerms: z.array(z.string()),
   reasons: z.array(z.string()),
   warnings: z.array(z.string()),
@@ -37,6 +38,7 @@ const CandidateSchema = z.object({
   codeFiles: z.array(z.string()),
   packages: z.array(z.string()),
   materializable: z.boolean(),
+  previewAvailable: z.boolean(),
   license: z.string(),
   sourceUrl: z.string().optional(),
   reportUrl: z.string().optional(),
@@ -72,6 +74,8 @@ const SearchInput = z.object({
 const SearchOutput = z.object({
   query: z.string(),
   libraryVersion: z.string(),
+  intentFamilies: z.array(z.string()),
+  reviewRequired: z.boolean(),
   sources: z.array(
     z.object({
       sourceId: z.enum(["figureya", "user"]),
@@ -135,6 +139,7 @@ const DescribeOutput = z.object({
   codeFiles: z.array(z.string()),
   packages: z.array(z.string()),
   materializable: z.boolean(),
+  previewAvailable: z.boolean(),
   license: z.string(),
   sourceUrl: z.string().optional(),
   reportUrl: z.string().optional(),
@@ -143,6 +148,28 @@ const DescribeOutput = z.object({
   citation: z.string().optional(),
   importedAt: z.string().optional(),
   previewFile: z.string().optional(),
+});
+
+const PreviewInput = z.object({
+  templateId: z.string().min(1).max(200),
+  destination: z
+    .string()
+    .min(1)
+    .max(2_000)
+    .optional()
+    .describe(
+      "Optional directory for a local preview copy. Wisp Agents should provide a project-local directory, then call view_image on the returned path.",
+    ),
+});
+
+const PreviewOutput = z.object({
+  templateId: z.string(),
+  sourceId: z.enum(["figureya", "user"]),
+  mimeType: z.string(),
+  bytes: z.number().int(),
+  sha256: z.string(),
+  path: z.string().optional(),
+  instruction: z.string(),
 });
 
 const MaterializeInput = z.object({
@@ -210,18 +237,24 @@ const SourceStatusOutput = z.object({
 
 function candidateText(candidates: TemplateCandidate[]) {
   if (candidates.length === 0) return "No matching scientific figure templates were found.";
-  return candidates
+  const list = candidates
     .map((candidate, index) => {
-      const reasons = candidate.reasons.join("; ") || "metadata/full-text match";
+      const reasons = candidate.reasons.join("; ") || "catalog metadata match";
       const warnings = candidate.warnings.length
         ? ` Warnings: ${candidate.warnings.join("; ")}.`
         : "";
       return (
         `${index + 1}. ${candidate.templateId} [${candidate.sourceLabel}] — ` +
-        `relevance ${candidate.relevance}/100. ${reasons}.${warnings}`
+        `retrieval score ${candidate.retrievalScore}/100. ${reasons}.${warnings}`
       );
     })
     .join("\n");
+  return (
+    "Retrieval candidates only; this is not the final recommendation.\n" +
+    `${list}\n\nMANDATORY REVIEW: inspect candidate 1 with figure_library_preview and ` +
+    "use visual/data reasoning before selecting it. Report an Agent visual-review verdict and " +
+    "score out of 10. If it is wrong, inspect the next candidates."
+  );
 }
 
 function hardStop(templateId: string, error: unknown): CallToolResult {
@@ -279,6 +312,8 @@ export async function createServer() {
       structuredContent: {
         query: "等待绘图目标",
         libraryVersion: VERSION,
+        intentFamilies: [],
+        reviewRequired: false,
         sources: [
           { sourceId: "figureya", sourceLabel: "FigureYa", matched: 0 },
           { sourceId: "user", sourceLabel: "User Library", matched: 0 },
@@ -314,17 +349,25 @@ export async function createServer() {
       const userCandidates = input.sourceIds.includes("user")
         ? await userLibrary.search(perSourceRequest)
         : [];
-      const candidates = [...figureYaCandidates, ...userCandidates]
+      const ranked = [...figureYaCandidates, ...userCandidates]
         .sort((left, right) => {
-          const relevance = right.relevance - left.relevance;
-          if (relevance) return relevance;
+          const retrieval = right.retrievalScore - left.retrievalScore;
+          if (retrieval) return retrieval;
           if (left.sourceId !== right.sourceId) return left.sourceId === "user" ? -1 : 1;
           return left.templateId.localeCompare(right.templateId);
         })
         .slice(0, input.limit);
+      const topScore = Math.max(ranked[0]?.retrievalScore ?? 1, 0.0001);
+      const candidates = ranked.map((candidate) => ({
+        ...candidate,
+        retrievalScore: Math.round((candidate.retrievalScore / topScore) * 100),
+      }));
+      const intentFamilies = buildSearchIntent(input).families;
       const output = {
         query: input.query,
         libraryVersion: VERSION,
+        intentFamilies,
+        reviewRequired: true,
         sources: [
           {
             sourceId: "figureya" as const,
@@ -427,6 +470,98 @@ export async function createServer() {
   );
 
   server.registerTool(
+    "figure_library_preview",
+    {
+      title: "Preview a scientific figure template",
+      description:
+        "Return the selected candidate preview as standard MCP image content. Optionally copy it " +
+        "to a project-local directory so a Wisp Agent can call view_image. Use this to visually " +
+        "audit the top retrieval candidate before making a final recommendation.",
+      inputSchema: PreviewInput.shape,
+      outputSchema: PreviewOutput.shape,
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: false,
+      },
+    },
+    async ({ templateId, destination }): Promise<CallToolResult> => {
+      try {
+        const figureYaPreview = await index.preview(templateId);
+        const userPreview = figureYaPreview ? undefined : await userLibrary.preview(templateId);
+        const preview = figureYaPreview ?? userPreview;
+        if (!preview) throw new Error(`no raster preview is available for ${templateId}`);
+
+        const sourceId = figureYaPreview ? ("figureya" as const) : ("user" as const);
+        const digest = createHash("sha256").update(preview.bytes).digest("hex");
+        let outputPath;
+        if (destination) {
+          const directory = path.resolve(destination);
+          await fs.mkdir(directory, { recursive: true });
+          const safeId =
+            templateId.replace(/[^\p{L}\p{N}._-]+/gu, "-").replace(/^[._-]+/gu, "") ||
+            "template";
+          outputPath = path.join(
+            directory,
+            `${safeId}-${digest.slice(0, 12)}${preview.extension}`,
+          );
+          try {
+            await fs.writeFile(outputPath, preview.bytes, { flag: "wx" });
+          } catch (error) {
+            if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
+            const existing = new Uint8Array(await fs.readFile(outputPath));
+            if (createHash("sha256").update(existing).digest("hex") !== digest) {
+              throw new Error(`refusing to overwrite a different preview: ${outputPath}`);
+            }
+          }
+        }
+
+        const instruction = outputPath
+          ? `Call view_image on ${outputPath}, compare it with the user's request/reference, and return an Agent visual-review verdict plus a score out of 10.`
+          : "Compare this image with the user's request/reference and return an Agent visual-review verdict plus a score out of 10.";
+        const output = {
+          templateId,
+          sourceId,
+          mimeType: preview.mimeType,
+          bytes: preview.bytes.byteLength,
+          sha256: digest,
+          path: outputPath,
+          instruction,
+        };
+        return {
+          content: [
+            {
+              type: "text",
+              text:
+                `Preview ready for ${templateId}${outputPath ? ` at ${outputPath}` : ""}. ` +
+                instruction,
+            },
+            {
+              type: "image",
+              data: Buffer.from(preview.bytes).toString("base64"),
+              mimeType: preview.mimeType,
+            },
+          ],
+          structuredContent: output,
+        };
+      } catch (error) {
+        return {
+          isError: true,
+          content: [
+            {
+              type: "text",
+              text: `Template preview failed: ${
+                error instanceof Error ? error.message : String(error)
+              }`,
+            },
+          ],
+        };
+      }
+    },
+  );
+
+  server.registerTool(
     "figure_library_source_status",
     {
       title: "Inspect figure template sources",
@@ -504,6 +639,7 @@ export async function createServer() {
           codeFiles: module.codeFiles,
           packages: module.packages,
           materializable: module.archiveAvailable,
+          previewAvailable: Boolean(module.thumbnail),
           license: "CC BY-NC-SA 4.0",
           sourceUrl: module.sourceUrl,
           reportUrl: module.reportUrl,
@@ -545,6 +681,10 @@ export async function createServer() {
         codeFiles: user.template.code.map((file) => path.posix.basename(file.file)),
         packages: user.template.packages,
         materializable: true,
+        previewAvailable: Boolean(
+          user.template.preview &&
+            /^(?:image\/png|image\/jpeg|image\/webp)$/u.test(user.template.preview.mediaType),
+        ),
         license: user.template.license,
         importedAt: user.template.importedAt,
         previewFile: user.template.preview?.file,
