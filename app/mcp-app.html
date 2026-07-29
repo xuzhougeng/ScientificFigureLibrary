@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Scientific Figure Library</title>
+  </head>
+  <body>
+    <main id="app">
+      <header>
+        <div>
+          <p class="eyebrow">SCIENTIFIC FIGURE LIBRARY</p>
+          <h1>选择科学绘图模板</h1>
+          <p id="query" class="query">正在等待候选结果…</p>
+        </div>
+        <p class="hint">优先检查数据兼容性，再比较视觉风格</p>
+      </header>
+
+      <section id="empty" class="empty" aria-live="polite">
+        请在对话中上传图片或数据，也可以直接描述想画的图。
+      </section>
+      <section id="cards" class="cards" aria-label="Scientific figure template candidates"></section>
+      <footer id="status" aria-live="polite">
+        排名分数表示相对检索相关度，不是统计置信度。
+      </footer>
+    </main>
+    <script type="module" src="/main.ts"></script>
+  </body>
+</html>

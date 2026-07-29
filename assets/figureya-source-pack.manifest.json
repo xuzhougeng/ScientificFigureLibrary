@@ -1,0 +1,1916 @@
+{
+  "schema": "figure-library.source-pack.v1",
+  "sourceId": "figureya",
+  "archiveRepository": "https://github.com/ying-ge/FigureYa-compressed",
+  "archiveCommit": "7268ae379e6ed49595643fb59d547ce418db0c21",
+  "archives": [
+    {
+      "moduleId": "FigureYa000ContributionTemplate",
+      "file": "FigureYa000ContributionTemplate.zip",
+      "bytes": 4128,
+      "gitBlobSha1": "0201bfddbeb374906b593f26d6f9d17fca38326b"
+    },
+    {
+      "moduleId": "FigureYa1survivalCurve_update",
+      "file": "FigureYa1survivalCurve_update.zip",
+      "bytes": 722610,
+      "gitBlobSha1": "d9716bdcddd633da265caad407e6b02e1f92a32a"
+    },
+    {
+      "moduleId": "FigureYa2ggtree+pheatmap+msa",
+      "file": "FigureYa2ggtree+pheatmap+msa.zip",
+      "bytes": 2251861,
+      "gitBlobSha1": "d5655a6edcf2227af536b55667df143091c9814e"
+    },
+    {
+      "moduleId": "FigureYa3genomeView",
+      "file": "FigureYa3genomeView.zip",
+      "bytes": 529033,
+      "gitBlobSha1": "c0b18668caee73b1df6aec2b0123be98591c50dd"
+    },
+    {
+      "moduleId": "FigureYa4bestSeparation",
+      "file": "FigureYa4bestSeparation.zip",
+      "bytes": 945733,
+      "gitBlobSha1": "a3d828fafd0e82f1e879f566bed137fad7e7d96a"
+    },
+    {
+      "moduleId": "FigureYa5bubbles",
+      "file": "FigureYa5bubbles.zip",
+      "bytes": 1698922,
+      "gitBlobSha1": "006109b8e178ea035dd4111803c8e14f31cb31a8"
+    },
+    {
+      "moduleId": "FigureYa6rHRsV2",
+      "file": "FigureYa6rHRsV2.zip",
+      "bytes": 698123,
+      "gitBlobSha1": "224d3c228c707ac3d685dc6b638fe2bd92b0178d"
+    },
+    {
+      "moduleId": "FigureYa7PSM",
+      "file": "FigureYa7PSM.zip",
+      "bytes": 1015810,
+      "gitBlobSha1": "281b703bbe2f3a67f46bc0c2aabbe7b854a84c4e"
+    },
+    {
+      "moduleId": "FigureYa8radar",
+      "file": "FigureYa8radar.zip",
+      "bytes": 1334416,
+      "gitBlobSha1": "656cbb6763bb7e1dbbecc849bbb1b79bf33d4640"
+    },
+    {
+      "moduleId": "FigureYa9heatmap",
+      "file": "FigureYa9heatmap.zip",
+      "bytes": 4623078,
+      "gitBlobSha1": "d26faf69247d59a13b0731f336d25669d37a6fed"
+    },
+    {
+      "moduleId": "FigureYa10chromosomeV2_update",
+      "file": "FigureYa10chromosomeV2_update.zip",
+      "bytes": 2423184,
+      "gitBlobSha1": "dd970b323aba9cc9ff2aca9d473c5c21b72f0019"
+    },
+    {
+      "moduleId": "FigureYa11bubble",
+      "file": "FigureYa11bubble.zip",
+      "bytes": 1735742,
+      "gitBlobSha1": "ac8c82afede0b8030910309ec282aaac7489229e"
+    },
+    {
+      "moduleId": "FigureYa12box",
+      "file": "FigureYa12box.zip",
+      "bytes": 6016286,
+      "gitBlobSha1": "1260411e13cf83c061eee88ceb4a27aff749de04"
+    },
+    {
+      "moduleId": "FigureYa13GSEA_Java_update",
+      "file": "FigureYa13GSEA_Java_update.zip",
+      "bytes": 1901511,
+      "gitBlobSha1": "990714b1edabe6883a44318676bdcfa8227d634f"
+    },
+    {
+      "moduleId": "FigureYa14circos",
+      "file": "FigureYa14circos.zip",
+      "bytes": 4165100,
+      "gitBlobSha1": "9af771c1912e4539b09803802104a0afa8ae6ed7"
+    },
+    {
+      "moduleId": "FigureYa15WGCNA",
+      "file": "FigureYa15WGCNA.zip",
+      "bytes": 37595890,
+      "gitBlobSha1": "1e1262a2c915100e82e279be9a6ad4264321d008"
+    },
+    {
+      "moduleId": "FigureYa16fitting",
+      "file": "FigureYa16fitting.zip",
+      "bytes": 1289259,
+      "gitBlobSha1": "89fa369614d4820787b6bca751693afe335fdda0"
+    },
+    {
+      "moduleId": "FigureYa17WGCNA_heatmap",
+      "file": "FigureYa17WGCNA_heatmap.zip",
+      "bytes": 1858027,
+      "gitBlobSha1": "e9e6d513cc9ded7c9ce1f0e9241e29091d898f34"
+    },
+    {
+      "moduleId": "FigureYa18oncoplot_update",
+      "file": "FigureYa18oncoplot_update.zip",
+      "bytes": 1231395,
+      "gitBlobSha1": "cc7027894568ba839b714b5ce5c22d9266c4bc44"
+    },
+    {
+      "moduleId": "FigureYa19Lollipop",
+      "file": "FigureYa19Lollipop.zip",
+      "bytes": 1189288,
+      "gitBlobSha1": "de4f3ff934d5cccb1e1626b3e97a453dde4966e2"
+    },
+    {
+      "moduleId": "FigureYa20mortality",
+      "file": "FigureYa20mortality.zip",
+      "bytes": 942860,
+      "gitBlobSha1": "d91fe9ed410b21050eb2f53bf8cc4d1dc791ce66"
+    },
+    {
+      "moduleId": "FigureYa21TCGA2table",
+      "file": "FigureYa21TCGA2table.zip",
+      "bytes": 818917,
+      "gitBlobSha1": "5d42aa62559def0e9acff2817a7c15f9f9491719"
+    },
+    {
+      "moduleId": "FigureYa22FPKM2TPM",
+      "file": "FigureYa22FPKM2TPM.zip",
+      "bytes": 1951075,
+      "gitBlobSha1": "f38c17965221c5a07f07656d42672125b747799b"
+    },
+    {
+      "moduleId": "FigureYa23count2TPM",
+      "file": "FigureYa23count2TPM.zip",
+      "bytes": 3216643,
+      "gitBlobSha1": "a68be5e993bb8ce2ee7f71b357ef874793004123"
+    },
+    {
+      "moduleId": "FigureYa24ROC",
+      "file": "FigureYa24ROC.zip",
+      "bytes": 424956,
+      "gitBlobSha1": "6e7d7e478e79fb72fbc42713356f1bb604ace792"
+    },
+    {
+      "moduleId": "FigureYa25Sankey_update",
+      "file": "FigureYa25Sankey_update.zip",
+      "bytes": 1523992,
+      "gitBlobSha1": "a74903ea379171fe49cb56a009469bd98ef1f945"
+    },
+    {
+      "moduleId": "FigureYa26circos_R",
+      "file": "FigureYa26circos_R.zip",
+      "bytes": 1616429,
+      "gitBlobSha1": "f5637497f57b57c1ba9888197e465f09c2c55d7c"
+    },
+    {
+      "moduleId": "FigureYa27tSNE_update",
+      "file": "FigureYa27tSNE_update.zip",
+      "bytes": 16288721,
+      "gitBlobSha1": "ac5fe6691c47f772ae0a14639050f4d88c939b11"
+    },
+    {
+      "moduleId": "FigureYa28color",
+      "file": "FigureYa28color.zip",
+      "bytes": 1661403,
+      "gitBlobSha1": "3738fd6b28f504140aa39b109cb4ab2de9493794"
+    },
+    {
+      "moduleId": "FigureYa30nomogram_update",
+      "file": "FigureYa30nomogram_update.zip",
+      "bytes": 2410336,
+      "gitBlobSha1": "056b94cc43f293ad88614a487e695aba59dc030e"
+    },
+    {
+      "moduleId": "FigureYa30Plus_nomogram_app",
+      "file": "FigureYa30Plus_nomogram_app.zip",
+      "bytes": 47817,
+      "gitBlobSha1": "1f305c649a48061f8c34df39d71fb8ca2348f800"
+    },
+    {
+      "moduleId": "FigureYa31lasso_update",
+      "file": "FigureYa31lasso_update.zip",
+      "bytes": 884619,
+      "gitBlobSha1": "1cae7459a9ccf54afe64d4409404bb531d9a1fdd"
+    },
+    {
+      "moduleId": "FigureYa32ID_table",
+      "file": "FigureYa32ID_table.zip",
+      "bytes": 3039169,
+      "gitBlobSha1": "856aba0d0b8ba4d461d3b7f0485346ed2fad6b65"
+    },
+    {
+      "moduleId": "FigureYa33DCA_update",
+      "file": "FigureYa33DCA_update.zip",
+      "bytes": 1019321,
+      "gitBlobSha1": "20858c912932417e0d4f25f6a8a3ee7c39a86751"
+    },
+    {
+      "moduleId": "FigureYa34count2FPKMv2",
+      "file": "FigureYa34count2FPKMv2.zip",
+      "bytes": 3200216,
+      "gitBlobSha1": "f15e00399c19c966c81f8895ba0d1e58d696341b"
+    },
+    {
+      "moduleId": "FigureYa35batch_bestSeparationV3_update",
+      "file": "FigureYa35batch_bestSeparationV3_update.zip",
+      "bytes": 1730999,
+      "gitBlobSha1": "956c629dbd8e90772db5bb78491310c9021a76c5"
+    },
+    {
+      "moduleId": "FigureYa36nSurvV3",
+      "file": "FigureYa36nSurvV3.zip",
+      "bytes": 1046169,
+      "gitBlobSha1": "1c51079939e9fcadfce3197a10f59d361defcd50"
+    },
+    {
+      "moduleId": "FigureYa37correlationV2_update",
+      "file": "FigureYa37correlationV2_update.zip",
+      "bytes": 2137325,
+      "gitBlobSha1": "f293f7bcf56f1d70c00d67477ca273ea55299f1d"
+    },
+    {
+      "moduleId": "FigureYa38PCA",
+      "file": "FigureYa38PCA.zip",
+      "bytes": 3642120,
+      "gitBlobSha1": "b1fe69cbd03e75e15c617ea2049a04bcf03c4ee9"
+    },
+    {
+      "moduleId": "FigureYa39bar",
+      "file": "FigureYa39bar.zip",
+      "bytes": 1320390,
+      "gitBlobSha1": "1614af86bf6d62b2153a11b511e80cf94a934835"
+    },
+    {
+      "moduleId": "FigureYa40lineage",
+      "file": "FigureYa40lineage.zip",
+      "bytes": 42615644,
+      "gitBlobSha1": "d559271c51475281e26d95b33200e9d9c2385b75"
+    },
+    {
+      "moduleId": "FigureYa41GEO2lncRNA_update",
+      "file": "FigureYa41GEO2lncRNA_update.zip",
+      "bytes": 1582293,
+      "gitBlobSha1": "c76a3c664cc683c8267d69d0f421e1cccc77409f"
+    },
+    {
+      "moduleId": "FigureYa42oncoprintV2_update",
+      "file": "FigureYa42oncoprintV2_update.zip",
+      "bytes": 2623667,
+      "gitBlobSha1": "4cd833c6eaec7a8ca6ef91f6fbad40acd58f2030"
+    },
+    {
+      "moduleId": "FigureYa43ManhattanV2",
+      "file": "FigureYa43ManhattanV2.zip",
+      "bytes": 2944060,
+      "gitBlobSha1": "f387656d9d5c7509763ffe33718d7e6924f9c5c1"
+    },
+    {
+      "moduleId": "FigureYa44profile",
+      "file": "FigureYa44profile.zip",
+      "bytes": 100463294,
+      "gitBlobSha1": "d9773a65b85fa2421f4222551a8ab0ada96ed045"
+    },
+    {
+      "moduleId": "FigureYa45V2",
+      "file": "FigureYa45V2.zip",
+      "bytes": 8229112,
+      "gitBlobSha1": "dd6eb5084c091b3f84402b882df39191a69059ee"
+    },
+    {
+      "moduleId": "FigureYa47HRtable",
+      "file": "FigureYa47HRtable.zip",
+      "bytes": 783327,
+      "gitBlobSha1": "44f087918eea05f23be33a1ea44ed956728a37de"
+    },
+    {
+      "moduleId": "FigureYa48Adonis",
+      "file": "FigureYa48Adonis.zip",
+      "bytes": 676891,
+      "gitBlobSha1": "4dba085a183f9e20ba8b0a5288e949ec37a02883"
+    },
+    {
+      "moduleId": "FigureYa51TMB_update",
+      "file": "FigureYa51TMB_update.zip",
+      "bytes": 954336,
+      "gitBlobSha1": "46c9e380cb3efeb87fd45bfd4aac4d1a7f46c1cc"
+    },
+    {
+      "moduleId": "FigureYa52GOplot",
+      "file": "FigureYa52GOplot.zip",
+      "bytes": 3094296,
+      "gitBlobSha1": "2a9a3d4028fb006af9551bea4c270086b5dabdb8"
+    },
+    {
+      "moduleId": "FigureYa53PPImodule",
+      "file": "FigureYa53PPImodule.zip",
+      "bytes": 9981504,
+      "gitBlobSha1": "c61045ac59fb44acca3ac54f48d4b964ddd6aa53"
+    },
+    {
+      "moduleId": "FigureYa55panCancer_violinV2",
+      "file": "FigureYa55panCancer_violinV2.zip",
+      "bytes": 1429677,
+      "gitBlobSha1": "80f25b4666267945d8068310ed4afb0d12cd4cef"
+    },
+    {
+      "moduleId": "FigureYa55plus_pancancer_boxplot",
+      "file": "FigureYa55plus_pancancer_boxplot.zip",
+      "bytes": 5185828,
+      "gitBlobSha1": "e57be4446a9b402e78a3ebeb7359e7176a4376cd"
+    },
+    {
+      "moduleId": "FigureYa56immune_inflitrationV3",
+      "file": "FigureYa56immune_inflitrationV3.zip",
+      "bytes": 1198594,
+      "gitBlobSha1": "9c6fd147136956f7b57737274a7cfdabe06cb030"
+    },
+    {
+      "moduleId": "FigureYa57profile_1bw",
+      "file": "FigureYa57profile_1bw.zip",
+      "bytes": 873380,
+      "gitBlobSha1": "0ac002aabedc152b076e4744607ee89f1b5a7c36"
+    },
+    {
+      "moduleId": "FigureYa58lncRNAreannotation",
+      "file": "FigureYa58lncRNAreannotation.zip",
+      "bytes": 10867472,
+      "gitBlobSha1": "3ee2116d1f541abee1b1ed025eb9d39bcf4c0765"
+    },
+    {
+      "moduleId": "FigureYa59Plus_GEO2DEG",
+      "file": "FigureYa59Plus_GEO2DEG.zip",
+      "bytes": 9941811,
+      "gitBlobSha1": "3e5a5024d9cde0c0956088196ebdcd3569425e41"
+    },
+    {
+      "moduleId": "FigureYa59Plus_volcano_shiny",
+      "file": "FigureYa59Plus_volcano_shiny.zip",
+      "bytes": 715449,
+      "gitBlobSha1": "465ba1b8ca2f4e57237767069d07ffdc69e79362"
+    },
+    {
+      "moduleId": "FigureYa59volcanoV2",
+      "file": "FigureYa59volcanoV2.zip",
+      "bytes": 3964725,
+      "gitBlobSha1": "76d603a24492f0867bbf5fde75eb0acf0528f77a"
+    },
+    {
+      "moduleId": "FigureYa60GSEA_clusterProfilerV2",
+      "file": "FigureYa60GSEA_clusterProfilerV2.zip",
+      "bytes": 2486515,
+      "gitBlobSha1": "58b3080eb78fc82ddd2e58dd037f5e1433d52be7"
+    },
+    {
+      "moduleId": "FigureYa61GSVA",
+      "file": "FigureYa61GSVA.zip",
+      "bytes": 1145427,
+      "gitBlobSha1": "5a122104875254483bac4eb072b2d98f7b25d6a7"
+    },
+    {
+      "moduleId": "FigureYa62twoAxis",
+      "file": "FigureYa62twoAxis.zip",
+      "bytes": 968932,
+      "gitBlobSha1": "c606996ce5292edaf3b922c77c077224cc90ac32"
+    },
+    {
+      "moduleId": "FigureYa63pubmedMiningV2",
+      "file": "FigureYa63pubmedMiningV2.zip",
+      "bytes": 1331509,
+      "gitBlobSha1": "37976bf69d54b9a5962cbe3e33086e5def13ca33"
+    },
+    {
+      "moduleId": "FigureYa64triangle",
+      "file": "FigureYa64triangle.zip",
+      "bytes": 1949312,
+      "gitBlobSha1": "bb452bca9dddab31c10ddf287c5893a2ed6beb2c"
+    },
+    {
+      "moduleId": "FigureYa65SVM",
+      "file": "FigureYa65SVM.zip",
+      "bytes": 3182592,
+      "gitBlobSha1": "4a9f8cc55af00eb59760b708515de3ac5059c6a7"
+    },
+    {
+      "moduleId": "FigureYa66单因素cox",
+      "file": "FigureYa66单因素cox.zip",
+      "bytes": 1780945,
+      "gitBlobSha1": "51a4b887da05246d5247e769e35e0d6dfa3e6815"
+    },
+    {
+      "moduleId": "FigureYa67phastCons",
+      "file": "FigureYa67phastCons.zip",
+      "bytes": 6220412,
+      "gitBlobSha1": "635d9777d918a553b2c98a1fa67b5336a335f7f6"
+    },
+    {
+      "moduleId": "FigureYa68friendsV2",
+      "file": "FigureYa68friendsV2.zip",
+      "bytes": 732051,
+      "gitBlobSha1": "69cd679ac347bd7ac93a317c934b71ec0174c36a"
+    },
+    {
+      "moduleId": "FigureYa69cancerSubtype",
+      "file": "FigureYa69cancerSubtype.zip",
+      "bytes": 7797723,
+      "gitBlobSha1": "2595030532261cf567c68eafa350bb39390efe41"
+    },
+    {
+      "moduleId": "FigureYa70mutationEvents",
+      "file": "FigureYa70mutationEvents.zip",
+      "bytes": 1090365,
+      "gitBlobSha1": "10c2cd5a899b6e0e2347cb5540774fd249afe31b"
+    },
+    {
+      "moduleId": "FigureYa71ssGSEA_update",
+      "file": "FigureYa71ssGSEA_update.zip",
+      "bytes": 53218769,
+      "gitBlobSha1": "2d3b8a9722779721a636d673ced8f6a80165bf2f"
+    },
+    {
+      "moduleId": "FigureYa72biomarker",
+      "file": "FigureYa72biomarker.zip",
+      "bytes": 3776204,
+      "gitBlobSha1": "e09fd7cfe54da617fafdc52d3ea6dc8b55edd338"
+    },
+    {
+      "moduleId": "FigureYa73batchCorrelation",
+      "file": "FigureYa73batchCorrelation.zip",
+      "bytes": 2374160,
+      "gitBlobSha1": "ae8ba9416b7f26c55e14deccbecef1a094e794b5"
+    },
+    {
+      "moduleId": "FigureYa74OmicCircos",
+      "file": "FigureYa74OmicCircos.zip",
+      "bytes": 7269199,
+      "gitBlobSha1": "1b08e954d46e7d08a493978d50796190c7c2f6e8"
+    },
+    {
+      "moduleId": "FigureYa75bubble_volcano",
+      "file": "FigureYa75bubble_volcano.zip",
+      "bytes": 811990,
+      "gitBlobSha1": "27171ea67020f29697e1e1c340fb0510725f8e63"
+    },
+    {
+      "moduleId": "FigureYa76corrgram",
+      "file": "FigureYa76corrgram.zip",
+      "bytes": 1100662,
+      "gitBlobSha1": "eb2c95f8c1d97928e30d44a75a08f5597e24e07b"
+    },
+    {
+      "moduleId": "FigureYa77baseZoom",
+      "file": "FigureYa77baseZoom.zip",
+      "bytes": 1046561,
+      "gitBlobSha1": "7c1c00b9d3003c72b6a9db46cc01aa0298904009"
+    },
+    {
+      "moduleId": "FigureYa78gganatogram",
+      "file": "FigureYa78gganatogram.zip",
+      "bytes": 1724831,
+      "gitBlobSha1": "65048cc6c16c04092de597c0351d7dbbe2d2f0d5"
+    },
+    {
+      "moduleId": "FigureYa79CNV",
+      "file": "FigureYa79CNV.zip",
+      "bytes": 11109209,
+      "gitBlobSha1": "c984995c6222c83529a3da4763fb75c88645f694"
+    },
+    {
+      "moduleId": "FigureYa80GOclustering",
+      "file": "FigureYa80GOclustering.zip",
+      "bytes": 3387041,
+      "gitBlobSha1": "39e762c9cbce2958bd71da8cbf80d2fffd69a8f3"
+    },
+    {
+      "moduleId": "FigureYa81immune_network",
+      "file": "FigureYa81immune_network.zip",
+      "bytes": 1835393,
+      "gitBlobSha1": "1feb0bce1f0a35312ea339afc9780ea76806d575"
+    },
+    {
+      "moduleId": "FigureYa82IGVzoom",
+      "file": "FigureYa82IGVzoom.zip",
+      "bytes": 8083775,
+      "gitBlobSha1": "0dc9a40266cb767d3e5d89b95a81886b5959e214"
+    },
+    {
+      "moduleId": "FigureYa83enrichment",
+      "file": "FigureYa83enrichment.zip",
+      "bytes": 1587647,
+      "gitBlobSha1": "53d3a4c6cf9b672b4d837ddca1187c1cde1f64f8"
+    },
+    {
+      "moduleId": "FigureYa84roast",
+      "file": "FigureYa84roast.zip",
+      "bytes": 2477861,
+      "gitBlobSha1": "7ede15b9f7dedf2b45852e924e94fcc099db118c"
+    },
+    {
+      "moduleId": "FigureYa85timeROC",
+      "file": "FigureYa85timeROC.zip",
+      "bytes": 719699,
+      "gitBlobSha1": "80d816f74fcc86e8a6f568214ccb1b4da37a3c18"
+    },
+    {
+      "moduleId": "FigureYa86SNPmotif",
+      "file": "FigureYa86SNPmotif.zip",
+      "bytes": 471799,
+      "gitBlobSha1": "655ec1956eb65933f201d8a04fadb3b316034f42"
+    },
+    {
+      "moduleId": "FigureYa87fish",
+      "file": "FigureYa87fish.zip",
+      "bytes": 689734,
+      "gitBlobSha1": "9fcbe1236f322a1ecb63ac110243aa758141b1f5"
+    },
+    {
+      "moduleId": "FigureYa88DAVIDkappa",
+      "file": "FigureYa88DAVIDkappa.zip",
+      "bytes": 1884328,
+      "gitBlobSha1": "ac902b3ddde8e791279f6c3dfe42599007c0ca60"
+    },
+    {
+      "moduleId": "FigureYa89ggplotCirco",
+      "file": "FigureYa89ggplotCirco.zip",
+      "bytes": 2425655,
+      "gitBlobSha1": "a54a04293493d673d36ba474d289efb46516bfb4"
+    },
+    {
+      "moduleId": "FigureYa90subgroup",
+      "file": "FigureYa90subgroup.zip",
+      "bytes": 696426,
+      "gitBlobSha1": "86639d4149450f3fe3c19f5c2dedacf1f3883165"
+    },
+    {
+      "moduleId": "FigureYa91cluster_heatmap",
+      "file": "FigureYa91cluster_heatmap.zip",
+      "bytes": 2721458,
+      "gitBlobSha1": "b1adbd3fe48f0c4f53dabc45ad1ced3379e44dcc"
+    },
+    {
+      "moduleId": "FigureYa92immune_gene_update",
+      "file": "FigureYa92immune_gene_update.zip",
+      "bytes": 2704570,
+      "gitBlobSha1": "35b8d779e54dd7605a1e1eaab55bebd2cb0aed2c"
+    },
+    {
+      "moduleId": "FigureYa93UMAP",
+      "file": "FigureYa93UMAP.zip",
+      "bytes": 2426453,
+      "gitBlobSha1": "4647f394f493569a437c95de73120b8839856dc0"
+    },
+    {
+      "moduleId": "FigureYa94STEMbox_update",
+      "file": "FigureYa94STEMbox_update.zip",
+      "bytes": 1673350,
+      "gitBlobSha1": "a9bc1d74cbd8581c878942f5b033b45d7d5d5493"
+    },
+    {
+      "moduleId": "FigureYa95pairwise",
+      "file": "FigureYa95pairwise.zip",
+      "bytes": 6543689,
+      "gitBlobSha1": "c0453ca772904b78b027733dcb4578584d88c759"
+    },
+    {
+      "moduleId": "FigureYa96R2",
+      "file": "FigureYa96R2.zip",
+      "bytes": 12089618,
+      "gitBlobSha1": "a500723486114b93d90699f236acade3c3b10822"
+    },
+    {
+      "moduleId": "FigureYa97correlationV3",
+      "file": "FigureYa97correlationV3.zip",
+      "bytes": 18124817,
+      "gitBlobSha1": "7f429bd4f846a56de0a7358c8abbb438e4613f54"
+    },
+    {
+      "moduleId": "FigureYa98STEMheatmapV2",
+      "file": "FigureYa98STEMheatmapV2.zip",
+      "bytes": 4922866,
+      "gitBlobSha1": "6fe0afa69ff65864d15557d49b83f07587fbcfa5"
+    },
+    {
+      "moduleId": "FigureYa99smoothHRv2",
+      "file": "FigureYa99smoothHRv2.zip",
+      "bytes": 4767425,
+      "gitBlobSha1": "13bb3ad247ada334311d35b1f40c0c838f7b3418"
+    },
+    {
+      "moduleId": "FigureYa101PCA",
+      "file": "FigureYa101PCA.zip",
+      "bytes": 3957847,
+      "gitBlobSha1": "f68e856a8af3022a524c79c96a86eac74ebe397b"
+    },
+    {
+      "moduleId": "FigureYa102multipanelROC",
+      "file": "FigureYa102multipanelROC.zip",
+      "bytes": 499916,
+      "gitBlobSha1": "942993ae2933311ca1cdd5c8d4d792058b8c3a1f"
+    },
+    {
+      "moduleId": "FigureYa103coAbundant",
+      "file": "FigureYa103coAbundant.zip",
+      "bytes": 1947799,
+      "gitBlobSha1": "348cd2248896a642c1021cbfc5404ec9c89fe354"
+    },
+    {
+      "moduleId": "FigureYa105GDSC",
+      "file": "FigureYa105GDSC.zip",
+      "bytes": 6415321,
+      "gitBlobSha1": "c6d0f63d8566c75d11e8ddf9a8354351bfef6920"
+    },
+    {
+      "moduleId": "FigureYa106immunotherapy",
+      "file": "FigureYa106immunotherapy.zip",
+      "bytes": 28264836,
+      "gitBlobSha1": "5ecf25d0d17d608728001af349f3a736d832f234"
+    },
+    {
+      "moduleId": "FigureYa109SubtypeGSEA_update",
+      "file": "FigureYa109SubtypeGSEA_update.zip",
+      "bytes": 14024468,
+      "gitBlobSha1": "5e43fbe23572b6d0dcf15edeec3353f848002148"
+    },
+    {
+      "moduleId": "FigureYa110mutationSignature",
+      "file": "FigureYa110mutationSignature.zip",
+      "bytes": 14912383,
+      "gitBlobSha1": "19f89e2b0623f548f074a79684a1b1dcc2a0de45"
+    },
+    {
+      "moduleId": "FigureYa112Plus_venn",
+      "file": "FigureYa112Plus_venn.zip",
+      "bytes": 2325938,
+      "gitBlobSha1": "3c49b48458ea4950714f061c49725a861ced15c1"
+    },
+    {
+      "moduleId": "FigureYa112venn",
+      "file": "FigureYa112venn.zip",
+      "bytes": 790557,
+      "gitBlobSha1": "b2abf0268608d96cd1007a3efa7e118d1ac9e910"
+    },
+    {
+      "moduleId": "FigureYa113MutSigCV",
+      "file": "FigureYa113MutSigCV.zip",
+      "bytes": 7692408,
+      "gitBlobSha1": "c9fbfcd7a96f1c9f8060fac8c44ea3e9747df04c"
+    },
+    {
+      "moduleId": "FigureYa114ternaryCluster",
+      "file": "FigureYa114ternaryCluster.zip",
+      "bytes": 8242372,
+      "gitBlobSha1": "ef5f8eaee0f8f60a912b4fe1093a72dc37406231"
+    },
+    {
+      "moduleId": "FigureYa115cofactor",
+      "file": "FigureYa115cofactor.zip",
+      "bytes": 6256561,
+      "gitBlobSha1": "0d313a9e3ac31216d97bcc5202324f51fa5a8157"
+    },
+    {
+      "moduleId": "FigureYa116supervisedCluster",
+      "file": "FigureYa116supervisedCluster.zip",
+      "bytes": 3425527,
+      "gitBlobSha1": "25b175852e6a5e6f74771a2247341bc712f08770"
+    },
+    {
+      "moduleId": "FigureYa117multilinearDE",
+      "file": "FigureYa117multilinearDE.zip",
+      "bytes": 4212850,
+      "gitBlobSha1": "ace9ec3576e63b96e188df95360dc1927aa23987"
+    },
+    {
+      "moduleId": "FigureYa118MulticlassDESeq2",
+      "file": "FigureYa118MulticlassDESeq2.zip",
+      "bytes": 2449404,
+      "gitBlobSha1": "4c19b5812051f1c67a2361082cc5b43e345ad436"
+    },
+    {
+      "moduleId": "FigureYa119Multiclasslimma",
+      "file": "FigureYa119Multiclasslimma.zip",
+      "bytes": 2843794,
+      "gitBlobSha1": "944f379e2cbe29d3d9711866b1aaf92bf3aed196"
+    },
+    {
+      "moduleId": "FigureYa120MulticlassedgeR",
+      "file": "FigureYa120MulticlassedgeR.zip",
+      "bytes": 2381610,
+      "gitBlobSha1": "e942bedd5b2daa0f8d0cc0b8ca502050c755af21"
+    },
+    {
+      "moduleId": "FigureYa121MethCGIcluster",
+      "file": "FigureYa121MethCGIcluster.zip",
+      "bytes": 2928002,
+      "gitBlobSha1": "0031f769cbbaee8c0d7398f9ec4bef8aa27b164f"
+    },
+    {
+      "moduleId": "FigureYa122mut2expr",
+      "file": "FigureYa122mut2expr.zip",
+      "bytes": 84999871,
+      "gitBlobSha1": "7adf8b793a9eb21d6d53ababd20b94eb74440924"
+    },
+    {
+      "moduleId": "FigureYa123mutVSexpr",
+      "file": "FigureYa123mutVSexpr.zip",
+      "bytes": 454740,
+      "gitBlobSha1": "0cefdccd02336ef5927eed86b2ccb24f48b3f28d"
+    },
+    {
+      "moduleId": "FigureYa124AssociationHeatmap",
+      "file": "FigureYa124AssociationHeatmap.zip",
+      "bytes": 404153,
+      "gitBlobSha1": "2050e09cc142f53ce935df55f34903908b3c3e12"
+    },
+    {
+      "moduleId": "FigureYa125FishertestV2",
+      "file": "FigureYa125FishertestV2.zip",
+      "bytes": 1506134,
+      "gitBlobSha1": "60b65e980364384ec5a4656d898d8d0350d99f8d"
+    },
+    {
+      "moduleId": "FigureYa126CorrelationHeatmap",
+      "file": "FigureYa126CorrelationHeatmap.zip",
+      "bytes": 12014615,
+      "gitBlobSha1": "1199365014e8db58f840374b02b00253d0f99bae"
+    },
+    {
+      "moduleId": "FigureYa127HeatmapPie",
+      "file": "FigureYa127HeatmapPie.zip",
+      "bytes": 12021784,
+      "gitBlobSha1": "f7815aaadc83eeee362ccea75fa24aba54b6a2b9"
+    },
+    {
+      "moduleId": "FigureYa128Prognostic",
+      "file": "FigureYa128Prognostic.zip",
+      "bytes": 32772213,
+      "gitBlobSha1": "9cb5c77b5589ba070e3c712a4542b02344bf2d51"
+    },
+    {
+      "moduleId": "FigureYa129TCGAbox",
+      "file": "FigureYa129TCGAbox.zip",
+      "bytes": 75739156,
+      "gitBlobSha1": "baf6d9c3aede30c23a2a78fb6cde1c9baa9b7638"
+    },
+    {
+      "moduleId": "FigureYa131CMap_update",
+      "file": "FigureYa131CMap_update.zip",
+      "bytes": 20132292,
+      "gitBlobSha1": "c7bd9de9f356ebb7973052bedd403ef6addaaa21"
+    },
+    {
+      "moduleId": "FigureYa132alteration",
+      "file": "FigureYa132alteration.zip",
+      "bytes": 7027614,
+      "gitBlobSha1": "77396c614e0508baf809761224d64f35d4f70773"
+    },
+    {
+      "moduleId": "FigureYa133m6Apeak_update",
+      "file": "FigureYa133m6Apeak_update.zip",
+      "bytes": 678368,
+      "gitBlobSha1": "37f6ec652b1cae0b77b6e33e0bec97b7483a8906"
+    },
+    {
+      "moduleId": "FigureYa135multiVolcano",
+      "file": "FigureYa135multiVolcano.zip",
+      "bytes": 2147364,
+      "gitBlobSha1": "48a25a734ea584bb2aa268f9dea7e6ae3534f6e7"
+    },
+    {
+      "moduleId": "FigureYa136fgsea",
+      "file": "FigureYa136fgsea.zip",
+      "bytes": 7934859,
+      "gitBlobSha1": "c6ba35863f4d3c2fbae337c9d4bac1afcd64ee4b"
+    },
+    {
+      "moduleId": "FigureYa138NiceCalibration",
+      "file": "FigureYa138NiceCalibration.zip",
+      "bytes": 1262594,
+      "gitBlobSha1": "6984ba10d56c1605c75e193ca2aca6446e2b15e9"
+    },
+    {
+      "moduleId": "FigureYa139TMB_titv",
+      "file": "FigureYa139TMB_titv.zip",
+      "bytes": 4935948,
+      "gitBlobSha1": "1a00a83f25b683af3109193469853803fdd85f66"
+    },
+    {
+      "moduleId": "FigureYa140mosaicpie",
+      "file": "FigureYa140mosaicpie.zip",
+      "bytes": 3589851,
+      "gitBlobSha1": "fe3d1f8c0936e4369f40bc2b93cb7c5962210b04"
+    },
+    {
+      "moduleId": "FigureYa141risk",
+      "file": "FigureYa141risk.zip",
+      "bytes": 25248175,
+      "gitBlobSha1": "9e757d7018757f7af48a8fd7ad1ac04e469348b7"
+    },
+    {
+      "moduleId": "FigureYa142circosBar",
+      "file": "FigureYa142circosBar.zip",
+      "bytes": 7542825,
+      "gitBlobSha1": "bcf352f7cc174c7df4deb0d14861ff638961a858"
+    },
+    {
+      "moduleId": "FigureYa143survCor_update",
+      "file": "FigureYa143survCor_update.zip",
+      "bytes": 62546051,
+      "gitBlobSha1": "b39f2759ed0a3a09d9db61e924d2162e86d5fead"
+    },
+    {
+      "moduleId": "FigureYa144DiagHeatmap",
+      "file": "FigureYa144DiagHeatmap.zip",
+      "bytes": 1461513,
+      "gitBlobSha1": "427795ab3bb291fb298329217292520d42e792b6"
+    },
+    {
+      "moduleId": "FigureYa145target",
+      "file": "FigureYa145target.zip",
+      "bytes": 12815375,
+      "gitBlobSha1": "490b770be805210be126e7a3cf8a55bfd9324ae6"
+    },
+    {
+      "moduleId": "FigureYa146TMEbox",
+      "file": "FigureYa146TMEbox.zip",
+      "bytes": 2355159,
+      "gitBlobSha1": "8d528e071004d79cc9f4df43da2a73ba73fc40e2"
+    },
+    {
+      "moduleId": "FigureYa147interaction",
+      "file": "FigureYa147interaction.zip",
+      "bytes": 2157326,
+      "gitBlobSha1": "630b7f7cf0a4e8f57387fe44816e678bebd85d62"
+    },
+    {
+      "moduleId": "FigureYa147Plus_STRING",
+      "file": "FigureYa147Plus_STRING.zip",
+      "bytes": 449170,
+      "gitBlobSha1": "58dc561b8519fb086e9c84003eb317f8f1b163ff"
+    },
+    {
+      "moduleId": "FigureYa148SimpleDendrogram",
+      "file": "FigureYa148SimpleDendrogram.zip",
+      "bytes": 841589,
+      "gitBlobSha1": "7823553dbf5c590050728837e3f2a7f8080f3418"
+    },
+    {
+      "moduleId": "FigureYa149rankHeatmap",
+      "file": "FigureYa149rankHeatmap.zip",
+      "bytes": 1254298,
+      "gitBlobSha1": "e4d24d63784f69243169c672071448e4947d78f9"
+    },
+    {
+      "moduleId": "FigureYa150diversityScore",
+      "file": "FigureYa150diversityScore.zip",
+      "bytes": 1020439,
+      "gitBlobSha1": "018c2b66275a877676ac4db419609888e13947cb"
+    },
+    {
+      "moduleId": "FigureYa151pathifier",
+      "file": "FigureYa151pathifier.zip",
+      "bytes": 9573896,
+      "gitBlobSha1": "dc0558641a9dea4ee1ae6aea7814174f053175bd"
+    },
+    {
+      "moduleId": "FigureYa152DouleCorPlot",
+      "file": "FigureYa152DouleCorPlot.zip",
+      "bytes": 1143701,
+      "gitBlobSha1": "c42eaf634029e1f254ac5ed0bf24643f8ed88e42"
+    },
+    {
+      "moduleId": "FigureYa153ccgraph",
+      "file": "FigureYa153ccgraph.zip",
+      "bytes": 8966664,
+      "gitBlobSha1": "7d4e80d9d196aff4bb97bc6548678e88f2c7c8a4"
+    },
+    {
+      "moduleId": "FigureYa154immuneSubtypes",
+      "file": "FigureYa154immuneSubtypes.zip",
+      "bytes": 4863557,
+      "gitBlobSha1": "7dbb6dfd26aae7df0a1b48a2a04b94d418bde0b8"
+    },
+    {
+      "moduleId": "FigureYa155ATAC",
+      "file": "FigureYa155ATAC.zip",
+      "bytes": 20573609,
+      "gitBlobSha1": "01ed0bbb00f28affd349ed6747b954c5ceff4e9b"
+    },
+    {
+      "moduleId": "FigureYa156enrichSimulation",
+      "file": "FigureYa156enrichSimulation.zip",
+      "bytes": 1235496,
+      "gitBlobSha1": "25efd7584374a6804827d0f1683f70a39e1e7565"
+    },
+    {
+      "moduleId": "FigureYa157ChIPpvalue",
+      "file": "FigureYa157ChIPpvalue.zip",
+      "bytes": 1814873,
+      "gitBlobSha1": "45e18a20a4b0a3bb401509bf402b9c0cc22d51a0"
+    },
+    {
+      "moduleId": "FigureYa158MutationPattern",
+      "file": "FigureYa158MutationPattern.zip",
+      "bytes": 35661954,
+      "gitBlobSha1": "d371a1d08d7e828bb919dd97217d0e5f4567e834"
+    },
+    {
+      "moduleId": "FigureYa159LR_RF_V2",
+      "file": "FigureYa159LR_RF_V2.zip",
+      "bytes": 2246787,
+      "gitBlobSha1": "228d274258d8dad9daf6fb2870f4bc77b2feee50"
+    },
+    {
+      "moduleId": "FigureYa160scGSVA",
+      "file": "FigureYa160scGSVA.zip",
+      "bytes": 9102235,
+      "gitBlobSha1": "7813531afff95a0030ac9971208b67bbf18eb82c"
+    },
+    {
+      "moduleId": "FigureYa161stemness",
+      "file": "FigureYa161stemness.zip",
+      "bytes": 1361083,
+      "gitBlobSha1": "e1277cebba5f8ef46e7f2bdfb74384f5da966f49"
+    },
+    {
+      "moduleId": "FigureYa162boxViolin",
+      "file": "FigureYa162boxViolin.zip",
+      "bytes": 1744223,
+      "gitBlobSha1": "c1ef12c0204c75a5ca66c3480d3c81672ab50173"
+    },
+    {
+      "moduleId": "FigureYa163twoVarCor_update",
+      "file": "FigureYa163twoVarCor_update.zip",
+      "bytes": 1614561,
+      "gitBlobSha1": "29da84e6ceae8a54142e9780ebec31ef549aac14"
+    },
+    {
+      "moduleId": "FigureYa164PCA3D",
+      "file": "FigureYa164PCA3D.zip",
+      "bytes": 7241625,
+      "gitBlobSha1": "c82597102833cef0465f2d8b0d43504d221f1fa7"
+    },
+    {
+      "moduleId": "FigureYa165heatmapPvalue",
+      "file": "FigureYa165heatmapPvalue.zip",
+      "bytes": 6499874,
+      "gitBlobSha1": "a12347be31a6e7e285f7c14dbd9b1e35cfa9206b"
+    },
+    {
+      "moduleId": "FigureYa166scCNV",
+      "file": "FigureYa166scCNV.zip",
+      "bytes": 101584226,
+      "gitBlobSha1": "3b92f9a0474d7e3e767024bf8225a4f56356ab8b"
+    },
+    {
+      "moduleId": "FigureYa167TumorIndex",
+      "file": "FigureYa167TumorIndex.zip",
+      "bytes": 31838686,
+      "gitBlobSha1": "d6b9a052810fa12ff3c8a03fb740a331a82aca43"
+    },
+    {
+      "moduleId": "FigureYa168legoplot",
+      "file": "FigureYa168legoplot.zip",
+      "bytes": 2296458,
+      "gitBlobSha1": "f34f39a4292c703ef5b0d7c4f44f924154ab2a68"
+    },
+    {
+      "moduleId": "FigureYa169sigHeatmap",
+      "file": "FigureYa169sigHeatmap.zip",
+      "bytes": 15649039,
+      "gitBlobSha1": "a21c770f0381c51fbc55cb6eac7062b7a4a719d0"
+    },
+    {
+      "moduleId": "FigureYa170ImmuLncRNA",
+      "file": "FigureYa170ImmuLncRNA.zip",
+      "bytes": 39721361,
+      "gitBlobSha1": "17c8a16c4733d7eff60514d7537d46cda98ffbb5"
+    },
+    {
+      "moduleId": "FigureYa171subgroupSurv",
+      "file": "FigureYa171subgroupSurv.zip",
+      "bytes": 1350640,
+      "gitBlobSha1": "6fccbea8e0d646ad842be43cc1fe9a96abb06c74"
+    },
+    {
+      "moduleId": "FigureYa172ggplot2Gviz",
+      "file": "FigureYa172ggplot2Gviz.zip",
+      "bytes": 818579,
+      "gitBlobSha1": "8ce8f5f5364ff88de9deeecfc352ed46deda0053"
+    },
+    {
+      "moduleId": "FigureYa173fancybar",
+      "file": "FigureYa173fancybar.zip",
+      "bytes": 776589,
+      "gitBlobSha1": "0aaf82794c72e925319150ac1936f44ed177b692"
+    },
+    {
+      "moduleId": "FigureYa174squareCross",
+      "file": "FigureYa174squareCross.zip",
+      "bytes": 4147238,
+      "gitBlobSha1": "fdb9a292c82c8ffdf00490a403f040a00893a5d3"
+    },
+    {
+      "moduleId": "FigureYa175quadrant",
+      "file": "FigureYa175quadrant.zip",
+      "bytes": 2127775,
+      "gitBlobSha1": "e8bc0cded02dcffcc4f7b05baee876fdf3aa52e0"
+    },
+    {
+      "moduleId": "FigureYa176BlandAltman",
+      "file": "FigureYa176BlandAltman.zip",
+      "bytes": 770570,
+      "gitBlobSha1": "7dd5f7790a6f8426ebb97b19605822a9f43cb19e"
+    },
+    {
+      "moduleId": "FigureYa177RNAvelocity",
+      "file": "FigureYa177RNAvelocity.zip",
+      "bytes": 12246657,
+      "gitBlobSha1": "7c38c96b400b4c663a7e143b325e805e1511213a"
+    },
+    {
+      "moduleId": "FigureYa178receptorLigand",
+      "file": "FigureYa178receptorLigand.zip",
+      "bytes": 2942537,
+      "gitBlobSha1": "10ca73ea0e199afed9441164d7e5a4ace94b6e1a"
+    },
+    {
+      "moduleId": "FigureYa179AMDAplot",
+      "file": "FigureYa179AMDAplot.zip",
+      "bytes": 38424298,
+      "gitBlobSha1": "4ee934964d30415dee7ebb98c51628726063199a"
+    },
+    {
+      "moduleId": "FigureYa180FGAplotV2",
+      "file": "FigureYa180FGAplotV2.zip",
+      "bytes": 1952379,
+      "gitBlobSha1": "f44d6abaf6073acb4a10a67501123889376f34f4"
+    },
+    {
+      "moduleId": "FigureYa181multiCorrelation",
+      "file": "FigureYa181multiCorrelation.zip",
+      "bytes": 1216761,
+      "gitBlobSha1": "9ad2600d36bf2249139a0bbbb4874cf485006f7e"
+    },
+    {
+      "moduleId": "FigureYa182RFSurvV2",
+      "file": "FigureYa182RFSurvV2.zip",
+      "bytes": 16575382,
+      "gitBlobSha1": "f8774ee87f630ca916e41665088e2a972de5f7fd"
+    },
+    {
+      "moduleId": "FigureYa183condSurv",
+      "file": "FigureYa183condSurv.zip",
+      "bytes": 1351874,
+      "gitBlobSha1": "7ad63edd9dea57a888f609afd75cfec9f3f09b4c"
+    },
+    {
+      "moduleId": "FigureYa184ranger",
+      "file": "FigureYa184ranger.zip",
+      "bytes": 13901600,
+      "gitBlobSha1": "c9ad31d28e50c9c715cb019f521f6f2dc9f0e24b"
+    },
+    {
+      "moduleId": "FigureYa185sciATAC",
+      "file": "FigureYa185sciATAC.zip",
+      "bytes": 100157277,
+      "gitBlobSha1": "98df8bba0c478290372cd56411bb65f27aa29289"
+    },
+    {
+      "moduleId": "FigureYa186swimmerplot",
+      "file": "FigureYa186swimmerplot.zip",
+      "bytes": 1708419,
+      "gitBlobSha1": "2a8de4a1cc63f73829863b6f9a4dc2da0cf351e5"
+    },
+    {
+      "moduleId": "FigureYa187RMS",
+      "file": "FigureYa187RMS.zip",
+      "bytes": 512981,
+      "gitBlobSha1": "4e17987d3b36325b15dd94b467f2fc5ac136941f"
+    },
+    {
+      "moduleId": "FigureYa188CNVload",
+      "file": "FigureYa188CNVload.zip",
+      "bytes": 886892,
+      "gitBlobSha1": "f26c919ee35ab49f3f0851783f6ab9c043ed5a34"
+    },
+    {
+      "moduleId": "FigureYa189timeCindex",
+      "file": "FigureYa189timeCindex.zip",
+      "bytes": 932072,
+      "gitBlobSha1": "eb93452d90c3c6fc52daed5e8fb83553943864b6"
+    },
+    {
+      "moduleId": "FigureYa190batchLogistic",
+      "file": "FigureYa190batchLogistic.zip",
+      "bytes": 688855,
+      "gitBlobSha1": "b1d7fe15e9a2ef97d8cab428215d4b0325b16684"
+    },
+    {
+      "moduleId": "FigureYa191bestLogistic",
+      "file": "FigureYa191bestLogistic.zip",
+      "bytes": 694248,
+      "gitBlobSha1": "30940a09a9172dbf2c687f17b5e7e067124ef803"
+    },
+    {
+      "moduleId": "FigureYa192breakpoint",
+      "file": "FigureYa192breakpoint.zip",
+      "bytes": 6302081,
+      "gitBlobSha1": "d0bac877d38c67b0c1e9171a41c0938575a5654b"
+    },
+    {
+      "moduleId": "FigureYa193RiskTable",
+      "file": "FigureYa193RiskTable.zip",
+      "bytes": 37356832,
+      "gitBlobSha1": "3f99c3528846b42b284b348cadd4510fd6b31e49"
+    },
+    {
+      "moduleId": "FigureYa194pySCENIC",
+      "file": "FigureYa194pySCENIC.zip",
+      "bytes": 223552,
+      "gitBlobSha1": "2b12707543ed76b0bdb8b862601e856c7f443b63"
+    },
+    {
+      "moduleId": "FigureYa195PanPaire",
+      "file": "FigureYa195PanPaire.zip",
+      "bytes": 2124995,
+      "gitBlobSha1": "3b669f01d78d6d96c1ec12e4c5bfa69437dca218"
+    },
+    {
+      "moduleId": "FigureYa196PanPie",
+      "file": "FigureYa196PanPie.zip",
+      "bytes": 639417,
+      "gitBlobSha1": "b9ebbc934863511e5697ba3a249fff9b63320e45"
+    },
+    {
+      "moduleId": "FigureYa196Plus_PanPie",
+      "file": "FigureYa196Plus_PanPie.zip",
+      "bytes": 812902,
+      "gitBlobSha1": "e02450d67ad5bf2248cad5d8daf7010bd5d79735"
+    },
+    {
+      "moduleId": "FigureYa197SmoothHaz",
+      "file": "FigureYa197SmoothHaz.zip",
+      "bytes": 5287684,
+      "gitBlobSha1": "49fa583f81abd6b04ff6d4bc81f0785debc66f57"
+    },
+    {
+      "moduleId": "FigureYa198SignatureCombinationV2",
+      "file": "FigureYa198SignatureCombinationV2.zip",
+      "bytes": 11558188,
+      "gitBlobSha1": "32907ad196ae6a688b25a9eb5c6e59c86d439c8c"
+    },
+    {
+      "moduleId": "FigureYa199crosslink",
+      "file": "FigureYa199crosslink.zip",
+      "bytes": 3861364,
+      "gitBlobSha1": "54642502e095651c800cfe8a44aca03fba44a1cd"
+    },
+    {
+      "moduleId": "FigureYa200pairwiseAUC",
+      "file": "FigureYa200pairwiseAUC.zip",
+      "bytes": 21042059,
+      "gitBlobSha1": "db658223ddb720c2bc6828203a52c83fccf18449"
+    },
+    {
+      "moduleId": "FigureYa201ClusterCorrelation",
+      "file": "FigureYa201ClusterCorrelation.zip",
+      "bytes": 11152727,
+      "gitBlobSha1": "9854da7d8c09395cdeab3f8036cd0dbadea13e05"
+    },
+    {
+      "moduleId": "FigureYa202consensusGene",
+      "file": "FigureYa202consensusGene.zip",
+      "bytes": 1194987,
+      "gitBlobSha1": "c8a83cce877048eae39a63769ba9daae96683d76"
+    },
+    {
+      "moduleId": "FigureYa203ComBat",
+      "file": "FigureYa203ComBat.zip",
+      "bytes": 56900630,
+      "gitBlobSha1": "ac582823a984c0e2a5eb3c886a64d43898c1b595"
+    },
+    {
+      "moduleId": "FigureYa204PCAscore",
+      "file": "FigureYa204PCAscore.zip",
+      "bytes": 2978414,
+      "gitBlobSha1": "4d3c0f3f2d46e9ed7b46c135f2dd6d5fd28daf2c"
+    },
+    {
+      "moduleId": "FigureYa205immunophenoscore_update",
+      "file": "FigureYa205immunophenoscore_update.zip",
+      "bytes": 3606953,
+      "gitBlobSha1": "0a7ccc24a7a973c449d9acda7f3b59b802f4ed11"
+    },
+    {
+      "moduleId": "FigureYa206scHeatmap",
+      "file": "FigureYa206scHeatmap.zip",
+      "bytes": 4378839,
+      "gitBlobSha1": "bd5050d2fc945847e19bdb34e1db4844b75eb0fa"
+    },
+    {
+      "moduleId": "FigureYa207Randomization",
+      "file": "FigureYa207Randomization.zip",
+      "bytes": 3685881,
+      "gitBlobSha1": "3efc3b4b1a21ab8d7ebffd51c39e03a93b1d7a39"
+    },
+    {
+      "moduleId": "FigureYa208FPI",
+      "file": "FigureYa208FPI.zip",
+      "bytes": 2698171,
+      "gitBlobSha1": "49bdceacc702e8f3dbaa5de382cd4c1fd6da8beb"
+    },
+    {
+      "moduleId": "FigureYa209batchEnrich",
+      "file": "FigureYa209batchEnrich.zip",
+      "bytes": 8498924,
+      "gitBlobSha1": "75a171b53e872ba0e371eee7fabc9640886faa0b"
+    },
+    {
+      "moduleId": "FigureYa210survivalScape",
+      "file": "FigureYa210survivalScape.zip",
+      "bytes": 1903071,
+      "gitBlobSha1": "8544f76f6cde7c3cf6dab5c5e5f84ec444e46e13"
+    },
+    {
+      "moduleId": "FigureYa211multiCohortImmSubtype",
+      "file": "FigureYa211multiCohortImmSubtype.zip",
+      "bytes": 53994099,
+      "gitBlobSha1": "b161415308980cd82b2eca8a4a2b136b15fc3163"
+    },
+    {
+      "moduleId": "FigureYa212drugTargetV2",
+      "file": "FigureYa212drugTargetV2.zip",
+      "bytes": 96599128,
+      "gitBlobSha1": "55eb07c42c9402e69aac5e9bd1e82d6e0688f2c1"
+    },
+    {
+      "moduleId": "FigureYa213customizeHeatmap",
+      "file": "FigureYa213customizeHeatmap.zip",
+      "bytes": 25288445,
+      "gitBlobSha1": "5234443c25a601d59e80e81c6ef1ba1531c74b91"
+    },
+    {
+      "moduleId": "FigureYa214KEGG_hierarchyV2",
+      "file": "FigureYa214KEGG_hierarchyV2.zip",
+      "bytes": 1728648,
+      "gitBlobSha1": "7bd2d63c9ca768c157cb35cc3054f033bc25e80c"
+    },
+    {
+      "moduleId": "FigureYa215DNAage",
+      "file": "FigureYa215DNAage.zip",
+      "bytes": 360283,
+      "gitBlobSha1": "8159da1e55279d6a7b11252633e5c85d5eaf200e"
+    },
+    {
+      "moduleId": "FigureYa216MetaREM",
+      "file": "FigureYa216MetaREM.zip",
+      "bytes": 899428,
+      "gitBlobSha1": "6235b5fe1f63a7c7b7d6eb480ad63e9b98d342c9"
+    },
+    {
+      "moduleId": "FigureYa217RMR",
+      "file": "FigureYa217RMR.zip",
+      "bytes": 152225,
+      "gitBlobSha1": "3ca5c40347b81a72111c049adc34445f8398f855"
+    },
+    {
+      "moduleId": "FigureYa218Elasticnet",
+      "file": "FigureYa218Elasticnet.zip",
+      "bytes": 30160908,
+      "gitBlobSha1": "3150d2cc8df8c4f78d671fff45b497399867f64e"
+    },
+    {
+      "moduleId": "FigureYa219GMM",
+      "file": "FigureYa219GMM.zip",
+      "bytes": 5813977,
+      "gitBlobSha1": "43f037eb618b9fa3ee72eea6e53c29e4ab2cd4ae"
+    },
+    {
+      "moduleId": "FigureYa220repeatedLasso",
+      "file": "FigureYa220repeatedLasso.zip",
+      "bytes": 67090950,
+      "gitBlobSha1": "a02d42ee662b2454f63334264edd02b2d014bc07"
+    },
+    {
+      "moduleId": "FigureYa221tenFoldRF",
+      "file": "FigureYa221tenFoldRF.zip",
+      "bytes": 23779903,
+      "gitBlobSha1": "3b92ff6773133fe2fc218bbd37d4f091765b02bf"
+    },
+    {
+      "moduleId": "FigureYa222PCAgene",
+      "file": "FigureYa222PCAgene.zip",
+      "bytes": 18383134,
+      "gitBlobSha1": "23bb00c4ed46198dd5dda6b85c0f183a159f71c5"
+    },
+    {
+      "moduleId": "FigureYa223scNMF",
+      "file": "FigureYa223scNMF.zip",
+      "bytes": 2820156,
+      "gitBlobSha1": "8965d94ebb72471c0130a102bc484ab4d4948cf9"
+    },
+    {
+      "moduleId": "FigureYa224scMarker",
+      "file": "FigureYa224scMarker.zip",
+      "bytes": 10878348,
+      "gitBlobSha1": "fd1d774f11dca3a36a58aad27c61ca441817cc22"
+    },
+    {
+      "moduleId": "FigureYa225GiViTl",
+      "file": "FigureYa225GiViTl.zip",
+      "bytes": 2716277,
+      "gitBlobSha1": "ebe9c9580ed65d1b75cc7fdb912366af3f67392b"
+    },
+    {
+      "moduleId": "FigureYa227boxdensity",
+      "file": "FigureYa227boxdensity.zip",
+      "bytes": 470351,
+      "gitBlobSha1": "102dad26da6781610512c8e47de8937be4b9918c"
+    },
+    {
+      "moduleId": "FigureYa228linkCor",
+      "file": "FigureYa228linkCor.zip",
+      "bytes": 15441836,
+      "gitBlobSha1": "847ae5b4c5b969b0f11d6dba474eb282ce54b67c"
+    },
+    {
+      "moduleId": "FigureYa229PCOA",
+      "file": "FigureYa229PCOA.zip",
+      "bytes": 8447980,
+      "gitBlobSha1": "6e86da54bad5108b51adb6aeeac4f53355c64607"
+    },
+    {
+      "moduleId": "FigureYa230immunelandscape",
+      "file": "FigureYa230immunelandscape.zip",
+      "bytes": 11251431,
+      "gitBlobSha1": "0a59a86a1d3002a990f0329ec69cd0828c72114c"
+    },
+    {
+      "moduleId": "FigureYa231scScore",
+      "file": "FigureYa231scScore.zip",
+      "bytes": 11067925,
+      "gitBlobSha1": "031c9b98b07bc5b3469729cc4d7ab50dab3a52e0"
+    },
+    {
+      "moduleId": "FigureYa232scRankHeatmap",
+      "file": "FigureYa232scRankHeatmap.zip",
+      "bytes": 1299969,
+      "gitBlobSha1": "41710f972d993f98a7abd9f4e7907f32bb7f9636"
+    },
+    {
+      "moduleId": "FigureYa233genepair",
+      "file": "FigureYa233genepair.zip",
+      "bytes": 12711139,
+      "gitBlobSha1": "420fbf4376d24554bcf0125b23b9b9452a582200"
+    },
+    {
+      "moduleId": "FigureYa234panImmune",
+      "file": "FigureYa234panImmune.zip",
+      "bytes": 10045787,
+      "gitBlobSha1": "06a6c83ec35eb76d3765a7d981a7b364f057e2f6"
+    },
+    {
+      "moduleId": "FigureYa235scDEG",
+      "file": "FigureYa235scDEG.zip",
+      "bytes": 10757210,
+      "gitBlobSha1": "d97e26a6ce673c60e5469d10e086637dc99d563f"
+    },
+    {
+      "moduleId": "FigureYa236circGroup",
+      "file": "FigureYa236circGroup.zip",
+      "bytes": 1117628,
+      "gitBlobSha1": "39bde2dee8c8451171fc63b4ba2a26c7a81a249c"
+    },
+    {
+      "moduleId": "FigureYa237circVenn",
+      "file": "FigureYa237circVenn.zip",
+      "bytes": 2747524,
+      "gitBlobSha1": "b8266edbfbddff11860fb6b8e64682d65e70a284"
+    },
+    {
+      "moduleId": "FigureYa238corRiskMut",
+      "file": "FigureYa238corRiskMut.zip",
+      "bytes": 8377644,
+      "gitBlobSha1": "ed197c1d023e591a6fa57ac1ce761d57d8424988"
+    },
+    {
+      "moduleId": "FigureYa239ST_PDAC",
+      "file": "FigureYa239ST_PDAC.zip",
+      "bytes": 1299542,
+      "gitBlobSha1": "9c32240ffbf18e941f56d442d345a96b9a2f7fdb"
+    },
+    {
+      "moduleId": "FigureYa240CRISPR",
+      "file": "FigureYa240CRISPR.zip",
+      "bytes": 2556201,
+      "gitBlobSha1": "0a5cb18fba23c44d6c83177533b35618e90d93da"
+    },
+    {
+      "moduleId": "FigureYa241scRNA_NMI",
+      "file": "FigureYa241scRNA_NMI.zip",
+      "bytes": 629871,
+      "gitBlobSha1": "9eff6a7273436dc908545dfa62d1576418e96914"
+    },
+    {
+      "moduleId": "FigureYa242corMethExpr",
+      "file": "FigureYa242corMethExpr.zip",
+      "bytes": 71883484,
+      "gitBlobSha1": "388eb4d2cda000859f505d96084bf8eeb57715e0"
+    },
+    {
+      "moduleId": "FigureYa243scMarkerGroupHeatmap",
+      "file": "FigureYa243scMarkerGroupHeatmap.zip",
+      "bytes": 4619921,
+      "gitBlobSha1": "a6dd05de51f4ba7545c66c84155b76b26e6c8fa4"
+    },
+    {
+      "moduleId": "FigureYa244PCAPlot",
+      "file": "FigureYa244PCAPlot.zip",
+      "bytes": 1005299,
+      "gitBlobSha1": "298d30db1213ff64a53e1e0860e0cb66d6cd1cc1"
+    },
+    {
+      "moduleId": "FigureYa245Plus_VarDecompose",
+      "file": "FigureYa245Plus_VarDecompose.zip",
+      "bytes": 544036,
+      "gitBlobSha1": "864e75c71fb92eb91f7c60d64b6ecedefb629120"
+    },
+    {
+      "moduleId": "FigureYa245VarDecompose_update",
+      "file": "FigureYa245VarDecompose_update.zip",
+      "bytes": 5894148,
+      "gitBlobSha1": "67e10c2ba5a2bc262812c336af8dc71f92d758a1"
+    },
+    {
+      "moduleId": "FigureYa246supervisedGDSC",
+      "file": "FigureYa246supervisedGDSC.zip",
+      "bytes": 2544472,
+      "gitBlobSha1": "abca5fcbbd8ea7a39da6f8a982fc81b1731fda54"
+    },
+    {
+      "moduleId": "FigureYa247oncoPredict",
+      "file": "FigureYa247oncoPredict.zip",
+      "bytes": 8404387,
+      "gitBlobSha1": "0a2b47db217b020e64d3b4bc5c28d06dfaade344"
+    },
+    {
+      "moduleId": "FigureYa248MutLandscape",
+      "file": "FigureYa248MutLandscape.zip",
+      "bytes": 2344211,
+      "gitBlobSha1": "170567020a33d142d976d42453a6d2f4217d94e7"
+    },
+    {
+      "moduleId": "FigureYa249Regulon",
+      "file": "FigureYa249Regulon.zip",
+      "bytes": 75418041,
+      "gitBlobSha1": "c8c327a4afabf643638fed9a7afaacf4f53e0fd3"
+    },
+    {
+      "moduleId": "FigureYa250ImmGenePair",
+      "file": "FigureYa250ImmGenePair.zip",
+      "bytes": 22790824,
+      "gitBlobSha1": "533027c331e05bec663a7c565783cad473fcca55"
+    },
+    {
+      "moduleId": "FigureYa251NPHSurv",
+      "file": "FigureYa251NPHSurv.zip",
+      "bytes": 948239,
+      "gitBlobSha1": "2015894df94d51707201ebe5c369974a848f0040"
+    },
+    {
+      "moduleId": "FigureYa252mclust",
+      "file": "FigureYa252mclust.zip",
+      "bytes": 3261236,
+      "gitBlobSha1": "d3105f26abbf1b24c4694a29795ccaa35c0adf99"
+    },
+    {
+      "moduleId": "FigureYa253panGSEA",
+      "file": "FigureYa253panGSEA.zip",
+      "bytes": 16972515,
+      "gitBlobSha1": "81ad200163f1d0d0375ff7ebdea85b0b73aa998c"
+    },
+    {
+      "moduleId": "FigureYa254scViolin",
+      "file": "FigureYa254scViolin.zip",
+      "bytes": 2379543,
+      "gitBlobSha1": "6893e4d4e788bf7ea2bc4a98fbd4bbbb58e44d36"
+    },
+    {
+      "moduleId": "FigureYa255TIME",
+      "file": "FigureYa255TIME.zip",
+      "bytes": 23906089,
+      "gitBlobSha1": "058335b48c79fb048a4c27ae1d9a900cd0ee943f"
+    },
+    {
+      "moduleId": "FigureYa256panelLink",
+      "file": "FigureYa256panelLink.zip",
+      "bytes": 1896681,
+      "gitBlobSha1": "3ee160e57a692a6715ed8713bc44ad767e666199"
+    },
+    {
+      "moduleId": "FigureYa257armCNV",
+      "file": "FigureYa257armCNV.zip",
+      "bytes": 4001778,
+      "gitBlobSha1": "d719d586984c29a0aa0f5f9e184f7d7f7e4ebf1a"
+    },
+    {
+      "moduleId": "FigureYa258SNF",
+      "file": "FigureYa258SNF.zip",
+      "bytes": 23885579,
+      "gitBlobSha1": "4bbd19afc1783b9bb7fae48558b3683af8073215"
+    },
+    {
+      "moduleId": "FigureYa259circLink",
+      "file": "FigureYa259circLink.zip",
+      "bytes": 7416833,
+      "gitBlobSha1": "2b5aff95867138cd6b24b33957014b1cdfe6da27"
+    },
+    {
+      "moduleId": "FigureYa260CNV",
+      "file": "FigureYa260CNV.zip",
+      "bytes": 1975343,
+      "gitBlobSha1": "e414f7613f38563224dfaff704deabe368e7e506"
+    },
+    {
+      "moduleId": "FigureYa261circGene",
+      "file": "FigureYa261circGene.zip",
+      "bytes": 49427542,
+      "gitBlobSha1": "d4b2891c5772eb2d56da698210abfbc91e1bb511"
+    },
+    {
+      "moduleId": "FigureYa262GDC",
+      "file": "FigureYa262GDC.zip",
+      "bytes": 7240061,
+      "gitBlobSha1": "79f9fa553f51ef31f61520ebf43c4509989e97a8"
+    },
+    {
+      "moduleId": "FigureYa263panDiff",
+      "file": "FigureYa263panDiff.zip",
+      "bytes": 3349990,
+      "gitBlobSha1": "d80ed0d77696e7b02cd0705c38e4d97f2c61b732"
+    },
+    {
+      "moduleId": "FigureYa264epiImmune",
+      "file": "FigureYa264epiImmune.zip",
+      "bytes": 551236,
+      "gitBlobSha1": "8e9a00092858bfe1663c49d6fe7b56830821bf75"
+    },
+    {
+      "moduleId": "FigureYa265panCNV",
+      "file": "FigureYa265panCNV.zip",
+      "bytes": 1925327,
+      "gitBlobSha1": "6e4b2ce1bdfb7a53112c8a514809c58a37ecba78"
+    },
+    {
+      "moduleId": "FigureYa266panHeatmap",
+      "file": "FigureYa266panHeatmap.zip",
+      "bytes": 4365592,
+      "gitBlobSha1": "138f2cf8ad07144bca48aa7b041a35d3774aebbe"
+    },
+    {
+      "moduleId": "FigureYa267scCellChat",
+      "file": "FigureYa267scCellChat.zip",
+      "bytes": 2391096,
+      "gitBlobSha1": "ffa9cb1624a43ec39dc5ec2b5e36973a959e2e4f"
+    },
+    {
+      "moduleId": "FigureYa268panCNVexpr",
+      "file": "FigureYa268panCNVexpr.zip",
+      "bytes": 3292607,
+      "gitBlobSha1": "dbc68d5ff7372e71d15451effa82c04f0801c7a2"
+    },
+    {
+      "moduleId": "FigureYa269scMetabolism",
+      "file": "FigureYa269scMetabolism.zip",
+      "bytes": 784001,
+      "gitBlobSha1": "fc0f876bb42eec42de20baa4e9b7d72f35ce3c13"
+    },
+    {
+      "moduleId": "FigureYa270panMeth",
+      "file": "FigureYa270panMeth.zip",
+      "bytes": 2515154,
+      "gitBlobSha1": "8ba54abfa8a4d8a2d4c0b8639129d28d37f8454a"
+    },
+    {
+      "moduleId": "FigureYa271panMethExpr",
+      "file": "FigureYa271panMethExpr.zip",
+      "bytes": 2911088,
+      "gitBlobSha1": "8ddd082cdb8c7e074b9fb238a1c0f6eb5a5da44b"
+    },
+    {
+      "moduleId": "FigureYa272scBulkCCCI",
+      "file": "FigureYa272scBulkCCCI.zip",
+      "bytes": 34677017,
+      "gitBlobSha1": "49bb0d09d720709df0ced5ae426d401aea4ff83d"
+    },
+    {
+      "moduleId": "FigureYa273BAPC",
+      "file": "FigureYa273BAPC.zip",
+      "bytes": 738176,
+      "gitBlobSha1": "1f4807724b5a7035543b4be0feb1f9f4e3998025"
+    },
+    {
+      "moduleId": "FigureYa274MuSiCbulkProop",
+      "file": "FigureYa274MuSiCbulkProop.zip",
+      "bytes": 2002472,
+      "gitBlobSha1": "940e1659bf80abae6a47a27829fb150a2181bda3"
+    },
+    {
+      "moduleId": "FigureYa275scAUCell",
+      "file": "FigureYa275scAUCell.zip",
+      "bytes": 3867523,
+      "gitBlobSha1": "1de060b9bdf4ad72aa73675426b39797be07d098"
+    },
+    {
+      "moduleId": "FigureYa276panSNV",
+      "file": "FigureYa276panSNV.zip",
+      "bytes": 1623537,
+      "gitBlobSha1": "d9c6de2d14c69a7e23624c6f267e6bff679c7ea7"
+    },
+    {
+      "moduleId": "FigureYa277Immunomodulator",
+      "file": "FigureYa277Immunomodulator.zip",
+      "bytes": 1129602,
+      "gitBlobSha1": "78b46b68daa89c6de6879439370ccdd07e1a80a5"
+    },
+    {
+      "moduleId": "FigureYa278heatmapPoints",
+      "file": "FigureYa278heatmapPoints.zip",
+      "bytes": 3371064,
+      "gitBlobSha1": "4216811b60b21755e7d5eac104f0b5df81090203"
+    },
+    {
+      "moduleId": "FigureYa279panGeneGSEA",
+      "file": "FigureYa279panGeneGSEA.zip",
+      "bytes": 3286735,
+      "gitBlobSha1": "53b1998bc9a04c5141975bfca21198dec0ba520e"
+    },
+    {
+      "moduleId": "FigureYa280TMEofSTS",
+      "file": "FigureYa280TMEofSTS.zip",
+      "bytes": 1103198,
+      "gitBlobSha1": "053971231b62b15515f043bed0b97ba95519c1ad"
+    },
+    {
+      "moduleId": "FigureYa281wheel",
+      "file": "FigureYa281wheel.zip",
+      "bytes": 2454718,
+      "gitBlobSha1": "11aa6a4e96a03db7b3206af7af8ebdc1e8ba1380"
+    },
+    {
+      "moduleId": "FigureYa282CMAP_XSum",
+      "file": "FigureYa282CMAP_XSum.zip",
+      "bytes": 11469630,
+      "gitBlobSha1": "c0165b1f91ce55fb82ec9ad4054cdfd6a4501b7e"
+    },
+    {
+      "moduleId": "FigureYa283vennyPvalue",
+      "file": "FigureYa283vennyPvalue.zip",
+      "bytes": 613551,
+      "gitBlobSha1": "b1a08af50bb2baa8780a86d96669156b4db4f9cc"
+    },
+    {
+      "moduleId": "FigureYa284pairwiseLogrank",
+      "file": "FigureYa284pairwiseLogrank.zip",
+      "bytes": 1160344,
+      "gitBlobSha1": "fca7a5970f96318c3728e4b93d0d7d03caf8f2d9"
+    },
+    {
+      "moduleId": "FigureYa285scRNA_monocle",
+      "file": "FigureYa285scRNA_monocle.zip",
+      "bytes": 2091210,
+      "gitBlobSha1": "d4b6cb05ca8de2d1a5a41015b8fda8633c630804"
+    },
+    {
+      "moduleId": "FigureYa286ExprCorORR",
+      "file": "FigureYa286ExprCorORR.zip",
+      "bytes": 1369876,
+      "gitBlobSha1": "7c56a3fa5419a611e10a3436461300cd65789f83"
+    },
+    {
+      "moduleId": "FigureYa287L2logV2",
+      "file": "FigureYa287L2logV2.zip",
+      "bytes": 1140690,
+      "gitBlobSha1": "569d7cba1abe4863cc56cb45fb2fbf39f39d1519"
+    },
+    {
+      "moduleId": "FigureYa288MutualExclusivity",
+      "file": "FigureYa288MutualExclusivity.zip",
+      "bytes": 930706,
+      "gitBlobSha1": "7fd58b13ba437356c4f9b868c1cb1fc3ea341585"
+    },
+    {
+      "moduleId": "FigureYa289TILSig",
+      "file": "FigureYa289TILSig.zip",
+      "bytes": 62944281,
+      "gitBlobSha1": "82592f6ec7bf72bba5856e0b6211f78e535e756d"
+    },
+    {
+      "moduleId": "FigureYa290BarGraph",
+      "file": "FigureYa290BarGraph.zip",
+      "bytes": 1533939,
+      "gitBlobSha1": "8b05b9870e9e9d86215bccf5f8d15e151f65cff3"
+    },
+    {
+      "moduleId": "FigureYa291PancanProgSigatureV2",
+      "file": "FigureYa291PancanProgSigatureV2.zip",
+      "bytes": 2179714,
+      "gitBlobSha1": "3d315e7dfddc92e47d37002576b4318bd04824f5"
+    },
+    {
+      "moduleId": "FigureYa292HCCsubtype",
+      "file": "FigureYa292HCCsubtype.zip",
+      "bytes": 6536282,
+      "gitBlobSha1": "4db9ae0ba4bcbd1f4e6a8639acd429cb062a4c1b"
+    },
+    {
+      "moduleId": "FigureYa293machineLearning",
+      "file": "FigureYa293machineLearning.zip",
+      "bytes": 65163310,
+      "gitBlobSha1": "b7a84807b5a21dcfac4481fee5e24c5a84dfe3fc"
+    },
+    {
+      "moduleId": "FigureYa293Plus_BinaryClassificationML",
+      "file": "FigureYa293Plus_BinaryClassificationML.zip",
+      "bytes": 81997615,
+      "gitBlobSha1": "9d64977b9c51de1cb329fe3d1cc28625d27b874b"
+    },
+    {
+      "moduleId": "FigureYa294HCCdrug",
+      "file": "FigureYa294HCCdrug.zip",
+      "bytes": 5475519,
+      "gitBlobSha1": "9da9ce2ea9158d1a247c777225e429039709e933"
+    },
+    {
+      "moduleId": "FigureYa295ClassDiscovery",
+      "file": "FigureYa295ClassDiscovery.zip",
+      "bytes": 5724193,
+      "gitBlobSha1": "6ff3aacdf791d33e779ccb338616d3cdc2260afa"
+    },
+    {
+      "moduleId": "FigureYa296VIPER",
+      "file": "FigureYa296VIPER.zip",
+      "bytes": 40916196,
+      "gitBlobSha1": "aac72a944b45a6a6143362668aef693351a4f3a1"
+    },
+    {
+      "moduleId": "FigureYa297Rbar",
+      "file": "FigureYa297Rbar.zip",
+      "bytes": 912297,
+      "gitBlobSha1": "5240f483c9d088e1f8d0a4c6dcad18acb38aa8a7"
+    },
+    {
+      "moduleId": "FigureYa298ecdfPvalue",
+      "file": "FigureYa298ecdfPvalue.zip",
+      "bytes": 879029,
+      "gitBlobSha1": "7df94e97428fab676d46d263fbf465398dd96dce"
+    },
+    {
+      "moduleId": "FigureYa299pancanSurv",
+      "file": "FigureYa299pancanSurv.zip",
+      "bytes": 1135045,
+      "gitBlobSha1": "b19c1845aa0dde49cdc18956adb96809f61ae2f8"
+    },
+    {
+      "moduleId": "FigureYa300pancanCor",
+      "file": "FigureYa300pancanCor.zip",
+      "bytes": 8309789,
+      "gitBlobSha1": "2f85fa10db3edaddb3ea8f2d7dc0a56a7944cf25"
+    },
+    {
+      "moduleId": "FigureYa301scCoExpr",
+      "file": "FigureYa301scCoExpr.zip",
+      "bytes": 96463602,
+      "gitBlobSha1": "7d734718c346b2eb0916b76213587c265b4b44f2"
+    },
+    {
+      "moduleId": "FigureYa302NTPPAM",
+      "file": "FigureYa302NTPPAM.zip",
+      "bytes": 27514612,
+      "gitBlobSha1": "a8a004559172ec60047f5667c3a5b35f043a835a"
+    },
+    {
+      "moduleId": "FigureYa303panCircos",
+      "file": "FigureYa303panCircos.zip",
+      "bytes": 2465979,
+      "gitBlobSha1": "2f5d595d2058c6537a1bedddb0e1f9078e7c4151"
+    },
+    {
+      "moduleId": "FigureYa304MAGIC",
+      "file": "FigureYa304MAGIC.zip",
+      "bytes": 615966,
+      "gitBlobSha1": "8693454938cf99bbf90d4446668053bc246c2d5f"
+    },
+    {
+      "moduleId": "FigureYa305PMAPscore",
+      "file": "FigureYa305PMAPscore.zip",
+      "bytes": 4418753,
+      "gitBlobSha1": "ed162daa5513b166cc6e1e445c64061ea499890a"
+    },
+    {
+      "moduleId": "FigureYa306slingshot",
+      "file": "FigureYa306slingshot.zip",
+      "bytes": 1992243,
+      "gitBlobSha1": "12bcc74421b5a38430e9a9a0c28e59da9deec047"
+    },
+    {
+      "moduleId": "FigureYa307CNVHeatmap",
+      "file": "FigureYa307CNVHeatmap.zip",
+      "bytes": 3964210,
+      "gitBlobSha1": "144f8bf5ddbc8dae961f857e248d87060bc99e8f"
+    },
+    {
+      "moduleId": "FigureYa308IHS",
+      "file": "FigureYa308IHS.zip",
+      "bytes": 29271027,
+      "gitBlobSha1": "e06df24fea0e0f965196eb51d921bdd2302b8add"
+    },
+    {
+      "moduleId": "FigureYa310CPDBChordGramV2",
+      "file": "FigureYa310CPDBChordGramV2.zip",
+      "bytes": 2115287,
+      "gitBlobSha1": "4612484bac09b69882d5912dd32d9c81c5623b75"
+    },
+    {
+      "moduleId": "FigureYa311PAM50Heatmap",
+      "file": "FigureYa311PAM50Heatmap.zip",
+      "bytes": 29373721,
+      "gitBlobSha1": "84bc058f42a7e58558a31b219cbf6648074f3b59"
+    },
+    {
+      "moduleId": "FigureYa312CellPreference",
+      "file": "FigureYa312CellPreference.zip",
+      "bytes": 707252,
+      "gitBlobSha1": "1e0a5fa019e1597c735d1907315126e109468388"
+    },
+    {
+      "moduleId": "FigureYa313CircularPlot",
+      "file": "FigureYa313CircularPlot.zip",
+      "bytes": 925479,
+      "gitBlobSha1": "d4b909b318417e9c2b40cf5c86a3dbfeb3517390"
+    },
+    {
+      "moduleId": "FigureYa314SingleRScore",
+      "file": "FigureYa314SingleRScore.zip",
+      "bytes": 1604110,
+      "gitBlobSha1": "0000e1db00e7d1eb6c58ddfe3f687a201d02cd9b"
+    },
+    {
+      "moduleId": "FigureYa315SingleRFraction",
+      "file": "FigureYa315SingleRFraction.zip",
+      "bytes": 1300675,
+      "gitBlobSha1": "39510ee480edce40f9055d41399b85365e08e8df"
+    },
+    {
+      "moduleId": "FigureYa316RF_XGBoost_Boruta",
+      "file": "FigureYa316RF_XGBoost_Boruta.zip",
+      "bytes": 2955609,
+      "gitBlobSha1": "4e6870e95076bf374e3e7a5297067badac049718"
+    },
+    {
+      "moduleId": "FigureYa317RoeDot",
+      "file": "FigureYa317RoeDot.zip",
+      "bytes": 736337,
+      "gitBlobSha1": "1ba7c00ec542789471a7c0155824f514162c785b"
+    },
+    {
+      "moduleId": "FigureYa318GenesetDEDotplot",
+      "file": "FigureYa318GenesetDEDotplot.zip",
+      "bytes": 1442694,
+      "gitBlobSha1": "63be4b68fa35bc1f87a432be22f93206b72a14e2"
+    },
+    {
+      "moduleId": "FigureYa319ContribScore",
+      "file": "FigureYa319ContribScore.zip",
+      "bytes": 2133512,
+      "gitBlobSha1": "ac0ce231c82fb27d9c6d19b584532c60a7cbb08b"
+    },
+    {
+      "moduleId": "FigureYa320ClontypeHeatmap",
+      "file": "FigureYa320ClontypeHeatmap.zip",
+      "bytes": 1523117,
+      "gitBlobSha1": "1f2138bd02abd3809f23ff2657ea4496a97e57f8"
+    },
+    {
+      "moduleId": "FigureYa321volcanoSE",
+      "file": "FigureYa321volcanoSE.zip",
+      "bytes": 4407706,
+      "gitBlobSha1": "50a068203866185883720cebb11932194c8ad708"
+    },
+    {
+      "moduleId": "FigureYa322SSEA",
+      "file": "FigureYa322SSEA.zip",
+      "bytes": 958699,
+      "gitBlobSha1": "c9d7d442c788d13bd59442950ed06ae523f8a2a8"
+    },
+    {
+      "moduleId": "FigureYa323STpathseq",
+      "file": "FigureYa323STpathseq.zip",
+      "bytes": 95185725,
+      "gitBlobSha1": "309725fe7c58b34e0af16716a9f884b9afa795fa"
+    }
+  ]
+}

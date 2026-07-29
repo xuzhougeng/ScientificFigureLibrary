@@ -1,0 +1,7 @@
+node_modules/
+dist/
+release/
+.agents/
+.codex/
+.DS_Store
+*.log

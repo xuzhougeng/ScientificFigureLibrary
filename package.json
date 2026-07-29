@@ -1,0 +1,49 @@
+{
+  "name": "scientific-figure-library",
+  "version": "0.1.0",
+  "description": "A portable MCP server and MCP App for searching, importing, and materializing scientific figure templates.",
+  "type": "module",
+  "bin": {
+    "scientific-figure-library": "dist/index.js"
+  },
+  "files": [
+    ".wisp-plugin",
+    "assets",
+    "dist",
+    "skills",
+    "LICENSE",
+    "README.md",
+    "THIRD_PARTY_NOTICES.md"
+  ],
+  "scripts": {
+    "build": "tsc --noEmit && vite build && esbuild src/index.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/index.js --banner:js='#!/usr/bin/env node'",
+    "catalog": "node scripts/build-catalog.mjs",
+    "package:source-pack": "node scripts/package-source-pack.mjs",
+    "package:npm": "npm run build && npm pack --pack-destination release",
+    "package:wisp": "npm run build && node scripts/package-wisp.mjs",
+    "start": "node dist/index.js",
+    "test": "node --test tests/*.test.ts",
+    "test:smoke": "npm run build && node scripts/smoke.mjs",
+    "check": "npm run test && npm run test:smoke"
+  },
+  "devDependencies": {
+    "@modelcontextprotocol/ext-apps": "^1.7.0",
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "@types/node": "^22.19.5",
+    "esbuild": "^0.25.0",
+    "fflate": "^0.8.2",
+    "fuse.js": "^7.1.0",
+    "typescript": "^5.9.3",
+    "vite": "^6.0.0",
+    "vite-plugin-singlefile": "^2.3.0",
+    "zod": "^4.1.13"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/xuzhougeng/ScientificFigureLibrary"
+  }
+}
