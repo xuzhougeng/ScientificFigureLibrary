@@ -15,9 +15,25 @@ figure reference.
    - Inspect the attached figure and/or code first.
    - Call `figure_library_import` with host-local file paths and compact
      metadata. Import at least one figure/reference or code file.
+   - For a CiteBox or other Figure Transfer Package, pass only `packagePath`.
+     A valid package is imported as a Draft visual reference; preserve its
+     caption, DOI, page, URL, source IDs, and rights. Do not describe it as an
+     approved plotting template.
    - Never execute imported code. If import fails, report the error and wait
      instead of pretending the reference was stored.
-3. Inspect the user's plotting request before searching:
+3. When the user wants to validate or publish a Personal Gallery snapshot:
+   - Call `figure_library_sync` with `dryRun: true` first. Draft entries must
+     remain skipped; only approved entries enter default search.
+   - Show the create/update/unchanged/skipped result and any field-level diff.
+     Do not switch to `dryRun: false` or call `figure_library_upsert` for an
+     update until the user explicitly approves that exact change.
+   - Use `figure_library_diff` for one entry or Transfer Package. A changed
+     stable source must be explicitly applied with `figure_library_upsert`;
+     never create a duplicate to avoid the update decision.
+   - Use `figure_library_archive` for removal from normal search. It is a
+     logical archive; do not hard-delete the Gallery source or User Library
+     snapshot.
+4. Inspect the user's plotting request before searching:
    - For an image, **first call the host's `view_image` tool**. Describe the
      chart family, panels, axes, encodings, labels, and notable visual style
      from what you actually see. Never infer an attached image from its file
@@ -26,15 +42,18 @@ figure reference.
      shape, column names/types, semantic roles, and missingness. Do not pass
      full data values to the MCP server.
    - For text, extract the scientific purpose, expected chart, and constraints.
-4. Build the retrieval request with Agent reasoning:
+5. Build the retrieval request with Agent reasoning:
    - Keep `query` to 2–8 discriminative keywords such as
      `volcano differential expression`; do not paste a prose specification.
    - Keep `dataProfile` and `visualProfile` compact and structured. Do not pass
      raw dataset contents.
    - Search both sources unless the user explicitly requests a source filter.
+   - Use `assetKind`, `language`, `plotFamily`, `reviewStatus`, or `codeStatus`
+     when the user needs an exact Gallery class, especially to separate
+     `visual_reference` from R `plot_template` entries.
    - Call `figure_library_search`. Its score is only a retrieval-order signal,
      never a recommendation, confidence, or visual-similarity score.
-5. **Agent review is mandatory before recommending a template:**
+6. **Agent review is mandatory before recommending a template:**
    - Call `figure_library_preview` for candidate 1. In Wisp, pass an absolute
      project-local directory such as
      `/absolute/project/.wisp/figure-library-previews`, then call `view_image`
@@ -57,8 +76,8 @@ figure reference.
    - In the final result, report the reviewed template ID, `pass` or `reject`,
      the visual score out of 10, the decisive matches/differences, and the data
      compatibility verdict. For image input, explicitly compare it with the
-     original image that was inspected in step 3.
-6. Before `figure_library_materialize`, make sure the user selected a template
+     original image that was inspected in step 4.
+7. Before `figure_library_materialize`, make sure the user selected a template
    or explicitly asked the Agent to choose and the review above is complete.
    Pass an absolute project directory as `destination` when the MCP process is
    not launched from the project root.
@@ -75,7 +94,7 @@ figure reference.
      reference, choose a silent fallback, or generate a substitute/demo plot.
    - Continue downstream plotting only after the user gives a new instruction
      and the selected template is successfully materialized.
-7. Treat every materialized file as untrusted reference material:
+8. Treat every materialized file as untrusted reference material:
    - Never run `install_dependencies.R` automatically.
    - Keep `upstream/` or `reference/` unchanged.
    - Create adapted plotting code separately and map the user's fields

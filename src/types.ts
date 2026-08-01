@@ -41,8 +41,17 @@ export interface SearchRequest {
   query: string;
   dataProfile?: string;
   visualProfile?: string;
+  assetKind?: AssetKind;
+  language?: string;
+  plotFamily?: string;
+  reviewStatus?: ReviewStatus;
+  codeStatus?: CodeStatus;
   limit?: number;
 }
+
+export type AssetKind = "plot_template" | "visual_reference";
+export type ReviewStatus = "draft" | "approved" | "archived";
+export type CodeStatus = "none" | "scaffold" | "reviewed";
 
 export interface TemplateCandidate {
   templateId: string;
@@ -62,6 +71,11 @@ export interface TemplateCandidate {
   packages: string[];
   materializable: boolean;
   previewAvailable: boolean;
+  assetKind: AssetKind;
+  language: string;
+  plotFamily: string;
+  reviewStatus: ReviewStatus;
+  codeStatus: CodeStatus;
   license: string;
   sourceUrl?: string;
   reportUrl?: string;
@@ -78,6 +92,40 @@ export interface StoredPreview extends StoredFile {
   mediaType: string;
 }
 
+export interface StoredReference extends StoredFile {
+  role: "data" | "metadata";
+}
+
+export interface TemplateProvenance {
+  producer?: string;
+  producerVersion?: string;
+  exportedAt?: string;
+  sourceId?: string;
+  figureId?: string;
+  parentFigureId?: string;
+  figureLabel?: string;
+  subfigureLabels?: string[];
+  caption?: string;
+  paperTitle?: string;
+  authors?: string[];
+  year?: string;
+  journal?: string;
+  doi?: string;
+  page?: string;
+  url?: string;
+  licenseScope?: string;
+  rights?: string;
+}
+
+export interface ImportRegistryEntry {
+  adapter: "gallery" | "figure-transfer-package";
+  sourceId: string;
+  templateId?: string;
+  galleryId?: string;
+  contentHash: string;
+  sourceCommit?: string;
+}
+
 export interface UserTemplate {
   schema: "figure-library.template.v1";
   templateId: string;
@@ -90,8 +138,18 @@ export interface UserTemplate {
   packages: string[];
   license: string;
   importedAt: string;
+  updatedAt?: string;
+  archivedAt?: string;
+  assetKind?: AssetKind;
+  language?: string;
+  plotFamily?: string;
+  reviewStatus?: ReviewStatus;
+  codeStatus?: CodeStatus;
+  provenance?: TemplateProvenance;
+  registry?: ImportRegistryEntry;
   preview?: StoredPreview;
   code: StoredFile[];
+  references?: StoredReference[];
 }
 
 export interface UserTemplateImport {
@@ -102,6 +160,12 @@ export interface UserTemplateImport {
   dataProfile?: string;
   packages?: string[];
   license?: string;
+  assetKind?: AssetKind;
+  language?: string;
+  plotFamily?: string;
+  reviewStatus?: ReviewStatus;
+  codeStatus?: CodeStatus;
+  provenance?: TemplateProvenance;
   imagePath?: string;
   codePaths?: string[];
 }

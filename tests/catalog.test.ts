@@ -198,6 +198,8 @@ test("user figures and code import, search, and materialize without executing", 
     });
     assert.equal(imported.existed, false);
     assert.match(imported.template.templateId, /^user-custom-single-cell-ridge-plot-/u);
+    assert.equal(imported.template.assetKind, "plot_template");
+    assert.equal(imported.template.language, "R");
 
     const manifestPath = path.join(imported.directory, "template.json");
     const manifestText = await fs.readFile(manifestPath, "utf8");

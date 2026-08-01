@@ -21,6 +21,11 @@ interface Candidate {
   packages: string[];
   materializable: boolean;
   previewAvailable: boolean;
+  assetKind: "plot_template" | "visual_reference";
+  language: string;
+  plotFamily: string;
+  reviewStatus: "draft" | "approved" | "archived";
+  codeStatus: "none" | "scaffold" | "reviewed";
   previewDataUrl?: string;
 }
 
@@ -37,7 +42,7 @@ const cards = document.getElementById("cards")!;
 const empty = document.getElementById("empty")!;
 const query = document.getElementById("query")!;
 const status = document.getElementById("status")!;
-const app = new App({ name: "Scientific Figure Library", version: "0.1.1" });
+const app = new App({ name: "Scientific Figure Library", version: "0.2.0" });
 
 function element<K extends keyof HTMLElementTagNameMap>(
   tag: K,
@@ -71,6 +76,7 @@ templateSource: ${candidate.sourceId}
 ---
 
 The user asked the Agent to review **${candidate.templateId}** from **${candidate.sourceLabel}**.
+Classification: ${candidate.assetKind}; language ${candidate.language}; review ${candidate.reviewStatus}; code ${candidate.codeStatus}.
 Retrieval score is ${candidate.retrievalScore}/100; it is not a final recommendation or confidence.
 Reasons: ${candidate.reasons.join("; ") || "catalog metadata match"}.
 Next, call figure_library_preview, inspect it with view_image, and report a visual pass/reject score before figure_library_describe or figure_library_materialize.`;
@@ -119,9 +125,14 @@ function render(result: SearchResult) {
     content.append(top, element("p", "description", description));
 
     const tags = [
+      candidate.assetKind,
+      candidate.language,
+      candidate.plotFamily,
+      candidate.reviewStatus,
+      candidate.codeStatus,
       ...candidate.inputFiles.slice(0, 3),
       ...candidate.packages.slice(0, 3).map((name) => `pkg:${name}`),
-    ];
+    ].filter(Boolean);
     if (tags.length) content.append(chips(tags));
     if (candidate.reasons[0]) content.append(element("p", "reason", candidate.reasons[0]));
     if (candidate.warnings[0]) content.append(element("p", "warning", candidate.warnings[0]));

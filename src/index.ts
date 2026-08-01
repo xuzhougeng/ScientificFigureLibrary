@@ -2,7 +2,7 @@ import process from "node:process";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { createServer } from "./server.ts";
 
-const VERSION = "0.1.1";
+const VERSION = "0.2.0";
 
 if (process.argv.includes("--help")) {
   console.log(`Scientific Figure Library ${VERSION}

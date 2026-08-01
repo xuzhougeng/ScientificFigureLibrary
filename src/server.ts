@@ -17,7 +17,7 @@ import {
 import type { TemplateCandidate } from "./types.ts";
 import { UserTemplateLibrary } from "./user-library.ts";
 
-const VERSION = "0.1.1";
+const VERSION = "0.2.0";
 const RESOURCE_URI = "ui://figure-library/candidates.html";
 const APP_HTML = path.resolve(import.meta.dirname, "mcp-app.html");
 
@@ -39,6 +39,11 @@ const CandidateSchema = z.object({
   packages: z.array(z.string()),
   materializable: z.boolean(),
   previewAvailable: z.boolean(),
+  assetKind: z.enum(["plot_template", "visual_reference"]),
+  language: z.string(),
+  plotFamily: z.string(),
+  reviewStatus: z.enum(["draft", "approved", "archived"]),
+  codeStatus: z.enum(["none", "scaffold", "reviewed"]),
   license: z.string(),
   sourceUrl: z.string().optional(),
   reportUrl: z.string().optional(),
@@ -61,6 +66,14 @@ const SearchInput = z.object({
     .max(2_000)
     .optional()
     .describe("Compact chart family, layout, axes, encodings, labels, and style summary."),
+  assetKind: z
+    .enum(["plot_template", "visual_reference"])
+    .optional()
+    .describe("Filter reusable plotting templates separately from visual-only references."),
+  language: z.string().min(1).max(100).optional(),
+  plotFamily: z.string().min(1).max(200).optional(),
+  reviewStatus: z.enum(["draft", "approved", "archived"]).optional(),
+  codeStatus: z.enum(["none", "scaffold", "reviewed"]).optional(),
   sourceIds: z
     .array(z.enum(["figureya", "user"]))
     .min(1)
@@ -90,13 +103,24 @@ const OpenInput = z.object({});
 
 const ImportInput = z
   .object({
-    title: z.string().min(1).max(200),
+    title: z.string().min(1).max(200).optional(),
     description: z.string().max(4_000).optional(),
     tags: z.array(z.string().min(1).max(100)).max(40).optional(),
     visualProfile: z.string().max(2_000).optional(),
     dataProfile: z.string().max(2_000).optional(),
     packages: z.array(z.string().min(1).max(100)).max(40).optional(),
     license: z.string().max(500).optional(),
+    assetKind: z.enum(["plot_template", "visual_reference"]).optional(),
+    language: z.string().min(1).max(100).optional(),
+    plotFamily: z.string().max(200).optional(),
+    reviewStatus: z.enum(["draft", "approved", "archived"]).optional(),
+    codeStatus: z.enum(["none", "scaffold", "reviewed"]).optional(),
+    packagePath: z
+      .string()
+      .min(1)
+      .max(2_000)
+      .optional()
+      .describe("Host-local path to a versioned Figure Transfer Package ZIP."),
     imagePath: z
       .string()
       .min(1)
@@ -109,8 +133,17 @@ const ImportInput = z
       .optional()
       .describe("Host-local paths to code/reference files. Files are copied but never executed."),
   })
-  .refine((value) => Boolean(value.imagePath || value.codePaths?.length), {
-    message: "provide imagePath or at least one codePaths entry",
+  .superRefine((value, context) => {
+    const direct = Boolean(value.imagePath || value.codePaths?.length);
+    if (Boolean(value.packagePath) === direct) {
+      context.addIssue({
+        code: "custom",
+        message: "provide packagePath, or title plus imagePath/codePaths, but not both",
+      });
+    }
+    if (direct && !value.title) {
+      context.addIssue({ code: "custom", message: "title is required for a direct import" });
+    }
   });
 
 const ImportOutput = z.object({
@@ -120,7 +153,119 @@ const ImportOutput = z.object({
   directory: z.string(),
   files: z.array(z.string()),
   existed: z.boolean(),
+  action: z.enum(["create", "unchanged", "update"]),
+  contentHash: z.string().optional(),
+  reviewStatus: z.enum(["draft", "approved", "archived"]),
   warning: z.string(),
+});
+
+const ImportSourceInput = z
+  .object({
+    packagePath: z.string().min(1).max(2_000).optional(),
+    galleryPath: z.string().min(1).max(2_000).optional(),
+    sourceCommit: z.string().min(1).max(200).optional(),
+  })
+  .refine((value) => Boolean(value.packagePath) !== Boolean(value.galleryPath), {
+    message: "provide exactly one of packagePath or galleryPath",
+  });
+
+const ImportChangeSchema = z.object({
+  field: z.string(),
+  before: z.unknown(),
+  after: z.unknown(),
+});
+
+const ImportDiffSchema = z.object({
+  action: z.enum(["create", "unchanged", "update", "skipped"]),
+  adapter: z.enum(["gallery", "figure-transfer-package"]),
+  sourceId: z.string(),
+  galleryId: z.string().optional(),
+  templateId: z.string(),
+  incomingContentHash: z.string(),
+  existingContentHash: z.string().optional(),
+  sourceCommit: z.string().optional(),
+  reviewStatus: z.enum(["draft", "approved", "archived"]),
+  changes: z.array(ImportChangeSchema),
+  reason: z.string().optional(),
+});
+
+const UpsertOutput = z.object({
+  templateId: z.string(),
+  sourceId: z.literal("user"),
+  title: z.string(),
+  directory: z.string(),
+  action: z.enum(["create", "unchanged", "update"]),
+  contentHash: z.string(),
+  reviewStatus: z.enum(["draft", "approved", "archived"]),
+  diff: ImportDiffSchema.optional(),
+  warning: z.string(),
+});
+
+const GallerySyncInput = z.object({
+  galleryDirectory: z
+    .string()
+    .min(1)
+    .max(2_000)
+    .optional()
+    .describe("Personal Gallery root; otherwise FIGURE_GALLERY_DIR is used."),
+  dryRun: z.boolean().optional().default(true),
+  sourceCommit: z.string().min(1).max(200).optional(),
+  assetKind: z.enum(["plot_template", "visual_reference"]).optional(),
+  language: z.string().min(1).max(100).optional(),
+  plotFamily: z.string().min(1).max(200).optional(),
+  reviewStatus: z.enum(["draft", "approved", "archived"]).optional(),
+  codeStatus: z.enum(["none", "scaffold", "reviewed"]).optional(),
+});
+
+const GallerySyncOutput = z.object({
+  galleryDirectory: z.string(),
+  dryRun: z.boolean(),
+  entries: z.number().int(),
+  create: z.number().int(),
+  update: z.number().int(),
+  unchanged: z.number().int(),
+  skipped: z.number().int(),
+  results: z.array(ImportDiffSchema),
+});
+
+const ArchiveInput = z.object({ galleryId: z.string().min(1).max(300) });
+const ArchiveOutput = z.object({
+  galleryId: z.string(),
+  templateId: z.string(),
+  reviewStatus: z.literal("archived"),
+  directory: z.string(),
+  existed: z.boolean(),
+  warning: z.string(),
+});
+
+const ProvenanceSchema = z.object({
+  producer: z.string().optional(),
+  producerVersion: z.string().optional(),
+  exportedAt: z.string().optional(),
+  sourceId: z.string().optional(),
+  figureId: z.string().optional(),
+  parentFigureId: z.string().optional(),
+  figureLabel: z.string().optional(),
+  subfigureLabels: z.array(z.string()).optional(),
+  caption: z.string().optional(),
+  paperTitle: z.string().optional(),
+  authors: z.array(z.string()).optional(),
+  year: z.string().optional(),
+  journal: z.string().optional(),
+  doi: z.string().optional(),
+  page: z.string().optional(),
+  url: z.string().optional(),
+  licenseScope: z.string().optional(),
+  rights: z.string().optional(),
+});
+
+const RegistrySchema = z.object({
+  adapter: z.enum(["gallery", "figure-transfer-package"]),
+  sourceId: z.string(),
+  templateId: z.string().optional(),
+  galleryId: z.string().optional(),
+  contentHash: z.string(),
+  sourceCommit: z.string().optional(),
 });
 
 const DescribeInput = z.object({
@@ -140,6 +285,11 @@ const DescribeOutput = z.object({
   packages: z.array(z.string()),
   materializable: z.boolean(),
   previewAvailable: z.boolean(),
+  assetKind: z.enum(["plot_template", "visual_reference"]),
+  language: z.string(),
+  plotFamily: z.string(),
+  reviewStatus: z.enum(["draft", "approved", "archived"]),
+  codeStatus: z.enum(["none", "scaffold", "reviewed"]),
   license: z.string(),
   sourceUrl: z.string().optional(),
   reportUrl: z.string().optional(),
@@ -148,6 +298,8 @@ const DescribeOutput = z.object({
   citation: z.string().optional(),
   importedAt: z.string().optional(),
   previewFile: z.string().optional(),
+  provenance: ProvenanceSchema.optional(),
+  registry: RegistrySchema.optional(),
 });
 
 const PreviewInput = z.object({
@@ -414,8 +566,9 @@ export async function createServer() {
     {
       title: "Import a user figure template",
       description:
-        "Copy a user-supplied figure and/or code files into the local template library. " +
-        "The tool never executes code and does not store original absolute paths.",
+        "Copy a user-supplied figure/code or validate and import a Figure Transfer Package ZIP. " +
+        "Transfer Packages enter as draft visual references. The tool never executes code or " +
+        "stores original absolute paths.",
       inputSchema: ImportInput.shape,
       outputSchema: ImportOutput.shape,
       annotations: {
@@ -427,12 +580,25 @@ export async function createServer() {
     },
     async (input): Promise<CallToolResult> => {
       try {
-        const result = await userLibrary.importTemplate(input);
+        const hasDirectFiles = Boolean(input.imagePath || input.codePaths?.length);
+        if (Boolean(input.packagePath) === hasDirectFiles) {
+          throw new Error("provide packagePath, or title plus imagePath/codePaths, but not both");
+        }
+        if (hasDirectFiles && !input.title) throw new Error("title is required for a direct import");
+        const { packagePath, ...direct } = input;
+        const result = packagePath
+          ? await userLibrary.importTransferPackage(packagePath)
+          : await userLibrary.importTemplate({ ...direct, title: input.title ?? "" });
         const files = [
           ...(result.template.preview ? [result.template.preview.file] : []),
           ...result.template.code.map((file) => file.file),
+          ...(result.template.references ?? []).map((file) => file.file),
           "template.json",
         ].sort();
+        const warning =
+          result.template.reviewStatus === "draft"
+            ? "Draft reference only; it is excluded from default search until curated and approved. No code was executed."
+            : "Reference only. Imported code was copied but not executed.";
         const output = {
           templateId: result.template.templateId,
           sourceId: "user" as const,
@@ -440,14 +606,17 @@ export async function createServer() {
           directory: result.directory,
           files,
           existed: result.existed,
-          warning: "Reference only. Imported code was copied but not executed.",
+          action: result.action,
+          contentHash: result.template.registry?.contentHash,
+          reviewStatus: result.template.reviewStatus ?? ("approved" as const),
+          warning,
         };
         return {
           content: [
             {
               type: "text",
               text:
-                `${result.existed ? "Found existing" : "Imported"} user template ` +
+                `${result.action === "unchanged" ? "Found unchanged" : "Imported"} user template ` +
                 `${result.template.templateId} at ${result.directory}. ${output.warning}`,
             },
           ],
@@ -462,6 +631,204 @@ export async function createServer() {
               text: `User template import failed: ${
                 error instanceof Error ? error.message : String(error)
               }`,
+            },
+          ],
+        };
+      }
+    },
+  );
+
+  server.registerTool(
+    "figure_library_diff",
+    {
+      title: "Diff an import source against the User Library",
+      description:
+        "Validate one Figure Transfer Package or Gallery entry and report a reviewable, read-only " +
+        "create/update/unchanged diff. No files are imported.",
+      inputSchema: ImportSourceInput.shape,
+      outputSchema: ImportDiffSchema.shape,
+      annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: false,
+      },
+    },
+    async (input): Promise<CallToolResult> => {
+      try {
+        const diff = await userLibrary.diffImportSource(input);
+        return {
+          content: [
+            {
+              type: "text",
+              text:
+                `${diff.action}: ${diff.sourceId} maps to ${diff.templateId}; ` +
+                `${diff.changes.length} changed fields. No files were written.`,
+            },
+          ],
+          structuredContent: { ...diff },
+        };
+      } catch (error) {
+        return {
+          isError: true,
+          content: [
+            {
+              type: "text",
+              text: `Import diff failed: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+
+  server.registerTool(
+    "figure_library_upsert",
+    {
+      title: "Explicitly upsert a Gallery or Transfer Package source",
+      description:
+        "Validate and create or atomically replace one stable Gallery/Transfer Package snapshot. " +
+        "Use figure_library_diff first when content changed. Code is copied but never executed.",
+      inputSchema: ImportSourceInput.shape,
+      outputSchema: UpsertOutput.shape,
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: false,
+      },
+    },
+    async (input): Promise<CallToolResult> => {
+      try {
+        const result = await userLibrary.upsertImportSource(input);
+        const output = {
+          templateId: result.template.templateId,
+          sourceId: "user" as const,
+          title: result.template.title,
+          directory: result.directory,
+          action: result.action,
+          contentHash: result.template.registry?.contentHash ?? "",
+          reviewStatus: result.template.reviewStatus ?? ("approved" as const),
+          diff: result.diff,
+          warning: "Reference snapshot only. No imported code or dependency installer was executed.",
+        };
+        return {
+          content: [
+            {
+              type: "text",
+              text:
+                `${result.action}: ${result.template.templateId} at ${result.directory}. ` +
+                output.warning,
+            },
+          ],
+          structuredContent: output,
+        };
+      } catch (error) {
+        return {
+          isError: true,
+          content: [
+            {
+              type: "text",
+              text: `Import upsert failed: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+
+  server.registerTool(
+    "figure_library_sync",
+    {
+      title: "Synchronize an approved Personal Gallery",
+      description:
+        "Validate a Gallery and plan its stable imports. dryRun defaults to true. Applying sync " +
+        "imports approved entries, skips drafts, and logically archives entries marked archived.",
+      inputSchema: GallerySyncInput.shape,
+      outputSchema: GallerySyncOutput.shape,
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: false,
+      },
+    },
+    async (input): Promise<CallToolResult> => {
+      try {
+        const galleryDirectory =
+          input.galleryDirectory ?? process.env.FIGURE_GALLERY_DIR?.trim();
+        if (!galleryDirectory) {
+          throw new Error("provide galleryDirectory or configure FIGURE_GALLERY_DIR");
+        }
+        const result = await userLibrary.syncGallery({ ...input, galleryDirectory });
+        return {
+          content: [
+            {
+              type: "text",
+              text:
+                `${result.dryRun ? "Dry run" : "Applied sync"}: ${result.create} create, ` +
+                `${result.update} update, ${result.unchanged} unchanged, ${result.skipped} skipped.`,
+            },
+          ],
+          structuredContent: result,
+        };
+      } catch (error) {
+        return {
+          isError: true,
+          content: [
+            {
+              type: "text",
+              text: `Gallery sync failed: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+
+  server.registerTool(
+    "figure_library_archive",
+    {
+      title: "Logically archive an imported Gallery entry",
+      description:
+        "Mark an imported gallery_id archived so default search excludes it. Files are retained; " +
+        "this tool never hard-deletes a template.",
+      inputSchema: ArchiveInput.shape,
+      outputSchema: ArchiveOutput.shape,
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: false,
+      },
+    },
+    async ({ galleryId }): Promise<CallToolResult> => {
+      try {
+        const result = await userLibrary.archiveGallery(galleryId);
+        const output = {
+          galleryId,
+          templateId: result.template.templateId,
+          reviewStatus: "archived" as const,
+          directory: result.directory,
+          existed: result.existed,
+          warning: "Logical archive only; reference files were retained.",
+        };
+        return {
+          content: [
+            {
+              type: "text",
+              text: `${result.existed ? "Already archived" : "Archived"} ${galleryId}. ${output.warning}`,
+            },
+          ],
+          structuredContent: output,
+        };
+      } catch (error) {
+        return {
+          isError: true,
+          content: [
+            {
+              type: "text",
+              text: `Gallery archive failed: ${error instanceof Error ? error.message : String(error)}`,
             },
           ],
         };
@@ -640,6 +1007,18 @@ export async function createServer() {
           packages: module.packages,
           materializable: module.archiveAvailable,
           previewAvailable: Boolean(module.thumbnail),
+          assetKind: "plot_template" as const,
+          language: module.codeFiles.some((file) => /\.(?:r|rmd|qmd)$/iu.test(file))
+            ? "R"
+            : module.codeFiles.some((file) => /\.(?:py|ipynb)$/iu.test(file))
+              ? "Python"
+              : "none",
+          plotFamily:
+            buildSearchIntent({
+              query: `${module.moduleId} ${module.title} ${module.requirement}`,
+            }).families[0] ?? "",
+          reviewStatus: "approved" as const,
+          codeStatus: module.codeFiles.length ? ("reviewed" as const) : ("none" as const),
           license: "CC BY-NC-SA 4.0",
           sourceUrl: module.sourceUrl,
           reportUrl: module.reportUrl,
@@ -677,7 +1056,9 @@ export async function createServer() {
         description: user.template.description,
         application: user.template.visualProfile,
         dataProfile: user.template.dataProfile,
-        inputFiles: [],
+        inputFiles: (user.template.references ?? [])
+          .filter((file) => file.role === "data")
+          .map((file) => path.posix.basename(file.file)),
         codeFiles: user.template.code.map((file) => path.posix.basename(file.file)),
         packages: user.template.packages,
         materializable: true,
@@ -685,9 +1066,24 @@ export async function createServer() {
           user.template.preview &&
             /^(?:image\/png|image\/jpeg|image\/webp)$/u.test(user.template.preview.mediaType),
         ),
+        assetKind:
+          user.template.assetKind ??
+          (user.template.code.length ? ("plot_template" as const) : ("visual_reference" as const)),
+        language:
+          user.template.language ??
+          (user.template.code.some((file) => /\.(?:r|rmd|qmd)$/iu.test(file.file))
+            ? "R"
+            : "none"),
+        plotFamily: user.template.plotFamily ?? "",
+        reviewStatus: user.template.reviewStatus ?? ("approved" as const),
+        codeStatus:
+          user.template.codeStatus ??
+          (user.template.code.length ? ("reviewed" as const) : ("none" as const)),
         license: user.template.license,
         importedAt: user.template.importedAt,
         previewFile: user.template.preview?.file,
+        provenance: user.template.provenance,
+        registry: user.template.registry,
       };
       return {
         content: [

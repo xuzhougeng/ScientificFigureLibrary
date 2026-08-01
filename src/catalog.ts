@@ -480,6 +480,47 @@ function excerpt(module: FigureYaModule, terms: string[]): string {
   return `${start > 0 ? "…" : ""}${text.slice(start, end).trim()}${end < text.length ? "…" : ""}`;
 }
 
+function figureYaLanguages(module: FigureYaModule) {
+  const extensions = new Set(module.codeFiles.map((file) => path.extname(file).toLocaleLowerCase()));
+  const languages = [];
+  if (extensions.has(".r") || extensions.has(".rmd") || extensions.has(".qmd")) languages.push("R");
+  if (extensions.has(".py") || extensions.has(".ipynb")) languages.push("Python");
+  if (extensions.has(".jl")) languages.push("Julia");
+  if (extensions.has(".m")) languages.push("MATLAB");
+  if (extensions.has(".sh")) languages.push("Shell");
+  return languages.length ? languages : ["none"];
+}
+
+function figureYaFamilies(module: FigureYaModule) {
+  return buildSearchIntent({
+    query: `${module.moduleId} ${module.title} ${module.requirement} ${module.application}`,
+  }).families;
+}
+
+function matchesFigureYaFilters(module: FigureYaModule, request: SearchRequest) {
+  if (request.assetKind && request.assetKind !== "plot_template") return false;
+  if (request.reviewStatus && request.reviewStatus !== "approved") return false;
+  if (request.codeStatus) {
+    const status = module.codeFiles.length ? "reviewed" : "none";
+    if (request.codeStatus !== status) return false;
+  }
+  if (
+    request.language &&
+    !figureYaLanguages(module).some(
+      (language) => language.toLocaleLowerCase() === request.language?.toLocaleLowerCase(),
+    )
+  ) {
+    return false;
+  }
+  if (request.plotFamily) {
+    const requested = buildSearchIntent({ query: request.plotFamily }).families;
+    const families = figureYaFamilies(module);
+    if (requested.length) return requested.some((family) => families.includes(family));
+    return normalizeSearchText(module.fullText).includes(normalizeSearchText(request.plotFamily));
+  }
+  return true;
+}
+
 export class CatalogIndex {
   readonly catalog: FigureYaCatalog;
   readonly assetsDir: string;
@@ -506,6 +547,7 @@ export class CatalogIndex {
     const limit = Math.min(Math.max(request.limit ?? 6, 1), 12);
     const intent = buildSearchIntent(request);
     return this.catalog.modules
+      .filter((module) => matchesFigureYaFilters(module, request))
       .map((module) => {
         const evidence = scoreSearchableTemplate(
           {
@@ -551,6 +593,11 @@ export class CatalogIndex {
           packages: module.packages,
           materializable: module.archiveAvailable,
           previewAvailable: Boolean(module.thumbnail),
+          assetKind: "plot_template" as const,
+          language: figureYaLanguages(module)[0] ?? "none",
+          plotFamily: figureYaFamilies(module)[0] ?? "",
+          reviewStatus: "approved" as const,
+          codeStatus: module.codeFiles.length ? ("reviewed" as const) : ("none" as const),
           license: "CC BY-NC-SA 4.0",
           sourceUrl: module.sourceUrl,
           reportUrl: module.reportUrl,

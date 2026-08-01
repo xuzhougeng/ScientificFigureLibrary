@@ -19,5 +19,6 @@ manifests retain the license text supplied at import. Users are responsible for
 having the right to store and reuse that material.
 
 The bundled JavaScript includes MIT-licensed Model Context Protocol SDK,
-MCP Apps SDK, Zod, fflate, and Apache-2.0-licensed Fuse.js code. Their source
-packages and exact versions are recorded in `package-lock.json`.
+MCP Apps SDK, Zod, fflate, ISC-licensed YAML, and Apache-2.0-licensed Fuse.js
+code. Their source packages and exact versions are recorded in
+`package-lock.json`.

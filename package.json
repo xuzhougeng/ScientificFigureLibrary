@@ -1,6 +1,6 @@
 {
   "name": "scientific-figure-library",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "A portable MCP server and MCP App for searching, importing, and materializing scientific figure templates.",
   "type": "module",
   "bin": {
@@ -16,7 +16,7 @@
     "THIRD_PARTY_NOTICES.md"
   ],
   "scripts": {
-    "build": "tsc --noEmit && vite build && esbuild src/index.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/index.js --banner:js='#!/usr/bin/env node'",
+    "build": "tsc --noEmit && vite build && esbuild src/index.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/index.js --banner:js='#!/usr/bin/env node\nimport { createRequire as __nodeCreateRequire } from \"node:module\"; const require = __nodeCreateRequire(import.meta.url);'",
     "catalog": "node scripts/build-catalog.mjs",
     "package:source-pack": "node scripts/package-source-pack.mjs",
     "package:npm": "npm run build && npm pack --pack-destination release",
@@ -44,5 +44,8 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/xuzhougeng/ScientificFigureLibrary"
+  },
+  "dependencies": {
+    "yaml": "^2.9.0"
   }
 }
