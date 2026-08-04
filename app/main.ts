@@ -27,6 +27,16 @@ interface Candidate {
   reviewStatus: "draft" | "approved" | "archived";
   codeStatus: "none" | "scaffold" | "reviewed";
   previewDataUrl?: string;
+  management: {
+    templateId: string;
+    adapter?: "direct" | "gallery" | "figure-transfer-package";
+    registrySourceId?: string;
+    galleryId?: string;
+    identityMode?: "stable-source" | "content-addressed";
+    canArchive: boolean;
+    canUpdate: boolean;
+    updateVia?: "plan-apply" | "diff-upsert" | "gallery-sync";
+  };
 }
 
 interface SearchResult {
@@ -42,7 +52,7 @@ const cards = document.getElementById("cards")!;
 const empty = document.getElementById("empty")!;
 const query = document.getElementById("query")!;
 const status = document.getElementById("status")!;
-const app = new App({ name: "Scientific Figure Library", version: "0.2.0" });
+const app = new App({ name: "Scientific Figure Library", version: "0.3.0" });
 
 function element<K extends keyof HTMLElementTagNameMap>(
   tag: K,
@@ -73,9 +83,13 @@ async function selectCandidate(candidate: Candidate, button: HTMLButtonElement) 
 source: Scientific Figure Library MCP App
 selectedTemplate: ${candidate.templateId}
 templateSource: ${candidate.sourceId}
+templateTitle: ${candidate.title}
+templateAdapter: ${candidate.management.adapter ?? "none"}
+templateRegistrySource: ${candidate.management.registrySourceId ?? "none"}
+templateGalleryId: ${candidate.management.galleryId ?? "none"}
 ---
 
-The user asked the Agent to review **${candidate.templateId}** from **${candidate.sourceLabel}**.
+The user asked the Agent to review **${candidate.title}** (\`${candidate.templateId}\`) from **${candidate.sourceLabel}**.
 Classification: ${candidate.assetKind}; language ${candidate.language}; review ${candidate.reviewStatus}; code ${candidate.codeStatus}.
 Retrieval score is ${candidate.retrievalScore}/100; it is not a final recommendation or confidence.
 Reasons: ${candidate.reasons.join("; ") || "catalog metadata match"}.
@@ -114,7 +128,8 @@ function render(result: SearchResult) {
     const top = element("div", "topline");
     const heading = element("div");
     heading.append(
-      element("h2", "module", candidate.templateId),
+      element("h2", "module", candidate.title),
+      element("code", "template-id", candidate.templateId),
       element("span", `source source-${candidate.sourceId}`, candidate.sourceLabel),
     );
     top.append(
@@ -130,9 +145,14 @@ function render(result: SearchResult) {
       candidate.plotFamily,
       candidate.reviewStatus,
       candidate.codeStatus,
+      candidate.management.adapter,
+      candidate.management.galleryId ? `gallery:${candidate.management.galleryId}` : "",
+      candidate.management.registrySourceId
+        ? `source:${candidate.management.registrySourceId}`
+        : "",
       ...candidate.inputFiles.slice(0, 3),
       ...candidate.packages.slice(0, 3).map((name) => `pkg:${name}`),
-    ].filter(Boolean);
+    ].filter((value): value is string => Boolean(value));
     if (tags.length) content.append(chips(tags));
     if (candidate.reasons[0]) content.append(element("p", "reason", candidate.reasons[0]));
     if (candidate.warnings[0]) content.append(element("p", "warning", candidate.warnings[0]));
