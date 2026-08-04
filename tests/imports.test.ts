@@ -708,6 +708,37 @@ test("audit connects partial legacy duplicates and reconcile archives and rolls 
       ),
     );
 
+    const interruptedReconcile = { ...reconcile, reconcileId: "umap-interrupted-test" };
+    await library.reconcileTemplates({ ...interruptedReconcile, mode: "apply" });
+    const interruptedJournalPath = path.join(
+      library.transactionsDirectory,
+      interruptedReconcile.reconcileId,
+      "journal.json",
+    );
+    const interruptedJournal = JSON.parse(await fs.readFile(interruptedJournalPath, "utf8"));
+    interruptedJournal.status = "committing";
+    await fs.writeFile(interruptedJournalPath, `${JSON.stringify(interruptedJournal, null, 2)}\n`);
+    const recovered = await library.reconcileTemplates({
+      ...interruptedReconcile,
+      mode: "rollback",
+      reason: "Recover a simulated interruption after all manifests and the apply ledger were written.",
+    });
+    assert.equal("recoveredIncomplete" in recovered && recovered.recoveredIncomplete, true);
+    for (const templateId of duplicateTemplateIds) {
+      assert.equal((await library.get(templateId))?.template.reviewStatus, "approved");
+    }
+    await assert.rejects(
+      fs.stat(
+        path.join(
+          library.root,
+          "migrations",
+          "reconciliations",
+          `${interruptedReconcile.reconcileId}.json`,
+        ),
+      ),
+      /ENOENT/u,
+    );
+
     const failedReconcile = { ...reconcile, reconcileId: "umap-ledger-conflict-test" };
     const ledgerDirectory = path.join(library.root, "migrations", "reconciliations");
     await fs.mkdir(ledgerDirectory, { recursive: true });

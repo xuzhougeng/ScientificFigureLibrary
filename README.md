@@ -345,6 +345,12 @@ and approving the exact canonical/duplicate IDs, hashes, and reason. Apply:
 Rollback uses the same `reconcileId` and refuses to overwrite any later
 manifest change. Never manually delete a lock, transaction directory, template
 directory, or migration ledger until the interrupted state has been inspected.
+If a dead process leaves `prepared`, `committing`, or `rolling-back`, first
+verify that its recorded lock owner is no longer running and inspect the
+journal. After the stale lock is deliberately cleared, rollback with the exact
+same reconcile ID/canonical/duplicate IDs. Recovery accepts only manifests that
+still equal that journal's before/after hashes and removes only a matching
+partial apply ledger.
 
 ## Distribution
 

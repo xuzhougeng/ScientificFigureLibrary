@@ -596,7 +596,11 @@ export class UserTemplateLibrary {
     return incomplete.sort();
   }
 
-  private async withWriteLock<T>(operation: string, callback: () => Promise<T>) {
+  private async withWriteLock<T>(
+    operation: string,
+    callback: () => Promise<T>,
+    options: { allowIncompleteTransaction?: string } = {},
+  ) {
     await fs.mkdir(this.root, { recursive: true });
     try {
       await fs.mkdir(this.writeLockDirectory);
@@ -618,7 +622,9 @@ export class UserTemplateLibrary {
         `${JSON.stringify({ operation, pid: process.pid, createdAt: new Date().toISOString() }, null, 2)}\n`,
         { flag: "wx" },
       );
-      const incomplete = await this.incompleteTransactions();
+      const incomplete = (await this.incompleteTransactions()).filter(
+        (transactionId) => transactionId !== options.allowIncompleteTransaction,
+      );
       if (incomplete.length) {
         throw new Error(
           `incomplete user-library transaction requires recovery: ${incomplete.join(", ")}`,
@@ -1757,119 +1763,226 @@ export class UserTemplateLibrary {
       throw new Error("reconcileId must be a portable 1-100 character identifier");
     }
     if (!input.reason.trim()) throw new Error("rollback requires a non-empty reason");
-    return this.withWriteLock(`reconcile-rollback:${input.reconcileId}`, async () => {
-      const transactionDirectory = path.join(this.transactionsDirectory, input.reconcileId);
-      const journal = JSON.parse(
-        await fs.readFile(path.join(transactionDirectory, "journal.json"), "utf8"),
-      ) as {
-        status: string;
-        canonicalTemplateId: string;
-        duplicateTemplateIds: string[];
-        entries: Array<{
-          templateId: string;
-          directory: string;
-          beforeManifest: string;
-          beforeManifestSha256: string;
-          afterManifest: string;
-          afterManifestSha256: string;
-        }>;
-      };
-      if (journal.status !== "committed") {
-        throw new Error(`reconcile ${input.reconcileId} is not in committed state`);
-      }
-      if (
-        journal.canonicalTemplateId !== input.canonicalTemplateId ||
-        JSON.stringify([...journal.duplicateTemplateIds].sort()) !==
-          JSON.stringify([...new Set(input.duplicateTemplateIds)].sort())
-      ) {
-        throw new Error("rollback request does not match the committed reconcile transaction");
-      }
-      for (const entry of journal.entries) {
-        const current = await fs.readFile(path.join(entry.directory, "template.json"), "utf8");
-        if (sha256(current) !== entry.afterManifestSha256) {
-          throw new Error(`rollback would overwrite later changes to ${entry.templateId}`);
+    return this.withWriteLock(
+      `reconcile-rollback:${input.reconcileId}`,
+      async () => {
+        const transactionDirectory = path.join(this.transactionsDirectory, input.reconcileId);
+        const journal = JSON.parse(
+          await fs.readFile(path.join(transactionDirectory, "journal.json"), "utf8"),
+        ) as {
+          schema?: string;
+          reconcileId?: string;
+          status: string;
+          canonicalTemplateId: string;
+          duplicateTemplateIds: string[];
+          entries: Array<{
+            templateId: string;
+            directory: string;
+            beforeManifest: string;
+            beforeManifestSha256: string;
+            afterManifest: string;
+            afterManifestSha256: string;
+          }>;
+        };
+        if (
+          journal.schema !== "figure-library.reconcile-transaction.v1" ||
+          journal.reconcileId !== input.reconcileId ||
+          !Array.isArray(journal.entries)
+        ) {
+          throw new Error(`reconcile ${input.reconcileId} has an invalid recovery journal`);
         }
-      }
-      const ledgerDirectory = path.join(this.root, "migrations", "reconciliations");
-      const rollbackLedger = path.join(ledgerDirectory, `${input.reconcileId}.rollback.json`);
-      try {
-        await fs.access(rollbackLedger);
-        throw new Error(`reconcile rollback record already exists: ${input.reconcileId}`);
-      } catch (error) {
-        if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
-      }
-      journal.status = "rolling-back";
-      await this.writeJournal(transactionDirectory, journal);
-      const restored: typeof journal.entries = [];
-      let rollbackLedgerCreated = false;
-      try {
+        const recoverableStatuses = new Set(["prepared", "committing", "committed", "rolling-back"]);
+        if (!recoverableStatuses.has(journal.status)) {
+          throw new Error(`reconcile ${input.reconcileId} is not recoverable from ${journal.status}`);
+        }
+        const recoveredIncomplete = journal.status !== "committed";
+        if (
+          journal.canonicalTemplateId !== input.canonicalTemplateId ||
+          JSON.stringify([...journal.duplicateTemplateIds].sort()) !==
+            JSON.stringify([...new Set(input.duplicateTemplateIds)].sort())
+        ) {
+          throw new Error("rollback request does not match the reconcile transaction journal");
+        }
+
+        const journalEntryIds = journal.entries.map((entry) => entry.templateId);
+        if (
+          new Set(journalEntryIds).size !== journalEntryIds.length ||
+          JSON.stringify([...journalEntryIds].sort()) !==
+            JSON.stringify([...journal.duplicateTemplateIds].sort())
+        ) {
+          throw new Error(`reconcile ${input.reconcileId} has inconsistent journal entries`);
+        }
         for (const entry of journal.entries) {
-          await this.replaceManifest(
-            entry.directory,
-            JSON.parse(entry.beforeManifest) as UserTemplate,
-          );
-          restored.push(entry);
-        }
-        await fs.mkdir(ledgerDirectory, { recursive: true });
-        await fs.writeFile(
-          rollbackLedger,
-          `${JSON.stringify(
-            {
-              schema: "figure-library.reconcile-rollback.v1",
-              reconcileId: input.reconcileId,
-              rolledBackAt: new Date().toISOString(),
-              reason: input.reason.trim(),
-            },
-            null,
-            2,
-          )}\n`,
-          { flag: "wx" },
-        );
-        rollbackLedgerCreated = true;
-        journal.status = "rolled-back";
-        await this.writeJournal(transactionDirectory, journal);
-      } catch (error) {
-        let recoveryError: unknown;
-        for (const entry of [...restored].reverse()) {
+          const expectedDirectory = path.join(this.templatesDirectory, entry.templateId);
+          if (path.resolve(entry.directory) !== path.resolve(expectedDirectory)) {
+            throw new Error(`reconcile journal has an unsafe template directory: ${entry.templateId}`);
+          }
+          if (
+            sha256(entry.beforeManifest) !== entry.beforeManifestSha256 ||
+            sha256(entry.afterManifest) !== entry.afterManifestSha256
+          ) {
+            throw new Error(`reconcile journal manifest hash mismatch: ${entry.templateId}`);
+          }
+          let before: unknown;
+          let after: unknown;
           try {
+            before = JSON.parse(entry.beforeManifest) as unknown;
+            after = JSON.parse(entry.afterManifest) as unknown;
+          } catch {
+            throw new Error(`reconcile journal contains invalid manifest JSON: ${entry.templateId}`);
+          }
+          if (
+            !isUserTemplate(before) ||
+            !isUserTemplate(after) ||
+            before.templateId !== entry.templateId ||
+            after.templateId !== entry.templateId
+          ) {
+            throw new Error(`reconcile journal contains invalid template manifests: ${entry.templateId}`);
+          }
+        }
+
+        const currentHashes = new Map<string, string>();
+        for (const entry of journal.entries) {
+          const directoryStat = await fs.lstat(entry.directory);
+          const manifestPath = path.join(entry.directory, "template.json");
+          const manifestStat = await fs.lstat(manifestPath);
+          if (
+            directoryStat.isSymbolicLink() ||
+            !directoryStat.isDirectory() ||
+            manifestStat.isSymbolicLink() ||
+            !manifestStat.isFile()
+          ) {
+            throw new Error(`rollback target is not a regular template: ${entry.templateId}`);
+          }
+          const current = await fs.readFile(manifestPath, "utf8");
+          const currentHash = sha256(current);
+          const allowed = recoveredIncomplete
+            ? [entry.beforeManifestSha256, entry.afterManifestSha256]
+            : [entry.afterManifestSha256];
+          if (!allowed.includes(currentHash)) {
+            throw new Error(`rollback would overwrite later changes to ${entry.templateId}`);
+          }
+          currentHashes.set(entry.templateId, currentHash);
+        }
+
+        const ledgerDirectory = path.join(this.root, "migrations", "reconciliations");
+        const applyLedger = path.join(ledgerDirectory, `${input.reconcileId}.json`);
+        const rollbackLedger = path.join(ledgerDirectory, `${input.reconcileId}.rollback.json`);
+        let incompleteApplyLedger: string | undefined;
+        if (recoveredIncomplete) {
+          try {
+            incompleteApplyLedger = await fs.readFile(applyLedger, "utf8");
+            const parsed = JSON.parse(incompleteApplyLedger) as {
+              schema?: string;
+              reconcileId?: string;
+            };
+            if (
+              parsed.schema !== "figure-library.reconcile-ledger.v1" ||
+              parsed.reconcileId !== input.reconcileId
+            ) {
+              throw new Error(`incomplete reconcile has an unrelated ledger: ${input.reconcileId}`);
+            }
+          } catch (error) {
+            if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+            incompleteApplyLedger = undefined;
+          }
+        }
+        try {
+          await fs.access(rollbackLedger);
+          throw new Error(`reconcile rollback record already exists: ${input.reconcileId}`);
+        } catch (error) {
+          if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+        }
+
+        journal.status = "rolling-back";
+        await this.writeJournal(transactionDirectory, journal);
+        const restored: typeof journal.entries = [];
+        let applyLedgerRemoved = false;
+        let rollbackLedgerCreated = false;
+        try {
+          for (const entry of journal.entries) {
+            if (currentHashes.get(entry.templateId) === entry.beforeManifestSha256) continue;
             await this.replaceManifest(
               entry.directory,
-              JSON.parse(entry.afterManifest) as UserTemplate,
+              JSON.parse(entry.beforeManifest) as UserTemplate,
             );
-          } catch (restoreError) {
-            recoveryError ??= restoreError;
+            restored.push(entry);
           }
-        }
-        if (rollbackLedgerCreated) {
-          try {
-            await fs.rm(rollbackLedger);
-          } catch (removeError) {
-            recoveryError ??= removeError;
+          if (incompleteApplyLedger !== undefined) {
+            await fs.rm(applyLedger);
+            applyLedgerRemoved = true;
           }
-        }
-        if (!recoveryError) {
-          journal.status = "committed";
-          try {
-            await this.writeJournal(transactionDirectory, journal);
-          } catch (journalError) {
-            recoveryError = journalError;
-          }
-        }
-        if (recoveryError) {
-          throw new Error(
-            `reconcile rollback failed and restoring the committed state also failed: ${String(error)}; ${String(recoveryError)}`,
+          await fs.mkdir(ledgerDirectory, { recursive: true });
+          await fs.writeFile(
+            rollbackLedger,
+            `${JSON.stringify(
+              {
+                schema: "figure-library.reconcile-rollback.v1",
+                reconcileId: input.reconcileId,
+                recoveredIncomplete,
+                rolledBackAt: new Date().toISOString(),
+                reason: input.reason.trim(),
+              },
+              null,
+              2,
+            )}\n`,
+            { flag: "wx" },
           );
+          rollbackLedgerCreated = true;
+          journal.status = "rolled-back";
+          await this.writeJournal(transactionDirectory, journal);
+        } catch (error) {
+          let recoveryError: unknown;
+          for (const entry of [...restored].reverse()) {
+            try {
+              await this.replaceManifest(
+                entry.directory,
+                JSON.parse(entry.afterManifest) as UserTemplate,
+              );
+            } catch (restoreError) {
+              recoveryError ??= restoreError;
+            }
+          }
+          if (applyLedgerRemoved && incompleteApplyLedger !== undefined) {
+            try {
+              await fs.writeFile(applyLedger, incompleteApplyLedger, { flag: "wx" });
+            } catch (ledgerRestoreError) {
+              recoveryError ??= ledgerRestoreError;
+            }
+          }
+          if (rollbackLedgerCreated) {
+            try {
+              await fs.rm(rollbackLedger);
+            } catch (removeError) {
+              recoveryError ??= removeError;
+            }
+          }
+          if (!recoveryError) {
+            journal.status = recoveredIncomplete ? "committing" : "committed";
+            try {
+              await this.writeJournal(transactionDirectory, journal);
+            } catch (journalError) {
+              recoveryError = journalError;
+            }
+          }
+          if (recoveryError) {
+            throw new Error(
+              `reconcile rollback failed and restoring the prior state also failed: ${String(error)}; ${String(recoveryError)}`,
+            );
+          }
+          throw error;
         }
-        throw error;
-      }
-      return {
-        reconcileId: input.reconcileId,
-        mode: "rollback" as const,
-        canonicalTemplateId: input.canonicalTemplateId,
-        restoredTemplateIds: journal.entries.map((entry) => entry.templateId),
-        written: true,
-      };
-    });
+        return {
+          reconcileId: input.reconcileId,
+          mode: "rollback" as const,
+          canonicalTemplateId: input.canonicalTemplateId,
+          restoredTemplateIds: journal.entries.map((entry) => entry.templateId),
+          recoveredIncomplete,
+          written: true,
+        };
+      },
+      { allowIncompleteTransaction: input.reconcileId },
+    );
   }
 
   async search(request: SearchRequest): Promise<TemplateCandidate[]> {

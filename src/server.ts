@@ -615,6 +615,7 @@ const ReconcileOutput = z.object({
   canonicalTemplateId: z.string(),
   duplicateTemplateIds: z.array(z.string()).optional(),
   restoredTemplateIds: z.array(z.string()).optional(),
+  recoveredIncomplete: z.boolean().optional(),
   changes: z
     .array(
       z.object({

@@ -63,7 +63,10 @@ figure reference.
      same reconcile ID, IDs, manifest hashes, file-set digests, and reason →
      apply. Never delete a lock, transaction, template directory, or ledger.
      Roll back only through the recorded reconcile ID and only if post-state
-     hashes still match.
+     hashes still match. For an interrupted journal, first verify that the lock
+     owner is dead and inspect the journal; only then deliberately clear that
+     stale lock and use rollback with the exact recorded IDs. Do not hand-edit
+     template manifests or migration ledgers.
 4. Inspect the user's plotting request before searching:
    - For an image, **first call the host's `view_image` tool**. Describe the
      chart family, panels, axes, encodings, labels, and notable visual style
