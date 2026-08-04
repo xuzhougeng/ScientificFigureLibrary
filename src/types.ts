@@ -52,6 +52,28 @@ export interface SearchRequest {
 export type AssetKind = "plot_template" | "visual_reference";
 export type ReviewStatus = "draft" | "approved" | "archived";
 export type CodeStatus = "none" | "scaffold" | "reviewed";
+export type ImportAdapter = "direct" | "gallery" | "figure-transfer-package";
+export type IdentityMode = "stable-source" | "content-addressed";
+
+export interface AssetFingerprintsV1 {
+  algorithm: "figure-library.asset-fingerprints.v1";
+  previewSha256?: string;
+  executableCodeSetSha256?: string;
+  dataSetSha256?: string;
+  metadataSetSha256?: string;
+  fullAssetSha256: string;
+}
+
+export interface ManagementReference {
+  templateId: string;
+  adapter?: ImportAdapter;
+  registrySourceId?: string;
+  galleryId?: string;
+  identityMode?: IdentityMode;
+  canArchive: boolean;
+  canUpdate: boolean;
+  updateVia?: "plan-apply" | "diff-upsert" | "gallery-sync";
+}
 
 export interface TemplateCandidate {
   templateId: string;
@@ -80,6 +102,7 @@ export interface TemplateCandidate {
   sourceUrl?: string;
   reportUrl?: string;
   previewDataUrl?: string;
+  management: ManagementReference;
 }
 
 export interface StoredFile {
@@ -118,12 +141,14 @@ export interface TemplateProvenance {
 }
 
 export interface ImportRegistryEntry {
-  adapter: "gallery" | "figure-transfer-package";
+  adapter: ImportAdapter;
   sourceId: string;
   templateId?: string;
   galleryId?: string;
   contentHash: string;
   sourceCommit?: string;
+  identityMode?: IdentityMode;
+  fingerprints?: AssetFingerprintsV1;
 }
 
 export interface UserTemplate {
@@ -168,4 +193,5 @@ export interface UserTemplateImport {
   provenance?: TemplateProvenance;
   imagePath?: string;
   codePaths?: string[];
+  sourceKey?: string;
 }

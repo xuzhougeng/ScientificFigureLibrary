@@ -119,6 +119,15 @@ footer {
   line-height: 1.25;
 }
 
+.template-id {
+  display: block;
+  margin-top: 0.3rem;
+  color: var(--muted);
+  font-size: 0.75rem;
+  overflow-wrap: anywhere;
+  user-select: all;
+}
+
 .source {
   display: inline-block;
   margin-top: 5px;

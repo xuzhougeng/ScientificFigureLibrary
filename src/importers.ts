@@ -5,6 +5,7 @@ import { unzipSync } from "fflate";
 import { parseDocument } from "yaml";
 import { z } from "zod";
 import type {
+  AssetFingerprintsV1,
   AssetKind,
   CodeStatus,
   ImportRegistryEntry,
@@ -34,7 +35,7 @@ export const IMAGE_TYPES = new Map([
 ]);
 export const EMBEDDABLE_IMAGE_TYPES = new Set(["image/png", "image/jpeg", "image/webp"]);
 
-const CODE_EXTENSIONS = new Set([
+export const CODE_EXTENSIONS = new Set([
   ".r",
   ".rmd",
   ".qmd",
@@ -66,6 +67,7 @@ interface PreparedFile<T extends StoredFile = StoredFile> {
 
 export interface PreparedTemplate {
   templateId: string;
+  legacyTemplateId?: string;
   title: string;
   description: string;
   tags: string[];
@@ -165,6 +167,68 @@ function canonicalize(value: unknown): unknown {
       .sort(([left], [right]) => left.localeCompare(right))
       .map(([key, item]) => [key, canonicalize(item)]),
   );
+}
+
+function descriptorSetHash(
+  items: Array<{ role: string; file: string; bytes: number; sha256: string }>,
+) {
+  if (items.length === 0) return undefined;
+  const normalized = items
+    .map((item) => ({
+      role: item.role,
+      file: item.file.replaceAll("\\", "/"),
+      bytes: item.bytes,
+      sha256: item.sha256.toLocaleLowerCase(),
+    }))
+    .sort(
+      (left, right) =>
+        left.role.localeCompare(right.role) || left.file.localeCompare(right.file),
+    );
+  return sha256(JSON.stringify(normalized));
+}
+
+export function assetFingerprints(
+  preview: StoredPreview | undefined,
+  code: StoredFile[],
+  references: StoredReference[],
+): AssetFingerprintsV1 {
+  const executable = code
+    .filter((file) => CODE_EXTENSIONS.has(path.extname(file.file).toLocaleLowerCase()))
+    .map((file) => ({ role: "executable-code", ...file }));
+  const metadata = [
+    ...code
+      .filter((file) => !CODE_EXTENSIONS.has(path.extname(file.file).toLocaleLowerCase()))
+      .map((file) => ({ ...file, role: "metadata" })),
+    ...references
+      .filter((file) => file.role === "metadata")
+      .map((file) => ({ ...file, role: "metadata" })),
+  ];
+  const data = references
+    .filter((file) => file.role === "data")
+    .map((file) => ({ ...file, role: "data" }));
+  const previewItems = preview ? [{ role: "preview", ...preview }] : [];
+  return {
+    algorithm: "figure-library.asset-fingerprints.v1",
+    previewSha256: preview?.sha256.toLocaleLowerCase(),
+    executableCodeSetSha256: descriptorSetHash(executable),
+    dataSetSha256: descriptorSetHash(data),
+    metadataSetSha256: descriptorSetHash(metadata),
+    fullAssetSha256:
+      descriptorSetHash([...previewItems, ...executable, ...data, ...metadata]) ?? sha256("[]"),
+  };
+}
+
+export function normalizeDirectSourceKey(value: string) {
+  const normalized = value.normalize("NFKC").trim().toLowerCase();
+  if (!/^[a-z0-9][a-z0-9._:-]{0,199}$/u.test(normalized)) {
+    throw new Error(
+      "sourceKey must be 1-200 lowercase ASCII characters using letters, digits, dot, underscore, colon, or hyphen",
+    );
+  }
+  if (normalized.includes("://") || normalized.includes("..")) {
+    throw new Error("sourceKey must be a portable logical identifier, not a URL or path");
+  }
+  return normalized;
 }
 
 function contentHash(
@@ -320,10 +384,26 @@ export async function prepareDirectImport(input: UserTemplateImport): Promise<Pr
     JSON.stringify(advancedIdentity ? { ...legacyMetadata, ...metadata } : legacyMetadata),
   ).slice(0, 10);
   const hash = contentHash(metadata, preview, code, []);
+  const fingerprints = assetFingerprints(
+    preview?.stored,
+    code.map((item) => item.stored),
+    [],
+  );
+  const explicitSource = input.sourceKey ? normalizeDirectSourceKey(input.sourceKey) : undefined;
+  const sourceId = explicitSource ?? `direct:sha256:${fingerprints.fullAssetSha256}`;
+  const registry: ImportRegistryEntry = {
+    adapter: "direct",
+    sourceId,
+    contentHash: hash,
+    identityMode: explicitSource ? "stable-source" : "content-addressed",
+    fingerprints,
+  };
   validateTotalBytes(preview, code, []);
   return {
-    templateId: `user-${slug(metadata.title)}-${identity}`,
+    templateId: `user-direct-${sha256(`direct:${sourceId}`).slice(0, 16)}`,
+    legacyTemplateId: `user-${slug(metadata.title)}-${identity}`,
     ...metadata,
+    registry,
     contentHash: hash,
     preview,
     code,
@@ -551,11 +631,18 @@ export async function prepareTransferPackage(packagePath: string): Promise<Prepa
     },
   ];
   const hash = contentHash(metadata, preview, [], references);
+  const fingerprints = assetFingerprints(
+    preview.stored,
+    [],
+    references.map((item) => item.stored),
+  );
   const sourceId = `${manifest.producer.name}:${sourceIdValue}:${figureIdValue}`;
   const registry: ImportRegistryEntry = {
     adapter: "figure-transfer-package",
     sourceId,
     contentHash: hash,
+    identityMode: "stable-source",
+    fingerprints,
   };
   validateTotalBytes(preview, [], references);
   return {
@@ -851,6 +938,12 @@ export async function prepareGalleryEntry(
     galleryId: manifest.gallery_id,
     contentHash: hash,
     sourceCommit: manifest.source_commit ?? sourceCommit,
+    identityMode: "stable-source",
+    fingerprints: assetFingerprints(
+      preview?.stored,
+      code.map((item) => item.stored),
+      references.map((item) => item.stored),
+    ),
   };
   validateTotalBytes(preview, code, references);
   return {

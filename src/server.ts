@@ -15,11 +15,32 @@ import {
   materializeFigureYaTemplate,
 } from "./materialize.ts";
 import type { TemplateCandidate } from "./types.ts";
-import { UserTemplateLibrary } from "./user-library.ts";
+import { managementReference, UserTemplateLibrary } from "./user-library.ts";
 
-const VERSION = "0.2.0";
+const VERSION = "0.3.0";
 const RESOURCE_URI = "ui://figure-library/candidates.html";
 const APP_HTML = path.resolve(import.meta.dirname, "mcp-app.html");
+
+const ImportAdapterSchema = z.enum(["direct", "gallery", "figure-transfer-package"]);
+const IdentityModeSchema = z.enum(["stable-source", "content-addressed"]);
+const FingerprintsSchema = z.object({
+  algorithm: z.literal("figure-library.asset-fingerprints.v1"),
+  previewSha256: z.string().optional(),
+  executableCodeSetSha256: z.string().optional(),
+  dataSetSha256: z.string().optional(),
+  metadataSetSha256: z.string().optional(),
+  fullAssetSha256: z.string(),
+});
+const ManagementSchema = z.object({
+  templateId: z.string(),
+  adapter: ImportAdapterSchema.optional(),
+  registrySourceId: z.string().optional(),
+  galleryId: z.string().optional(),
+  identityMode: IdentityModeSchema.optional(),
+  canArchive: z.boolean(),
+  canUpdate: z.boolean(),
+  updateVia: z.enum(["plan-apply", "diff-upsert", "gallery-sync"]).optional(),
+});
 
 const CandidateSchema = z.object({
   templateId: z.string(),
@@ -48,6 +69,7 @@ const CandidateSchema = z.object({
   sourceUrl: z.string().optional(),
   reportUrl: z.string().optional(),
   previewDataUrl: z.string().optional(),
+  management: ManagementSchema,
 });
 
 const SearchInput = z.object({
@@ -132,6 +154,12 @@ const ImportInput = z
       .max(20)
       .optional()
       .describe("Host-local paths to code/reference files. Files are copied but never executed."),
+    sourceKey: z
+      .string()
+      .min(1)
+      .max(200)
+      .optional()
+      .describe("Portable stable source key for updateable direct imports. Never use a host path or secret."),
   })
   .superRefine((value, context) => {
     const direct = Boolean(value.imagePath || value.codePaths?.length);
@@ -159,6 +187,28 @@ const ImportOutput = z.object({
   warning: z.string(),
 });
 
+const DirectImportInput = z
+  .object({
+    title: z.string().min(1).max(200),
+    description: z.string().max(4_000).optional(),
+    tags: z.array(z.string().min(1).max(100)).max(40).optional(),
+    visualProfile: z.string().max(2_000).optional(),
+    dataProfile: z.string().max(2_000).optional(),
+    packages: z.array(z.string().min(1).max(100)).max(40).optional(),
+    license: z.string().max(500).optional(),
+    assetKind: z.enum(["plot_template", "visual_reference"]).optional(),
+    language: z.string().min(1).max(100).optional(),
+    plotFamily: z.string().max(200).optional(),
+    reviewStatus: z.enum(["draft", "approved", "archived"]).optional(),
+    codeStatus: z.enum(["none", "scaffold", "reviewed"]).optional(),
+    imagePath: z.string().min(1).max(2_000).optional(),
+    codePaths: z.array(z.string().min(1).max(2_000)).max(20).optional(),
+    sourceKey: z.string().min(1).max(200).optional(),
+  })
+  .refine((value) => Boolean(value.imagePath || value.codePaths?.length), {
+    message: "provide imagePath or at least one codePaths entry",
+  });
+
 const ImportSourceInput = z
   .object({
     packagePath: z.string().min(1).max(2_000).optional(),
@@ -175,9 +225,71 @@ const ImportChangeSchema = z.object({
   after: z.unknown(),
 });
 
+const DirectImportActionSchema = z.enum([
+  "create",
+  "unchanged",
+  "update",
+  "duplicate_candidate",
+  "source_conflict",
+]);
+const DirectImportMatchSchema = z.object({
+  templateId: z.string(),
+  title: z.string(),
+  matchKinds: z.array(z.string()),
+  manifestSha256: z.string(),
+});
+const DirectImportPlanOutput = z.object({
+  action: DirectImportActionSchema,
+  normalizedTitle: z.string(),
+  proposedTemplateId: z.string(),
+  registrySourceId: z.string(),
+  identityMode: IdentityModeSchema,
+  fingerprints: FingerprintsSchema,
+  contentHash: z.string(),
+  changes: z.array(ImportChangeSchema),
+  matches: z.array(DirectImportMatchSchema),
+  planDigest: z.string(),
+  written: z.literal(false),
+});
+const DirectImportApplyInput = z.object({
+  ...DirectImportInput.shape,
+  planDigest: z.string().regex(/^[a-f0-9]{64}$/u),
+  expectedAction: DirectImportActionSchema,
+  expectedTemplateId: z.string().min(1).max(200),
+  operationId: z.string().min(1).max(100).regex(/^[A-Za-z0-9][A-Za-z0-9._-]*$/u),
+  duplicateResolution: z
+    .union([
+      z.object({
+        action: z.literal("reuse"),
+        templateId: z.string().min(1).max(200),
+        reason: z.string().min(1).max(1_000),
+      }),
+      z.object({
+        action: z.literal("create_separate"),
+        reason: z.string().min(1).max(1_000),
+      }),
+    ])
+    .optional(),
+  sourceConflictResolution: z
+    .object({
+      action: z.literal("replace_source"),
+      reason: z.string().min(1).max(1_000),
+    })
+    .optional(),
+});
+const DirectImportApplyOutput = z.object({
+  templateId: z.string(),
+  title: z.string(),
+  directory: z.string(),
+  action: z.enum(["create", "unchanged", "update", "reused"]),
+  replayed: z.boolean(),
+  plan: DirectImportPlanOutput,
+  warning: z.string(),
+});
+
 const ImportDiffSchema = z.object({
   action: z.enum(["create", "unchanged", "update", "skipped"]),
-  adapter: z.enum(["gallery", "figure-transfer-package"]),
+  adapter: ImportAdapterSchema,
   sourceId: z.string(),
   galleryId: z.string().optional(),
   templateId: z.string(),
@@ -228,12 +340,37 @@ const GallerySyncOutput = z.object({
   results: z.array(ImportDiffSchema),
 });
 
-const ArchiveInput = z.object({ galleryId: z.string().min(1).max(300) });
+const ArchiveInput = z
+  .object({
+    templateId: z.string().min(1).max(200).optional(),
+    galleryId: z.string().min(1).max(300).optional(),
+    registrySourceId: z.string().min(1).max(300).optional(),
+    adapter: ImportAdapterSchema.optional(),
+  })
+  .superRefine((value, context) => {
+    const references = [value.templateId, value.galleryId, value.registrySourceId].filter(Boolean);
+    if (references.length !== 1) {
+      context.addIssue({
+        code: "custom",
+        message: "provide exactly one of templateId, galleryId, or registrySourceId + adapter",
+      });
+    }
+    if (value.registrySourceId && !value.adapter) {
+      context.addIssue({ code: "custom", message: "adapter is required with registrySourceId" });
+    }
+  });
 const ArchiveOutput = z.object({
-  galleryId: z.string(),
   templateId: z.string(),
+  galleryId: z.string().optional(),
+  registrySourceId: z.string().optional(),
+  adapter: ImportAdapterSchema.optional(),
+  previousReviewStatus: z.enum(["draft", "approved", "archived"]),
   reviewStatus: z.literal("archived"),
   directory: z.string(),
+  changed: z.boolean(),
+  alreadyArchived: z.boolean(),
+  filesRetained: z.literal(true),
+  // v0.2.0 compatibility: existed meant "already archived".
   existed: z.boolean(),
   warning: z.string(),
 });
@@ -260,12 +397,14 @@ const ProvenanceSchema = z.object({
 });
 
 const RegistrySchema = z.object({
-  adapter: z.enum(["gallery", "figure-transfer-package"]),
+  adapter: ImportAdapterSchema,
   sourceId: z.string(),
   templateId: z.string().optional(),
   galleryId: z.string().optional(),
   contentHash: z.string(),
   sourceCommit: z.string().optional(),
+  identityMode: IdentityModeSchema.optional(),
+  fingerprints: FingerprintsSchema.optional(),
 });
 
 const DescribeInput = z.object({
@@ -300,6 +439,7 @@ const DescribeOutput = z.object({
   previewFile: z.string().optional(),
   provenance: ProvenanceSchema.optional(),
   registry: RegistrySchema.optional(),
+  management: ManagementSchema,
 });
 
 const PreviewInput = z.object({
@@ -370,11 +510,26 @@ const SourceStatusInput = z.object({
     .max(2_000)
     .optional()
     .describe("FigureYa Source Pack directory; otherwise FIGUREYA_SOURCE_PACK_DIR is used."),
+  galleryDirectory: z
+    .string()
+    .min(1)
+    .max(2_000)
+    .optional()
+    .describe("Personal Gallery directory to inspect; otherwise FIGURE_GALLERY_DIR is used."),
 });
 
 const SourceStatusOutput = z.object({
   libraryDirectory: z.string(),
+  libraryDirectorySource: z.enum(["FIGURE_LIBRARY_DIR", "default"]),
+  galleryDirectory: z.string().optional(),
+  galleryDirectorySource: z.enum(["argument", "FIGURE_GALLERY_DIR", "unset"]),
+  galleryDirectoryAccessible: z.boolean(),
   userTemplateCount: z.number().int(),
+  activeUserTemplateCount: z.number().int(),
+  archivedUserTemplateCount: z.number().int(),
+  legacyTemplateCount: z.number().int(),
+  invalidTemplateCount: z.number().int(),
+  duplicateGroupCount: z.number().int(),
   figureYa: z.object({
     catalogTemplates: z.number().int(),
     sourcePackConfigured: z.boolean(),
@@ -385,6 +540,94 @@ const SourceStatusOutput = z.object({
     availableBytes: z.number().int(),
     archiveRevision: z.string(),
   }),
+});
+
+const AuditInput = z.object({
+  scope: z.enum(["duplicates", "legacy", "integrity", "all"]).optional().default("all"),
+  includeArchived: z.boolean().optional().default(true),
+});
+const AuditTemplateSchema = z.object({
+  templateId: z.string(),
+  title: z.string(),
+  reviewStatus: z.enum(["draft", "approved", "archived"]),
+  codeStatus: z.enum(["none", "scaffold", "reviewed"]),
+  importedAt: z.string(),
+  adapter: ImportAdapterSchema.optional(),
+  registrySourceId: z.string().optional(),
+  galleryId: z.string().optional(),
+  identityMode: IdentityModeSchema.optional(),
+  contentHash: z.string().optional(),
+  fingerprints: FingerprintsSchema,
+  manifestSha256: z.string(),
+  verifiedFileSetDigest: z.string(),
+  integrityStatus: z.literal("valid"),
+  legacy: z.boolean(),
+  management: ManagementSchema,
+  metadataCompleteness: z.number().int(),
+});
+const DiagnosticSchema = z.object({
+  directoryName: z.string(),
+  directory: z.string(),
+  templateId: z.string().optional(),
+  error: z.string(),
+});
+const AuditOutput = z.object({
+  scope: z.enum(["duplicates", "legacy", "integrity", "all"]),
+  includeArchived: z.boolean(),
+  libraryDirectory: z.string(),
+  userTemplateCount: z.number().int(),
+  legacyTemplateCount: z.number().int(),
+  invalidTemplateCount: z.number().int(),
+  duplicateGroupCount: z.number().int(),
+  invalid: z.array(DiagnosticSchema),
+  templates: z.array(AuditTemplateSchema),
+  duplicateGroups: z.array(
+    z.object({
+      groupId: z.string(),
+      templateIds: z.array(z.string()),
+      evidence: z.array(
+        z.object({ left: z.string(), right: z.string(), matchKinds: z.array(z.string()) }),
+      ),
+      recommendedCanonicalTemplateId: z.string(),
+      recommendationOnly: z.literal(true),
+    }),
+  ),
+});
+
+const ExpectedStateSchema = z.object({
+  manifestSha256: z.string().regex(/^[a-f0-9]{64}$/u),
+  verifiedFileSetDigest: z.string().regex(/^[a-f0-9]{64}$/u),
+  reviewStatus: z.enum(["draft", "approved", "archived"]),
+});
+const ReconcileInput = z.object({
+  mode: z.enum(["dry-run", "apply", "rollback"]).optional().default("dry-run"),
+  reconcileId: z.string().min(1).max(100).regex(/^[A-Za-z0-9][A-Za-z0-9._-]*$/u),
+  canonicalTemplateId: z.string().min(1).max(200),
+  duplicateTemplateIds: z.array(z.string().min(1).max(200)).min(1),
+  strategy: z.literal("archive_duplicates"),
+  expectedState: z.record(z.string(), ExpectedStateSchema),
+  reason: z.string().min(1).max(2_000),
+});
+const ReconcileOutput = z.object({
+  reconcileId: z.string(),
+  mode: z.enum(["dry-run", "apply", "rollback"]),
+  strategy: z.literal("archive_duplicates").optional(),
+  canonicalTemplateId: z.string(),
+  duplicateTemplateIds: z.array(z.string()).optional(),
+  restoredTemplateIds: z.array(z.string()).optional(),
+  recoveredIncomplete: z.boolean().optional(),
+  changes: z
+    .array(
+      z.object({
+        templateId: z.string(),
+        beforeReviewStatus: z.enum(["draft", "approved", "archived"]),
+        afterReviewStatus: z.literal("archived"),
+        retainedFiles: z.number().int(),
+      }),
+    )
+    .optional(),
+  filesRetained: z.number().int().optional(),
+  written: z.boolean(),
 });
 
 function candidateText(candidates: TemplateCandidate[]) {
@@ -568,7 +811,8 @@ export async function createServer() {
       description:
         "Copy a user-supplied figure/code or validate and import a Figure Transfer Package ZIP. " +
         "Transfer Packages enter as draft visual references. The tool never executes code or " +
-        "stores original absolute paths.",
+        "stores original absolute paths. Direct-write mode is retained for v0.2 compatibility; " +
+        "new Agents should use figure_library_plan_import and figure_library_apply_import.",
       inputSchema: ImportInput.shape,
       outputSchema: ImportOutput.shape,
       annotations: {
@@ -620,7 +864,7 @@ export async function createServer() {
                 `${result.template.templateId} at ${result.directory}. ${output.warning}`,
             },
           ],
-          structuredContent: output,
+          structuredContent: { ...output },
         };
       } catch (error) {
         return {
@@ -629,6 +873,105 @@ export async function createServer() {
             {
               type: "text",
               text: `User template import failed: ${
+                error instanceof Error ? error.message : String(error)
+              }`,
+            },
+          ],
+        };
+      }
+    },
+  );
+
+  server.registerTool(
+    "figure_library_plan_import",
+    {
+      title: "Plan a direct user-template import",
+      description:
+        "Read and validate direct-import files, calculate stable identity and duplicate evidence, " +
+        "and return a concurrency-bound plan. No files are written.",
+      inputSchema: DirectImportInput.shape,
+      outputSchema: DirectImportPlanOutput.shape,
+      annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: false,
+      },
+    },
+    async (input): Promise<CallToolResult> => {
+      try {
+        const output = await userLibrary.planDirectImport(input);
+        return {
+          content: [
+            {
+              type: "text",
+              text:
+                `No files were written. ${output.action}: ${output.normalizedTitle} ` +
+                `would use ${output.proposedTemplateId}. Awaiting exact confirmation.`,
+            },
+          ],
+          structuredContent: { ...output },
+        };
+      } catch (error) {
+        return {
+          isError: true,
+          content: [
+            {
+              type: "text",
+              text: `Direct import planning failed: ${
+                error instanceof Error ? error.message : String(error)
+              }`,
+            },
+          ],
+        };
+      }
+    },
+  );
+
+  server.registerTool(
+    "figure_library_apply_import",
+    {
+      title: "Apply a confirmed direct import plan",
+      description:
+        "Revalidate a direct import plan and apply only the exact confirmed create/update/duplicate " +
+        "decision. Imported code is copied but never executed.",
+      inputSchema: DirectImportApplyInput.shape,
+      outputSchema: DirectImportApplyOutput.shape,
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: false,
+      },
+    },
+    async (input): Promise<CallToolResult> => {
+      try {
+        const result = await userLibrary.applyDirectImport(input);
+        const output = {
+          templateId: result.template.templateId,
+          title: result.template.title,
+          directory: result.directory,
+          action: result.action,
+          replayed: result.replayed,
+          plan: result.plan,
+          warning: "Reference only. Imported code was copied but never executed.",
+        };
+        return {
+          content: [
+            {
+              type: "text",
+              text: `${result.replayed ? "Replayed safely" : "Applied"}: ${result.template.templateId}. ${output.warning}`,
+            },
+          ],
+          structuredContent: output,
+        };
+      } catch (error) {
+        return {
+          isError: true,
+          content: [
+            {
+              type: "text",
+              text: `Confirmed direct import failed: ${
                 error instanceof Error ? error.message : String(error)
               }`,
             },
@@ -789,10 +1132,10 @@ export async function createServer() {
   server.registerTool(
     "figure_library_archive",
     {
-      title: "Logically archive an imported Gallery entry",
+      title: "Logically archive a user-library template",
       description:
-        "Mark an imported gallery_id archived so default search excludes it. Files are retained; " +
-        "this tool never hard-deletes a template.",
+        "Resolve a templateId, galleryId, or adapter-scoped registrySourceId and exclude the template " +
+        "from default search. Files are retained; this tool never hard-deletes a template.",
       inputSchema: ArchiveInput.shape,
       outputSchema: ArchiveOutput.shape,
       annotations: {
@@ -802,22 +1145,29 @@ export async function createServer() {
         openWorldHint: false,
       },
     },
-    async ({ galleryId }): Promise<CallToolResult> => {
+    async (reference): Promise<CallToolResult> => {
       try {
-        const result = await userLibrary.archiveGallery(galleryId);
+        const result = await userLibrary.archiveTemplate(reference);
+        const management = result.template.registry;
         const output = {
-          galleryId,
           templateId: result.template.templateId,
+          galleryId: management?.galleryId,
+          registrySourceId: management?.sourceId,
+          adapter: management?.adapter,
+          previousReviewStatus: result.previousReviewStatus,
           reviewStatus: "archived" as const,
           directory: result.directory,
-          existed: result.existed,
+          changed: result.changed,
+          alreadyArchived: result.alreadyArchived,
+          filesRetained: true as const,
+          existed: result.alreadyArchived,
           warning: "Logical archive only; reference files were retained.",
         };
         return {
           content: [
             {
               type: "text",
-              text: `${result.existed ? "Already archived" : "Archived"} ${galleryId}. ${output.warning}`,
+              text: `${result.alreadyArchived ? "Already archived" : "Archived"} ${result.template.templateId}. ${output.warning}`,
             },
           ],
           structuredContent: output,
@@ -828,7 +1178,7 @@ export async function createServer() {
           content: [
             {
               type: "text",
-              text: `Gallery archive failed: ${error instanceof Error ? error.message : String(error)}`,
+              text: `Template archive failed: ${error instanceof Error ? error.message : String(error)}`,
             },
           ],
         };
@@ -933,7 +1283,8 @@ export async function createServer() {
     {
       title: "Inspect figure template sources",
       description:
-        "Report the user-library count and inspect a local FigureYa Source Pack by file name and size.",
+        "Report effective User Library and Gallery paths, lifecycle/integrity counts, and inspect a " +
+        "local FigureYa Source Pack by file name and size.",
       inputSchema: SourceStatusInput.shape,
       outputSchema: SourceStatusOutput.shape,
       annotations: {
@@ -943,14 +1294,45 @@ export async function createServer() {
         openWorldHint: false,
       },
     },
-    async ({ sourcePackDir }): Promise<CallToolResult> => {
-      const [userTemplates, figureYa] = await Promise.all([
-        userLibrary.list(),
+    async ({ sourcePackDir, galleryDirectory: galleryArgument }): Promise<CallToolResult> => {
+      const galleryEnvironment = process.env.FIGURE_GALLERY_DIR?.trim();
+      const galleryDirectory = galleryArgument ?? galleryEnvironment;
+      let galleryDirectoryAccessible = false;
+      if (galleryDirectory) {
+        try {
+          const stat = await fs.lstat(path.resolve(galleryDirectory));
+          galleryDirectoryAccessible = stat.isDirectory() && !stat.isSymbolicLink();
+        } catch {
+          galleryDirectoryAccessible = false;
+        }
+      }
+      const [audit, figureYa] = await Promise.all([
+        userLibrary.auditTemplates({ scope: "all", includeArchived: true }),
         inspectFigureYaSourcePack(index.catalog, sourcePackDir),
       ]);
       const output = {
         libraryDirectory: userLibrary.root,
-        userTemplateCount: userTemplates.length,
+        libraryDirectorySource:
+          userLibrary.directorySource === "FIGURE_LIBRARY_DIR"
+            ? ("FIGURE_LIBRARY_DIR" as const)
+            : ("default" as const),
+        galleryDirectory: galleryDirectory ? path.resolve(galleryDirectory) : undefined,
+        galleryDirectorySource: galleryArgument
+          ? ("argument" as const)
+          : galleryEnvironment
+            ? ("FIGURE_GALLERY_DIR" as const)
+            : ("unset" as const),
+        galleryDirectoryAccessible,
+        userTemplateCount: audit.userTemplateCount,
+        activeUserTemplateCount: audit.templates.filter(
+          (item) => item.reviewStatus !== "archived",
+        ).length,
+        archivedUserTemplateCount: audit.templates.filter(
+          (item) => item.reviewStatus === "archived",
+        ).length,
+        legacyTemplateCount: audit.legacyTemplateCount,
+        invalidTemplateCount: audit.invalidTemplateCount,
+        duplicateGroupCount: audit.duplicateGroupCount,
         figureYa: {
           catalogTemplates: index.catalog.modules.length,
           sourcePackConfigured: figureYa.configured,
@@ -967,13 +1349,107 @@ export async function createServer() {
           {
             type: "text",
             text:
-              `${userTemplates.length} user templates; ${index.catalog.modules.length} FigureYa ` +
+              `${audit.userTemplateCount} user templates; ${audit.invalidTemplateCount} invalid; ` +
+              `${audit.duplicateGroupCount} duplicate groups; ${index.catalog.modules.length} FigureYa ` +
               `catalog templates; ${figureYa.availableTemplates.length} FigureYa archives available ` +
               "in the configured Source Pack.",
           },
         ],
         structuredContent: output,
       };
+    },
+  );
+
+  server.registerTool(
+    "figure_library_audit",
+    {
+      title: "Audit the User Library",
+      description:
+        "Read every user-template manifest, verify stored files, and report invalid, legacy, and " +
+        "component-level duplicate evidence. Recommendations never modify the library.",
+      inputSchema: AuditInput.shape,
+      outputSchema: AuditOutput.shape,
+      annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: false,
+      },
+    },
+    async (input): Promise<CallToolResult> => {
+      try {
+        const output = await userLibrary.auditTemplates(input);
+        return {
+          content: [
+            {
+              type: "text",
+              text:
+                `No files were written. ${output.userTemplateCount} valid templates, ` +
+                `${output.invalidTemplateCount} invalid, ${output.legacyTemplateCount} legacy, ` +
+                `${output.duplicateGroupCount} duplicate groups. Canonical IDs are recommendations only.`,
+            },
+          ],
+          structuredContent: output,
+        };
+      } catch (error) {
+        return {
+          isError: true,
+          content: [
+            {
+              type: "text",
+              text: `User Library audit failed: ${
+                error instanceof Error ? error.message : String(error)
+              }`,
+            },
+          ],
+        };
+      }
+    },
+  );
+
+  server.registerTool(
+    "figure_library_reconcile",
+    {
+      title: "Reconcile duplicate user templates",
+      description:
+        "Dry-run, apply, or roll back an exact duplicate-archive transaction. Apply uses verified " +
+        "manifest/file preconditions, a shared write lock, and a recovery journal; files are retained.",
+      inputSchema: ReconcileInput.shape,
+      outputSchema: ReconcileOutput.shape,
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        idempotentHint: false,
+        openWorldHint: false,
+      },
+    },
+    async (input): Promise<CallToolResult> => {
+      try {
+        const output = await userLibrary.reconcileTemplates(input);
+        return {
+          content: [
+            {
+              type: "text",
+              text:
+                `${output.mode === "dry-run" ? "No files were written" : "Transaction recorded"}. ` +
+                `${output.reconcileId}: ${output.mode}. Template files were retained.`,
+            },
+          ],
+          structuredContent: output,
+        };
+      } catch (error) {
+        return {
+          isError: true,
+          content: [
+            {
+              type: "text",
+              text: `Duplicate reconcile failed: ${
+                error instanceof Error ? error.message : String(error)
+              }`,
+            },
+          ],
+        };
+      }
     },
   );
 
@@ -1025,6 +1501,11 @@ export async function createServer() {
           sourceRevision: index.catalog.figureya.commit,
           archiveRevision: index.catalog.compressed.commit,
           citation: index.catalog.citation,
+          management: {
+            templateId,
+            canArchive: false,
+            canUpdate: false,
+          },
         };
         return {
           content: [
@@ -1084,6 +1565,7 @@ export async function createServer() {
         previewFile: user.template.preview?.file,
         provenance: user.template.provenance,
         registry: user.template.registry,
+        management: managementReference(user.template),
       };
       return {
         content: [

@@ -18,6 +18,8 @@ const sourceDirectory = path.join(smokeRoot, "source");
 await fs.mkdir(sourceDirectory);
 const codePath = path.join(sourceDirectory, "smoke-plot.R");
 await fs.writeFile(codePath, "# unique-smoke-ridge-reference\n");
+const plannedCodePath = path.join(sourceDirectory, "planned-smoke-plot.R");
+await fs.writeFile(plannedCodePath, "# planned-smoke-lifecycle-reference\n");
 const transferImage = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]);
 const transferPackagePath = path.join(sourceDirectory, "figure-transfer-package.zip");
 const transferManifest = {
@@ -63,7 +65,7 @@ const childEnvironment = Object.fromEntries(
 );
 childEnvironment.FIGURE_LIBRARY_DIR = libraryDirectory;
 
-const client = new Client({ name: "scientific-figure-library-smoke", version: "0.2.0" });
+const client = new Client({ name: "scientific-figure-library-smoke", version: "0.3.0" });
 const transport = new StdioClientTransport({
   command: process.execPath,
   args: [serverEntry],
@@ -80,12 +82,16 @@ try {
     "figure_library_open",
     "figure_library_search",
     "figure_library_import",
+    "figure_library_plan_import",
+    "figure_library_apply_import",
     "figure_library_diff",
     "figure_library_upsert",
     "figure_library_sync",
     "figure_library_archive",
     "figure_library_preview",
     "figure_library_source_status",
+    "figure_library_audit",
+    "figure_library_reconcile",
     "figure_library_describe",
     "figure_library_materialize",
   ]) {
@@ -154,6 +160,47 @@ try {
   const userTemplateId = imported.structuredContent?.templateId;
   if (imported.isError || typeof userTemplateId !== "string") {
     throw new Error(`user import smoke call failed: ${JSON.stringify(imported.content)}`);
+  }
+
+  const planned = await client.callTool({
+    name: "figure_library_plan_import",
+    arguments: {
+      title: "Planned smoke lifecycle reference",
+      description: "A direct import that exercises plan, apply, management, archive, and audit.",
+      sourceKey: "smoke:planned-lifecycle",
+      codePaths: [plannedCodePath],
+    },
+  });
+  const plannedTemplateId = planned.structuredContent?.proposedTemplateId;
+  const planDigest = planned.structuredContent?.planDigest;
+  if (
+    planned.isError ||
+    planned.structuredContent?.action !== "create" ||
+    planned.structuredContent?.written !== false ||
+    typeof plannedTemplateId !== "string" ||
+    typeof planDigest !== "string"
+  ) {
+    throw new Error(`direct import plan smoke call failed: ${JSON.stringify(planned.content)}`);
+  }
+  const plannedApplied = await client.callTool({
+    name: "figure_library_apply_import",
+    arguments: {
+      title: "Planned smoke lifecycle reference",
+      description: "A direct import that exercises plan, apply, management, archive, and audit.",
+      sourceKey: "smoke:planned-lifecycle",
+      codePaths: [plannedCodePath],
+      planDigest,
+      expectedAction: "create",
+      expectedTemplateId: plannedTemplateId,
+      operationId: "smoke-planned-create",
+    },
+  });
+  if (
+    plannedApplied.isError ||
+    plannedApplied.structuredContent?.templateId !== plannedTemplateId ||
+    plannedApplied.structuredContent?.action !== "create"
+  ) {
+    throw new Error(`direct import apply smoke call failed: ${JSON.stringify(plannedApplied.content)}`);
   }
 
   const transferImported = await client.callTool({
@@ -245,8 +292,33 @@ try {
     name: "figure_library_source_status",
     arguments: {},
   });
-  if (sourceStatus.isError || sourceStatus.structuredContent?.userTemplateCount !== 2) {
+  if (sourceStatus.isError || sourceStatus.structuredContent?.userTemplateCount !== 3) {
     throw new Error("source status smoke call failed");
+  }
+
+  const plannedArchive = await client.callTool({
+    name: "figure_library_archive",
+    arguments: { templateId: plannedTemplateId },
+  });
+  if (
+    plannedArchive.isError ||
+    plannedArchive.structuredContent?.changed !== true ||
+    plannedArchive.structuredContent?.filesRetained !== true
+  ) {
+    throw new Error(`template archive smoke call failed: ${JSON.stringify(plannedArchive.content)}`);
+  }
+  const audit = await client.callTool({
+    name: "figure_library_audit",
+    arguments: { scope: "all", includeArchived: true },
+  });
+  if (
+    audit.isError ||
+    audit.structuredContent?.userTemplateCount !== 3 ||
+    !audit.structuredContent?.templates?.some(
+      (item) => item.templateId === plannedTemplateId && item.reviewStatus === "archived",
+    )
+  ) {
+    throw new Error(`user-library audit smoke call failed: ${JSON.stringify(audit.content)}`);
   }
 
   const resource = await client.readResource({
@@ -295,7 +367,7 @@ try {
   }
 
   console.log(
-    `OK: ${names.join(", ")}; Agent review preview; import/diff/upsert/sync/archive tools; user search/materialization; app resource; hard stop${materialized}`,
+    `OK: ${names.join(", ")}; Agent review preview; legacy import plus plan/apply/archive/audit lifecycle; diff/upsert/sync; user search/materialization; app resource; hard stop${materialized}`,
   );
 } finally {
   await client.close().catch(() => undefined);

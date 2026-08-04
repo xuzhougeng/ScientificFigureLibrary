@@ -13,8 +13,25 @@ figure reference.
    query.
 2. When the user wants to add their own reference:
    - Inspect the attached figure and/or code first.
-   - Call `figure_library_import` with host-local file paths and compact
-     metadata. Import at least one figure/reference or code file.
+   - For a direct image/code import, call `figure_library_plan_import` with
+     host-local file paths and compact metadata. Import at least one
+     figure/reference or code file. Use a portable, non-secret `sourceKey` when
+     the logical entry should support later updates; never use an absolute path,
+     URL query, token, email, or patient identifier.
+   - Present the normalized title, action, review status, license, proposed or
+     existing template ID, identity mode, and every duplicate/source match to
+     the user. The plan writes nothing. Do not treat a `planDigest` as user
+     authorization.
+   - Call `figure_library_apply_import` only after the user approves that exact
+     plan. Send the same fields and files plus the returned `planDigest`, exact
+     expected action/template ID, and a stable operation ID. If the plan is
+     stale, plan again and ask again; do not silently adapt the confirmation.
+   - A duplicate candidate requires an explicit `reuse` or `create_separate`
+     decision and reason. A source conflict requires explicit `replace_source`
+     approval and reason. Never change a title or source key merely to bypass a
+     conflict.
+   - `figure_library_import` direct-write mode exists only for v0.2 client
+     compatibility. Do not use it for a new Agent-managed direct import.
    - For a CiteBox or other Figure Transfer Package, pass only `packagePath`.
      A valid package is imported as a Draft visual reference; preserve its
      caption, DOI, page, URL, source IDs, and rights. Do not describe it as an
@@ -33,6 +50,23 @@ figure reference.
    - Use `figure_library_archive` for removal from normal search. It is a
      logical archive; do not hard-delete the Gallery source or User Library
      snapshot.
+   - Prefer the `management.templateId` returned by search/describe. For a
+     Gallery entry, change authoritative `figure.yml` status before sync;
+     otherwise a later sync can restore the approved snapshot.
+   - Before consolidating legacy or duplicate templates, call
+     `figure_library_audit`. Present invalid/integrity findings, the complete
+     component-evidence graph, and the recommended canonical ID as a
+     recommendation only. Equal preview or similar title is never automatic
+     merge permission.
+   - Reconcile requires: verified full-library backup → audit → exact human
+     canonical choice → `figure_library_reconcile` dry-run → approval of the
+     same reconcile ID, IDs, manifest hashes, file-set digests, and reason →
+     apply. Never delete a lock, transaction, template directory, or ledger.
+     Roll back only through the recorded reconcile ID and only if post-state
+     hashes still match. For an interrupted journal, first verify that the lock
+     owner is dead and inspect the journal; only then deliberately clear that
+     stale lock and use rollback with the exact recorded IDs. Do not hand-edit
+     template manifests or migration ledgers.
 4. Inspect the user's plotting request before searching:
    - For an image, **first call the host's `view_image` tool**. Describe the
      chart family, panels, axes, encodings, labels, and notable visual style
