@@ -33,6 +33,7 @@ test("FigureYa source retrieves common plot families", async () => {
       `${query} ranked the wrong family first: ${results.map((item) => item.templateId).join(", ")}`,
     );
     assert.ok(results.every((result) => result.sourceId === "figureya"));
+    assert.ok(results.every((result) => result.management.canArchive === false));
   }
 });
 
@@ -197,7 +198,9 @@ test("user figures and code import, search, and materialize without executing", 
       codePaths: [codePath],
     });
     assert.equal(imported.existed, false);
-    assert.match(imported.template.templateId, /^user-custom-single-cell-ridge-plot-/u);
+    assert.match(imported.template.templateId, /^user-direct-[a-f0-9]{16}$/u);
+    assert.equal(imported.template.registry?.adapter, "direct");
+    assert.equal(imported.template.registry?.identityMode, "content-addressed");
     assert.equal(imported.template.assetKind, "plot_template");
     assert.equal(imported.template.language, "R");
 
@@ -220,6 +223,8 @@ test("user figures and code import, search, and materialize without executing", 
 
     const results = await library.search({ query: "single cell ridge plot", limit: 3 });
     assert.equal(results[0]?.templateId, imported.template.templateId);
+    assert.equal(results[0]?.management.adapter, "direct");
+    assert.equal(results[0]?.management.canArchive, true);
     assert.match(results[0]?.previewDataUrl ?? "", /^data:image\/png;base64,/u);
     const preview = await library.preview(imported.template.templateId);
     assert.equal(preview?.mimeType, "image/png");

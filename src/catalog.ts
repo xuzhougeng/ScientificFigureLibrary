@@ -601,6 +601,11 @@ export class CatalogIndex {
           license: "CC BY-NC-SA 4.0",
           sourceUrl: module.sourceUrl,
           reportUrl: module.reportUrl,
+          management: {
+            templateId: module.moduleId,
+            canArchive: false,
+            canUpdate: false,
+          },
         };
       });
   }
