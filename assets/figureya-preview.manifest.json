@@ -1,0 +1,2220 @@
+{
+  "schema": "figure-library.figureya-preview-manifest.v1",
+  "providerId": "org.figureya.module",
+  "sourceRepository": "https://github.com/ying-ge/FigureYa",
+  "sourceCommit": "f627917b79f28558779fb2e3ea2014cede41b89e",
+  "previews": [
+    {
+      "moduleId": "FigureYa101PCA",
+      "file": "thumbs/FigureYa101PCA.webp",
+      "bytes": 7348,
+      "sha256": "dad30d628fa7f5117c4c75c4f88c2cb04fa4739d3256e7045e2f17782425f6e1",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa102multipanelROC",
+      "file": "thumbs/FigureYa102multipanelROC.webp",
+      "bytes": 9332,
+      "sha256": "5ee099e0aebdd67636d4e5b58e8e29f6dcb308f3194150e40d3ea919d2fa2f36",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa103coAbundant",
+      "file": "thumbs/FigureYa103coAbundant.webp",
+      "bytes": 9422,
+      "sha256": "22545ffc2f214c9e71cd82538a9fdcd5024c7edbf2dccb3db3d594f2ccf4ea10",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa105GDSC",
+      "file": "thumbs/FigureYa105GDSC.webp",
+      "bytes": 11914,
+      "sha256": "7e67dae92a9f7c193f19a3cd9220ce259ed1283e1ebc5b4a42a1b0f6a561761d",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa106immunotherapy",
+      "file": "thumbs/FigureYa106immunotherapy.webp",
+      "bytes": 5486,
+      "sha256": "6cb551ad792afb8385c43db35f2aebb3acafcf49f2789d21b941ec55ea261ab3",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa109SubtypeGSEA_update",
+      "file": "thumbs/FigureYa109SubtypeGSEA_update.webp",
+      "bytes": 10246,
+      "sha256": "eb42487212a72ebb7ee3be1ab9966338243f90764b99f979f8c915eac0b6d552",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa10chromosomeV2_update",
+      "file": "thumbs/FigureYa10chromosomeV2_update.webp",
+      "bytes": 14234,
+      "sha256": "9476c8c82ec377f0dfdfd866b0c0fd9baa5e1319f86a66a1f89440c8c5a531b2",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa110mutationSignature",
+      "file": "thumbs/FigureYa110mutationSignature.webp",
+      "bytes": 5622,
+      "sha256": "78d0f7e8886cc194c020bd44acfabad08aa1588d4aeeeb839df423445308b11e",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa112Plus_venn",
+      "file": "thumbs/FigureYa112Plus_venn.webp",
+      "bytes": 11080,
+      "sha256": "2bf98213e2fde4632ae28a14c26b2577d84d84e8ff2bd23606189f82bdebd8a8",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa112venn",
+      "file": "thumbs/FigureYa112venn.webp",
+      "bytes": 8128,
+      "sha256": "e079f75b5253bc0ef9c05097c3e704a64bf6282a99a989f2b759e3ca4ed8d4ee",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa113MutSigCV",
+      "file": "thumbs/FigureYa113MutSigCV.webp",
+      "bytes": 8010,
+      "sha256": "8f96f05dbf4434fe185a83ceb28a6fb007947ab3ee0ade55d6ba7dcf59f99dfe",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa114ternaryCluster",
+      "file": "thumbs/FigureYa114ternaryCluster.webp",
+      "bytes": 13000,
+      "sha256": "9001d43797270249f57d6effc7e43f442a82981c9aaf552ecd33184557c9f048",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa115cofactor",
+      "file": "thumbs/FigureYa115cofactor.webp",
+      "bytes": 18192,
+      "sha256": "205d2412b3dbbff105606ef88e4f5f59fcfd430a3522d7eb854882d683c322a1",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa116supervisedCluster",
+      "file": "thumbs/FigureYa116supervisedCluster.webp",
+      "bytes": 5828,
+      "sha256": "512dcf690ba578e09d8fdd6df08b4a87c37027d27ba6c664ebdd44383bf21c1c",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa117multilinearDE",
+      "file": "thumbs/FigureYa117multilinearDE.webp",
+      "bytes": 15578,
+      "sha256": "9fca9bd0191715e7190a863206911c74398bae957698f2fea3eac1d87629b455",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa118MulticlassDESeq2",
+      "file": "thumbs/FigureYa118MulticlassDESeq2.webp",
+      "bytes": 7932,
+      "sha256": "141215338e0b3cfea1d0d88f22eca3df90c602a61ff2f604938b5d326119e905",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa119Multiclasslimma",
+      "file": "thumbs/FigureYa119Multiclasslimma.webp",
+      "bytes": 7648,
+      "sha256": "2a249aade281971356dcc1f9fbd65983a1e61883fb9f9788998000b60d5ac037",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa11bubble",
+      "file": "thumbs/FigureYa11bubble.webp",
+      "bytes": 7514,
+      "sha256": "6d96273d9161aeef1ad9cea0d7041c347d02b551390c3e268d6b6c19d04330b3",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa120MulticlassedgeR",
+      "file": "thumbs/FigureYa120MulticlassedgeR.webp",
+      "bytes": 8126,
+      "sha256": "bb5ddbfd2d1683d2d1185fcd75d23640510f9723a706ee4b4e111be4a2a0df6a",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa121MethCGIcluster",
+      "file": "thumbs/FigureYa121MethCGIcluster.webp",
+      "bytes": 37444,
+      "sha256": "d37e362cc80eebdcfee3863f7f3554aef678cac01baeb2df05cdb3cc85fe7e50",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa122mut2expr",
+      "file": "thumbs/FigureYa122mut2expr.webp",
+      "bytes": 4710,
+      "sha256": "bb13d8534b472a0dbc421fc6a679816c40aef1799dc780673a8c5367cfa89e9f",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa123mutVSexpr",
+      "file": "thumbs/FigureYa123mutVSexpr.webp",
+      "bytes": 7942,
+      "sha256": "c5f0d49728c01ba2e7078f3c93f6ba911c8ad65e9431eca4b786ed17d7f2dfc1",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa124AssociationHeatmap",
+      "file": "thumbs/FigureYa124AssociationHeatmap.webp",
+      "bytes": 7450,
+      "sha256": "03f279774af4f3aebc14288100015df04cdeb019c413a452bb809c8916006a4c",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa125FishertestV2",
+      "file": "thumbs/FigureYa125FishertestV2.webp",
+      "bytes": 9344,
+      "sha256": "322905771fa89e79d3458e7d7101b3c306417e9b1b4e89d3bca2088e5907fa6c",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa126CorrelationHeatmap",
+      "file": "thumbs/FigureYa126CorrelationHeatmap.webp",
+      "bytes": 30192,
+      "sha256": "46b913f96fa23fe4ddabe644202ac796ffa146c68d2fbd2aa4e8bd97958b3bf5",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa127HeatmapPie",
+      "file": "thumbs/FigureYa127HeatmapPie.webp",
+      "bytes": 12674,
+      "sha256": "370799b12c8911ad2de75a7a382eda8a91889b553051c2439b3f9f6211db4c0f",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa128Prognostic",
+      "file": "thumbs/FigureYa128Prognostic.webp",
+      "bytes": 4264,
+      "sha256": "c7c844bb5833ed0e1d547d25ad5834c85204a8468576c4996e30af713bfc5a0e",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa129TCGAbox",
+      "file": "thumbs/FigureYa129TCGAbox.webp",
+      "bytes": 10914,
+      "sha256": "aa3140f1190dbc2d6b762f7c1d4c2c9ab9454a406b013352fb76e1cf2ffef74b",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa12box",
+      "file": "thumbs/FigureYa12box.webp",
+      "bytes": 9302,
+      "sha256": "0792b7daa7c334c5a27d5e567afb54c9257e5fc89d61724519308e2702d5f5b8",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa131CMap_update",
+      "file": "thumbs/FigureYa131CMap_update.webp",
+      "bytes": 20898,
+      "sha256": "e12b4281eaf6eb87d3c37c22ded88494954651d74190de4bb02ec647c1a04ff4",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa132alteration",
+      "file": "thumbs/FigureYa132alteration.webp",
+      "bytes": 25202,
+      "sha256": "82009ea186f54a391ec0a9ad11c51eb2b36dc12a187acacbee527a9646bfa3e1",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa133m6Apeak_update",
+      "file": "thumbs/FigureYa133m6Apeak_update.webp",
+      "bytes": 5998,
+      "sha256": "efb1191969edf849dccf78ca139ed6428589d897e19502a62f54cb20ed7e303a",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa135multiVolcano",
+      "file": "thumbs/FigureYa135multiVolcano.webp",
+      "bytes": 11358,
+      "sha256": "ef886aa1936ae2e156826cef54336ba76ca9809120dc26485826dce2f6fe2969",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa136fgsea",
+      "file": "thumbs/FigureYa136fgsea.webp",
+      "bytes": 12510,
+      "sha256": "e48e9f12ff039a1a298699482026590c80065184c7193b1439f960ae034369dd",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa138NiceCalibration",
+      "file": "thumbs/FigureYa138NiceCalibration.webp",
+      "bytes": 8590,
+      "sha256": "a73f4564d0c8e2dd0c3c143af29335a7bf148550448a2cc68deaba2b0e426c2c",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa139TMB_titv",
+      "file": "thumbs/FigureYa139TMB_titv.webp",
+      "bytes": 11530,
+      "sha256": "4abeb57a51cdb75285c1e77feca503739ddde134dda8188eb81f949324f145b7",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa13GSEA_Java_update",
+      "file": "thumbs/FigureYa13GSEA_Java_update.webp",
+      "bytes": 11720,
+      "sha256": "64f85598ed69d890884e025a6dd874a3763e0c9cfa088d9c0cd27af320cf1182",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa140mosaicpie",
+      "file": "thumbs/FigureYa140mosaicpie.webp",
+      "bytes": 22306,
+      "sha256": "1cc60728510a74ea84678da54efb6a98bad9b3799254828c556e2b3250b6e9ce",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa141risk",
+      "file": "thumbs/FigureYa141risk.webp",
+      "bytes": 12866,
+      "sha256": "a1f2d37f2806102930e60dafcf184b74cad09ee916fc11a9fa83573ef97344b9",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa142circosBar",
+      "file": "thumbs/FigureYa142circosBar.webp",
+      "bytes": 21850,
+      "sha256": "d27e43646ba6bed076521a2d5456d2890eb4a0b2a4cf0c243481df042eaf5b5e",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa143survCor_update",
+      "file": "thumbs/FigureYa143survCor_update.webp",
+      "bytes": 15426,
+      "sha256": "ba6683f932504b35d8634327ed2642c530233df4b17b375d47cbdfe1ab2cb4d9",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa144DiagHeatmap",
+      "file": "thumbs/FigureYa144DiagHeatmap.webp",
+      "bytes": 36556,
+      "sha256": "d0372e857e3eb1e3f4ed014df54dfea09e82e284100c94437ed413ca09496031",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa145target",
+      "file": "thumbs/FigureYa145target.webp",
+      "bytes": 12956,
+      "sha256": "4e0f76ec81b5b475ebae363f82c053d13d78829f99f4a06d8646eae389443945",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa146TMEbox",
+      "file": "thumbs/FigureYa146TMEbox.webp",
+      "bytes": 5986,
+      "sha256": "9b8dd5ee9d0e8ede2e024df1683cc5c401fac9d83d46bdf6e4001117d0318f79",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa147Plus_STRING",
+      "file": "thumbs/FigureYa147Plus_STRING.webp",
+      "bytes": 17412,
+      "sha256": "2a7ab4a511a25c6ba463f74b0f82fc74405c14506fba53e8115bdeedd49263fa",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa147interaction",
+      "file": "thumbs/FigureYa147interaction.webp",
+      "bytes": 14348,
+      "sha256": "2782af7eff24f1300592f6d46e291d2cb8f4115868e39ec3c51b39729feb3758",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa148SimpleDendrogram",
+      "file": "thumbs/FigureYa148SimpleDendrogram.webp",
+      "bytes": 7534,
+      "sha256": "074f28fafc9b0265f2ee3dc7cee46c02c32f841fe94f6dad2dd4488aa9200995",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa149rankHeatmap",
+      "file": "thumbs/FigureYa149rankHeatmap.webp",
+      "bytes": 19890,
+      "sha256": "ea4db81864f6801ba24729b4ac58a47a9b635fd495c1a3d6baf2475166d24d25",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa14circos",
+      "file": "thumbs/FigureYa14circos.webp",
+      "bytes": 19218,
+      "sha256": "f36e3bac462396a1cea0e38e92775ea48f9833b469fe103a0c6d5ba7e03209d0",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa150diversityScore",
+      "file": "thumbs/FigureYa150diversityScore.webp",
+      "bytes": 4970,
+      "sha256": "8e2fe66d0714dd671039e8c5d6881abef459e2de11a4e161eac35713f9c50368",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa151pathifier",
+      "file": "thumbs/FigureYa151pathifier.webp",
+      "bytes": 6434,
+      "sha256": "668136b5521067e84e712b5ddff516752669f893bff324cf6c5cdf7c2d37cd14",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa152DouleCorPlot",
+      "file": "thumbs/FigureYa152DouleCorPlot.webp",
+      "bytes": 22052,
+      "sha256": "f483a9c4163504453209310d30680352b17cbfe09d03c74603d3fa159db46f3a",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa153ccgraph",
+      "file": "thumbs/FigureYa153ccgraph.webp",
+      "bytes": 21020,
+      "sha256": "655a7549e973b61265418a0629949632145132020c0b804e6ed727abed713487",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa154immuneSubtypes",
+      "file": "thumbs/FigureYa154immuneSubtypes.webp",
+      "bytes": 5194,
+      "sha256": "88cc33ad6819a7b7ac13f55028de1a261a00e119d305daa16d725ca18946493b",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa155ATAC",
+      "file": "thumbs/FigureYa155ATAC.webp",
+      "bytes": 4948,
+      "sha256": "3b1937e5cbc9b485a54b642cf058fb4b4e5eeb91d0d7d07045b73333d6f373da",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa156enrichSimulation",
+      "file": "thumbs/FigureYa156enrichSimulation.webp",
+      "bytes": 4296,
+      "sha256": "9cbaeb8b5a385213e7eac6236f513f403518aa1d739f9d8f6cc26a3f45ecda48",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa157ChIPpvalue",
+      "file": "thumbs/FigureYa157ChIPpvalue.webp",
+      "bytes": 6810,
+      "sha256": "c0dd81d1f919d449d3a6107217d7fa81fab3d18900fceb46c122f035494843d4",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa158MutationPattern",
+      "file": "thumbs/FigureYa158MutationPattern.webp",
+      "bytes": 17736,
+      "sha256": "c1ab146ca0f38595edfdeb7a65cb3f2d501eecfc055b523638e5ed064d9e23ad",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa159LR_RF_V2",
+      "file": "thumbs/FigureYa159LR_RF_V2.webp",
+      "bytes": 4720,
+      "sha256": "f6b45c2dac6df13c0b404202401e518b9d7381123a6d1e0b3a866f9d9c82aa47",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa15WGCNA",
+      "file": "thumbs/FigureYa15WGCNA.webp",
+      "bytes": 9200,
+      "sha256": "d758c83c290135e973e01653cd54d803f5418de9ea1c3d9f4ec3643e47d42a0d",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa160scGSVA",
+      "file": "thumbs/FigureYa160scGSVA.webp",
+      "bytes": 5886,
+      "sha256": "a642e496a9fe870e78c1e94caba310fe7cdd48d78433a56ecaff36e3508ad36f",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa161stemness",
+      "file": "thumbs/FigureYa161stemness.webp",
+      "bytes": 7162,
+      "sha256": "9e5a948faab5814aa52364d0ba0cbe6b2a3c14b70938b447a4d8856baadc9fd7",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa162boxViolin",
+      "file": "thumbs/FigureYa162boxViolin.webp",
+      "bytes": 13124,
+      "sha256": "66104c2e583f1fd80c9cd5abcd2d9ae4132a693cc8b1a4aefaf800cbaff6540c",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa163twoVarCor_update",
+      "file": "thumbs/FigureYa163twoVarCor_update.webp",
+      "bytes": 16172,
+      "sha256": "26860ddb72e52acaa806ea7b71a0ec9f878d4c38dbe3a022d0905cb261a37c4f",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa164PCA3D",
+      "file": "thumbs/FigureYa164PCA3D.webp",
+      "bytes": 13016,
+      "sha256": "52fdd3b2001a4ac19bef80b04838a599e0a4d886de60ae68fad4127f292c7bda",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa165heatmapPvalue",
+      "file": "thumbs/FigureYa165heatmapPvalue.webp",
+      "bytes": 11416,
+      "sha256": "a822ffd81c12225baa1481b0d0ed82bc8935f779faeff6333851499d5df15446",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa166scCNV",
+      "file": "thumbs/FigureYa166scCNV.webp",
+      "bytes": 24754,
+      "sha256": "51f1f0693da7d4766a56e5cb738bc102cc92642a80ccbfee9af3bc6fdeb4dc74",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa167TumorIndex",
+      "file": "thumbs/FigureYa167TumorIndex.webp",
+      "bytes": 3256,
+      "sha256": "e4326c13ade04a1d530ea6c32947d088a01ee8fc01f789aafab83d465f35bc41",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa168legoplot",
+      "file": "thumbs/FigureYa168legoplot.webp",
+      "bytes": 7702,
+      "sha256": "9b7d149050f92d2b1e4a40ad224440b9365a0f88028308e60f782cc0ae168c50",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa169sigHeatmap",
+      "file": "thumbs/FigureYa169sigHeatmap.webp",
+      "bytes": 19654,
+      "sha256": "ab663c574c5dee448d288740a8091ac3a318cb8001af93956fe50b7334308242",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa16fitting",
+      "file": "thumbs/FigureYa16fitting.webp",
+      "bytes": 12760,
+      "sha256": "f72c3a6a3133579a1380a243b9f956e9d30333f7df76bb210ce51db35a3a4f85",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa170ImmuLncRNA",
+      "file": "thumbs/FigureYa170ImmuLncRNA.webp",
+      "bytes": 8380,
+      "sha256": "e69ebbb6df5c943768f5a5b910743fbf5ea1bc0d453e3de8aee8bd29ee667a42",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa171subgroupSurv",
+      "file": "thumbs/FigureYa171subgroupSurv.webp",
+      "bytes": 6804,
+      "sha256": "37ab4a11bba64b037719c77fc45ec778887bf7bcb4c0b9ba9001461f14dc8a7b",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa172ggplot2Gviz",
+      "file": "thumbs/FigureYa172ggplot2Gviz.webp",
+      "bytes": 6940,
+      "sha256": "078809ffab4a6d3cac5b2452b517571d052c027eda043093a10812628740de41",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa173fancybar",
+      "file": "thumbs/FigureYa173fancybar.webp",
+      "bytes": 7344,
+      "sha256": "6c439b2a25ba21cefc35d9e085bc5b80ed2f7d8d9ae3fc80b4d234b8dadaceac",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa174squareCross",
+      "file": "thumbs/FigureYa174squareCross.webp",
+      "bytes": 19540,
+      "sha256": "65fb0aa27ae293aa963d3500e8992af271876ceaf28de1f0445c8d83114cf4f3",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa175quadrant",
+      "file": "thumbs/FigureYa175quadrant.webp",
+      "bytes": 13602,
+      "sha256": "765326a03bbeaec6ce80f62ec40a58f5777e0457bfe4428cad085330b4d68130",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa176BlandAltman",
+      "file": "thumbs/FigureYa176BlandAltman.webp",
+      "bytes": 9482,
+      "sha256": "4dfda38fac1a2d7749754937da9a4407f7ab40866e68ea279c029eb402f8d567",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa177RNAvelocity",
+      "file": "thumbs/FigureYa177RNAvelocity.webp",
+      "bytes": 14170,
+      "sha256": "8ae97f856d960b5603d9c6ecb05db9b9f756b6fc52d5853c36c968587acdc043",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa178receptorLigand",
+      "file": "thumbs/FigureYa178receptorLigand.webp",
+      "bytes": 8706,
+      "sha256": "49f9d3b51ab9e9bacfd3ab4b07953b96c55c25cee402aa9ea813d6b942563eb7",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa179AMDAplot",
+      "file": "thumbs/FigureYa179AMDAplot.webp",
+      "bytes": 16150,
+      "sha256": "d1619705826e08e3a548348b2d02d7ee55ce59b65f7145341ce6d36077d2c355",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa17WGCNA_heatmap",
+      "file": "thumbs/FigureYa17WGCNA_heatmap.webp",
+      "bytes": 13902,
+      "sha256": "b32ed912f46de4a6826a5da7eae27f47ae11f2debcb10e9844eab077908b4f16",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa180FGAplotV2",
+      "file": "thumbs/FigureYa180FGAplotV2.webp",
+      "bytes": 7026,
+      "sha256": "fdb6ac49125facab08f772be0251779f7b1e52ed61ab5295811c0b1b51530338",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa181multiCorrelation",
+      "file": "thumbs/FigureYa181multiCorrelation.webp",
+      "bytes": 5548,
+      "sha256": "df00d478e90537fded1155b278a61e06383c56177719c366de9c2bc333641a87",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa182RFSurvV2",
+      "file": "thumbs/FigureYa182RFSurvV2.webp",
+      "bytes": 8160,
+      "sha256": "30c09caab018af769a99d50a2bcf91c2c99d27d58e4ad7bf61dfc675c09d591e",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa183condSurv",
+      "file": "thumbs/FigureYa183condSurv.webp",
+      "bytes": 5914,
+      "sha256": "8bff3bddcfd22c91edd29f9eb33576cbb425fd12225e86f7ca98d5d34d6f900e",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa184ranger",
+      "file": "thumbs/FigureYa184ranger.webp",
+      "bytes": 6850,
+      "sha256": "28276f62b6655901aa37549633bc2e07267e46d7a09164f531d0df0dd1324bcd",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa185sciATAC",
+      "file": "thumbs/FigureYa185sciATAC.webp",
+      "bytes": 6218,
+      "sha256": "5ccc905a334de15b2b668aa3bc571641a20d1a6e0784a47a397cfbf349f2e349",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa186swimmerplot",
+      "file": "thumbs/FigureYa186swimmerplot.webp",
+      "bytes": 5440,
+      "sha256": "5ee8d337699d9fcdddfeba2189c194a2387a2457d2a0d6be470e0f9779a89825",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa187RMS",
+      "file": "thumbs/FigureYa187RMS.webp",
+      "bytes": 9032,
+      "sha256": "65e4a766ce3dd17566c70848f3df71628c53045b1d635484fc75b848a4d0df39",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa188CNVload",
+      "file": "thumbs/FigureYa188CNVload.webp",
+      "bytes": 9348,
+      "sha256": "ba5a536fcb597dbe676d5a1205809056268175a865040f4f3b3aa31967fd253a",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa189timeCindex",
+      "file": "thumbs/FigureYa189timeCindex.webp",
+      "bytes": 6558,
+      "sha256": "409eca8a6058a5d0e0fc4abd6da4a8461706d6d3ea244cbb6bda117a5bae6c09",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa18oncoplot_update",
+      "file": "thumbs/FigureYa18oncoplot_update.webp",
+      "bytes": 12020,
+      "sha256": "5a333f1716bac6ed2a0bb8c647106de9b073b76ed51817944717c62d86beb6a2",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa190batchLogistic",
+      "file": "thumbs/FigureYa190batchLogistic.webp",
+      "bytes": 18698,
+      "sha256": "28bfabe6c16bc87b2ed685e7b02d26e7bb320d8931c3aec725a9cb50b0372c82",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa191bestLogistic",
+      "file": "thumbs/FigureYa191bestLogistic.webp",
+      "bytes": 4368,
+      "sha256": "265c068607d71c3b77e071671e5649b189d2b6ca1c45ac4a26583ab2de67be65",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa192breakpoint",
+      "file": "thumbs/FigureYa192breakpoint.webp",
+      "bytes": 6264,
+      "sha256": "660b3b458c3252ee116807bd66c9577936856dcf26745505390eee6dbad1157a",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa193RiskTable",
+      "file": "thumbs/FigureYa193RiskTable.webp",
+      "bytes": 15246,
+      "sha256": "b470f094a6bea44342e8c7fd1c0aa47cd1b653f20e66bcaeb331cc1dfe24804e",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa194pySCENIC",
+      "file": "thumbs/FigureYa194pySCENIC.webp",
+      "bytes": 12236,
+      "sha256": "658063af662231aa05f2919b47ee23ba3a309c7d3c283e03272b9fa13d0d05e3",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa195PanPaire",
+      "file": "thumbs/FigureYa195PanPaire.webp",
+      "bytes": 10494,
+      "sha256": "1c16df9bf75dcaf4c61835fb3a7215bb908743bd73e6f4faea9e9d76ffe4d2b8",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa196PanPie",
+      "file": "thumbs/FigureYa196PanPie.webp",
+      "bytes": 9546,
+      "sha256": "315d566e918737285f7c07adb2a8725aab37d1858286fba94a6ee2e840c69185",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa196Plus_PanPie",
+      "file": "thumbs/FigureYa196Plus_PanPie.webp",
+      "bytes": 4040,
+      "sha256": "22e80b089f1d622df9335fa91b3f5147016e6c0a533e50147c824150df77f3a6",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa197SmoothHaz",
+      "file": "thumbs/FigureYa197SmoothHaz.webp",
+      "bytes": 8600,
+      "sha256": "ca5010726931eef60dbdeca05fcff892c9b83057a79a5139648acfcd55211f72",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa198SignatureCombinationV2",
+      "file": "thumbs/FigureYa198SignatureCombinationV2.webp",
+      "bytes": 7384,
+      "sha256": "c60dbe9f2b8eed59bfa39a9b7ec50ca8455b7d9d2e3b8ed4cfb8bed060faecc5",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa199crosslink",
+      "file": "thumbs/FigureYa199crosslink.webp",
+      "bytes": 22126,
+      "sha256": "f00bb2d7698dc0d635c19cc7285fa0c82c32d7daa9fe2905fcee3c2223258d28",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa19Lollipop",
+      "file": "thumbs/FigureYa19Lollipop.webp",
+      "bytes": 4894,
+      "sha256": "bdab0f58fb898fad5c02249d50a95b6a22a01a8b2c5ec21bb4e2db47012afdd1",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa1survivalCurve_update",
+      "file": "thumbs/FigureYa1survivalCurve_update.webp",
+      "bytes": 7126,
+      "sha256": "4f5b1a1a36bc59db22968c1efef294508e12bacb5c56ad71ce22815fabcf280f",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa200pairwiseAUC",
+      "file": "thumbs/FigureYa200pairwiseAUC.webp",
+      "bytes": 8478,
+      "sha256": "fe1c24f4e13b6e4f1fdd372592450b64000cf09585bae9f0efe2aaad6c60c742",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa201ClusterCorrelation",
+      "file": "thumbs/FigureYa201ClusterCorrelation.webp",
+      "bytes": 16562,
+      "sha256": "6ab3ba6ca24badbfaefd9fc10d9ef6b8181ab2d99344f74b7968167a10cc6743",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa202consensusGene",
+      "file": "thumbs/FigureYa202consensusGene.webp",
+      "bytes": 8332,
+      "sha256": "6657b6c22bcc8ae6ba51e1b235a2d3f38344a50b555030dee1521227e078e12a",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa203ComBat",
+      "file": "thumbs/FigureYa203ComBat.webp",
+      "bytes": 17012,
+      "sha256": "e62fb1c088f12e978f0e062561dd48b1a20f2bab003f596fabc6d24ea8c5a674",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa204PCAscore",
+      "file": "thumbs/FigureYa204PCAscore.webp",
+      "bytes": 14114,
+      "sha256": "6c83211ecc814f29de7604a38c5bcedde13b2b641450cd9e2c2d34324d2a1c8a",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa205immunophenoscore_update",
+      "file": "thumbs/FigureYa205immunophenoscore_update.webp",
+      "bytes": 12860,
+      "sha256": "d949b4ad4280f5cf681aecb58fc897be006aa0cc3127fc6c1867cf9026a89771",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa206scHeatmap",
+      "file": "thumbs/FigureYa206scHeatmap.webp",
+      "bytes": 11992,
+      "sha256": "8935609bbd1c42e2d4c27134b850daa9507ae41a62fa587c4a404f8a7c28e440",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa207Randomization",
+      "file": "thumbs/FigureYa207Randomization.webp",
+      "bytes": 7474,
+      "sha256": "2a0ed9d07081ebf53a770b164a45536bebaae6c9fe6be4163add160f112d6578",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa208FPI",
+      "file": "thumbs/FigureYa208FPI.webp",
+      "bytes": 14958,
+      "sha256": "107ccd06dd5b5a601f2826480acbf083822047ce46ffd20f7b18e4deb1560783",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa209batchEnrich",
+      "file": "thumbs/FigureYa209batchEnrich.webp",
+      "bytes": 10368,
+      "sha256": "c49081fa6fe888dabb937111fb914b2097476597f67e817809e211c2029952c8",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa20mortality",
+      "file": "thumbs/FigureYa20mortality.webp",
+      "bytes": 4472,
+      "sha256": "40acee2ba46e01d637bf4398307df74475a4a98d746baefa6aa4749e63f3a264",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa210survivalScape",
+      "file": "thumbs/FigureYa210survivalScape.webp",
+      "bytes": 12330,
+      "sha256": "d7dd50a801b9d0ea214a3542b7d6143035adaeeb7ea37203b5869b0e14177f3c",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa211multiCohortImmSubtype",
+      "file": "thumbs/FigureYa211multiCohortImmSubtype.webp",
+      "bytes": 11774,
+      "sha256": "995f61471ec915f6ec2d58e239eab5afbd58286490882779bdb0f32ca13489e3",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa212drugTargetV2",
+      "file": "thumbs/FigureYa212drugTargetV2.webp",
+      "bytes": 13366,
+      "sha256": "c0b3c4c6d02a4f9e818facfcf97c1df4bbf663e8e7999de0bc13b1d84ce2edb1",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa213customizeHeatmap",
+      "file": "thumbs/FigureYa213customizeHeatmap.webp",
+      "bytes": 8048,
+      "sha256": "b100ca0628c2fa5594e57414139f641aca399d3dc03ab77aaa0847f72eb820ec",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa214KEGG_hierarchyV2",
+      "file": "thumbs/FigureYa214KEGG_hierarchyV2.webp",
+      "bytes": 13204,
+      "sha256": "f401f243ad735153263ce97b3e16254371ea9b3cf532737be4aea2bac5d99e49",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa215DNAage",
+      "file": "thumbs/FigureYa215DNAage.webp",
+      "bytes": 8840,
+      "sha256": "a109d836cedbe6f314767c4ebf0ff16a686e45aa96ed80ebedb9d6103ac9cf4b",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa216MetaREM",
+      "file": "thumbs/FigureYa216MetaREM.webp",
+      "bytes": 7786,
+      "sha256": "37396e5b85ee526e44fb69cb052dbcd6d07a070c2b2e80f7a6200b72989b311c",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa217RMR",
+      "file": "thumbs/FigureYa217RMR.webp",
+      "bytes": 5926,
+      "sha256": "ca1f8c4c981da64c13342fe990880e01cf2fb8a0c188806e6ad0622d2723114a",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa218Elasticnet",
+      "file": "thumbs/FigureYa218Elasticnet.webp",
+      "bytes": 7898,
+      "sha256": "34cc42dd1d59f1eba82a4aaa943c6e70caff1cb99732858ac147d045f00a4a00",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa219GMM",
+      "file": "thumbs/FigureYa219GMM.webp",
+      "bytes": 17796,
+      "sha256": "df71af03f9b81d4551a8fef80159abe99a465f9c9ccc5f078254ff55aa8e5ae4",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa21TCGA2table",
+      "file": "thumbs/FigureYa21TCGA2table.webp",
+      "bytes": 7024,
+      "sha256": "60188ea929d8c9519cc67864ebc92dd471821bb0960159a8c6ae0b118b0c8a07",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa220repeatedLasso",
+      "file": "thumbs/FigureYa220repeatedLasso.webp",
+      "bytes": 4808,
+      "sha256": "2ca5588aff785faee19fcfbbacbe3001074d69ddfd89053310a45492079f6f63",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa221tenFoldRF",
+      "file": "thumbs/FigureYa221tenFoldRF.webp",
+      "bytes": 8318,
+      "sha256": "29c428ff699b26c1800e6248764a1a32b529c18a8677b99189bd35abcc03a4ff",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa222PCAgene",
+      "file": "thumbs/FigureYa222PCAgene.webp",
+      "bytes": 13714,
+      "sha256": "46151191220d18e2f24672085d1b5f6d11f4ba663d6c657a57b9551319ce5752",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa223scNMF",
+      "file": "thumbs/FigureYa223scNMF.webp",
+      "bytes": 13134,
+      "sha256": "db6410862100ae740e1479910a98b37ae9ee8399c393f83bc6e09d2612beb426",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa224scMarker",
+      "file": "thumbs/FigureYa224scMarker.webp",
+      "bytes": 9626,
+      "sha256": "c50007a002143ccbf850955995c89437b6965d6a954ed1e198a4cf5e16a97c19",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa225GiViTl",
+      "file": "thumbs/FigureYa225GiViTl.webp",
+      "bytes": 9646,
+      "sha256": "5a6c62a3d73082c563213ac16afbcdaf1b4f8f22585908c0d318376fbfb00a6d",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa227boxdensity",
+      "file": "thumbs/FigureYa227boxdensity.webp",
+      "bytes": 5130,
+      "sha256": "f5a3f72f9ca7b48af3376983829741370bb5e606b9b0159bf5695b07d96f33d1",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa228linkCor",
+      "file": "thumbs/FigureYa228linkCor.webp",
+      "bytes": 11442,
+      "sha256": "e0dc2e837b17ca3be51040c16df0086159191649f726061c8911829c9c6af89e",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa229PCOA",
+      "file": "thumbs/FigureYa229PCOA.webp",
+      "bytes": 8858,
+      "sha256": "c829e448932976d888f7b4c119214f7d14e1812828d7462717acf1978c922c97",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa22FPKM2TPM",
+      "file": "thumbs/FigureYa22FPKM2TPM.webp",
+      "bytes": 6126,
+      "sha256": "57656064bbe7a5545274843e9036683fb5f2be5a95e00c32bcbf3babb57cccd1",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa230immunelandscape",
+      "file": "thumbs/FigureYa230immunelandscape.webp",
+      "bytes": 12358,
+      "sha256": "21aa739b3621079c5de849c4e32d0cb0dc6508634e73ed8f67e699c1d0f64228",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa231scScore",
+      "file": "thumbs/FigureYa231scScore.webp",
+      "bytes": 9706,
+      "sha256": "245e6b6c27bd8722517f415ca72957028890aa19835a0fba8acf51f67bf9e887",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa232scRankHeatmap",
+      "file": "thumbs/FigureYa232scRankHeatmap.webp",
+      "bytes": 3412,
+      "sha256": "96cec65e21a319d34835536f7266193a9edad96ff4d7a5ddb63fce32e4af9c85",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa233genepair",
+      "file": "thumbs/FigureYa233genepair.webp",
+      "bytes": 17286,
+      "sha256": "a6b4fd76442ee79f25cbe836bb225f3c732d12a19e0d1251e8f91786c3fac989",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa234panImmune",
+      "file": "thumbs/FigureYa234panImmune.webp",
+      "bytes": 20438,
+      "sha256": "20f870633ea8d31c67ba78643963f748f4a7ed439ee134986ab2f54afad9009f",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa235scDEG",
+      "file": "thumbs/FigureYa235scDEG.webp",
+      "bytes": 13982,
+      "sha256": "52185025f0bec8731a553e609e8d22e17ce7e5cb1063f35feca284a0e9dfe198",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa236circGroup",
+      "file": "thumbs/FigureYa236circGroup.webp",
+      "bytes": 13570,
+      "sha256": "46e39e674d2ed4d021664e507cde16ac40ec84b5ab08d2b6a78fb517ad493783",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa237circVenn",
+      "file": "thumbs/FigureYa237circVenn.webp",
+      "bytes": 18736,
+      "sha256": "f801261c8514dc1c6fb9c309c9d3daf2e2e841e4616c5681916d0b8d64656b62",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa238corRiskMut",
+      "file": "thumbs/FigureYa238corRiskMut.webp",
+      "bytes": 13722,
+      "sha256": "c2152c88ab597d3fcb50dff1cced658c1ba8f83bf5816241674f1d7831006a65",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa239ST_PDAC",
+      "file": "thumbs/FigureYa239ST_PDAC.webp",
+      "bytes": 12048,
+      "sha256": "df54e06e2cbdfd877065d8015894d5a2420342a56fa831225f28b43cc6f33ddd",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa23count2TPM",
+      "file": "thumbs/FigureYa23count2TPM.webp",
+      "bytes": 10242,
+      "sha256": "803e56bf6e0e7bbc3dedbbeb8e480127fbf34da98da6fb6912355303066cad04",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa240CRISPR",
+      "file": "thumbs/FigureYa240CRISPR.webp",
+      "bytes": 16252,
+      "sha256": "c706002f3ad85491aa33167cd0ecacaa053bd51faad5a6b53fae2dd800fb94a8",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa241scRNA_NMI",
+      "file": "thumbs/FigureYa241scRNA_NMI.webp",
+      "bytes": 5294,
+      "sha256": "c0446f40e177a0668e37a16a549ea9096fb9ccbcca4aba35f87c8eb2b645ff18",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa242corMethExpr",
+      "file": "thumbs/FigureYa242corMethExpr.webp",
+      "bytes": 11964,
+      "sha256": "e65efc668ac1c82a4a3f981412bef1963296e0d135195d90a1e810c1f5ee030c",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa243scMarkerGroupHeatmap",
+      "file": "thumbs/FigureYa243scMarkerGroupHeatmap.webp",
+      "bytes": 15108,
+      "sha256": "e4d981864af8a23cdeb6ff76fec1a5973050326180c5997dc25997593965e863",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa244PCAPlot",
+      "file": "thumbs/FigureYa244PCAPlot.webp",
+      "bytes": 16592,
+      "sha256": "2bacc32a2ea4ac39aa88ff34f933dc7c62cf44e7e8c7098d27af51b1c9ac0b33",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa245Plus_VarDecompose",
+      "file": "thumbs/FigureYa245Plus_VarDecompose.webp",
+      "bytes": 13932,
+      "sha256": "eaea3a415bb10144440542e98f934f9dd464ccfcafc3bee96206ac8f3cb6ccaa",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa245VarDecompose_update",
+      "file": "thumbs/FigureYa245VarDecompose_update.webp",
+      "bytes": 19456,
+      "sha256": "48df435efea4d22db9733d7d325bf74caa24b998197221bc4432c421c583c4b1",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa246supervisedGDSC",
+      "file": "thumbs/FigureYa246supervisedGDSC.webp",
+      "bytes": 6022,
+      "sha256": "27f059e6ece6aad7c16fdcbaa3b6dc2aca47a9164494423f2f57771fde6a3415",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa247oncoPredict",
+      "file": "thumbs/FigureYa247oncoPredict.webp",
+      "bytes": 7908,
+      "sha256": "18ebeb453479fe3bc6d4b22be0ab911c08e15d24991ed5f8c9a6f5d34c5eb69a",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa248MutLandscape",
+      "file": "thumbs/FigureYa248MutLandscape.webp",
+      "bytes": 25476,
+      "sha256": "312b6e4daf9d8ba352ba6ce0cec15b3058cd216c37212d166903601a20f8808a",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa249Regulon",
+      "file": "thumbs/FigureYa249Regulon.webp",
+      "bytes": 15854,
+      "sha256": "3030118cf0d5fa3d0bca0d712152fe9dbbfea2e6e4bcb1c1f37922b384bb3312",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa24ROC",
+      "file": "thumbs/FigureYa24ROC.webp",
+      "bytes": 9408,
+      "sha256": "9a024913e4210ec7493f19ac8e4223ea601f77d561e5a56742f4a6db361a2019",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa250ImmGenePair",
+      "file": "thumbs/FigureYa250ImmGenePair.webp",
+      "bytes": 11172,
+      "sha256": "68bfeae1617f6deafac2197032a88c1c051825d3d8c97e2ebe1d87c34b5a4846",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa251NPHSurv",
+      "file": "thumbs/FigureYa251NPHSurv.webp",
+      "bytes": 8458,
+      "sha256": "698f6b45fa09cb552a835f565f31411b0fc9e27222002dc8b4fa13a360e1bec3",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa252mclust",
+      "file": "thumbs/FigureYa252mclust.webp",
+      "bytes": 15536,
+      "sha256": "f9cb1ce23c0587d5a0f01488b04da9676447f57de7ef1e80ac0376d8f29e7158",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa253panGSEA",
+      "file": "thumbs/FigureYa253panGSEA.webp",
+      "bytes": 30352,
+      "sha256": "c703455d8a280a9bff83804d28f8910c16f8abe5e8e4df660e499d55bae29b6c",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa254scViolin",
+      "file": "thumbs/FigureYa254scViolin.webp",
+      "bytes": 14100,
+      "sha256": "ff1df1b0e4985061362e480e337949520200422664c41a9a84602b020a79c751",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa255TIME",
+      "file": "thumbs/FigureYa255TIME.webp",
+      "bytes": 29268,
+      "sha256": "bd2777ad1222c27cceb5c2be973f15694ff9236e5c5d1eceb316c7b2b5bc58d9",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa256panelLink",
+      "file": "thumbs/FigureYa256panelLink.webp",
+      "bytes": 20188,
+      "sha256": "9d96c4e92f31e33ef1d7a443bcc1f887d1e2f64da8a815afbb9202cea0e8f04e",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa257armCNV",
+      "file": "thumbs/FigureYa257armCNV.webp",
+      "bytes": 5474,
+      "sha256": "3722078a667155399bc4e3a79c7fa4eef36d17bd9c45ba7d14973806eb571762",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa258SNF",
+      "file": "thumbs/FigureYa258SNF.webp",
+      "bytes": 20426,
+      "sha256": "7cc36564786e1c562dbb26e7a668bdb2a3afcb0fc58abbfd96650a9555027e23",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa259circLink",
+      "file": "thumbs/FigureYa259circLink.webp",
+      "bytes": 13514,
+      "sha256": "5e434166010ff218b65783d33d799631dd386ffa1edbb9c39205b36e464058b2",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa25Sankey_update",
+      "file": "thumbs/FigureYa25Sankey_update.webp",
+      "bytes": 19710,
+      "sha256": "5f223a24368fbf3a2d8314c633e2f2fa05ec12b49349abc045fa841b40a5d127",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa260CNV",
+      "file": "thumbs/FigureYa260CNV.webp",
+      "bytes": 11222,
+      "sha256": "c4056a03124ca1df84e85d6ca2c8173b0795f8a88c6abb7eeb79e0fb9df77de5",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa261circGene",
+      "file": "thumbs/FigureYa261circGene.webp",
+      "bytes": 19302,
+      "sha256": "6d3a9fb8e0b5874125e2e1a6fb9c4c4aff0481ebe2bfd10e36c68d9773c12382",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa262GDC",
+      "file": "thumbs/FigureYa262GDC.webp",
+      "bytes": 29646,
+      "sha256": "8879b4e61c0707a5fbc5a6323de4dbfe43f2a4bfd6529e2b807136719f9747dd",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa263panDiff",
+      "file": "thumbs/FigureYa263panDiff.webp",
+      "bytes": 18074,
+      "sha256": "6fc26249e07061d1a8c5ff1d5acf8f03f7b142d702cf8f84d09f6b1907b75322",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa264epiImmune",
+      "file": "thumbs/FigureYa264epiImmune.webp",
+      "bytes": 7294,
+      "sha256": "339871dd7f200ea2be3895473e6023a73aa8c4764f9f549301e07395e289eacd",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa265panCNV",
+      "file": "thumbs/FigureYa265panCNV.webp",
+      "bytes": 12690,
+      "sha256": "d80ea6abce7478534c9efc88d5f9611ac2ad482626d9cf7954f927af0da7ad78",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa266panHeatmap",
+      "file": "thumbs/FigureYa266panHeatmap.webp",
+      "bytes": 13212,
+      "sha256": "43f45be194a7f74cfdc41630546ddd37b08062da66c07e5eaa9d19cd0a46909f",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa267scCellChat",
+      "file": "thumbs/FigureYa267scCellChat.webp",
+      "bytes": 19434,
+      "sha256": "9f40a44692c9fd297c5879cc289204e7bf833976d27f26aa63f678a181bcad59",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa268panCNVexpr",
+      "file": "thumbs/FigureYa268panCNVexpr.webp",
+      "bytes": 18210,
+      "sha256": "4e5c3f97776e4868d2aec72c8adcbd488e26b136709e4159ff2e720f6b7486c4",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa269scMetabolism",
+      "file": "thumbs/FigureYa269scMetabolism.webp",
+      "bytes": 9538,
+      "sha256": "0b9ac750dc551214ab7bba606d22ae6a0b0e818daeae7a5893279283af73f2cd",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa26circos_R",
+      "file": "thumbs/FigureYa26circos_R.webp",
+      "bytes": 14664,
+      "sha256": "0b007dce88397ac7d186763a27a2e40915f25d8faf8e1feaefe1f19198771aab",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa270panMeth",
+      "file": "thumbs/FigureYa270panMeth.webp",
+      "bytes": 11692,
+      "sha256": "27990d0cd522cea1b5b5df1449ce9fc53af06bf60414a722d28bec1f668859dc",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa271panMethExpr",
+      "file": "thumbs/FigureYa271panMethExpr.webp",
+      "bytes": 13160,
+      "sha256": "82681c497caccb1bb8df7b87280735e54490757d090d07c4c1e2c6103650c2d9",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa272scBulkCCCI",
+      "file": "thumbs/FigureYa272scBulkCCCI.webp",
+      "bytes": 7634,
+      "sha256": "03f7b890c12c49070bb6d2d668f5fe0c626988a36f7f56b51c45ecb1447cd6fe",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa273BAPC",
+      "file": "thumbs/FigureYa273BAPC.webp",
+      "bytes": 7622,
+      "sha256": "412e660dfc109716b89b53ca63d7857f626c06b3ae269b71293a09e24521b25f",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa274MuSiCbulkProop",
+      "file": "thumbs/FigureYa274MuSiCbulkProop.webp",
+      "bytes": 10026,
+      "sha256": "191bfba6e067768e0f8a4a1f4e14ab1670655d953b5fe321a74bf414c824aced",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa275scAUCell",
+      "file": "thumbs/FigureYa275scAUCell.webp",
+      "bytes": 11096,
+      "sha256": "bb2ebaa2f2cc1d0db6327e30d3d55cc9a4f93e5beb3796853e44b85481c157b4",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa276panSNV",
+      "file": "thumbs/FigureYa276panSNV.webp",
+      "bytes": 11938,
+      "sha256": "f332abbaf512c14290c6967d15db2b422817acf2b325ab358e1e54ae5bf4a656",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa277Immunomodulator",
+      "file": "thumbs/FigureYa277Immunomodulator.webp",
+      "bytes": 13200,
+      "sha256": "5318f83b18ff0bf2a3966f91cdcf62cda93263a116affc8c8ce36365540f36c6",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa278heatmapPoints",
+      "file": "thumbs/FigureYa278heatmapPoints.webp",
+      "bytes": 6220,
+      "sha256": "b85c2f23c8ce286eff1452b08cf85610056ece4d5ecaca5fb927b3a5eeb9b775",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa279panGeneGSEA",
+      "file": "thumbs/FigureYa279panGeneGSEA.webp",
+      "bytes": 24234,
+      "sha256": "55f29a9d13e41b4b953bfbba563f8bd90f5891f5d2fbc8f86f1623c3305ee66c",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa27tSNE_update",
+      "file": "thumbs/FigureYa27tSNE_update.webp",
+      "bytes": 9310,
+      "sha256": "9b4d8314942775b6bffb01395def562417e03cc76d8df6afb15b0c40d048b94c",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa280TMEofSTS",
+      "file": "thumbs/FigureYa280TMEofSTS.webp",
+      "bytes": 17084,
+      "sha256": "6fb30a2e846ca1e80fd43786dcc0cfdb4374d1b0d3c70cf6fd835438a57df8a5",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa281wheel",
+      "file": "thumbs/FigureYa281wheel.webp",
+      "bytes": 9630,
+      "sha256": "c6c2ca01d8aa6c34badda44e4ef81a55be674e2395f0f39dbbdb9314c63d6a6e",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa282CMAP_XSum",
+      "file": "thumbs/FigureYa282CMAP_XSum.webp",
+      "bytes": 4016,
+      "sha256": "e4c5eea71028d9b1dab4780264710f2b7ebc1568269f27d57591101b73aefdea",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa283vennyPvalue",
+      "file": "thumbs/FigureYa283vennyPvalue.webp",
+      "bytes": 7028,
+      "sha256": "9ef063d2a27fd270531992864a0a1972191e760dcaa1129ea41dd89f79c1df00",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa284pairwiseLogrank",
+      "file": "thumbs/FigureYa284pairwiseLogrank.webp",
+      "bytes": 16784,
+      "sha256": "bcc743840115a6a4dc379e6bd142f04bb1ef9fef3acc0056017606cc6ede19e4",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa285scRNA_monocle",
+      "file": "thumbs/FigureYa285scRNA_monocle.webp",
+      "bytes": 12962,
+      "sha256": "70ae6996453cb1d93f1a6907b9e6794c3b51684071c1cd3a8eccdb230a5dcc89",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa286ExprCorORR",
+      "file": "thumbs/FigureYa286ExprCorORR.webp",
+      "bytes": 10636,
+      "sha256": "9eabf6cfbf76228cac30a596230236c3b815477cd794cccd3ab37f169f0fd121",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa287L2logV2",
+      "file": "thumbs/FigureYa287L2logV2.webp",
+      "bytes": 3366,
+      "sha256": "0690eeadc310d8739ce074c9c9eac9e29a77e43e058d80b00ff277360be79e63",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa288MutualExclusivity",
+      "file": "thumbs/FigureYa288MutualExclusivity.webp",
+      "bytes": 6912,
+      "sha256": "bc7929e701967a055610d6e6a3857777115c4372e2929694938f6c3c77d3d3be",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa289TILSig",
+      "file": "thumbs/FigureYa289TILSig.webp",
+      "bytes": 13608,
+      "sha256": "13212e89769ce375e89ac93fc3020d06117bf9f692bc41f16ef4772b1a5a49d7",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa28color",
+      "file": "thumbs/FigureYa28color.webp",
+      "bytes": 7892,
+      "sha256": "36bd611fa47c27a22954c168883f2f61f6537cae2e14019d2c7b5920e4820c4b",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa290BarGraph",
+      "file": "thumbs/FigureYa290BarGraph.webp",
+      "bytes": 6370,
+      "sha256": "44fcb7a0817f8d2e3fec9aed06f00f292561a725868d83270d9c1c8ca97e6597",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa291PancanProgSigatureV2",
+      "file": "thumbs/FigureYa291PancanProgSigatureV2.webp",
+      "bytes": 15822,
+      "sha256": "e18a841a40f96d5dcd35813fa654a0b9c5cd301b7f0ca39a76df86e7336ad8fa",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa292HCCsubtype",
+      "file": "thumbs/FigureYa292HCCsubtype.webp",
+      "bytes": 12004,
+      "sha256": "f196af99f0945b7d1d0fbb2ea218d8959e3d9c68c6c043d7e27f5dbc16e90830",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa293machineLearning",
+      "file": "thumbs/FigureYa293machineLearning.webp",
+      "bytes": 12396,
+      "sha256": "7dc7088fa597fd60dd79c4b2d8cc41c8e7135f5f793418a43b249ed64b790d47",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa294HCCdrug",
+      "file": "thumbs/FigureYa294HCCdrug.webp",
+      "bytes": 13174,
+      "sha256": "dbd82a76695ee1bca6ff173507a778fc7fcfcba6b067fe32d90a261d2a899f7b",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa295ClassDiscovery",
+      "file": "thumbs/FigureYa295ClassDiscovery.webp",
+      "bytes": 11476,
+      "sha256": "348eb847c4cad7770b2a70478494fa5d065d484a314f2d8378bb0b290c2509b2",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa296VIPER",
+      "file": "thumbs/FigureYa296VIPER.webp",
+      "bytes": 16630,
+      "sha256": "ee3445fe04febef24dc79ab271ccdc08a296df6d483a94275538e989598e49db",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa297Rbar",
+      "file": "thumbs/FigureYa297Rbar.webp",
+      "bytes": 6310,
+      "sha256": "2193623fc57ea6d864c630a5bc10dffad275fcecaf3d8ee5f33247e2aa53ff2d",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa298ecdfPvalue",
+      "file": "thumbs/FigureYa298ecdfPvalue.webp",
+      "bytes": 8384,
+      "sha256": "fc02421e3f01c62c1dbbcda483b5672713dcba20beda3c982e9b0aa67706e661",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa299pancanSurv",
+      "file": "thumbs/FigureYa299pancanSurv.webp",
+      "bytes": 22714,
+      "sha256": "bb704aba908b24a37d1d2cf9980847d5d71a59c6a4f3417c65a4e5fec14400f2",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa2ggtree+pheatmap+msa",
+      "file": "thumbs/FigureYa2ggtree+pheatmap+msa.webp",
+      "bytes": 16804,
+      "sha256": "ffd8ec4a15c74503248d09ac34f05037355770aa6ef488717edc1113a4929c07",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa300pancanCor",
+      "file": "thumbs/FigureYa300pancanCor.webp",
+      "bytes": 19990,
+      "sha256": "557fb324d634963b636a3e93c5cf8f038ef05286bca4ad2da734bc3770053dc9",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa301scCoExpr",
+      "file": "thumbs/FigureYa301scCoExpr.webp",
+      "bytes": 7810,
+      "sha256": "d576f643d3a465844a831239a4e3a1c379f368950494dc65f550223171b77779",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa302NTPPAM",
+      "file": "thumbs/FigureYa302NTPPAM.webp",
+      "bytes": 21710,
+      "sha256": "cdc75e3466c30b92d54da93abfa1274c4f91b4ecb5c2f020f538ca32496b60fc",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa303panCircos",
+      "file": "thumbs/FigureYa303panCircos.webp",
+      "bytes": 22238,
+      "sha256": "3b2cb247a0ac1c9ec4721a94d2a2ede63b13dbddd17d0b432161a1f974c50e58",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa304MAGIC",
+      "file": "thumbs/FigureYa304MAGIC.webp",
+      "bytes": 12118,
+      "sha256": "e5a1ff6aaeb958b5ecad30f4df1ea4ae6dacada588db1fc5650d08ae449844b8",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa305PMAPscore",
+      "file": "thumbs/FigureYa305PMAPscore.webp",
+      "bytes": 9636,
+      "sha256": "f20bb154a1631485e3393f6f6d6714b98a682e9d6bab8d917db05a0b79afc6f6",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa306slingshot",
+      "file": "thumbs/FigureYa306slingshot.webp",
+      "bytes": 6352,
+      "sha256": "22c14702e73ac3e6b393ff17306318502098283dadc31edcfa3527ce9d09337f",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa307CNVHeatmap",
+      "file": "thumbs/FigureYa307CNVHeatmap.webp",
+      "bytes": 33954,
+      "sha256": "fd0627e73de220111bfce02cd8326f305ab363be311d4512455792922261d641",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa308IHS",
+      "file": "thumbs/FigureYa308IHS.webp",
+      "bytes": 10408,
+      "sha256": "ca45043e8ffda4d822d5fd0a2b901bc5cd505a1c3bcde3a09ee39019c8b20d61",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa30Plus_nomogram_app",
+      "file": "thumbs/FigureYa30Plus_nomogram_app.webp",
+      "bytes": 7856,
+      "sha256": "befe81c30acb4efcd47d0578aadf632f1cd752b55eceff0c9c55f579a6309b7d",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa30nomogram_update",
+      "file": "thumbs/FigureYa30nomogram_update.webp",
+      "bytes": 6372,
+      "sha256": "5c603b4afdacfa47ba8508a119e9eaefb27784ca0b3a375dff4eb886596dbd85",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa310CPDBChordGramV2",
+      "file": "thumbs/FigureYa310CPDBChordGramV2.webp",
+      "bytes": 11772,
+      "sha256": "f6b83f8b3c4d7ccca7ac8c7f21b350d2f41ece23dcf127c4f850a1d9f019440e",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa311PAM50Heatmap",
+      "file": "thumbs/FigureYa311PAM50Heatmap.webp",
+      "bytes": 26328,
+      "sha256": "c316432228daddce31b8f7d490fc88f035c9164407be6388cd350d0a8add0386",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa312CellPreference",
+      "file": "thumbs/FigureYa312CellPreference.webp",
+      "bytes": 6870,
+      "sha256": "b8ef35a235a4bc5b9b586792d2cb9655682d465f6c2402b309a4abcb123f447b",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa313CircularPlot",
+      "file": "thumbs/FigureYa313CircularPlot.webp",
+      "bytes": 13374,
+      "sha256": "cebe8fc150bf21f8c6f46e65ce2da5192e770fde37477b6517f820ec10303b50",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa314SingleRScore",
+      "file": "thumbs/FigureYa314SingleRScore.webp",
+      "bytes": 12690,
+      "sha256": "f44b7f5de72450770c64703d721d9de1f07a88cb53675846695f5166b0c1b8ab",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa315SingleRFraction",
+      "file": "thumbs/FigureYa315SingleRFraction.webp",
+      "bytes": 8126,
+      "sha256": "3b2446e1a758e53f800d685eafcccf02556ad819206b4d91f259fee9e51b9f89",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa316RF_XGBoost_Boruta",
+      "file": "thumbs/FigureYa316RF_XGBoost_Boruta.webp",
+      "bytes": 25740,
+      "sha256": "3b3c9b2019ae36e879338ee1a794a6a9b695afaf0c4f3d14f95206c72364d362",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa317RoeDot",
+      "file": "thumbs/FigureYa317RoeDot.webp",
+      "bytes": 4846,
+      "sha256": "97cc7c3f3f6bea09e23f1412d50e02345b2c2e22ba9b01d72204f28c415c9069",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa318GenesetDEDotplot",
+      "file": "thumbs/FigureYa318GenesetDEDotplot.webp",
+      "bytes": 6776,
+      "sha256": "e2c0b0cd4dc0b07b810a4cdd51bb4576a1e0c11a23e659487252bfc966284147",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa319ContribScore",
+      "file": "thumbs/FigureYa319ContribScore.webp",
+      "bytes": 7744,
+      "sha256": "4e1e4447677296143ed1b994ec9ae221837d8dd234532871c7d73ab18f15adfd",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa31lasso_update",
+      "file": "thumbs/FigureYa31lasso_update.webp",
+      "bytes": 7284,
+      "sha256": "db0534ed581b1a3372d581187251156b3acbb6aa99711b5c16a0845e7205385a",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa320ClontypeHeatmap",
+      "file": "thumbs/FigureYa320ClontypeHeatmap.webp",
+      "bytes": 13864,
+      "sha256": "a8fdb2b5de8423b7d767874c2c685150bc3e66a7d322fedb0ff3e221a91e64c3",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa321volcanoSE",
+      "file": "thumbs/FigureYa321volcanoSE.webp",
+      "bytes": 14538,
+      "sha256": "ac3570fd388ff2a2cf319a7524b12c06c3d1c37249869c34c41d976940750469",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa322SSEA",
+      "file": "thumbs/FigureYa322SSEA.webp",
+      "bytes": 9792,
+      "sha256": "d3af8b14aef810ef646927cfda3e7c8d1a1a11a6d87b68c479f113c2f1b1fd94",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa323STpathseq",
+      "file": "thumbs/FigureYa323STpathseq.webp",
+      "bytes": 23306,
+      "sha256": "76e5e0e6eaeba81421b33809d643d5a3a0b25ae0f18c4ddca5dc7c78ba7c9ee6",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa32ID_table",
+      "file": "thumbs/FigureYa32ID_table.webp",
+      "bytes": 6368,
+      "sha256": "ff8c8741415f2b07c54e13651a4c77e5c8e2b8e8fa14bfc5d7d5b98a92c416fa",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa33DCA_update",
+      "file": "thumbs/FigureYa33DCA_update.webp",
+      "bytes": 7362,
+      "sha256": "053fc270c4e4c7199ff2a82e0394c15c71ff92fe4a5f74957d89f8882402338e",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa34count2FPKMv2",
+      "file": "thumbs/FigureYa34count2FPKMv2.webp",
+      "bytes": 6692,
+      "sha256": "c1321d48d16f8cc5e15f7cdcc0d46ea5981c0ea5f00d99ca741943ae979ca1d2",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa35batch_bestSeparationV3_update",
+      "file": "thumbs/FigureYa35batch_bestSeparationV3_update.webp",
+      "bytes": 12482,
+      "sha256": "2669a1b9354fcf95292b8cc51ee5c274f7d72e740aee93d1050ec85b3563a982",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa36nSurvV3",
+      "file": "thumbs/FigureYa36nSurvV3.webp",
+      "bytes": 9346,
+      "sha256": "e05f90397a9544286207a4675d107931acf45a1c55864a0b4f0b052abb5cc91e",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa37correlationV2_update",
+      "file": "thumbs/FigureYa37correlationV2_update.webp",
+      "bytes": 14982,
+      "sha256": "a757fc79cc60c59fd5831aae1acbf04fe5effc3eb44c9a53af68ba806f41ec3d",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa38PCA",
+      "file": "thumbs/FigureYa38PCA.webp",
+      "bytes": 7520,
+      "sha256": "01c8308a3ac7a2b583e17e688cd1c55087b2be861e732c7f94bb5771b0eb4afc",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa39bar",
+      "file": "thumbs/FigureYa39bar.webp",
+      "bytes": 7294,
+      "sha256": "a3e921a48bb56fbecaf8b1fc9caa9fb491bf23ff06caf9617282d38a5f0a870f",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa3genomeView",
+      "file": "thumbs/FigureYa3genomeView.webp",
+      "bytes": 6294,
+      "sha256": "9e2570c4d20918d9884dbf3e9006a3b6be015757cfa4c788b608d53c6b5ec35b",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa40lineage",
+      "file": "thumbs/FigureYa40lineage.webp",
+      "bytes": 5928,
+      "sha256": "14174d065adca9e280978310cbe408881f95c8ade3ff68f44384c803b3dc0a8b",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa41GEO2lncRNA_update",
+      "file": "thumbs/FigureYa41GEO2lncRNA_update.webp",
+      "bytes": 10550,
+      "sha256": "7b16ec9ef0624696106ed0c697dd455b39ea092e03d730a8c3f73a70fd1e8976",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa42oncoprintV2_update",
+      "file": "thumbs/FigureYa42oncoprintV2_update.webp",
+      "bytes": 8578,
+      "sha256": "ef44ec20b9cf6a5e8769db878b7f59a0034ca79078ce9552100a2a415c40d2d3",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa43ManhattanV2",
+      "file": "thumbs/FigureYa43ManhattanV2.webp",
+      "bytes": 10696,
+      "sha256": "018e537c41c9b51a1fed4b75e94c9bc80d16e4fb6643caac8b33cfe2be8b8c0b",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa44profile",
+      "file": "thumbs/FigureYa44profile.webp",
+      "bytes": 5680,
+      "sha256": "a5eb9784e90dfd76d3735097cdfce0a54393553d2ed6a3ec478adc3eed105572",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa45V2",
+      "file": "thumbs/FigureYa45V2.webp",
+      "bytes": 5402,
+      "sha256": "9eda62fc3bc508eb5bb7b1b583c91e37a70f16c184782a64cebe56fe7a05322c",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa47HRtable",
+      "file": "thumbs/FigureYa47HRtable.webp",
+      "bytes": 10982,
+      "sha256": "29a7bce206854ea988fded872d66fb22d4cc7553f6fcdd60cba0f4576ab2a681",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa48Adonis",
+      "file": "thumbs/FigureYa48Adonis.webp",
+      "bytes": 2132,
+      "sha256": "121ace8a0555a049ba5da83b870cee04174ece8ec865d458d51c907adc3db4b0",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa4bestSeparation",
+      "file": "thumbs/FigureYa4bestSeparation.webp",
+      "bytes": 6324,
+      "sha256": "b61b9064abd63c21f66835456534fcb3bd65acfd35cc15c8a9f4f04171ad459e",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa51TMB_update",
+      "file": "thumbs/FigureYa51TMB_update.webp",
+      "bytes": 5348,
+      "sha256": "682ed5d9ddff5893fd0febaef94fd3251a1c09d2c017b774c16b29f7010d6617",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa52GOplot",
+      "file": "thumbs/FigureYa52GOplot.webp",
+      "bytes": 14390,
+      "sha256": "fdb885eef6a4a7fd9d26821c84d6b3c72d7e453f3a5bdbdac152629fe3935ff0",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa53PPImodule",
+      "file": "thumbs/FigureYa53PPImodule.webp",
+      "bytes": 17466,
+      "sha256": "ae410490cdc63b31d65bf9f0a005735f57c377baede0b5c32005d2bcc70a1f49",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa55panCancer_violinV2",
+      "file": "thumbs/FigureYa55panCancer_violinV2.webp",
+      "bytes": 4794,
+      "sha256": "de1fe184e0e7b509bba705d7f88505865f528064cbee8f8b5427f026f1082f2a",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa55plus_pancancer_boxplot",
+      "file": "thumbs/FigureYa55plus_pancancer_boxplot.webp",
+      "bytes": 6674,
+      "sha256": "c41cc9ff43b52fe699eda34a7f01a60d8627b60842404e76d059714a9a0d2126",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa56immune_inflitrationV3",
+      "file": "thumbs/FigureYa56immune_inflitrationV3.webp",
+      "bytes": 6844,
+      "sha256": "8a8af7f321ed56e1f1c580bef1f9573d7d12516a571a6c279b7b7170b4645569",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa57profile_1bw",
+      "file": "thumbs/FigureYa57profile_1bw.webp",
+      "bytes": 7764,
+      "sha256": "ca375c8afc50cc115a03fac79ed5d5ce09abbf52e5782059e752b50e3192d95b",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa58lncRNAreannotation",
+      "file": "thumbs/FigureYa58lncRNAreannotation.webp",
+      "bytes": 10762,
+      "sha256": "43cfd5eed3be46f203d1935c683f7aa0af2eb69e6714ec7cc81fa3242f615309",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa59Plus_GEO2DEG",
+      "file": "thumbs/FigureYa59Plus_GEO2DEG.webp",
+      "bytes": 10440,
+      "sha256": "f9b7f08eb45f29c8e7e8d28babde8894d44a2028175e22b7c78d2a082d15c32c",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa59Plus_volcano_shiny",
+      "file": "thumbs/FigureYa59Plus_volcano_shiny.webp",
+      "bytes": 7234,
+      "sha256": "7100c5741cdabc9eb02e3f61099b6621cb19c6c89d2eb497baaea61527fa6d3d",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa59volcanoV2",
+      "file": "thumbs/FigureYa59volcanoV2.webp",
+      "bytes": 11948,
+      "sha256": "483b9a558ae30c2bd1ef3190d1d4d0aa1dea9f7cefa783c3b2d3a3a3ab9e9d1b",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa5bubbles",
+      "file": "thumbs/FigureYa5bubbles.webp",
+      "bytes": 9536,
+      "sha256": "0e2bde0cc795ed538afa53926e353f69973f3a487979a7ffa782afaee514f54e",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa60GSEA_clusterProfilerV2",
+      "file": "thumbs/FigureYa60GSEA_clusterProfilerV2.webp",
+      "bytes": 8982,
+      "sha256": "ef3fdabf32f34a9cad6c05e42bfeb7f6dbc441d59885f17e02c69a12f385f8c2",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa61GSVA",
+      "file": "thumbs/FigureYa61GSVA.webp",
+      "bytes": 11260,
+      "sha256": "59842e3e69f58be9a409f307acb1e71fd66e3953c48ccc38b146c828dd3b2dde",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa62twoAxis",
+      "file": "thumbs/FigureYa62twoAxis.webp",
+      "bytes": 5464,
+      "sha256": "46c1e5d513ae82071c4f6481b6ba411e92551fa60d40a8704dbc4030128d051e",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa63pubmedMiningV2",
+      "file": "thumbs/FigureYa63pubmedMiningV2.webp",
+      "bytes": 3064,
+      "sha256": "49c97a5b79c18fe929937eb0926a5b261f7ec390c25428eff3ae31aa03d68927",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa64triangle",
+      "file": "thumbs/FigureYa64triangle.webp",
+      "bytes": 12310,
+      "sha256": "9db0f477c972395bea8a0040af63b1f5bfe51edbdab50f87f4a12115449cafbd",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa65SVM",
+      "file": "thumbs/FigureYa65SVM.webp",
+      "bytes": 10062,
+      "sha256": "df8f1b97d202b7a771d6f12eab49094ee90520db3c896381570ab7d006205cd0",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa66UnivariateCox",
+      "file": "thumbs/FigureYa66UnivariateCox.webp",
+      "bytes": 5458,
+      "sha256": "459b24d0e8ead2bcb7344f88001142f13d771a2203dd234e6b81570487a9eec3",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa67phastCons",
+      "file": "thumbs/FigureYa67phastCons.webp",
+      "bytes": 6804,
+      "sha256": "b5708857f7a5dd12a7b3d6665705fe385d361f738c90f3619fb79928ee509e26",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa68friendsV2",
+      "file": "thumbs/FigureYa68friendsV2.webp",
+      "bytes": 8222,
+      "sha256": "83865ca50d473295325bfd9a98e16b5ede20dc3524e3d4c8cfee0db9161e3208",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa69cancerSubtype",
+      "file": "thumbs/FigureYa69cancerSubtype.webp",
+      "bytes": 11450,
+      "sha256": "85fd0e818ea0c1ad7d453f32f24ef081fc098bdc49e2b1bd0032e0884ec121ef",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa6rHRsV2",
+      "file": "thumbs/FigureYa6rHRsV2.webp",
+      "bytes": 14326,
+      "sha256": "66a845a195c5a7c22089b26fc8daa0f6595559e13df0e90e470436bae0e3bff8",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa70mutationEvents",
+      "file": "thumbs/FigureYa70mutationEvents.webp",
+      "bytes": 18546,
+      "sha256": "71293500aa7350ffc2c262e8947d5e08c2a98c5a03fb04d2f1a2858197be0943",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa71ssGSEA_update",
+      "file": "thumbs/FigureYa71ssGSEA_update.webp",
+      "bytes": 17068,
+      "sha256": "130dd05290de99735ff859afa63dd7cecccb04915574af02a6dc952cd8b78ab1",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa72biomarker",
+      "file": "thumbs/FigureYa72biomarker.webp",
+      "bytes": 6076,
+      "sha256": "aa08b12f24be2395bd9b1dc4a61ab49951d36a9a59c7056afc9d01d6fc177e72",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa73batchCorrelation",
+      "file": "thumbs/FigureYa73batchCorrelation.webp",
+      "bytes": 18752,
+      "sha256": "edf6a0e30dc23e62a0e44dee8f8d41415b77bb94c6606a57732472fb84c2eff4",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa74OmicCircos",
+      "file": "thumbs/FigureYa74OmicCircos.webp",
+      "bytes": 25214,
+      "sha256": "027618d31c9886cc53732df599549562ce3c32832968614fe1b12b9030f2d8bc",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa75bubble_volcano",
+      "file": "thumbs/FigureYa75bubble_volcano.webp",
+      "bytes": 9504,
+      "sha256": "d2a3053ffee8bc965fc5f373ce32755bf228d9a1942bea7eb68b85ec87c04fb0",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa76corrgram",
+      "file": "thumbs/FigureYa76corrgram.webp",
+      "bytes": 15714,
+      "sha256": "e540c3becb817774eefe9416ca9a31642ab346d8d8688f80583252233342b5c2",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa77baseZoom",
+      "file": "thumbs/FigureYa77baseZoom.webp",
+      "bytes": 5790,
+      "sha256": "af7683a3a8154738226d1917b3514e9120a8ab646e790b5a117c54dd0a2a16df",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa78gganatogram",
+      "file": "thumbs/FigureYa78gganatogram.webp",
+      "bytes": 16570,
+      "sha256": "8b3065b7ebbe96b2783a9a5494e4c9d8b19723594b526861cacbf1a1eabb8ee7",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa79CNV",
+      "file": "thumbs/FigureYa79CNV.webp",
+      "bytes": 12010,
+      "sha256": "828131311bc0844fe3076bfd8a952aa96992f79829a661432d6dbe18781d8c9e",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa7PSM",
+      "file": "thumbs/FigureYa7PSM.webp",
+      "bytes": 11500,
+      "sha256": "65184e3d30082873f22bb6e1bbd4edffa61377bb68fffb8911131acb113832a7",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa80GOclustering",
+      "file": "thumbs/FigureYa80GOclustering.webp",
+      "bytes": 6276,
+      "sha256": "33980bff11b790efa3a8ee5b2cb2e7e4fe4c4c77a66ae3305e71cff3d4f923b2",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa81immune_network",
+      "file": "thumbs/FigureYa81immune_network.webp",
+      "bytes": 17998,
+      "sha256": "e89550f7ed577bb3a41797120c5a59a8a5a01fefca1af7b99aa739e1c1863e62",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa82IGVzoom",
+      "file": "thumbs/FigureYa82IGVzoom.webp",
+      "bytes": 9668,
+      "sha256": "94824b638c3a16bfcdacf54a91fcbd56b7a726105d8e848bd4d58dd386d3f02f",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa83enrichment",
+      "file": "thumbs/FigureYa83enrichment.webp",
+      "bytes": 13352,
+      "sha256": "a7b13e2a778b5593834fb30313a84690d7c6ddd97804a9741b2da91b9f879d02",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa84roast",
+      "file": "thumbs/FigureYa84roast.webp",
+      "bytes": 5236,
+      "sha256": "6dc4c7a383c0b99dfc1677c519048d0af7e124859310caa281b9b58620682057",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa85timeROC",
+      "file": "thumbs/FigureYa85timeROC.webp",
+      "bytes": 6596,
+      "sha256": "3f87f81cab73ccc0cfb19685be5af6fc5f73bb2deb97b1131a32e60aec730b09",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa86SNPmotif",
+      "file": "thumbs/FigureYa86SNPmotif.webp",
+      "bytes": 8314,
+      "sha256": "bd43407254d0e69ddcaa7d2cc9dc6df21c1724d5574f17baa69f451224dfe4e1",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa87fish",
+      "file": "thumbs/FigureYa87fish.webp",
+      "bytes": 4822,
+      "sha256": "33b038a598db309f86a2f5e4d4941c3f98fc634e6f80edfb1beb3460d55e079f",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa88DAVIDkappa",
+      "file": "thumbs/FigureYa88DAVIDkappa.webp",
+      "bytes": 7674,
+      "sha256": "6a776a99c08373c133af51d39325d5cb01e11d02e1044bf6d566c19d7dca5bde",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa89ggplotCirco",
+      "file": "thumbs/FigureYa89ggplotCirco.webp",
+      "bytes": 19830,
+      "sha256": "7b960ff06db83a22f6e6b69a013b15f28522f82395335d5166368fa9292f68a3",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa8radar",
+      "file": "thumbs/FigureYa8radar.webp",
+      "bytes": 9892,
+      "sha256": "27a46ff4908dd23f85a725c6420039c7fe629ffaf4932052c6a1177adb7bd858",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa90subgroup",
+      "file": "thumbs/FigureYa90subgroup.webp",
+      "bytes": 10110,
+      "sha256": "80bc520aa7951b6ba80e6a287479a5ab0dc1a9afa8b24d109494e5c315d7b044",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa91cluster_heatmap",
+      "file": "thumbs/FigureYa91cluster_heatmap.webp",
+      "bytes": 15152,
+      "sha256": "00ad4c5ea1b1e9498520b776f8a040906107e27fdd22d0c686f75dfe22b41271",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa92immune_gene_update",
+      "file": "thumbs/FigureYa92immune_gene_update.webp",
+      "bytes": 6028,
+      "sha256": "10e888a614048847defed71e0501f7a182ae8c8f244fd783bbd5f865e64e5ea3",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa93UMAP",
+      "file": "thumbs/FigureYa93UMAP.webp",
+      "bytes": 10572,
+      "sha256": "63841ae03795c8298b60ce108a2b86d722b9622a1dbf0163e9a424024df23116",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa94STEMbox_update",
+      "file": "thumbs/FigureYa94STEMbox_update.webp",
+      "bytes": 14370,
+      "sha256": "117d39896798465e7b249fd90fba8612e06a077407e97ffce5f401c1a8e87c29",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa95pairwise",
+      "file": "thumbs/FigureYa95pairwise.webp",
+      "bytes": 16034,
+      "sha256": "528b523f11aafdf14ce3f274a464e05275de809121ca15b2ca2c8ad55a55ce0e",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa96R2",
+      "file": "thumbs/FigureYa96R2.webp",
+      "bytes": 10628,
+      "sha256": "6b57ff89a628f6c39cbaf2c3dcaa8227127275f86f61fa6ef15c032b52378149",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa97correlationV3",
+      "file": "thumbs/FigureYa97correlationV3.webp",
+      "bytes": 11342,
+      "sha256": "3de7450d2a7e2ecdfb20a2099bce08adba1e4905dffb67b0cb9ef5128b3ca84e",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa98STEMheatmapV2",
+      "file": "thumbs/FigureYa98STEMheatmapV2.webp",
+      "bytes": 10990,
+      "sha256": "b6c2dc5c935260d20c57abc066b1ce97afaad2fc3cbbce3db3863a2918956d73",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa99smoothHRv2",
+      "file": "thumbs/FigureYa99smoothHRv2.webp",
+      "bytes": 10966,
+      "sha256": "9ae97aef693f2604aee27b53b3cc155b297886de460a6eff62ea90896aca9dcc",
+      "mediaType": "image/webp"
+    },
+    {
+      "moduleId": "FigureYa9heatmap",
+      "file": "thumbs/FigureYa9heatmap.webp",
+      "bytes": 7878,
+      "sha256": "65aa6bcfe19ee3e8baa741806a5f5e5f3e910178d7cbed7444933378daf491ce",
+      "mediaType": "image/webp"
+    }
+  ]
+}

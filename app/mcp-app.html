@@ -13,7 +13,7 @@
           <h1>选择科学绘图模板</h1>
           <p id="query" class="query">正在等待候选结果…</p>
         </div>
-        <p class="hint">优先检查数据兼容性，再比较视觉风格</p>
+        <p class="hint">Local Published 与 FigureYa 同时检索；预览仅按需加载一张</p>
       </header>
 
       <section id="empty" class="empty" aria-live="polite">
@@ -21,7 +21,7 @@
       </section>
       <section id="cards" class="cards" aria-label="Scientific figure template candidates"></section>
       <footer id="status" aria-live="polite">
-        分数只表示候选召回顺序；Agent 必须查看候选预览后再做最终推荐。
+        分数只表示候选召回顺序；必须使用 providerId + exactSelector 查看并物化，不能只凭模板名。
       </footer>
     </main>
     <script type="module" src="/main.ts"></script>

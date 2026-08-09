@@ -1,13 +1,45 @@
+import { createHash } from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
 import type {
+  ExactTemplateSelector,
   FigureYaCatalog,
   FigureYaModule,
   SearchRequest,
   TemplateCandidate,
 } from "./types.ts";
+import {
+  FIGUREYA_PROVIDER_ID,
+  assertExactTemplateSelector,
+  assertFigureYaExactSelector,
+  assertFigureYaSelectorMatches,
+  assertFigureYaSourceExactSelector,
+  assertFigureYaSourceSelectorMatches,
+  figureYaArchiveIdentity,
+  figureYaCandidateSelector,
+  figureYaPreviewIdentity,
+} from "./providers.ts";
+import { assertMcpImageBytes } from "./image-validation.ts";
+
+export function isMcpImagePath(file: string | undefined) {
+  if (!file) return false;
+  return [".png", ".jpg", ".jpeg", ".webp", ".gif"].includes(
+    path.extname(file).toLocaleLowerCase(),
+  );
+}
 
 const DEFAULT_ASSETS_DIR = path.resolve(import.meta.dirname, "..", "assets");
+const PREVIEW_MANIFEST = "figureya-preview.manifest.json";
+const SHA256 = /^[a-f0-9]{64}$/u;
+
+function previewMediaType(file: string) {
+  const extension = path.extname(file).toLocaleLowerCase("en-US");
+  if (extension === ".png") return "image/png" as const;
+  if (extension === ".jpg" || extension === ".jpeg") return "image/jpeg" as const;
+  if (extension === ".gif") return "image/gif" as const;
+  if (extension === ".webp") return "image/webp" as const;
+  return undefined;
+}
 
 const STOP_WORDS = new Set([
   "a",
@@ -499,9 +531,9 @@ function figureYaFamilies(module: FigureYaModule) {
 
 function matchesFigureYaFilters(module: FigureYaModule, request: SearchRequest) {
   if (request.assetKind && request.assetKind !== "plot_template") return false;
-  if (request.reviewStatus && request.reviewStatus !== "approved") return false;
+  if (request.reviewStatus && request.reviewStatus !== "not_reviewed") return false;
   if (request.codeStatus) {
-    const status = module.codeFiles.length ? "reviewed" : "none";
+    const status = module.codeFiles.length ? "provided" : "none";
     if (request.codeStatus !== status) return false;
   }
   if (
@@ -521,6 +553,160 @@ function matchesFigureYaFilters(module: FigureYaModule, request: SearchRequest) 
   return true;
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function catalogPath(value: unknown, field: string): string {
+  if (typeof value !== "string" || !value || value.includes("\0")) {
+    throw new Error(`${field} must be a non-empty portable path`);
+  }
+  const normalized = value.replaceAll("\\", "/");
+  if (
+    normalized.startsWith("/") ||
+    /^[A-Za-z]:/u.test(normalized) ||
+    normalized.split("/").some((part) => !part || part === "." || part === "..")
+  ) {
+    throw new Error(`${field} is not a portable relative path: ${value}`);
+  }
+  return normalized;
+}
+
+function stringArray(value: unknown, field: string): asserts value is string[] {
+  if (!Array.isArray(value) || value.some((item) => typeof item !== "string")) {
+    throw new Error(`${field} must be an array of strings`);
+  }
+}
+
+function validateFigureYaCatalog(value: unknown): asserts value is FigureYaCatalog {
+  if (!isRecord(value)) throw new Error("FigureYa catalog must be an object");
+  if (
+    value.schema !== "figure-library.figureya-catalog.v1" &&
+    value.schema !== "figure-library.figureya-catalog.v2"
+  ) {
+    throw new Error(`unsupported catalog schema: ${String(value.schema)}`);
+  }
+  if (!isRecord(value.figureya) || !isRecord(value.compressed)) {
+    throw new Error("FigureYa catalog repository identities are missing");
+  }
+  for (const [name, repository] of [
+    ["figureya", value.figureya],
+    ["compressed", value.compressed],
+  ] as const) {
+    if (typeof repository.repository !== "string" || !repository.repository) {
+      throw new Error(`${name}.repository is missing`);
+    }
+    if (typeof repository.commit !== "string" || !repository.commit) {
+      throw new Error(`${name}.commit is missing`);
+    }
+  }
+  if (!Array.isArray(value.modules)) throw new Error("FigureYa catalog modules are missing");
+  const ids = new Set<string>();
+  for (const [index, item] of value.modules.entries()) {
+    if (!isRecord(item) || typeof item.moduleId !== "string" || !item.moduleId) {
+      throw new Error(`modules[${index}].moduleId is missing`);
+    }
+    if (ids.has(item.moduleId)) throw new Error(`duplicate FigureYa moduleId: ${item.moduleId}`);
+    ids.add(item.moduleId);
+    for (const field of ["codeFiles", "inputFiles", "packages"] as const) {
+      stringArray(item[field], `${item.moduleId}.${field}`);
+    }
+    if (!Array.isArray(item.files)) throw new Error(`${item.moduleId}.files must be an array`);
+    for (const [fileIndex, file] of item.files.entries()) {
+      if (!isRecord(file)) throw new Error(`${item.moduleId}.files[${fileIndex}] is invalid`);
+      catalogPath(file.name, `${item.moduleId}.files[${fileIndex}].name`);
+      if (!Number.isSafeInteger(file.size) || Number(file.size) < 0) {
+        throw new Error(`${item.moduleId}.files[${fileIndex}].size is invalid`);
+      }
+    }
+    if (item.thumbnail !== undefined) catalogPath(item.thumbnail, `${item.moduleId}.thumbnail`);
+    if (item.primaryPreview !== undefined) {
+      catalogPath(item.primaryPreview, `${item.moduleId}.primaryPreview`);
+    }
+    if (item.canonicalCode !== undefined) {
+      catalogPath(item.canonicalCode, `${item.moduleId}.canonicalCode`);
+    }
+    if (item.requiredFiles !== undefined) {
+      stringArray(item.requiredFiles, `${item.moduleId}.requiredFiles`);
+      item.requiredFiles.forEach((file, fileIndex) =>
+        catalogPath(file, `${item.moduleId}.requiredFiles[${fileIndex}]`),
+      );
+    }
+    if (item.archiveAvailable !== true && item.archiveAvailable !== false) {
+      throw new Error(`${item.moduleId}.archiveAvailable must be boolean`);
+    }
+    if (item.archiveAvailable) {
+      figureYaArchiveIdentity(item as unknown as FigureYaModule);
+      if (value.schema === "figure-library.figureya-catalog.v2") {
+        if (!item.archiveSha256 || item.archiveIdentity !== "sha256") {
+          throw new Error(`${item.moduleId} lacks required v2 SHA-256 archive identity`);
+        }
+        if (!Array.isArray(item.requiredFiles)) {
+          throw new Error(`${item.moduleId} lacks required v2 requiredFiles`);
+        }
+      }
+    }
+    figureYaPreviewIdentity(item as unknown as FigureYaModule);
+  }
+}
+
+function applyPreviewManifest(catalog: FigureYaCatalog, value: unknown) {
+  if (
+    !isRecord(value) ||
+    value.schema !== "figure-library.figureya-preview-manifest.v1" ||
+    value.providerId !== FIGUREYA_PROVIDER_ID ||
+    value.sourceRepository !== catalog.figureya.repository ||
+    value.sourceCommit !== catalog.figureya.commit ||
+    !Array.isArray(value.previews)
+  ) {
+    throw new Error("FigureYa preview manifest identity is invalid");
+  }
+  const modules = new Map(catalog.modules.map((module) => [module.moduleId, module]));
+  const seen = new Set<string>();
+  let previous = "";
+  for (const [index, raw] of value.previews.entries()) {
+    if (
+      !isRecord(raw) ||
+      typeof raw.moduleId !== "string" ||
+      !raw.moduleId ||
+      typeof raw.file !== "string" ||
+      !Number.isSafeInteger(raw.bytes) ||
+      Number(raw.bytes) <= 0 ||
+      typeof raw.sha256 !== "string" ||
+      !SHA256.test(raw.sha256) ||
+      typeof raw.mediaType !== "string"
+    ) {
+      throw new Error(`FigureYa preview manifest entry ${index} is invalid`);
+    }
+    if (previous && previous >= raw.moduleId) {
+      throw new Error("FigureYa preview manifest is not canonically ordered");
+    }
+    previous = raw.moduleId;
+    if (seen.has(raw.moduleId)) throw new Error(`duplicate FigureYa preview: ${raw.moduleId}`);
+    seen.add(raw.moduleId);
+    const module = modules.get(raw.moduleId);
+    if (!module) throw new Error(`preview manifest references unknown module: ${raw.moduleId}`);
+    const declared = module.primaryPreview ?? module.thumbnail;
+    if (!declared || catalogPath(raw.file, `${raw.moduleId}.preview.file`) !== declared) {
+      throw new Error(`preview manifest path disagrees with the Catalog: ${raw.moduleId}`);
+    }
+    const expectedMediaType = previewMediaType(declared);
+    if (!expectedMediaType || raw.mediaType !== expectedMediaType) {
+      throw new Error(`preview manifest media type disagrees with its path: ${raw.moduleId}`);
+    }
+    module.previewBytes = Number(raw.bytes);
+    module.previewSha256 = raw.sha256;
+    module.previewMediaType = expectedMediaType;
+    figureYaPreviewIdentity(module);
+  }
+  const missing = catalog.modules
+    .filter((module) => (module.primaryPreview ?? module.thumbnail) && !seen.has(module.moduleId))
+    .map((module) => module.moduleId);
+  if (missing.length) {
+    throw new Error(`FigureYa preview manifest is incomplete: ${missing.slice(0, 5).join(", ")}`);
+  }
+}
+
 export class CatalogIndex {
   readonly catalog: FigureYaCatalog;
   readonly assetsDir: string;
@@ -532,21 +718,80 @@ export class CatalogIndex {
 
   static async load(assetsDir = process.env.FIGUREYA_ASSETS_DIR ?? DEFAULT_ASSETS_DIR) {
     const raw = await fs.readFile(path.join(assetsDir, "catalog.json"), "utf8");
-    const catalog = JSON.parse(raw) as FigureYaCatalog;
-    if (catalog.schema !== "figure-library.figureya-catalog.v1") {
-      throw new Error(`unsupported catalog schema: ${catalog.schema}`);
+    const catalog: unknown = JSON.parse(raw);
+    validateFigureYaCatalog(catalog);
+    try {
+      applyPreviewManifest(
+        catalog,
+        JSON.parse(await fs.readFile(path.join(assetsDir, PREVIEW_MANIFEST), "utf8")) as unknown,
+      );
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+      // Legacy/external catalogs remain readable, but their unpinned previews
+      // are deliberately unavailable until an identity manifest is supplied.
     }
     return new CatalogIndex(catalog, assetsDir);
+  }
+
+  private async loadPreview(module: FigureYaModule) {
+    const previewPath = module.primaryPreview ?? module.thumbnail;
+    if (!previewPath) return undefined;
+    const identity = figureYaPreviewIdentity(module);
+    if (!identity) throw new Error(`preview has no pinned SHA-256 identity for ${module.moduleId}`);
+    if (!isMcpImagePath(previewPath)) {
+      throw new Error(
+        `preview format ${path.extname(previewPath) || "unknown"} cannot be returned as an MCP image`,
+      );
+    }
+    const file = path.resolve(this.assetsDir, ...previewPath.split("/"));
+    const relative = path.relative(path.resolve(this.assetsDir), file);
+    if (!relative || relative.startsWith("..") || path.isAbsolute(relative)) {
+      throw new Error(`unsafe preview path for ${module.moduleId}`);
+    }
+    let current = path.resolve(this.assetsDir);
+    const parts = previewPath.split("/");
+    for (const [index, part] of parts.entries()) {
+      current = path.join(current, part);
+      const stat = await fs.lstat(current);
+      if (stat.isSymbolicLink()) {
+        throw new Error(`preview path traverses a symbolic link for ${module.moduleId}`);
+      }
+      if (index < parts.length - 1 ? !stat.isDirectory() : !stat.isFile()) {
+        throw new Error(`preview is not a regular file for ${module.moduleId}`);
+      }
+    }
+    const bytes = new Uint8Array(await fs.readFile(file));
+    const extension = path.extname(file).toLocaleLowerCase();
+    const mimeType = previewMediaType(file);
+    if (!mimeType || identity.mediaType !== mimeType) {
+      throw new Error(`preview MIME identity disagrees with its path for ${module.moduleId}`);
+    }
+    if (
+      bytes.byteLength !== identity.bytes ||
+      createHash("sha256").update(bytes).digest("hex") !== identity.digest
+    ) {
+      throw new Error(`preview bytes disagree with the pinned SHA-256 identity for ${module.moduleId}`);
+    }
+    assertMcpImageBytes({ bytes, mimeType, extension });
+    return { bytes, extension, mimeType };
+  }
+
+  async previewAvailable(module: FigureYaModule) {
+    try {
+      return Boolean(await this.loadPreview(module));
+    } catch {
+      return false;
+    }
   }
 
   get(moduleId: string) {
     return this.catalog.modules.find((module) => module.moduleId === moduleId);
   }
 
-  search(request: SearchRequest): TemplateCandidate[] {
+  async search(request: SearchRequest): Promise<TemplateCandidate[]> {
     const limit = Math.min(Math.max(request.limit ?? 6, 1), 12);
     const intent = buildSearchIntent(request);
-    return this.catalog.modules
+    const matches = this.catalog.modules
       .filter((module) => matchesFigureYaFilters(module, request))
       .map((module) => {
         const evidence = scoreSearchableTemplate(
@@ -570,14 +815,25 @@ export class CatalogIndex {
           right.evidence.score - left.evidence.score ||
           left.module.moduleId.localeCompare(right.module.moduleId),
       )
-      .slice(0, limit)
-      .map(({ module, evidence }) => {
+      .slice(0, limit);
+    return Promise.all(
+      matches.map(async ({ module, evidence }) => {
         const warnings = [];
         if (module.inputFiles.length === 0) warnings.push("目录中未识别到示例输入文件");
         if (!module.archiveAvailable) warnings.push("固定版本压缩包不可用，将无法自动完整下载");
+        if (module.archiveAvailable && !module.archiveSha256) {
+          warnings.push("归档使用旧版 Git blob SHA-1 身份；获取后会计算并锁定 SHA-256");
+        }
+        const previewAvailable = await this.previewAvailable(module);
+        if ((module.primaryPreview ?? module.thumbnail) && !previewAvailable) {
+          warnings.push("目录声明的预览未通过路径、SHA-256、格式或图像结构完整性校验");
+        }
+        warnings.push("上游代码尚未经过本地审核，也未由 ScientificFigureLibrary 执行");
+        const exactSelector = figureYaCandidateSelector(this.catalog, module, "template");
         return {
           templateId: module.moduleId,
-          sourceId: "figureya",
+          providerId: FIGUREYA_PROVIDER_ID,
+          exactSelector,
           sourceLabel: "FigureYa",
           title: module.title,
           retrievalScore: evidence.score,
@@ -592,12 +848,21 @@ export class CatalogIndex {
           codeFiles: module.codeFiles,
           packages: module.packages,
           materializable: module.archiveAvailable,
-          previewAvailable: Boolean(module.thumbnail),
+          previewAvailable,
+          previewRef: previewAvailable
+            ? {
+                schema: "figure-library.provider-preview-ref.v1" as const,
+                providerId: FIGUREYA_PROVIDER_ID,
+                exactSelector,
+              }
+            : undefined,
           assetKind: "plot_template" as const,
           language: figureYaLanguages(module)[0] ?? "none",
           plotFamily: figureYaFamilies(module)[0] ?? "",
-          reviewStatus: "approved" as const,
-          codeStatus: module.codeFiles.length ? ("reviewed" as const) : ("none" as const),
+          reviewStatus: "not_reviewed" as const,
+          codeStatus: module.codeFiles.length ? ("provided" as const) : ("none" as const),
+          executionStatus: "not_run" as const,
+          upstreamStatus: module.archiveAvailable ? ("published" as const) : ("available" as const),
           license: "CC BY-NC-SA 4.0",
           sourceUrl: module.sourceUrl,
           reportUrl: module.reportUrl,
@@ -607,34 +872,60 @@ export class CatalogIndex {
             canUpdate: false,
           },
         };
-      });
-  }
-
-  async preview(templateId: string) {
-    const module = this.get(templateId);
-    if (!module?.thumbnail) return;
-    const file = path.join(this.assetsDir, module.thumbnail);
-    return {
-      bytes: new Uint8Array(await fs.readFile(file)),
-      extension: path.extname(file).toLocaleLowerCase(),
-      mimeType: "image/webp",
-    };
-  }
-
-  async withPreviews(candidates: TemplateCandidate[]) {
-    return Promise.all(
-      candidates.map(async (candidate) => {
-        try {
-          const preview = await this.preview(candidate.templateId);
-          if (!preview) return candidate;
-          return {
-            ...candidate,
-            previewDataUrl: `data:${preview.mimeType};base64,${Buffer.from(preview.bytes).toString("base64")}`,
-          };
-        } catch {
-          return candidate;
-        }
       }),
     );
   }
+
+  async preview(templateIdOrSelector: string | ExactTemplateSelector) {
+    let templateId: string;
+    if (typeof templateIdOrSelector === "string") {
+      templateId = templateIdOrSelector;
+    } else {
+      assertExactTemplateSelector(templateIdOrSelector);
+      if (templateIdOrSelector.providerId !== FIGUREYA_PROVIDER_ID) return;
+      if (
+        templateIdOrSelector.kind !== "figureya-module.v1" &&
+        templateIdOrSelector.kind !== "figureya-source-module.v1"
+      ) {
+        return;
+      }
+      if (templateIdOrSelector.kind === "figureya-module.v1") {
+        assertFigureYaExactSelector(templateIdOrSelector);
+      } else {
+        assertFigureYaSourceExactSelector(templateIdOrSelector);
+      }
+      const moduleId = templateIdOrSelector.identity.moduleId;
+      const sourceCommit = templateIdOrSelector.identity.sourceCommit;
+      if (typeof moduleId !== "string" || sourceCommit !== this.catalog.figureya.commit) return;
+      templateId = moduleId;
+      const selectedModule = this.get(templateId);
+      if (!selectedModule) return;
+      if (templateIdOrSelector.kind === "figureya-module.v1") {
+        assertFigureYaSelectorMatches(
+          templateIdOrSelector,
+          this.catalog,
+          selectedModule,
+          templateIdOrSelector.identity.mode,
+        );
+      } else {
+        assertFigureYaSourceSelectorMatches(
+          templateIdOrSelector,
+          this.catalog,
+          selectedModule,
+        );
+      }
+    }
+    const module = this.get(templateId);
+    if (!module) return;
+    return this.loadPreview(module);
+  }
+
+  /**
+   * Compatibility shim for older hosts.  It intentionally does not inline
+   * image bytes; callers must preview one selected candidate explicitly.
+   */
+  async withPreviews(candidates: TemplateCandidate[]) {
+    return candidates;
+  }
+
 }

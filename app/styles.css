@@ -122,7 +122,7 @@ footer {
 .template-id {
   display: block;
   margin-top: 0.3rem;
-  color: var(--muted);
+  color: var(--color-text-secondary, #5b675f);
   font-size: 0.75rem;
   overflow-wrap: anywhere;
   user-select: all;
@@ -139,9 +139,14 @@ footer {
   font-weight: 700;
 }
 
-.source-user {
+.source-local {
   background: #eee9f7;
   color: #644990;
+}
+
+.source-external {
+  background: #e8f1f7;
+  color: #315f7d;
 }
 
 .score {

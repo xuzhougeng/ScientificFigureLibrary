@@ -9,7 +9,13 @@ import "./styles.css";
 
 interface Candidate {
   templateId: string;
-  sourceId: "figureya" | "user";
+  providerId: string;
+  exactSelector: {
+    schema: "figure-library.provider-selector.v1";
+    providerId: string;
+    kind: string;
+    identity: Record<string, unknown>;
+  };
   sourceLabel: string;
   title: string;
   retrievalScore: number;
@@ -24,9 +30,9 @@ interface Candidate {
   assetKind: "plot_template" | "visual_reference";
   language: string;
   plotFamily: string;
-  reviewStatus: "draft" | "approved" | "archived";
-  codeStatus: "none" | "scaffold" | "reviewed";
-  previewDataUrl?: string;
+  reviewStatus: "not_reviewed" | "draft" | "approved" | "archived";
+  codeStatus: "none" | "scaffold" | "provided" | "reviewed";
+  executionStatus: "not_run" | "passed" | "failed" | "unknown";
   management: {
     templateId: string;
     adapter?: "direct" | "gallery" | "figure-transfer-package";
@@ -52,7 +58,7 @@ const cards = document.getElementById("cards")!;
 const empty = document.getElementById("empty")!;
 const query = document.getElementById("query")!;
 const status = document.getElementById("status")!;
-const app = new App({ name: "Scientific Figure Library", version: "0.3.0" });
+const app = new App({ name: "Scientific Figure Library", version: "0.5.0" });
 
 function element<K extends keyof HTMLElementTagNameMap>(
   tag: K,
@@ -82,28 +88,29 @@ async function selectCandidate(candidate: Candidate, button: HTMLButtonElement) 
   const markdown = `---
 source: Scientific Figure Library MCP App
 selectedTemplate: ${candidate.templateId}
-templateSource: ${candidate.sourceId}
+templateProvider: ${candidate.providerId}
 templateTitle: ${candidate.title}
+exactSelector: ${JSON.stringify(candidate.exactSelector)}
 templateAdapter: ${candidate.management.adapter ?? "none"}
 templateRegistrySource: ${candidate.management.registrySourceId ?? "none"}
 templateGalleryId: ${candidate.management.galleryId ?? "none"}
 ---
 
 The user asked the Agent to review **${candidate.title}** (\`${candidate.templateId}\`) from **${candidate.sourceLabel}**.
-Classification: ${candidate.assetKind}; language ${candidate.language}; review ${candidate.reviewStatus}; code ${candidate.codeStatus}.
+Classification: ${candidate.assetKind}; language ${candidate.language}; review ${candidate.reviewStatus}; code ${candidate.codeStatus}; execution ${candidate.executionStatus}.
 Retrieval score is ${candidate.retrievalScore}/100; it is not a final recommendation or confidence.
 Reasons: ${candidate.reasons.join("; ") || "catalog metadata match"}.
-Next, call figure_library_preview, inspect it with view_image, and report a visual pass/reject score before figure_library_describe or figure_library_materialize.`;
+Next, call figure_library_describe with providerId and exactSelector, then call figure_library_preview exactly once, inspect it with view_image when a path is returned, and report a visual pass/reject score before figure_library_plan_materialize. Never select by bare templateId.`;
 
   try {
     if (app.getHostCapabilities()?.updateModelContext?.text) {
       await app.updateModelContext({ content: [{ type: "text", text: markdown }] });
       status.textContent = `已把 ${candidate.templateId} 发送到下一轮 Agent 上下文。`;
     } else {
-      status.textContent = `已选择 ${candidate.templateId}。当前 Host 不支持上下文更新，请在对话中发送模板 ID。`;
+      status.textContent = `已选择 ${candidate.templateId}。当前 Host 不支持上下文更新；请回到对话要求 Agent 保留该候选的 providerId 与 exactSelector。`;
     }
   } catch {
-    status.textContent = `已选择 ${candidate.templateId}，但 Host 拒绝了上下文更新；请在对话中发送模板 ID。`;
+    status.textContent = `已选择 ${candidate.templateId}，但 Host 拒绝了上下文更新；请回到对话要求 Agent 保留该候选的 providerId 与 exactSelector。`;
   }
 }
 
@@ -115,14 +122,13 @@ function render(result: SearchResult) {
   for (const candidate of result.candidates) {
     const card = element("article", "card");
     const preview = element("div", "preview");
-    if (candidate.previewDataUrl) {
-      const image = element("img");
-      image.src = candidate.previewDataUrl;
-      image.alt = `${candidate.templateId} preview`;
-      preview.append(image);
-    } else {
-      preview.append(element("span", undefined, "No preview"));
-    }
+    preview.append(
+      element(
+        "span",
+        undefined,
+        candidate.previewAvailable ? "按需加载单张预览" : "无可用预览",
+      ),
+    );
 
     const content = element("div", "content");
     const top = element("div", "topline");
@@ -130,7 +136,11 @@ function render(result: SearchResult) {
     heading.append(
       element("h2", "module", candidate.title),
       element("code", "template-id", candidate.templateId),
-      element("span", `source source-${candidate.sourceId}`, candidate.sourceLabel),
+      element(
+        "span",
+        `source source-${candidate.providerId === "org.scientificfigurelibrary.local" ? "local" : "external"}`,
+        candidate.sourceLabel,
+      ),
     );
     top.append(
       heading,
@@ -145,6 +155,8 @@ function render(result: SearchResult) {
       candidate.plotFamily,
       candidate.reviewStatus,
       candidate.codeStatus,
+      candidate.executionStatus,
+      candidate.exactSelector.kind,
       candidate.management.adapter,
       candidate.management.galleryId ? `gallery:${candidate.management.galleryId}` : "",
       candidate.management.registrySourceId

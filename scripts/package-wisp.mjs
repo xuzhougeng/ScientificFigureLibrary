@@ -19,9 +19,11 @@ const files = [
   ".wisp-plugin/plugin.json",
   "dist/index.js",
   "dist/mcp-app.html",
+  "docs/GLOBAL_LIBRARY_0.5.md",
   "skills/figure-library/SKILL.md",
   "assets/catalog.json",
   "assets/FIGUREYA_LICENSE.txt",
+  "assets/figureya-preview.manifest.json",
   "assets/figureya-source-pack.manifest.json",
   "LICENSE",
   "README.md",
@@ -46,7 +48,9 @@ for (const relative of files.sort()) {
   archive[relative] = new Uint8Array(await fs.readFile(path.join(root, relative)));
 }
 
-const zip = zipSync(archive, { level: 6 });
+// ZIP stores local wall-clock fields. A fixed local date keeps byte-for-byte
+// output stable across repeated builds without depending on the source mtimes.
+const zip = zipSync(archive, { level: 6, mtime: new Date(2000, 0, 1, 0, 0, 0) });
 const release = path.join(root, "release");
 const baseName = `scientific-figure-library-wisp-${packageJson.version}.zip`;
 await fs.mkdir(release, { recursive: true });
