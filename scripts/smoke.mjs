@@ -31,7 +31,7 @@ const childEnvironment = Object.fromEntries(
 );
 childEnvironment.FIGURE_LIBRARY_DIR = libraryDirectory;
 
-const client = new Client({ name: "scientific-figure-library-smoke", version: "0.5.0" });
+const client = new Client({ name: "scientific-figure-library-smoke", version: "0.5.1" });
 const transport = new StdioClientTransport({
   command: process.execPath,
   args: [serverEntry],
@@ -81,8 +81,15 @@ try {
   const required = [
     "figure_library_open",
     "figure_library_search",
+    "figure_library_search_page",
     "figure_library_describe",
     "figure_library_preview",
+    "figure_library_preview_exact",
+    "figure_library_preview_exact_headless",
+    "figure_library_confirm_selection",
+    "figure_library_confirm_selection_headless",
+    "figure_library_record_ui_event",
+    "figure_library_export_diagnostics",
     "figure_library_source_status",
     "figure_library_plan_bind_global",
     "figure_library_apply_bind_global",
@@ -113,10 +120,26 @@ try {
     "figure_library_apply_template_bundle_import",
   ].sort();
   for (const name of required) {
-    if (!names.includes(name)) throw new Error(`missing 0.5.0 tool ${name}`);
+    if (!names.includes(name)) throw new Error(`missing 0.5.1 tool ${name}`);
+  }
+  if (names.length !== 39 || names.length !== required.length) {
+    throw new Error(`expected exactly 39 standard tools, received ${names.length}`);
+  }
+  for (const [toolName, visibility] of [
+    ["figure_library_search", "model"],
+    ["figure_library_search_page", "app"],
+    ["figure_library_preview_exact", "app"],
+    ["figure_library_preview_exact_headless", "model"],
+    ["figure_library_record_ui_event", "app"],
+    ["figure_library_export_diagnostics", "model"],
+  ]) {
+    const tool = listed.tools.find((candidate) => candidate.name === toolName);
+    if (JSON.stringify(tool?._meta?.ui?.visibility) !== JSON.stringify([visibility])) {
+      throw new Error(`${toolName} visibility is not ${visibility}-only`);
+    }
   }
   if (names.some((name) => name.startsWith("figure_capture_"))) {
-    throw new Error("standard 0.5.0 server registered an experimental Capture tool");
+    throw new Error("standard 0.5.1 server registered an experimental Capture tool");
   }
   for (const forbidden of [
     "figure_library_project_status",
@@ -132,9 +155,9 @@ try {
     opened.isError ||
     outcome(opened).outcome !== "ok" ||
     outcome(opened).nextAction !== "ask_user" ||
-    structured(opened).libraryVersion !== "0.5.0"
+    structured(opened).libraryVersion !== "0.5.1"
   ) {
-    throw new Error("open did not report the 0.5.0 direct-intake workbench");
+    throw new Error("open did not report the 0.5.1 direct-intake workbench");
   }
 
   smokeStep = "initial-status";
@@ -145,7 +168,7 @@ try {
   if (
     initialStatus.isError ||
     outcome(initialStatus).outcome !== "ok" ||
-    structured(initialStatus).serverVersion !== "0.5.0" ||
+    structured(initialStatus).serverVersion !== "0.5.1" ||
     structured(initialStatus).standardCore?.captureToolsRegistered !== false ||
     structured(initialStatus).standardCore?.projectPinToolsRegistered !== false
   ) {
@@ -154,7 +177,7 @@ try {
   assertTextFields(
     initialStatus,
     [
-      "SERVER_VERSION: 0.5.0",
+      "SERVER_VERSION: 0.5.1",
       `LIBRARY_ROOT: ${libraryDirectory}`,
       "LIBRARY_SOURCE: FIGURE_LIBRARY_DIR",
       "CAPTURE_TOOLS_REGISTERED: false",
@@ -180,14 +203,42 @@ try {
   if (
     figureYaSearch.isError ||
     outcome(figureYaSearch).outcome !== "ok" ||
-    outcome(figureYaSearch).nextAction !== "preview_selected_candidate" ||
+    outcome(figureYaSearch).nextAction !== "ask_user" ||
     !figureYa ||
     !figureYa.exactSelector ||
-    figureYaCandidates.some(
-      (candidate) => "previewDataUrl" in candidate || "thumbnail" in candidate,
-    )
+    figureYa.previewStatus !== "ready" ||
+    "previewDataUrl" in figureYa ||
+    typeof figureYa.candidateId !== "string" ||
+    typeof figureYa.previewSha256 !== "string"
   ) {
-    throw new Error("unified search did not return a provider-qualified no-base64 FigureYa result");
+    throw new Error("unified search did not stop for user selection with a compact FigureYa result");
+  }
+  if (JSON.stringify(structured(figureYaSearch)).includes("data:image/")) {
+    throw new Error("model-visible search structuredContent contains an image Data URL");
+  }
+  const figureYaThumbnail = figureYaSearch._meta?.candidatePreviews?.[figureYa.candidateId];
+  if (
+    typeof figureYaThumbnail?.previewDataUrl !== "string" ||
+    !figureYaThumbnail.previewDataUrl.startsWith("data:image/") ||
+    figureYaThumbnail.previewSha256 !== figureYa.previewSha256
+  ) {
+    throw new Error("component-only search metadata omitted the verified FigureYa thumbnail");
+  }
+  if (structured(figureYaSearch).pagination?.nextCursor) {
+    const secondPage = await client.callTool({
+      name: "figure_library_search_page",
+      arguments: {
+        resultSetId: structured(figureYaSearch).resultSetId,
+        cursor: structured(figureYaSearch).pagination.nextCursor,
+      },
+    });
+    if (
+      outcome(secondPage).outcome !== "ok" ||
+      structured(secondPage).resultSetId !== structured(figureYaSearch).resultSetId ||
+      structured(secondPage).pageIndex !== 2
+    ) {
+      throw new Error("App-only pagination did not continue the existing result set");
+    }
   }
   const previewed = await client.callTool({
     name: "figure_library_preview",
@@ -214,7 +265,7 @@ try {
       mode: "create",
       templateId: "smoke-direct-volcano",
       title: "smoke-direct-unique volcano reference",
-      description: "A user-confirmed image/code Figure Unit for the 0.5.0 stdio smoke.",
+      description: "A user-confirmed image/code Figure Unit for the 0.5.1 stdio smoke.",
       tags: ["smoke-direct-unique", "volcano"],
       visualProfile: "volcano scatter x log2FC y negative log10 adjusted p value",
       dataProfile: "gene log2FC pvalue padj",
@@ -388,11 +439,52 @@ try {
     ? path.resolve(externalMaterializeDestination)
     : path.join(smokeRoot, "materialized");
   smokeStep = "materialization";
+  const materializationWithoutPreview = await client.callTool({
+    name: "figure_library_plan_materialize",
+    arguments: {
+      providerId: local.providerId,
+      exactSelector: local.exactSelector,
+      destination: materializeDestination,
+      allowNetwork: false,
+    },
+  });
+  if (outcome(materializationWithoutPreview).code !== "preview_required") {
+    throw new Error("materialization plan did not fail closed without previewReceipt");
+  }
+  const exactConfirmationPreview = await client.callTool({
+    name: "figure_library_preview_exact_headless",
+    arguments: {
+      resultSetId: structured(unified).resultSetId,
+      providerId: local.providerId,
+      exactSelector: local.exactSelector,
+    },
+  });
+  if (
+    outcome(exactConfirmationPreview).code !== "exact_preview_ready" ||
+    !exactConfirmationPreview.content?.some((block) => block.type === "image") ||
+    typeof structured(exactConfirmationPreview).previewChallenge !== "string" ||
+    typeof structured(exactConfirmationPreview).previewSha256 !== "string"
+  ) {
+    throw new Error("exact confirmation preview omitted image, SHA-256, or challenge");
+  }
+  const headlessConfirmation = await client.callTool({
+    name: "figure_library_confirm_selection_headless",
+    arguments: {
+      previewChallenge: structured(exactConfirmationPreview).previewChallenge,
+    },
+  });
+  if (
+    outcome(headlessConfirmation).code !== "preview_confirmed_headless" ||
+    typeof structured(headlessConfirmation).previewReceipt !== "string"
+  ) {
+    throw new Error("headless confirmation did not issue a previewReceipt");
+  }
   const materializationPlanned = await client.callTool({
     name: "figure_library_plan_materialize",
     arguments: {
       providerId: local.providerId,
       exactSelector: local.exactSelector,
+      previewReceipt: structured(headlessConfirmation).previewReceipt,
       destination: materializeDestination,
       allowNetwork: false,
     },
@@ -535,13 +627,39 @@ try {
     throw new Error(`final source status did not preserve Published/Working isolation`);
   }
 
-  const resource = await client.readResource({ uri: "ui://figure-library/candidates.html" });
+  smokeStep = "diagnostics-export";
+  const diagnosticsExport = await client.callTool({
+    name: "figure_library_export_diagnostics",
+    arguments: {},
+  });
+  const diagnostics = structured(diagnosticsExport);
+  if (
+    diagnosticsExport.isError ||
+    outcome(diagnosticsExport).code !== "diagnostics_exported" ||
+    typeof diagnostics.resourceUri !== "string" ||
+    typeof diagnostics.sha256 !== "string" ||
+    !(diagnostics.byteLength > 0) ||
+    "localPath" in diagnostics ||
+    JSON.stringify(diagnostics).match(/events\.jsonl|data:image|previewReceipt|previewChallenge/u)
+  ) {
+    throw new Error("diagnostic export did not return a compact sanitized resource link");
+  }
+  const diagnosticsResource = await client.readResource({ uri: diagnostics.resourceUri });
+  if (
+    diagnosticsResource.contents[0]?.mimeType !== "application/zip" ||
+    typeof diagnosticsResource.contents[0]?.blob !== "string" ||
+    Buffer.from(diagnosticsResource.contents[0].blob, "base64").byteLength !== diagnostics.byteLength
+  ) {
+    throw new Error("diagnostic resource link did not return the generated ZIP bytes");
+  }
+
+  const resource = await client.readResource({ uri: "ui://figure-library/candidates-v0.5.1.html" });
   if (!resource.contents[0]?.mimeType?.startsWith("text/html")) {
     throw new Error("MCP App resource was not returned as HTML");
   }
 
   console.log(
-    `OK 0.5.0: ${names.length} standard tools; no Capture/project pins; unified providers; direct intake; immutable Publish; exact materialization/replay; portable template bundle/import; terminal anti-loop outcomes${externalMaterializeDestination ? `; materialized ${structured(materialized).result.target}` : ""}`,
+    `OK 0.5.1: ${names.length} standard tools; model/app visibility split; compact search thumbnails; no Capture/project pins; unified providers; direct intake; immutable Publish; preview-confirmed protocol-v2 materialization/replay; sanitized diagnostics resource; portable template bundle/import; terminal anti-loop outcomes${externalMaterializeDestination ? `; materialized ${structured(materialized).result.target}` : ""}`,
   );
 } catch (error) {
   console.error(`SMOKE_STEP_FAILED: ${smokeStep}`);

@@ -15,17 +15,29 @@ import {
   resolveLibraryRuntimeSnapshot,
 } from "../src/library-runtime.ts";
 import { registerMaterializationTools } from "../src/materialization-tools.ts";
+import { PreviewConfirmationStore } from "../src/preview-confirmation.ts";
+import {
+  libraryBindingDigest,
+  loadProviderPreview,
+  searchCatalogRevision,
+} from "../src/preview-service.ts";
 import {
   FIGUREYA_PROVIDER_ID,
   LOCAL_LIBRARY_PROVIDER_ID,
+  exactSelectorDigest,
   figureYaExactSelector,
   localPublishedExactSelector,
 } from "../src/providers.ts";
-import type { FigureYaCatalog, FigureYaModule } from "../src/types.ts";
+import type { ExactTemplateSelector, FigureYaCatalog, FigureYaModule } from "../src/types.ts";
 import {
   VersionedTemplateLibrary,
   type VersionedTemplateCandidate,
 } from "../src/versioned-library.ts";
+
+const ONE_PIXEL_PNG = Buffer.from(
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=",
+  "base64",
+);
 
 function record(value: unknown): Record<string, unknown> {
   assert.ok(value && typeof value === "object" && !Array.isArray(value));
@@ -84,7 +96,7 @@ function fixtureCandidate(): VersionedTemplateCandidate {
         role: "visual",
         visualRole: "source_reference",
         mediaType: "image/png",
-        text: "materialization-preview",
+        bytes: ONE_PIXEL_PNG,
       },
       {
         logicalPath: "code/plot.R",
@@ -123,19 +135,74 @@ async function startClient(
     ) => Promise<void> | void;
   } = {},
 ) {
-  const server = new McpServer({ name: "Materialization tools test", version: "0.5.0" });
+  const server = new McpServer({ name: "Materialization tools test", version: "0.5.1" });
+  const currentLibraries =
+    typeof context === "function" ? context : async () => context;
+  const previewConfirmations = new PreviewConfirmationStore();
   registerMaterializationTools({
     server,
     index,
-    currentLibraries:
-      typeof context === "function" ? context : async () => context,
+    currentLibraries,
+    previewConfirmations,
     ...(options.faultInjector ? { faultInjector: options.faultInjector } : {}),
   });
-  const client = new Client({ name: "materialization-tools-test", version: "0.5.0" });
+  const client = new Client({ name: "materialization-tools-test", version: "0.5.1" });
   const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
   await server.connect(serverTransport);
   await client.connect(clientTransport);
-  return { client, server };
+  return { client, server, currentLibraries, index, previewConfirmations };
+}
+
+async function confirmedReceipt(
+  connection: Awaited<ReturnType<typeof startClient>>,
+  providerId: string,
+  exactSelector: ExactTemplateSelector,
+) {
+  const context = await connection.currentLibraries();
+  const providerIds = [providerId];
+  const catalogRevision = await searchCatalogRevision(context, connection.index, providerIds);
+  const bindingDigest = libraryBindingDigest(context);
+  const resultSetId = connection.previewConfirmations.registerResultSet({
+    queryDigest: "materialization-test-result-set",
+    catalogRevision,
+    libraryBindingDigest: bindingDigest,
+    providerIds,
+    candidates: [{ providerId, exactSelector }],
+  });
+  const preview = await loadProviderPreview({
+    context,
+    index: connection.index,
+    providerId,
+    exactSelector,
+  });
+  const previewChallenge = connection.previewConfirmations.issueChallenge({
+    resultSetId,
+    providerId,
+    exactSelector,
+    exactSelectorDigest: exactSelectorDigest(exactSelector),
+    previewSha256: preview.sha256,
+    catalogRevision,
+    libraryBindingDigest: bindingDigest,
+  });
+  return connection.previewConfirmations.confirm(previewChallenge, "headless").previewReceipt;
+}
+
+async function planMaterialization(
+  connection: Awaited<ReturnType<typeof startClient>>,
+  arguments_: Record<string, unknown> & {
+    providerId: string;
+    exactSelector: ExactTemplateSelector;
+  },
+) {
+  const previewReceipt = await confirmedReceipt(
+    connection,
+    arguments_.providerId,
+    arguments_.exactSelector,
+  );
+  return connection.client.callTool({
+    name: "figure_library_plan_materialize",
+    arguments: { ...arguments_, previewReceipt },
+  });
 }
 
 async function figureYaFixture(root: string) {
@@ -162,6 +229,10 @@ async function figureYaFixture(root: string) {
     archiveBytes: archive.byteLength,
     archiveSha256,
     archiveIdentity: "sha256",
+    primaryPreview: `previews/${moduleId}.png`,
+    previewBytes: ONE_PIXEL_PNG.byteLength,
+    previewSha256: createHash("sha256").update(ONE_PIXEL_PNG).digest("hex"),
+    previewMediaType: "image/png",
     canonicalCode: "plot.R",
     requiredFiles: ["plot.R", "example.png"],
     sourceUrl: "https://example.invalid/fixture",
@@ -181,8 +252,27 @@ async function figureYaFixture(root: string) {
   const assets = path.join(root, "figureya-assets");
   const sourcePack = path.join(root, "figureya-source-pack");
   await fs.mkdir(path.join(sourcePack, "archives"), { recursive: true });
-  await fs.mkdir(assets, { recursive: true });
+  await fs.mkdir(path.join(assets, "previews"), { recursive: true });
   await fs.writeFile(path.join(assets, "catalog.json"), `${JSON.stringify(catalog)}\n`);
+  await fs.writeFile(path.join(assets, "previews", `${moduleId}.png`), ONE_PIXEL_PNG);
+  await fs.writeFile(
+    path.join(assets, "figureya-preview-manifest.json"),
+    `${JSON.stringify({
+      schema: "figure-library.figureya-preview-manifest.v1",
+      providerId: FIGUREYA_PROVIDER_ID,
+      sourceRepository: catalog.figureya.repository,
+      sourceCommit: catalog.figureya.commit,
+      previews: [
+        {
+          moduleId,
+          file: `previews/${moduleId}.png`,
+          bytes: ONE_PIXEL_PNG.byteLength,
+          sha256: createHash("sha256").update(ONE_PIXEL_PNG).digest("hex"),
+          mediaType: "image/png",
+        },
+      ],
+    })}\n`,
+  );
   await fs.writeFile(path.join(sourcePack, "archives", `${moduleId}.zip`), archive);
   await fs.writeFile(
     path.join(sourcePack, "figureya-source-pack.manifest.json"),
@@ -226,15 +316,12 @@ test("Local Published materialization plans, applies, and durably replays after 
   const first = await startClient(context, index);
   let applyArguments: Record<string, unknown>;
   try {
-    const planned = await first.client.callTool({
-      name: "figure_library_plan_materialize",
-      arguments: {
+    const planned = await planMaterialization(first, {
         providerId: LOCAL_LIBRARY_PROVIDER_ID,
         exactSelector,
         destination,
         allowNetwork: false,
-      },
-    });
+      });
     assert.equal(planned.isError, undefined);
     const plannedStructured = record(planned.structuredContent);
     assert.equal(record(plannedStructured.envelope).outcome, "needs_user_confirmation");
@@ -362,14 +449,11 @@ test("a pre-write intent rolls a complete atomic target forward after receipt-fi
     let applyArguments: Record<string, unknown>;
     let target = "";
     try {
-      const planned = await first.client.callTool({
-        name: "figure_library_plan_materialize",
-        arguments: {
+      const planned = await planMaterialization(first, {
           providerId: LOCAL_LIBRARY_PROVIDER_ID,
           exactSelector,
           destination: path.join(root, "materialized"),
           allowNetwork: false,
-        },
       });
       const plan = record(record(planned.structuredContent).plan);
       target = String(plan.target);
@@ -467,14 +551,11 @@ test("an intent-only operation stays blocked after restart and conflicts before 
     let firstTarget = "";
     let secondTarget = "";
     try {
-      const firstPlanResult = await first.client.callTool({
-        name: "figure_library_plan_materialize",
-        arguments: {
+      const firstPlanResult = await planMaterialization(first, {
           providerId: LOCAL_LIBRARY_PROVIDER_ID,
           exactSelector,
           destination: path.join(root, "first-destination"),
           allowNetwork: false,
-        },
       });
       const firstPlan = record(record(firstPlanResult.structuredContent).plan);
       firstTarget = String(firstPlan.target);
@@ -491,14 +572,11 @@ test("an intent-only operation stays blocked after restart and conflicts before 
       assert.equal(record(record(interrupted.structuredContent).envelope).outcome, "failed");
       await assert.rejects(fs.lstat(firstTarget), { code: "ENOENT" });
 
-      const secondPlanResult = await first.client.callTool({
-        name: "figure_library_plan_materialize",
-        arguments: {
+      const secondPlanResult = await planMaterialization(first, {
           providerId: LOCAL_LIBRARY_PROVIDER_ID,
           exactSelector,
           destination: path.join(root, "second-destination"),
           allowNetwork: false,
-        },
       });
       const secondPlan = record(record(secondPlanResult.structuredContent).plan);
       secondTarget = String(secondPlan.target);
@@ -558,14 +636,11 @@ test("an unapplied materialization plan cannot cross a global Library rebind", a
     let active = firstContext;
     const connection = await startClient(async () => active, await CatalogIndex.load());
     try {
-      const planned = await connection.client.callTool({
-        name: "figure_library_plan_materialize",
-        arguments: {
+      const planned = await planMaterialization(connection, {
           providerId: LOCAL_LIBRARY_PROVIDER_ID,
           exactSelector: selector,
           destination,
           allowNetwork: false,
-        },
       });
       const plan = record(record(planned.structuredContent).plan);
       assert.equal(
@@ -696,15 +771,12 @@ test("FigureYa replay requires an authoritative receipt and a selector matching 
     const first = await startClient(context, fixture.index);
     let applyArguments: Record<string, unknown>;
     try {
-      const planned = await first.client.callTool({
-        name: "figure_library_plan_materialize",
-        arguments: {
+      const planned = await planMaterialization(first, {
           providerId: FIGUREYA_PROVIDER_ID,
           exactSelector: fixture.exactSelector,
           destination,
           sourcePackDir: fixture.sourcePack,
           allowNetwork: false,
-        },
       });
       const plan = record(record(planned.structuredContent).plan);
       applyArguments = {

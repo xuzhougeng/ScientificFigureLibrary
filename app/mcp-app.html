@@ -13,15 +13,20 @@
           <h1>选择科学绘图模板</h1>
           <p id="query" class="query">正在等待候选结果…</p>
         </div>
-        <p class="hint">Local Published 与 FigureYa 同时检索；预览仅按需加载一张</p>
+        <p class="hint">先在这里浏览详情并选择；Agent 会等待你的决定</p>
       </header>
 
       <section id="empty" class="empty" aria-live="polite">
         请在对话中上传图片或数据，也可以直接描述想画的图。
       </section>
       <section id="cards" class="cards" aria-label="Scientific figure template candidates"></section>
+      <nav id="pagination" class="pagination" aria-label="候选分页">
+        <button id="previous-page" type="button" disabled>上一页</button>
+        <span id="page-status">等待搜索结果</span>
+        <button id="next-page" type="button" disabled>下一页</button>
+      </nav>
       <footer id="status" aria-live="polite">
-        分数只表示候选召回顺序；必须使用 providerId + exactSelector 查看并物化，不能只凭模板名。
+        分数只表示召回顺序。打开基础详情不会调用 Agent；确认精确预览后才会把选择交给 Agent。
       </footer>
     </main>
     <script type="module" src="/main.ts"></script>

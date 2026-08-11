@@ -3,11 +3,15 @@ name: figure-library
 description: Build, review, search, select, and materialize immutable scientific-figure references from one global Local Published library and FigureYa.
 ---
 
-# Scientific Figure Library 0.5
+# Scientific Figure Library 0.5.1
 
 Use this Skill when a user wants to store an uploaded figure/code pair, review
 or publish a local template, search for a plotting reference, or materialize an
 exact template into a project.
+
+Version 0.5.1 uses materialization protocol v2. This is an intentional
+patch-version breaking change: there is no receipt-free 0.5.0 materialization
+plan path.
 
 ## Non-negotiable boundaries
 
@@ -54,10 +58,10 @@ blocks, or success claims.
 
 `figure_library_open` is an optional MCP App call. If the Host rejects it with
 MCP `-32601` or `Capability is not granted`, do not retry it. This means the
-optional UI capability was denied; it does not prove that the ordinary server
-tools are unavailable. Ask for or use the user's plotting goal, then call
-`figure_library_search`, `figure_library_describe`, and
-`figure_library_preview` directly as needed.
+optional UI capability was denied; it does not prove that ordinary headless
+tools are unavailable. If the App opens but Host `serverTools` is missing,
+report the capability blocker: do not claim sidebar acceptance and never use a
+backend image viewer as a substitute for user-visible App preview.
 
 ## 1. Inspect or bind the global Library
 
@@ -214,31 +218,72 @@ The retrieval score is ranking only. It is not confidence, approval, or visual
 similarity. FigureYa is upstream-published but locally `not_reviewed`, code
 `provided`, execution `not_run`; do not call it SFL-approved or reproduced.
 
-## 5. Review a bounded candidate set
+Search defaults to 6 candidates per page and returns the true `total`,
+`resultSetId`, `pageIndex`, `hasMore`, and opaque `nextCursor`. In the MCP App,
+the App-only `figure_library_search_page` receives only the current
+`resultSetId` and `nextCursor` to visit every page. Do not truncate the catalog
+yourself. If the server returns `search_results_stale`, start a new search;
+never reuse the old result set.
 
-For a candidate, pass its exact provider and selector to
-`figure_library_describe`. Then call `figure_library_preview` for one candidate
-at a time. If the host cannot display MCP image blocks, provide an absolute
-trusted preview `destination` and inspect the returned path once with the host
-image viewer.
+After `figure_library_search` returns candidates, **stop the Agent turn and
+wait for the user**. Do not automatically call any preview tool, inspect each
+candidate, or use a backend image viewer. Opening and closing card details,
+loading the selected exact image, and confirming it are App interactions and
+must not trigger a model turn. Only when the user explicitly asks the Agent to
+choose may the Agent visually review a small, top-ranked subset; never walk the
+complete result set by default.
 
-Compare chart family, panel/layout, geometry/axes, encodings, labels/style, and
-data compatibility. Inspect at most the top three candidates unless the user
-asks for more. Explain why the selected candidate fits and where it differs.
-If no preview was actually visible, say visual verification was not completed.
+## 5. Preview and confirm one exact candidate
+
+The search result keeps model-visible `structuredContent` compact and carries
+verified thumbnail Data URLs only in result `_meta`, which is component-only.
+The App merges those thumbnails by result-scoped `candidateId`; do not ask the
+Agent to parse Base64. Each thumbnail, title, and **查看详情** action opens an
+accessible dialog using metadata already returned by search. Basic detail must
+remain usable without `serverTools` and must not call the Agent or a Server
+Tool. Candidates whose preview is missing, unreadable, unsupported,
+path-invalid, corrupt, or over the transfer limit remain visible with an error
+state but cannot be confirmed.
+
+For one selected usable candidate, preserve `resultSetId`, `providerId`, and
+`exactSelector`. Do not pass a destination and do not download or materialize
+anything during preview.
+
+- Apps path: only the App calls App-only `figure_library_preview_exact`. Its
+  image Data URL and one-time `previewChallenge` remain in component-only
+  `_meta`. The App waits for the exact `<img>` `load` event and a user click on
+  **确认并交给 Agent**, then calls App-only `figure_library_confirm_selection`
+  and sends the minimal selection summary plus `previewReceipt` through
+  `updateModelContext`.
+- Headless path: only when the Host has no Apps UI capability, wait for the
+  user's selection or explicit delegation, call model-visible
+  `figure_library_preview_exact_headless` once for the selected candidate, and
+  then call `figure_library_confirm_selection_headless`. This sequence cannot
+  prove that the user actually saw an image; say so in any acceptance report.
+
+Both paths return a session-local, opaque, single-use `previewReceipt` bound to
+the exact result set, provider, selector digest, preview hash, catalog/Library
+revision, and Library root. A challenge is destroyed on confirmation. A
+receipt has no time TTL, but restart, content/root/catalog change, mismatch, or
+successful plan generation invalidates it.
+
+The older `figure_library_preview` copy/display tool is compatibility-only. It
+cannot create a receipt and must never be described as a sidebar preview.
 
 ## 6. Plan and Apply exact materialization
 
-Materialize only after the user selects a candidate or explicitly delegates
-selection after the review above.
+Materialize only after the preview/confirmation sequence above.
 
-1. Call `figure_library_plan_materialize` with the unchanged `providerId` and
-   `exactSelector`, an absolute `destination`, optional absolute
-   `sourcePackDir`, and the intended `allowNetwork` policy.
-2. Show provider, full exact selector, `<destination>/<templateId>` target, and
-   acquisition policy. Wait for approval.
+1. Call `figure_library_plan_materialize` with the unchanged `providerId`,
+   `exactSelector`, the returned `previewReceipt`, an absolute `destination`,
+   optional absolute `sourcePackDir`, and the intended `allowNetwork` policy.
+   Missing receipt is `preview_required`; do not retry without preview.
+2. Show provider, full exact selector, preview confirmation mode,
+   `<destination>/<templateId>` target, and acquisition policy. Wait for
+   approval. Successful planning consumes the receipt, so do not reuse it.
 3. Call `figure_library_apply_materialize` with `planDigest`, stable
-   `operationId`, `expectedProviderId`, and exact `expectedTarget`.
+   `operationId`, `expectedProviderId`, and exact `expectedTarget`. Apply uses
+   the confirmation fact sealed into the v2 plan and does not take a receipt.
 
 The output has `TEMPLATE.md`, `template.json`, `template.lock.json`, and
 normalized `assets/`; FigureYa also has untouched `upstream/`. Do not overwrite
@@ -301,3 +346,27 @@ inventory or occupied target requires a new plan or user decision.
 Full backups exclude derived `indexes/` and runtime `locks/`. Restore and fork
 verify the complete bundle inventory. After a template import, inspect review
 and follow the normal local gate/publish workflow.
+
+## 9. Export diagnostics only on request
+
+Call `figure_library_export_diagnostics` only when the user explicitly asks to
+export logs/a diagnostic bundle, supplies a correlation ID or time range, or
+accepts an export after an error. Never export on startup, every search, or a
+successful operation, and never upload a bundle automatically.
+
+Defaults are `scope: "current_session"`, `detail: "sanitized_bundle"`,
+`includeUserText: false`, and `includeAbsolutePaths: false`. Use
+`last_operation` when the immediately preceding failure is unambiguous. Use
+`correlation_id` only with the requested `correlationId`, and `time_range` only
+with the requested ISO timestamps. `full_local`, user text, or absolute paths
+require an explicit user request; secrets, image bytes/Data URLs,
+preview challenges/receipts, plan tokens, selectors, and source assets remain
+excluded. In 0.5.1, `includeUserText` is forward-compatible input only: the
+recorder does not collect conversation/free text, even when it is true.
+
+Return the tool's bundle name, byte length, SHA-256, redaction state, compact
+error/warning/slow-stage summary, and `figure-library://diagnostics/<bundleId>`
+resource link. Do not paste JSONL into model context. A resource link is
+session-bound. If the Host cannot download it, report that limitation and only
+offer the returned local path when the user explicitly requested
+`includeAbsolutePaths`; do not claim file delivery from local existence alone.

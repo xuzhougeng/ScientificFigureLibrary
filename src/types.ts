@@ -87,6 +87,13 @@ export interface ProviderPreviewRef {
   exactSelector: ExactTemplateSelector;
 }
 
+export type PreviewStatus =
+  | "ready"
+  | "missing"
+  | "unreadable"
+  | "unsupported"
+  | "too_large";
+
 export interface FigureYaModule {
   moduleId: string;
   title: string;
@@ -188,6 +195,11 @@ export interface TemplateCandidate {
   materializable: boolean;
   previewAvailable: boolean;
   previewRef?: ProviderPreviewRef;
+  previewStatus?: PreviewStatus;
+  previewDataUrl?: string;
+  previewMimeType?: "image/png" | "image/jpeg" | "image/webp";
+  previewByteLength?: number;
+  previewSha256?: string;
   assetKind: AssetKind;
   language: string;
   plotFamily: string;

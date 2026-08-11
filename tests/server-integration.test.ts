@@ -48,8 +48,11 @@ const STANDARD_TOOLS = [
   "figure_library_apply_review_gate_update",
   "figure_library_apply_template_bundle_import",
   "figure_library_apply_working_revision",
+  "figure_library_confirm_selection",
+  "figure_library_confirm_selection_headless",
   "figure_library_describe",
   "figure_library_diff_revisions",
+  "figure_library_export_diagnostics",
   "figure_library_open",
   "figure_library_plan_adopt_versioning",
   "figure_library_plan_bind_global",
@@ -64,8 +67,12 @@ const STANDARD_TOOLS = [
   "figure_library_plan_template_bundle_import",
   "figure_library_plan_working_revision",
   "figure_library_preview",
+  "figure_library_preview_exact",
+  "figure_library_preview_exact_headless",
+  "figure_library_record_ui_event",
   "figure_library_review_open",
   "figure_library_search",
+  "figure_library_search_page",
   "figure_library_source_status",
   "figure_library_template_history",
 ] as const;
@@ -147,6 +154,20 @@ test("standard server unifies Local Published and FigureYa while hiding Working/
       await library.planPublish({ templateId: "local-published-volcano" }),
       "server-local-publish",
     );
+    for (let index = 1; index <= 3; index += 1) {
+      const templateId = `zz-local-pagination-${index}`;
+      await library.applyCreateWorking(
+        await library.planCreateWorking({
+          templateId,
+          candidate: candidate(`Local pagination ${index} crossprovideruniquemarker volcano`),
+        }),
+        `server-pagination-working-${index}`,
+      );
+      await library.applyPublish(
+        await library.planPublish({ templateId }),
+        `server-pagination-publish-${index}`,
+      );
+    }
     const hiddenWorking = await library.planCreateWorking({
       templateId: "hidden-working-volcano",
       candidate: candidate("Working crossprovideruniquemarker volcano must stay hidden"),
@@ -166,7 +187,7 @@ test("standard server unifies Local Published and FigureYa while hiding Working/
 
     process.env.FIGURE_LIBRARY_DIR = libraryRoot;
     const server = await createServer();
-    const client = new Client({ name: "server-integration-test", version: "0.5.0" });
+    const client = new Client({ name: "server-integration-test", version: "0.5.1" });
     const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
     await server.connect(serverTransport);
     await client.connect(clientTransport);
@@ -178,6 +199,18 @@ test("standard server unifies Local Published and FigureYa while hiding Working/
       assert.ok(names.includes("figure_library_search"));
       assert.ok(names.includes("figure_library_plan_materialize"));
       assert.ok(names.includes("figure_library_plan_bundle_export"));
+      for (const [toolName, visibility] of [
+        ["figure_library_search", "model"],
+        ["figure_library_search_page", "app"],
+        ["figure_library_preview_exact", "app"],
+        ["figure_library_preview_exact_headless", "model"],
+        ["figure_library_record_ui_event", "app"],
+        ["figure_library_export_diagnostics", "model"],
+      ] as const) {
+        const tool = listed.tools.find((candidate) => candidate.name === toolName);
+        assert.ok(tool, `missing ${toolName}`);
+        assert.deepEqual(record(record(tool._meta).ui).visibility, [visibility]);
+      }
       assert.equal(names.some((name) => name.startsWith("figure_capture_")), false);
       for (const forbidden of [
         "figure_library_project_status",
@@ -214,8 +247,9 @@ test("standard server unifies Local Published and FigureYa while hiding Working/
       assert.equal(searchedEnvelope.schema, "figure-library.tool-outcome.v1");
       assert.equal(searchedEnvelope.terminal, true);
       assert.equal(searchedEnvelope.retrySameCall, false);
-      assert.equal(searchedEnvelope.nextAction, "preview_selected_candidate");
+      assert.equal(searchedEnvelope.nextAction, "ask_user");
       const candidates = records(searchedStructured.candidates);
+      assert.doesNotMatch(JSON.stringify(searchedStructured), /data:image\//u);
       const providers = new Set(candidates.map((item) => item.providerId));
       assert.ok(providers.has(LOCAL_LIBRARY_PROVIDER_ID));
       assert.ok(providers.has(FIGUREYA_PROVIDER_ID));
@@ -224,10 +258,55 @@ test("standard server unifies Local Published and FigureYa while hiding Working/
       assert.equal(candidates.some((item) => item.templateId === "hidden-legacy-flat"), false);
       assert.ok(
         candidates.every(
-          (item) =>
-            record(item.exactSelector).providerId === item.providerId &&
-            !("previewDataUrl" in item) &&
-            !("thumbnail" in item),
+          (item) => record(item.exactSelector).providerId === item.providerId,
+        ),
+      );
+      const localThumbnail = candidates.find(
+        (item) => item.templateId === "local-published-volcano",
+      );
+      assert.ok(localThumbnail);
+      assert.equal(localThumbnail.previewStatus, "ready");
+      assert.equal(localThumbnail.previewDataUrl, undefined);
+      assert.equal(localThumbnail.previewMimeType, "image/png");
+      assert.equal(localThumbnail.previewByteLength, ONE_PIXEL_PNG.byteLength);
+      assert.match(String(localThumbnail.previewSha256), /^[a-f0-9]{64}$/u);
+      assert.equal(typeof localThumbnail.candidateId, "string");
+      const searchedMeta = record(record(searched)._meta);
+      const candidatePreviews = record(searchedMeta.candidatePreviews);
+      const localPreview = record(candidatePreviews[String(localThumbnail.candidateId)]);
+      assert.match(String(localPreview.previewDataUrl), /^data:image\/png;base64,/u);
+      assert.equal(localPreview.previewMimeType, "image/png");
+      assert.equal(localPreview.previewByteLength, ONE_PIXEL_PNG.byteLength);
+      assert.match(String(localPreview.previewSha256), /^[a-f0-9]{64}$/u);
+      const pagination = record(searchedStructured.pagination);
+      assert.equal(pagination.pageIndex, 1);
+      assert.equal(pagination.pageSize, 6);
+      assert.ok(Number(pagination.total) > candidates.length);
+      assert.equal(pagination.hasMore, true);
+      assert.equal(typeof pagination.nextCursor, "string");
+      assert.equal(typeof searchedStructured.resultSetId, "string");
+      assert.equal(searchedStructured.total, pagination.total);
+      assert.equal(searchedStructured.pageIndex, pagination.pageIndex);
+      assert.equal(searchedStructured.hasMore, pagination.hasMore);
+      assert.equal(searchedStructured.nextCursor, pagination.nextCursor);
+      const secondPage = await client.callTool({
+        name: "figure_library_search_page",
+        arguments: {
+          resultSetId: searchedStructured.resultSetId,
+          cursor: pagination.nextCursor,
+        },
+      });
+      const secondStructured = record(secondPage.structuredContent);
+      const secondPagination = record(secondStructured.pagination);
+      const secondCandidates = records(secondStructured.candidates);
+      assert.equal(secondStructured.resultSetId, searchedStructured.resultSetId);
+      assert.equal(secondPagination.pageIndex, 2);
+      assert.equal(secondPagination.total, pagination.total);
+      assert.ok(secondCandidates.length > 0);
+      const firstKeys = new Set(candidates.map((item) => `${item.providerId}:${item.templateId}`));
+      assert.ok(
+        secondCandidates.every(
+          (item) => !firstKeys.has(`${String(item.providerId)}:${String(item.templateId)}`),
         ),
       );
       assert.ok(
@@ -241,7 +320,7 @@ test("standard server unifies Local Published and FigureYa while hiding Working/
         ),
       );
       assert.match(toolText(searched), /EXACT_SELECTOR:/u);
-      assert.match(toolText(searched), /NEXT_ACTION: preview_selected_candidate/u);
+      assert.match(toolText(searched), /NEXT_ACTION: ask_user/u);
       assert.doesNotMatch(toolText(searched), /data:image\//u);
 
       const localCandidate = candidates.find(
@@ -264,19 +343,179 @@ test("standard server unifies Local Published and FigureYa while hiding Working/
         ONE_PIXEL_PNG.subarray(0, 8).toString("hex"),
       );
 
+      const exactPreview = await client.callTool({
+        name: "figure_library_preview_exact_headless",
+        arguments: {
+          resultSetId: searchedStructured.resultSetId,
+          providerId: LOCAL_LIBRARY_PROVIDER_ID,
+          exactSelector: localCandidate.exactSelector,
+        },
+      });
+      assert.equal(record(record(exactPreview.structuredContent).envelope).code, "exact_preview_ready");
+      assert.equal(
+        records(record(exactPreview).content).filter((block) => block.type === "image").length,
+        1,
+      );
+      const exactStructured = record(exactPreview.structuredContent);
+      assert.match(String(exactStructured.previewSha256 ?? exactStructured.sha256), /^[a-f0-9]{64}$/u);
+      const destination = path.join(root, "confirmation-only-materialization");
+      const withoutReceipt = await client.callTool({
+        name: "figure_library_plan_materialize",
+        arguments: {
+          providerId: LOCAL_LIBRARY_PROVIDER_ID,
+          exactSelector: localCandidate.exactSelector,
+          destination,
+          allowNetwork: false,
+        },
+      });
+      assert.equal(record(record(withoutReceipt.structuredContent).envelope).code, "preview_required");
+      const headlessConfirmation = await client.callTool({
+        name: "figure_library_confirm_selection_headless",
+        arguments: { previewChallenge: exactStructured.previewChallenge },
+      });
+      const headlessStructured = record(headlessConfirmation.structuredContent);
+      assert.equal(record(headlessStructured.envelope).code, "preview_confirmed_headless");
+      assert.equal(headlessStructured.confirmationMode, "headless");
+      const plannedAfterHeadlessConfirmation = await client.callTool({
+        name: "figure_library_plan_materialize",
+        arguments: {
+          providerId: LOCAL_LIBRARY_PROVIDER_ID,
+          exactSelector: localCandidate.exactSelector,
+          previewReceipt: headlessStructured.previewReceipt,
+          destination,
+          allowNetwork: false,
+        },
+      });
+      assert.equal(
+        record(record(plannedAfterHeadlessConfirmation.structuredContent).envelope).code,
+        "materialization_plan_ready",
+      );
+      assert.equal(
+        record(record(plannedAfterHeadlessConfirmation.structuredContent).plan).schema,
+        "figure-library.materialization-plan.v2",
+      );
+      const replayedReceipt = await client.callTool({
+        name: "figure_library_plan_materialize",
+        arguments: {
+          providerId: LOCAL_LIBRARY_PROVIDER_ID,
+          exactSelector: localCandidate.exactSelector,
+          previewReceipt: headlessStructured.previewReceipt,
+          destination: path.join(root, "receipt-replay"),
+          allowNetwork: false,
+        },
+      });
+      assert.equal(record(record(replayedReceipt.structuredContent).envelope).code, "preview_receipt_used");
+
+      const appExactPreview = await client.callTool({
+        name: "figure_library_preview_exact",
+        arguments: {
+          resultSetId: searchedStructured.resultSetId,
+          providerId: LOCAL_LIBRARY_PROVIDER_ID,
+          exactSelector: localCandidate.exactSelector,
+        },
+      });
+      assert.equal(
+        records(record(appExactPreview).content).filter((block) => block.type === "image").length,
+        0,
+      );
+      const appExactMeta = record(record(record(appExactPreview)._meta).exactPreview);
+      assert.match(String(appExactMeta.previewDataUrl), /^data:image\/png;base64,/u);
+      assert.equal(typeof appExactMeta.previewChallenge, "string");
+      const uiEvent = await client.callTool({
+        name: "figure_library_record_ui_event",
+        arguments: {
+          event: "exact_preview.image_loaded",
+          resultSetId: searchedStructured.resultSetId,
+          candidateId: localCandidate.candidateId,
+          previewBytes: ONE_PIXEL_PNG.byteLength,
+        },
+      });
+      const appConfirmation = await client.callTool({
+        name: "figure_library_confirm_selection",
+        arguments: {
+          previewChallenge: appExactMeta.previewChallenge,
+        },
+      });
+      const appConfirmationStructured = record(appConfirmation.structuredContent);
+      assert.equal(appConfirmationStructured.confirmationMode, "app");
+      const plannedAfterAppConfirmation = await client.callTool({
+        name: "figure_library_plan_materialize",
+        arguments: {
+          providerId: LOCAL_LIBRARY_PROVIDER_ID,
+          exactSelector: localCandidate.exactSelector,
+          previewReceipt: appConfirmationStructured.previewReceipt,
+          destination: path.join(root, "app-confirmation-only-materialization"),
+          allowNetwork: false,
+        },
+      });
+      assert.equal(
+        record(record(plannedAfterAppConfirmation.structuredContent).envelope).code,
+        "materialization_plan_ready",
+      );
+
+      await library.applyCreateWorking(
+        await library.planCreateWorking({
+          templateId: "zz-local-pagination-stale",
+          candidate: candidate("Local stale cursor crossprovideruniquemarker volcano"),
+        }),
+        "server-stale-cursor-working",
+      );
+      await library.applyPublish(
+        await library.planPublish({ templateId: "zz-local-pagination-stale" }),
+        "server-stale-cursor-publish",
+      );
+      const stalePage = await client.callTool({
+        name: "figure_library_search_page",
+        arguments: {
+          resultSetId: searchedStructured.resultSetId,
+          cursor: pagination.nextCursor,
+        },
+      });
+      assert.equal(
+        record(record(stalePage.structuredContent).envelope).code,
+        "search_results_stale",
+      );
+
+      const describedLocal = await client.callTool({
+        name: "figure_library_describe",
+        arguments: {
+          providerId: LOCAL_LIBRARY_PROVIDER_ID,
+          exactSelector: localCandidate.exactSelector,
+        },
+      });
+      const describedLocalStructured = record(describedLocal.structuredContent);
+      assert.equal(describedLocalStructured.materializationProtocolVersion, 2);
+      assert.deepEqual(record(describedLocalStructured.previewConfirmationCapabilities), {
+        app: true,
+        headless: true,
+        receiptRequired: true,
+        appPaginationTool: "figure_library_search_page",
+        appExactPreviewTool: "figure_library_preview_exact",
+        headlessExactPreviewTool: "figure_library_preview_exact_headless",
+        modelVisibleSearchIncludesImageData: false,
+        componentThumbnailMetaKey: "candidatePreviews",
+      });
+      assert.deepEqual(record(describedLocalStructured.diagnosticsExportCapabilities), {
+        exportTool: "figure_library_export_diagnostics",
+        defaultScope: "current_session",
+        defaultDetail: "sanitized_bundle",
+        resourceUriTemplate: "figure-library://diagnostics/{bundleId}",
+        sessionBound: true,
+      });
+
       const status = await client.callTool({
         name: "figure_library_source_status",
         arguments: {},
       });
       const statusStructured = record(status.structuredContent);
-      assert.equal(statusStructured.serverVersion, "0.5.0");
+      assert.equal(statusStructured.serverVersion, "0.5.1");
       const libraryStatus = record(statusStructured.library);
       const marker = await readLibraryRootMarker(libraryRoot);
       assert.ok(marker);
       assert.equal(libraryStatus.root, libraryRoot);
       assert.equal(libraryStatus.directorySource, "FIGURE_LIBRARY_DIR");
       assert.equal(libraryStatus.libraryId, marker.value.libraryId);
-      assert.equal(libraryStatus.publishedCount, 1);
+      assert.equal(libraryStatus.publishedCount, 5);
       assert.equal(libraryStatus.workingCount, 1);
       assert.equal(libraryStatus.legacyFlatCount, 1);
       const standardCore = record(statusStructured.standardCore);
@@ -286,10 +525,10 @@ test("standard server unifies Local Published and FigureYa while hiding Working/
       assert.equal(standardCore.flatEntriesInOrdinarySearch, false);
       const text = toolText(status);
       for (const field of [
-        "SERVER_VERSION: 0.5.0",
+        "SERVER_VERSION: 0.5.1",
         `LIBRARY_ROOT: ${libraryRoot}`,
         `LIBRARY_ID: ${marker.value.libraryId}`,
-        "PUBLISHED: 1",
+        "PUBLISHED: 5",
         "WORKING: 1",
         "LEGACY_FLAT: 1",
         "FIGUREYA_CATALOG:",
@@ -297,6 +536,67 @@ test("standard server unifies Local Published and FigureYa while hiding Working/
         "PROJECT_PIN_TOOLS_REGISTERED: false",
       ]) {
         assert.ok(text.includes(field), `status text omitted ${field}`);
+      }
+
+      const diagnosticsExport = await client.callTool({
+        name: "figure_library_export_diagnostics",
+        arguments: {},
+      });
+      assert.equal(
+        record(record(diagnosticsExport.structuredContent).envelope).code,
+        "diagnostics_exported",
+      );
+      const diagnosticsStructured = record(diagnosticsExport.structuredContent);
+      assert.match(String(diagnosticsStructured.bundleId), /^diagnostics-/u);
+      assert.match(String(diagnosticsStructured.fileName), /\.zip$/u);
+      assert.ok(Number(diagnosticsStructured.byteLength) > 0);
+      assert.match(String(diagnosticsStructured.sha256), /^[a-f0-9]{64}$/u);
+      assert.equal(diagnosticsStructured.localPath, undefined);
+      const diagnosticLinks = records(record(diagnosticsExport).content).filter(
+        (block) => block.type === "resource_link",
+      );
+      assert.equal(diagnosticLinks.length, 1);
+      assert.equal(diagnosticLinks[0]?.uri, diagnosticsStructured.resourceUri);
+      const diagnosticResource = await client.readResource({
+        uri: String(diagnosticsStructured.resourceUri),
+      });
+      const diagnosticContents = records(diagnosticResource.contents);
+      assert.equal(diagnosticContents.length, 1);
+      assert.equal(diagnosticContents[0]?.mimeType, "application/zip");
+      assert.ok(Buffer.from(String(diagnosticContents[0]?.blob), "base64").byteLength > 0);
+      assert.doesNotMatch(
+        JSON.stringify(diagnosticsStructured),
+        /events\.jsonl|data:image|previewReceipt|previewChallenge/u,
+      );
+      const previousDiagnosticsDirectory = process.env.SFL_DIAGNOSTICS_DIR;
+      const blockedDiagnosticsPath = path.join(root, "diagnostics-not-a-directory");
+      await fs.writeFile(blockedDiagnosticsPath, "fixture");
+      process.env.SFL_DIAGNOSTICS_DIR = blockedDiagnosticsPath;
+      const otherServer = await createServer();
+      const otherClient = new Client({ name: "server-isolation-test", version: "0.5.1" });
+      const [otherClientTransport, otherServerTransport] =
+        InMemoryTransport.createLinkedPair();
+      await otherServer.connect(otherServerTransport);
+      await otherClient.connect(otherClientTransport);
+      try {
+        const degradedSearch = await otherClient.callTool({
+          name: "figure_library_search",
+          arguments: { query: "crossprovideruniquemarker volcano", limit: 2 },
+        });
+        assert.equal(record(degradedSearch.structuredContent).diagnosticsDegraded, true);
+        assert.equal(
+          record(record(degradedSearch.structuredContent).envelope).code,
+          "search_candidates_ready",
+        );
+        await assert.rejects(
+          otherClient.readResource({ uri: String(diagnosticsStructured.resourceUri) }),
+          /unavailable in this server session/u,
+        );
+      } finally {
+        await otherClient.close();
+        await otherServer.close();
+        if (previousDiagnosticsDirectory === undefined) delete process.env.SFL_DIAGNOSTICS_DIR;
+        else process.env.SFL_DIAGNOSTICS_DIR = previousDiagnosticsDirectory;
       }
 
       const hash = "0".repeat(64);
@@ -392,9 +692,16 @@ test("standard server unifies Local Published and FigureYa while hiding Working/
         figure_library_template_history: { templateId: "missing-template" },
       };
       const alreadyAudited = new Set([
+        "figure_library_confirm_selection",
+        "figure_library_confirm_selection_headless",
+        "figure_library_export_diagnostics",
         "figure_library_open",
         "figure_library_preview",
+        "figure_library_preview_exact",
+        "figure_library_preview_exact_headless",
+        "figure_library_record_ui_event",
         "figure_library_search",
+        "figure_library_search_page",
         "figure_library_source_status",
       ]);
       assert.deepEqual(
@@ -406,9 +713,16 @@ test("standard server unifies Local Published and FigureYa while hiding Working/
         assertTerminalEnvelope(result, toolName);
       }
       for (const [toolName, result] of [
+        ["figure_library_confirm_selection", appConfirmation],
+        ["figure_library_confirm_selection_headless", headlessConfirmation],
+        ["figure_library_export_diagnostics", diagnosticsExport],
         ["figure_library_open", opened],
         ["figure_library_preview", preview],
+        ["figure_library_preview_exact", appExactPreview],
+        ["figure_library_preview_exact_headless", exactPreview],
+        ["figure_library_record_ui_event", uiEvent],
         ["figure_library_search", searched],
+        ["figure_library_search_page", secondPage],
         ["figure_library_source_status", status],
       ] as const) {
         assertTerminalEnvelope(result, toolName);

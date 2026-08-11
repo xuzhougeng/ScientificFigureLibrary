@@ -6,6 +6,7 @@ import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 import type { CatalogIndex } from "./catalog.ts";
 import { canonicalJson, compareCanonicalStrings } from "./canonical-json.ts";
+import type { DiagnosticsManager } from "./diagnostics.ts";
 import { withCrossRuntimeWriteLock } from "./cross-runtime-lock.ts";
 import { materializeFigureYaTemplate } from "./materialize.ts";
 import {
@@ -18,6 +19,15 @@ import {
 } from "./providers.ts";
 import type { ExactTemplateSelector, FigureYaExactSelector } from "./types.ts";
 import type { CurrentLibraryContext, ToolOutcomeEnvelope } from "./library-binding-tools.ts";
+import {
+  PreviewConfirmationStore,
+  PreviewProtocolError,
+} from "./preview-confirmation.ts";
+import {
+  libraryBindingDigest,
+  loadProviderPreview,
+  searchCatalogRevision,
+} from "./preview-service.ts";
 import {
   assertLibraryOperationContext,
   readLibraryRootMarker,
@@ -36,7 +46,7 @@ const PUBLIC_MATERIALIZATION_INTENT_SCHEMA =
 type MaterializationFaultPoint = "after_public_intent" | "before_public_receipt";
 
 interface MaterializationPlan {
-  schema: "figure-library.materialization-plan.v1";
+  schema: "figure-library.materialization-plan.v2";
   providerId: string;
   exactSelector: ExactTemplateSelector;
   libraryContext: LibraryOperationContext;
@@ -44,6 +54,13 @@ interface MaterializationPlan {
   target: string;
   sourcePackDir?: string;
   allowNetwork: boolean;
+  previewConfirmation: {
+    protocolVersion: 2;
+    confirmationMode: "app" | "headless";
+    resultSetId: string;
+    previewSha256: string;
+    receiptDigest: string;
+  };
   expectedTargetState: "missing";
   createdAt: string;
   planDigest: string;
@@ -158,6 +175,21 @@ function reply(
 }
 
 function failure(error: unknown): CallToolResult {
+  if (error instanceof PreviewProtocolError) {
+    const blocked = [
+      "preview_required",
+      "preview_receipt_used",
+      "ui_confirmation_required",
+    ].includes(error.code);
+    return reply(
+      envelope(
+        blocked ? "blocked" : "conflict",
+        error.code,
+        `Materialization was not planned: ${error.message}`,
+        "preview_selected_candidate",
+      ),
+    );
+  }
   const message = error instanceof Error ? error.message : String(error);
   const lower = message.toLocaleLowerCase("en-US");
   if (lower.includes("library_busy") || lower.includes("write-lock")) {
@@ -1138,6 +1170,9 @@ const ExactSelectorSchema = z
 const PlanInput = z.object({
   providerId: z.string().min(1).max(200),
   exactSelector: ExactSelectorSchema,
+  previewReceipt: z.string().min(1).max(256).optional().describe(
+    "Required one-time receipt returned by figure_library_confirm_selection or figure_library_confirm_selection_headless.",
+  ),
   destination: z.string().min(1).max(4_000),
   sourcePackDir: z.string().min(1).max(4_000).optional(),
   allowNetwork: z.boolean().optional().default(true),
@@ -1153,12 +1188,14 @@ export function registerMaterializationTools(options: {
   server: McpServer;
   index: CatalogIndex;
   currentLibraries: () => Promise<CurrentLibraryContext>;
+  previewConfirmations: PreviewConfirmationStore;
+  diagnostics?: DiagnosticsManager;
   faultInjector?: (
     point: MaterializationFaultPoint,
     operation: { operationId: string; planDigest: string; providerId: string },
   ) => Promise<void> | void;
 }) {
-  const { server, index, currentLibraries, faultInjector } = options;
+  const { server, index, currentLibraries, previewConfirmations, diagnostics, faultInjector } = options;
   const plans = new Map<string, CachedPlan>();
 
   function prune() {
@@ -1176,7 +1213,7 @@ export function registerMaterializationTools(options: {
     {
       title: "Plan exact template materialization",
       description:
-        "Resolve one provider-qualified exact Published/upstream selector and check the destination without writing files.",
+        "Require a one-time confirmed exact preview receipt, then resolve the provider-qualified selector and check the destination without writing files.",
       inputSchema: PlanInput.shape,
       annotations: {
         readOnlyHint: true,
@@ -1186,7 +1223,26 @@ export function registerMaterializationTools(options: {
       },
     },
     async (input): Promise<CallToolResult> => {
+      const correlationId = diagnostics?.createCorrelationId("materialize-plan");
+      const operationStartedAt = performance.now();
+      await diagnostics?.record({
+        event: "materialize.plan_requested",
+        correlationId,
+        toolName: "figure_library_plan_materialize",
+        invocationSource: "agent",
+        providerId: input.providerId,
+      });
       try {
+        if (!input.previewReceipt) {
+          return reply(
+            envelope(
+              "blocked",
+              "preview_required",
+              "A confirmed exact preview receipt is required before materialization can be planned.",
+              "preview_selected_candidate",
+            ),
+          );
+        }
         if (!path.isAbsolute(input.destination)) {
           return reply(
             envelope(
@@ -1216,6 +1272,27 @@ export function registerMaterializationTools(options: {
           libraryId: marker.libraryId,
           configRevision: context.snapshot.configRevision,
         };
+        const pendingReceipt = previewConfirmations.getReceipt(input.previewReceipt);
+        const resultSet = previewConfirmations.getResultSet(pendingReceipt.resultSetId);
+        const catalogRevision = await searchCatalogRevision(
+          context,
+          index,
+          resultSet.providerIds,
+        );
+        const currentPreview = await loadProviderPreview({
+          context,
+          index,
+          providerId: input.providerId,
+          exactSelector,
+        });
+        const confirmedPreview = previewConfirmations.requireReceipt({
+          previewReceipt: input.previewReceipt,
+          providerId: input.providerId,
+          exactSelector,
+          previewSha256: currentPreview.sha256,
+          catalogRevision,
+          libraryBindingDigest: libraryBindingDigest(context),
+        });
         if (input.providerId === LOCAL_LIBRARY_PROVIDER_ID) {
           const identity = localIdentity(exactSelector);
           const [content, release] = await Promise.all([
@@ -1251,7 +1328,7 @@ export function registerMaterializationTools(options: {
         const target = path.join(destination, templateId);
         if (!(await targetMissing(target))) throw new Error(`target already exists: ${target}`);
         const withoutDigest = {
-          schema: "figure-library.materialization-plan.v1" as const,
+          schema: "figure-library.materialization-plan.v2" as const,
           providerId: input.providerId,
           exactSelector,
           libraryContext,
@@ -1259,6 +1336,13 @@ export function registerMaterializationTools(options: {
           target,
           ...(input.sourcePackDir ? { sourcePackDir: path.resolve(input.sourcePackDir) } : {}),
           allowNetwork: input.allowNetwork,
+          previewConfirmation: {
+            protocolVersion: 2 as const,
+            confirmationMode: confirmedPreview.confirmationMode,
+            resultSetId: confirmedPreview.resultSetId,
+            previewSha256: confirmedPreview.previewSha256,
+            receiptDigest: digest(input.previewReceipt),
+          },
           expectedTargetState: "missing" as const,
           createdAt: new Date().toISOString(),
           written: false as const,
@@ -1268,7 +1352,20 @@ export function registerMaterializationTools(options: {
           planDigest: digest(withoutDigest),
         };
         prune();
+        previewConfirmations.consumeReceipt(input.previewReceipt);
         plans.set(plan.planDigest, { plan, expiresAt: Date.now() + PLAN_TTL_MS });
+        await diagnostics?.record({
+          event: "materialize.plan_created",
+          correlationId,
+          resultSetId: confirmedPreview.resultSetId,
+          toolName: "figure_library_plan_materialize",
+          invocationSource: "agent",
+          providerId: input.providerId,
+          selectorDigest: digest(exactSelector),
+          durationMs: performance.now() - operationStartedAt,
+          catalogRevision,
+          libraryRevision: libraryBindingDigest(context),
+        });
         return reply(
           envelope(
             "needs_user_confirmation",
@@ -1286,9 +1383,22 @@ export function registerMaterializationTools(options: {
             `TARGET: ${plan.target}`,
             `ALLOW_NETWORK: ${plan.allowNetwork}`,
             `SOURCE_PACK_DIR: ${plan.sourcePackDir ?? "none"}`,
+            `PREVIEW_CONFIRMATION_MODE: ${plan.previewConfirmation.confirmationMode}`,
+            `PREVIEW_SHA256: ${plan.previewConfirmation.previewSha256}`,
           ],
         );
       } catch (error) {
+        await diagnostics?.record({
+          level: "error",
+          event: "tool.failed",
+          correlationId,
+          toolName: "figure_library_plan_materialize",
+          invocationSource: "agent",
+          providerId: input.providerId,
+          durationMs: performance.now() - operationStartedAt,
+          errorCode: error instanceof PreviewProtocolError ? error.code : "materialization_plan_failed",
+          safeMessage: error instanceof Error ? error.message : String(error),
+        });
         return failure(error);
       }
     },

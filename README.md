@@ -17,6 +17,12 @@ The standard core has two retrieval providers:
 provider-qualified and carry an `exactSelector`; a bare `templateId` is never
 enough to describe, preview, or materialize an exact result.
 
+> **0.5.1 protocol migration:** this patch release intentionally breaks the
+> 0.5.1 materialization-plan input. `figure_library_plan_materialize` now
+> requires a session-local, single-use `previewReceipt` produced only after an
+> exact preview and explicit confirmation. Old callers must adopt protocol v2;
+> there is no receipt-free compatibility path.
+
 The host Agent, not this server, inspects an uploaded figure and code, reasons
 about their relationship, and asks the user to confirm the Figure Unit. SFL
 then verifies bytes, records hashes and provenance, creates immutable
@@ -72,13 +78,14 @@ repeat an identical failed or blocked tool call. If a plan is stale or absent,
 create a new plan; if user input is missing, ask the user; otherwise stop and
 report the exact failure.
 
-`figure_library_open` is an optional MCP App entry point. A Host may reject it
-before the server runs with MCP `-32601` or `Capability is not granted`. That is
-a Host UI-capability result, not permission to retry. Skip `open`, obtain the
-user's plotting goal, and continue through the ordinary
-`figure_library_search`, `figure_library_describe`, and
-`figure_library_preview` tools. Do not loop on `open` or infer that the global
-Library is unavailable when those standard tools still work.
+`figure_library_open` and the paginated candidate gallery are MCP App entry
+points. A Host may reject App display before the server runs with MCP `-32601`
+or `Capability is not granted`. That is a Host UI-capability result, not
+permission to retry. Ordinary headless tools can still be used, but a real App
+acceptance requires Host `serverTools`; without it, the sidebar must display a
+capability error and cannot be reported as visually accepted. A backend
+`view_image` check is never evidence that the user's sidebar displayed the
+image.
 
 ## Requirements and build
 
@@ -261,10 +268,22 @@ non-destructive, with a migration receipt.
 
 ## Unified search and exact selectors
 
-`figure_library_search` searches Local Published and FigureYa in one bounded
-call unless `providerIds` explicitly narrows it. Working Revisions, Capture
-records, and unadopted flat entries are excluded. The retrieval score only
-orders candidates; it is not visual similarity, confidence, or approval.
+`figure_library_search` searches the complete relevance-matched Local
+Published and FigureYa set unless `providerIds` explicitly narrows it. Working
+Revisions, Capture records, and unadopted flat entries are excluded. The
+retrieval score only orders candidates; it is not visual similarity,
+confidence, or approval.
+
+The first page defaults to 6 candidates (`limit` maximum 12). Responses expose
+`resultSetId`, true `total`, `pageIndex`, `hasMore`, and opaque `nextCursor` as
+well as the structured `pagination` object. The cursor is bound to the query,
+filters, page size, Library root, Local Published revision, and FigureYa
+catalog revision. Catalog or Library changes return `search_results_stale`
+instead of silently drifting. Each page carries verified PNG/JPEG/WebP
+thumbnails with a 256 KiB per-image and 3 MiB per-page safety ceiling. The
+model-visible `structuredContent` contains only compact candidate summaries;
+thumbnail Data URLs are keyed by result-scoped `candidateId` under result
+`_meta.candidatePreviews`, which MCP Apps expose only to the component.
 
 Each candidate includes `providerId` and `exactSelector`:
 
@@ -281,23 +300,65 @@ FigureYa is upstream-published but locally `not_reviewed`; its code is
 `provided` and `not_run`. Never describe a FigureYa search result as locally
 approved, reproduced, or verified by SFL.
 
-For visual selection, the Agent should inspect the user's image with its host
-image tool, preview at most a small candidate set, and explain the decisive
-visual and data-compatibility differences. Search never embeds every thumbnail.
-`figure_library_preview` returns one standard MCP image content block and can
-optionally copy it to an absolute trusted destination for hosts that expose
-only text summaries.
+The MCP App paginates all matched candidates through App-only
+`figure_library_search_page` and renders each usable candidate as a real
+lazy-loaded `<img>`. Clicking the thumbnail, title, or **查看详情** opens an
+accessible dialog with a larger candidate image, the complete description,
+and only metadata actually present in the search result. This basic detail is
+fully local to the App: it works without `serverTools`, does not call the
+Agent, and does not update model context.
+
+After search, the Agent must stop and wait for user selection. It must not call
+exact preview for every candidate or substitute a backend `view_image` pass.
+Only an explicit request such as “帮我选择模板” permits limited visual review
+of a small top-ranked subset.
+
+From the dialog, **查看精确预览** calls App-only
+`figure_library_preview_exact`, which returns the exact image and one-time
+`previewChallenge` in component-only `_meta`. It never accepts a destination,
+writes files, downloads archives, or accesses the network. The confirmation
+button remains disabled until that exact `<img>` fires `load`; `error` keeps it
+disabled. Clicking **确认并交给 Agent** calls App-only
+`figure_library_confirm_selection`, then sends only the provider, selector,
+preview hash, receipt, and compact selection summary through
+`updateModelContext`.
+
+`figure_library_describe` publishes these App/headless tool names, the
+component thumbnail `_meta` key, the model-image exclusion flag, receipt gate,
+and diagnostics export/resource capabilities so Hosts can inspect the exact
+0.5.1 boundary without guessing.
+
+`figure_library_preview` remains a compatibility tool that returns/copies one
+standard MCP image, but it never authorizes materialization and must not be
+presented as sidebar display evidence.
 
 ## Exact materialization
 
-Materialization is plan/apply only:
+Materialization protocol v2 is preview/confirm/plan/apply only:
 
-1. `figure_library_plan_materialize` with the exact `providerId`,
-   `exactSelector`, an absolute `destination`, optional absolute
-   `sourcePackDir`, and `allowNetwork`.
-2. Present the exact selector, target, and acquisition policy.
-3. `figure_library_apply_materialize` with `planDigest`, `operationId`,
-   `expectedProviderId`, and `expectedTarget`.
+1. Search and retain `resultSetId`, `providerId`, and `exactSelector`.
+2. In an Apps Host, the App calls App-only
+   `figure_library_preview_exact` and `figure_library_confirm_selection` only
+   after the exact image visibly loads and the user clicks confirmation. In a
+   Host with no Apps UI capability, use model-visible
+   `figure_library_preview_exact_headless` and then
+   `figure_library_confirm_selection_headless` only after the user selects a
+   candidate or explicitly delegates selection to the Agent. Headless ordering
+   cannot technically prove that the user saw the image; acceptance reports
+   must preserve this boundary.
+3. Pass the returned single-use `previewReceipt` with the unchanged
+   `providerId`, `exactSelector`, absolute `destination`, optional absolute
+   `sourcePackDir`, and `allowNetwork` to
+   `figure_library_plan_materialize`. Missing receipts return
+   `preview_required`; mismatches, changed preview/catalog/root, replay, or
+   server restart are rejected. A receipt has no wall-clock TTL but is valid
+   only in the issuing server session and is consumed after one successful
+   plan.
+4. Present the exact selector, target, confirmation mode, and acquisition
+   policy.
+5. `figure_library_apply_materialize` with `planDigest`, `operationId`,
+   `expectedProviderId`, and `expectedTarget`. Apply consumes only the plan and
+   does not request the receipt again.
 
 The target is `<destination>/<templateId>` and is never overwritten. Both
 providers use a common envelope:
@@ -393,11 +454,61 @@ and publication.
 See [`docs/GLOBAL_LIBRARY_0.5.md`](docs/GLOBAL_LIBRARY_0.5.md) for the storage,
 locator, lifecycle, migration, and portability model.
 
+## Structured diagnostics and export
+
+Each MCP Server process creates an independent diagnostics session and writes
+bounded JSONL outside the global Library and project repositories. Set
+`SFL_DIAGNOSTICS_DIR` to an absolute directory to override the system temporary
+diagnostics directory. The default limits are 5 MiB per JSONL segment and
+50 MiB total across JSONL/ZIP files. Rotation is oldest-first. A diagnostics
+write failure never fails search, preview, confirmation, or planning; affected
+tool/status output reports `diagnosticsDegraded` instead.
+
+The logger records fixed structured events for server startup, capability
+detection, search stages, candidate detail open/close, exact preview request,
+image load/error, confirmation, model-context update, materialization planning,
+and tool failures. App-only `figure_library_record_ui_event` accepts only a
+fixed enum plus the current result/candidate identifiers and bounded numeric
+metrics; it rate-limits at 120 events/minute and 1000 events/session. It is an
+internal component tool, not an Agent workflow tool.
+
+Call public `figure_library_export_diagnostics` only when the user explicitly
+requests logs/a diagnostic bundle, supplies a correlation ID or time range, or
+accepts export after a failure. Defaults are current session, sanitized ZIP,
+no user text, and no absolute paths. The ZIP contains:
+
+```text
+scientific-figure-library-diagnostics-<timestamp>.zip
+├── summary.md
+├── events.jsonl
+├── errors.jsonl
+├── environment.json
+└── manifest.json
+```
+
+The manifest records schema/app version, session, creation time, file sizes and
+SHA-256 values, total payload bytes, scope, and redaction mode. Image bytes,
+Data URLs, selectors, preview challenges/receipts, plan tokens, credentials,
+cookies, environment variables, conversation/free text, source assets, and
+sensitive paths are excluded or redacted. `includeUserText` is accepted for
+forward compatibility, but 0.5.1 does not collect conversation/free text and
+therefore still records `userTextIncluded: false`. Absolute paths appear only
+when the user explicitly sets `includeAbsolutePaths: true`.
+
+The result contains only a compact summary, size, SHA-256, and a session-bound
+`figure-library://diagnostics/<bundleId>` resource link; it never injects the
+JSONL or ZIP into model-visible structured content. If the Host cannot download
+resource links, report that integration limitation. A local path is returned
+only when absolute paths were explicitly requested, and local file existence
+alone must not be described as delivery to the user.
+
 ## MCP tools in the 0.5 standard core
 
 | Area | Tools |
 | --- | --- |
-| Workbench and retrieval | `figure_library_open`, `figure_library_search`, `figure_library_describe`, `figure_library_preview`, `figure_library_source_status` |
+| Workbench and retrieval | `figure_library_open`, `figure_library_search`, `figure_library_describe`, `figure_library_preview`, `figure_library_preview_exact_headless`, `figure_library_confirm_selection_headless`, `figure_library_source_status` |
+| App-only component tools | `figure_library_search_page`, `figure_library_preview_exact`, `figure_library_confirm_selection`, `figure_library_record_ui_event` |
+| Diagnostics export | `figure_library_export_diagnostics` |
 | Global binding | `figure_library_plan_bind_global`, `figure_library_apply_bind_global` |
 | Write-lock recovery | `figure_library_plan_recover_write_lock`, `figure_library_apply_recover_write_lock` |
 | Review inspection | `figure_library_review_open`, `figure_library_template_history`, `figure_library_diff_revisions` |
@@ -415,7 +526,7 @@ Build a standalone npm package:
 
 ```bash
 npm run package:npm
-npm install --global ./release/scientific-figure-library-0.5.0.tgz
+npm install --global ./release/scientific-figure-library-0.5.1.tgz
 ```
 
 Use `scientific-figure-library` as the MCP command after installation.
@@ -426,7 +537,7 @@ Build the Wisp plugin:
 npm run package:wisp
 ```
 
-Install `release/scientific-figure-library-wisp-0.5.0.zip` from Wisp
+Install `release/scientific-figure-library-wisp-0.5.1.zip` from Wisp
 **Settings → Plugins**, enable it, and start a fresh session. The Wisp bundle is
 an adapter around the same standard MCP server; global Library selection is not
 tied to a Wisp project.
@@ -462,7 +573,7 @@ npm run package:source-pack -- \
 
 The helper verifies selected ZIP identities and caps a transport pack at 200
 MiB. Extract the resulting
-`release/figure-library-source-pack-volcano-0.5.0.zip` before use.
+`release/figure-library-source-pack-volcano-0.5.1.zip` before use.
 
 ## Catalog development
 

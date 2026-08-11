@@ -788,8 +788,7 @@ export class CatalogIndex {
     return this.catalog.modules.find((module) => module.moduleId === moduleId);
   }
 
-  async search(request: SearchRequest): Promise<TemplateCandidate[]> {
-    const limit = Math.min(Math.max(request.limit ?? 6, 1), 12);
+  async searchAll(request: SearchRequest): Promise<TemplateCandidate[]> {
     const intent = buildSearchIntent(request);
     const matches = this.catalog.modules
       .filter((module) => matchesFigureYaFilters(module, request))
@@ -814,8 +813,7 @@ export class CatalogIndex {
         (left, right) =>
           right.evidence.score - left.evidence.score ||
           left.module.moduleId.localeCompare(right.module.moduleId),
-      )
-      .slice(0, limit);
+      );
     return Promise.all(
       matches.map(async ({ module, evidence }) => {
         const warnings = [];
@@ -874,6 +872,11 @@ export class CatalogIndex {
         };
       }),
     );
+  }
+
+  async search(request: SearchRequest): Promise<TemplateCandidate[]> {
+    const limit = Math.min(Math.max(request.limit ?? 6, 1), 12);
+    return (await this.searchAll(request)).slice(0, limit);
   }
 
   async preview(templateIdOrSelector: string | ExactTemplateSelector) {

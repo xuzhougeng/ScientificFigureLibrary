@@ -77,6 +77,26 @@ test("FigureYa source retrieves common plot families", async () => {
   }
 });
 
+test("Chinese and English bar-chart searches return the complete stable ranked set", async () => {
+  const index = await CatalogIndex.load();
+  for (const query of ["柱状图", "bar chart"]) {
+    assert.deepEqual(buildSearchIntent({ query }).families, ["bar"]);
+    const first = await index.searchAll({ query });
+    const repeated = await index.searchAll({ query });
+    const bounded = await index.search({ query, limit: 6 });
+    assert.ok(first.length > 12, `${query} was prematurely truncated`);
+    assert.equal(first[0]?.templateId, "FigureYa297Rbar");
+    assert.deepEqual(
+      repeated.map((item) => item.templateId),
+      first.map((item) => item.templateId),
+    );
+    assert.deepEqual(
+      bounded.map((item) => item.templateId),
+      first.slice(0, 6).map((item) => item.templateId),
+    );
+  }
+});
+
 test("real Wisp volcano requests rank the standard template first", async () => {
   const index = await CatalogIndex.load();
   const requests = [
