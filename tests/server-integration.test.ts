@@ -3,6 +3,7 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
+import { EXTENSION_ID, RESOURCE_MIME_TYPE } from "@modelcontextprotocol/ext-apps/server";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { ensureLibraryRootMarker, readLibraryRootMarker } from "../src/library-runtime.ts";
@@ -187,7 +188,19 @@ test("standard server unifies Local Published and FigureYa while hiding Working/
 
     process.env.FIGURE_LIBRARY_DIR = libraryRoot;
     const server = await createServer();
-    const client = new Client({ name: "server-integration-test", version: "0.5.1" });
+    // Simulate an Apps-capable Host such as Wisp. The iframe-level Host may
+    // still omit serverTools, so updateModelContext must be able to hand the
+    // selected candidate to the model-visible headless preview/confirm tools.
+    const client = new Client(
+      { name: "server-integration-test", version: "0.5.1" },
+      {
+        capabilities: {
+          extensions: {
+            [EXTENSION_ID]: { mimeTypes: [RESOURCE_MIME_TYPE] },
+          },
+        },
+      },
+    );
     const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
     await server.connect(serverTransport);
     await client.connect(clientTransport);
@@ -492,6 +505,9 @@ test("standard server unifies Local Published and FigureYa while hiding Working/
         appPaginationTool: "figure_library_search_page",
         appExactPreviewTool: "figure_library_preview_exact",
         headlessExactPreviewTool: "figure_library_preview_exact_headless",
+        updateModelContextFallback: true,
+        fallbackHandoffMode: "headless_exact_review",
+        fallbackCandidateLimit: 1,
         modelVisibleSearchIncludesImageData: false,
         componentThumbnailMetaKey: "candidatePreviews",
       });

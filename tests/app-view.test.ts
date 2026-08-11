@@ -2,6 +2,10 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { Window } from "happy-dom";
 import {
+  buildHeadlessReviewHandoff,
+  updateModelContextForHeadlessReview,
+} from "../app/handoff.ts";
+import {
   mountExactPreviewImage,
   openCandidateDetail,
   parseSearchResult,
@@ -170,11 +174,15 @@ test("basic detail remains available without serverTools and exposes complete me
     candidate: selected,
     opener,
     serverToolsAvailable: false,
+    updateModelContextAvailable: false,
     onClosed() {
       closed += 1;
     },
     onRequestExactPreview() {
       exactCalls += 1;
+    },
+    onRequestAgentReview() {
+      assert.fail("updateModelContext fallback is unavailable");
     },
   });
   await Promise.resolve();
@@ -187,6 +195,8 @@ test("basic detail remains available without serverTools and exposes complete me
   assert.match(detail.dialog.textContent ?? "", /not executed/u);
   assert.equal(detail.exactPreviewButton.disabled, true);
   assert.equal(detail.confirmButton.disabled, true);
+  assert.equal(detail.confirmButton.textContent, "Host 不支持选择交接");
+  assert.match(detail.status.textContent ?? "", /也未提供 updateModelContext/u);
   detail.exactPreviewButton.click();
   assert.equal(exactCalls, 0);
 
@@ -238,8 +248,12 @@ test("unavailable previews still open details but keep exact preview and confirm
     candidate: opened[0]!,
     opener,
     serverToolsAvailable: true,
+    updateModelContextAvailable: true,
     onRequestExactPreview() {
       assert.fail("unavailable preview must not call exact preview");
+    },
+    onRequestAgentReview() {
+      assert.fail("serverTools path must not use the headless handoff button");
     },
   });
   assert.equal(detail.exactPreviewButton.disabled, true);
@@ -263,8 +277,12 @@ test("opening a usable detail does not request exact preview until the user clic
     ),
     opener,
     serverToolsAvailable: true,
+    updateModelContextAvailable: true,
     onRequestExactPreview() {
       exactCalls += 1;
+    },
+    onRequestAgentReview() {
+      assert.fail("serverTools path must not use the headless handoff button");
     },
   });
   assert.equal(exactCalls, 0);
@@ -273,6 +291,97 @@ test("opening a usable detail does not request exact preview until the user clic
   assert.equal(exactCalls, 1);
   assert.equal(detail.confirmButton.disabled, true);
   detail.closeButton.click();
+});
+
+test("updateModelContext fallback starts only after the user clicks one candidate", async () => {
+  const window = new Window();
+  const document = window.document as unknown as Document;
+  const opener = document.createElement("button");
+  document.body.append(opener);
+  let exactCalls = 0;
+  let handoffCalls = 0;
+  let handoffPromise: Promise<string> | undefined;
+  const contextUpdates: Array<{ content: Array<{ type: "text"; text: string }> }> = [];
+  const selected = candidate(
+    "org.scientificfigurelibrary.local",
+    "context-handoff",
+    "ready",
+    "data:image/png;base64,iVBORw0KGgo=",
+  );
+  const detail = openCandidateDetail({
+    document,
+    candidate: selected,
+    opener,
+    serverToolsAvailable: false,
+    updateModelContextAvailable: true,
+    onRequestExactPreview() {
+      exactCalls += 1;
+    },
+    onRequestAgentReview() {
+      handoffCalls += 1;
+      handoffPromise = updateModelContextForHeadlessReview({
+        resultSetId: "context-result-set",
+        candidate: selected,
+        async updateModelContext(input) {
+          contextUpdates.push(input);
+        },
+      });
+    },
+  });
+  await Promise.resolve();
+
+  assert.equal(exactCalls, 0);
+  assert.equal(handoffCalls, 0);
+  assert.equal(contextUpdates.length, 0);
+  assert.equal(detail.exactPreviewButton.disabled, true);
+  assert.equal(detail.confirmButton.disabled, false);
+  assert.equal(detail.confirmButton.textContent, "选择并交给 Agent 审核");
+  assert.match(detail.status.textContent ?? "", /不能证明精确图片已在 App 内加载/u);
+
+  detail.confirmButton.click();
+  assert.equal(exactCalls, 0);
+  assert.equal(handoffCalls, 1);
+  assert.ok(handoffPromise);
+  await handoffPromise;
+  assert.equal(contextUpdates.length, 1);
+  assert.match(contextUpdates[0]?.content[0]?.text ?? "", /context-result-set/u);
+  assert.doesNotMatch(contextUpdates[0]?.content[0]?.text ?? "", /data:image/u);
+  detail.closeButton.click();
+  assert.equal(handoffCalls, 1);
+});
+
+test("headless review handoff contains one compact candidate and no image or credential values", () => {
+  const selected = candidate(
+    "org.scientificfigurelibrary.local",
+    "selected-only",
+    "ready",
+    "data:image/png;base64,private-thumbnail-bytes",
+  );
+  const text = buildHeadlessReviewHandoff({
+    resultSetId: "selected-result-set",
+    candidate: selected,
+  });
+  const selection = JSON.parse(text.split("\n")[3]!) as Record<string, unknown>;
+  const selectedCandidate = selection.selectedCandidate as Record<string, unknown>;
+  const authorization = selection.authorization as Record<string, unknown>;
+
+  assert.equal(selection.schema, "figure-library.app-selection-handoff.v1");
+  assert.equal(selection.handoffMode, "headless_exact_review");
+  assert.equal(selection.resultSetId, "selected-result-set");
+  assert.equal(selectedCandidate.templateId, "selected-only");
+  assert.equal(selectedCandidate.providerId, "org.scientificfigurelibrary.local");
+  assert.deepEqual(selectedCandidate.exactSelector, selected.exactSelector);
+  assert.equal(selectedCandidate.candidateThumbnailSha256, "a".repeat(64));
+  assert.equal(authorization.exactReviewCandidateLimit, 1);
+  assert.equal(authorization.mayCreateReadOnlyMaterializePlan, true);
+  assert.equal(authorization.mayApplyMaterialization, false);
+  assert.doesNotMatch(
+    JSON.stringify(selection),
+    /data:image|previewDataUrl|previewChallenge|previewReceipt/u,
+  );
+  assert.match(text, /figure_library_preview_exact_headless exactly once/u);
+  assert.match(text, /figure_library_confirm_selection_headless/u);
+  assert.match(text, /do not Apply or download anything/u);
 });
 
 test("exact preview load enables confirmation while image error keeps it disabled", () => {
@@ -292,7 +401,11 @@ test("exact preview load enables confirmation while image error keeps it disable
       candidate: selected,
       opener,
       serverToolsAvailable: true,
+      updateModelContextAvailable: true,
       onRequestExactPreview() {},
+      onRequestAgentReview() {
+        assert.fail("serverTools path must not use the headless handoff button");
+      },
     });
   };
 

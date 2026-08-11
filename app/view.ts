@@ -332,8 +332,10 @@ export function openCandidateDetail(options: {
   candidate: Candidate;
   opener: HTMLButtonElement;
   serverToolsAvailable: boolean;
+  updateModelContextAvailable: boolean;
   onClosed?: () => void;
   onRequestExactPreview: (elements: DetailViewElements) => void;
+  onRequestAgentReview: (elements: DetailViewElements) => void;
 }): DetailViewElements {
   const { document, candidate, opener } = options;
   const dialog = element(document, "dialog", "candidate-dialog");
@@ -383,7 +385,16 @@ export function openCandidateDetail(options: {
     status.textContent = "该候选没有通过安全校验的预览，不能进行确认。";
   } else if (!options.serverToolsAvailable) {
     exactPreviewButton.disabled = true;
-    status.textContent = "当前 Host 未提供 App→Server Tool；基础详情可查看，但不能加载精确预览或确认。";
+    if (options.updateModelContextAvailable) {
+      confirmButton.disabled = false;
+      confirmButton.textContent = "选择并交给 Agent 审核";
+      status.textContent =
+        "当前 Host 未提供 App→Server Tool；可把这个候选交给 Agent 进行一次 headless 精确审核。该路径不能证明精确图片已在 App 内加载。";
+    } else {
+      confirmButton.textContent = "Host 不支持选择交接";
+      status.textContent =
+        "当前 Host 既未提供 App→Server Tool，也未提供 updateModelContext；只能查看基础详情，不能加载精确预览或交接选择。";
+    }
   } else {
     status.textContent = "基础详情来自搜索结果。需要时可仅为此候选加载一次精确预览。";
   }
@@ -396,6 +407,9 @@ export function openCandidateDetail(options: {
     closeButton,
   };
   exactPreviewButton.addEventListener("click", () => options.onRequestExactPreview(elements));
+  if (!options.serverToolsAvailable && options.updateModelContextAvailable) {
+    confirmButton.addEventListener("click", () => options.onRequestAgentReview(elements));
+  }
   closeButton.addEventListener("click", () => dialog.close());
   dialog.addEventListener("click", (event) => {
     if (event.target === dialog) dialog.close();

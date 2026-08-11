@@ -81,11 +81,15 @@ report the exact failure.
 `figure_library_open` and the paginated candidate gallery are MCP App entry
 points. A Host may reject App display before the server runs with MCP `-32601`
 or `Capability is not granted`. That is a Host UI-capability result, not
-permission to retry. Ordinary headless tools can still be used, but a real App
-acceptance requires Host `serverTools`; without it, the sidebar must display a
-capability error and cannot be reported as visually accepted. A backend
-`view_image` check is never evidence that the user's sidebar displayed the
-image.
+permission to retry. Ordinary headless tools can still be used. A real
+App-local exact-preview acceptance requires Host `serverTools`. When
+`serverTools` is absent but
+`updateModelContext.text` is available, the sidebar may let the user select one
+current-page candidate and hand it to the Agent for a single headless exact
+review. That fallback must not be reported as an exact image loaded in the App.
+If both capabilities are absent, the sidebar displays a capability error. A
+backend `view_image` check is never evidence that the user's sidebar displayed
+the image.
 
 ## Requirements and build
 
@@ -313,7 +317,7 @@ exact preview for every candidate or substitute a backend `view_image` pass.
 Only an explicit request such as “帮我选择模板” permits limited visual review
 of a small top-ranked subset.
 
-From the dialog, **查看精确预览** calls App-only
+When Host `serverTools` is available, **查看精确预览** calls App-only
 `figure_library_preview_exact`, which returns the exact image and one-time
 `previewChallenge` in component-only `_meta`. It never accepts a destination,
 writes files, downloads archives, or accesses the network. The confirmation
@@ -322,6 +326,16 @@ disabled. Clicking **确认并交给 Agent** calls App-only
 `figure_library_confirm_selection`, then sends only the provider, selector,
 preview hash, receipt, and compact selection summary through
 `updateModelContext`.
+
+When `serverTools` is absent but `updateModelContext.text` is available, the
+exact-preview action stays disabled and the separate button becomes **选择并交给
+Agent 审核**. Only that click submits one compact candidate through
+`updateModelContext`; the Agent may call `figure_library_preview_exact_headless`
+once for that candidate, review it, call
+`figure_library_confirm_selection_headless`, and create a read-only materialize
+plan. It must not inspect other candidates, Apply, or claim that the exact
+image loaded in the App. If `updateModelContext` is also absent, selection
+handoff remains disabled with an explicit capability error.
 
 `figure_library_describe` publishes these App/headless tool names, the
 component thumbnail `_meta` key, the model-image exclusion flag, receipt gate,
@@ -337,15 +351,18 @@ presented as sidebar display evidence.
 Materialization protocol v2 is preview/confirm/plan/apply only:
 
 1. Search and retain `resultSetId`, `providerId`, and `exactSelector`.
-2. In an Apps Host, the App calls App-only
-   `figure_library_preview_exact` and `figure_library_confirm_selection` only
-   after the exact image visibly loads and the user clicks confirmation. In a
-   Host with no Apps UI capability, use model-visible
-   `figure_library_preview_exact_headless` and then
-   `figure_library_confirm_selection_headless` only after the user selects a
-   candidate or explicitly delegates selection to the Agent. Headless ordering
-   cannot technically prove that the user saw the image; acceptance reports
-   must preserve this boundary.
+2. Choose the capability-aware confirmation path:
+   - Apps Host with `serverTools`: the App calls App-only
+     `figure_library_preview_exact` and `figure_library_confirm_selection` only
+     after the exact image visibly loads and the user clicks confirmation.
+   - Apps Host without `serverTools` but with `updateModelContext.text`: after
+     the user clicks **选择并交给 Agent 审核**, call model-visible
+     `figure_library_preview_exact_headless` once for that single candidate and
+     then `figure_library_confirm_selection_headless`.
+   - Host with no Apps UI: use the same model-visible tools only after the user
+     selects a candidate or explicitly delegates selection to the Agent.
+   Both headless routes cannot technically prove that the user saw the image in
+   the App; acceptance reports must preserve this boundary.
 3. Pass the returned single-use `previewReceipt` with the unchanged
    `providerId`, `exactSelector`, absolute `destination`, optional absolute
    `sourcePackDir`, and `allowNetwork` to

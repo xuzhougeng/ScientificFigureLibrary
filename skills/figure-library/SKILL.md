@@ -60,8 +60,11 @@ blocks, or success claims.
 MCP `-32601` or `Capability is not granted`, do not retry it. This means the
 optional UI capability was denied; it does not prove that ordinary headless
 tools are unavailable. If the App opens but Host `serverTools` is missing,
-report the capability blocker: do not claim sidebar acceptance and never use a
-backend image viewer as a substitute for user-visible App preview.
+use **选择并交给 Agent 审核** only when `updateModelContext.text` is available.
+That user click authorizes one headless exact review of the selected candidate,
+not App-local preview acceptance or Apply. If both capabilities are missing,
+report the capability blocker. Never use a backend image viewer as a substitute
+for user-visible App preview.
 
 ## 1. Inspect or bind the global Library
 
@@ -249,17 +252,22 @@ For one selected usable candidate, preserve `resultSetId`, `providerId`, and
 `exactSelector`. Do not pass a destination and do not download or materialize
 anything during preview.
 
-- Apps path: only the App calls App-only `figure_library_preview_exact`. Its
-  image Data URL and one-time `previewChallenge` remain in component-only
-  `_meta`. The App waits for the exact `<img>` `load` event and a user click on
-  **确认并交给 Agent**, then calls App-only `figure_library_confirm_selection`
-  and sends the minimal selection summary plus `previewReceipt` through
-  `updateModelContext`.
-- Headless path: only when the Host has no Apps UI capability, wait for the
-  user's selection or explicit delegation, call model-visible
-  `figure_library_preview_exact_headless` once for the selected candidate, and
-  then call `figure_library_confirm_selection_headless`. This sequence cannot
-  prove that the user actually saw an image; say so in any acceptance report.
+- Apps + `serverTools` path: only the App calls App-only
+  `figure_library_preview_exact`. Its image Data URL and one-time
+  `previewChallenge` remain in component-only `_meta`. The App waits for the
+  exact `<img>` `load` event and a user click on **确认并交给 Agent**, then calls
+  App-only `figure_library_confirm_selection` and sends the minimal selection
+  summary plus `previewReceipt` through `updateModelContext`.
+- Apps without `serverTools`: when `updateModelContext.text` is available, the
+  user may click **选择并交给 Agent 审核**. Treat that handoff as authorization
+  to call model-visible `figure_library_preview_exact_headless` exactly once
+  for the one selected candidate, then call
+  `figure_library_confirm_selection_headless`. Do not inspect another
+  candidate, Apply, or claim the exact image loaded inside the App.
+- Host with no Apps UI: wait for the user's selection or explicit delegation,
+  then use the same headless preview/confirmation sequence for one selected
+  candidate. Both headless routes cannot prove that the user actually saw an
+  App image; say so in any acceptance report.
 
 Both paths return a session-local, opaque, single-use `previewReceipt` bound to
 the exact result set, provider, selector digest, preview hash, catalog/Library

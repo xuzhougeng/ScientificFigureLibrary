@@ -3,7 +3,6 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import {
   RESOURCE_MIME_TYPE,
-  getUiCapability,
   registerAppResource,
   registerAppTool,
 } from "@modelcontextprotocol/ext-apps/server";
@@ -387,7 +386,7 @@ function candidateText(candidates: TemplateCandidate[]) {
         ? [`   WARNINGS: ${candidate.warnings.join("; ")}`]
         : []),
     ]),
-    "NEXT_STEP: wait for App updateModelContext. Do not call an exact-preview tool unless the user explicitly delegates headless visual review.",
+    "NEXT_STEP: wait for App updateModelContext. If it reports handoffMode=headless_exact_review, review only that one user-selected candidate; otherwise do not call an exact-preview tool unless the user explicitly delegates headless visual review.",
   ].join("\n");
 }
 
@@ -991,6 +990,9 @@ export async function createServer() {
     appPaginationTool: "figure_library_search_page",
     appExactPreviewTool: "figure_library_preview_exact",
     headlessExactPreviewTool: "figure_library_preview_exact_headless",
+    updateModelContextFallback: true,
+    fallbackHandoffMode: "headless_exact_review",
+    fallbackCandidateLimit: 1,
     modelVisibleSearchIncludesImageData: false,
     componentThumbnailMetaKey: "candidatePreviews",
   } as const;
@@ -1271,7 +1273,9 @@ export async function createServer() {
       const responseEnvelope = outcome(
         "needs_user_confirmation",
         "exact_preview_ready",
-        `Loaded the exact preview for ${preview.templateId}. The image must visibly load before confirmation.`,
+        options.invocationSource === "app"
+          ? `Loaded the exact preview for ${preview.templateId}. The image must visibly load in the App before confirmation.`
+          : `Loaded the exact preview for ${preview.templateId}. Review only this image before headless confirmation; this path cannot prove user-visible App loading.`,
         "ask_user",
       );
       const text = {
@@ -1388,7 +1392,7 @@ export async function createServer() {
     {
       title: "Load one exact preview for explicit headless review",
       description:
-        "Headless-only exact preview. Call only after the user selects a candidate or explicitly delegates visual review; do not iterate all results.",
+        "Model-visible exact preview. Call only after the user selects a candidate, explicitly delegates visual review, or an App updateModelContext handoff selects one candidate; do not iterate all results.",
       inputSchema: ExactPreviewInput.shape,
       annotations: {
         readOnlyHint: true,
@@ -1484,9 +1488,9 @@ export async function createServer() {
   server.registerTool(
     "figure_library_confirm_selection_headless",
     {
-      title: "Confirm an exact preview in a headless Host",
+      title: "Confirm an exact preview after headless Agent review",
       description:
-        "Headless-only confirmation after figure_library_preview_exact_headless. The Agent must wait for the user's selection or explicit delegation; this call cannot prove UI visibility.",
+        "Model-visible confirmation after figure_library_preview_exact_headless. Use only after a user selection, explicit delegation, or an App updateModelContext handoff when serverTools is unavailable; this call cannot prove UI visibility.",
       inputSchema: ConfirmPreviewInput.shape,
       annotations: {
         readOnlyHint: true,
@@ -1505,13 +1509,6 @@ export async function createServer() {
         invocationSource: "headless",
       });
       try {
-        const ui = getUiCapability(server.server.getClientCapabilities());
-        if (ui?.mimeTypes?.includes(RESOURCE_MIME_TYPE)) {
-          throw new PreviewProtocolError(
-            "ui_confirmation_required",
-            "This Host supports MCP Apps; confirmation must come from the visible candidate workbench.",
-          );
-        }
         const receipt = previewConfirmations.confirm(previewChallenge, "headless");
         await diagnostics.record({
           event: "candidate.confirmed",
@@ -1529,7 +1526,7 @@ export async function createServer() {
           outcome(
             "ok",
             "preview_confirmed_headless",
-            "The headless confirmation sequence is authorized for one materialization plan. User visibility remains a Host/Skill boundary.",
+            "The headless or updateModelContext-fallback confirmation sequence is authorized for one materialization plan. User visibility remains a Host/Skill boundary.",
             "review_plan",
           ),
           {

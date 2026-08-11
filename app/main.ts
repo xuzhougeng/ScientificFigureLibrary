@@ -5,6 +5,7 @@ import {
   applyHostStyleVariables,
 } from "@modelcontextprotocol/ext-apps";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
+import { updateModelContextForHeadlessReview } from "./handoff.ts";
 import {
   openCandidateDetail,
   parseSearchResult,
@@ -56,6 +57,10 @@ function exactPreviewMeta(result: CallToolResult) {
 
 function serverToolsAvailable() {
   return Boolean(app.getHostCapabilities()?.serverTools);
+}
+
+function updateModelContextAvailable() {
+  return Boolean(app.getHostCapabilities()?.updateModelContext?.text);
 }
 
 async function recordUiEvent(
@@ -123,17 +128,21 @@ function render(result: SearchResult) {
         candidate,
         opener,
         serverToolsAvailable: serverToolsAvailable(),
+        updateModelContextAvailable: updateModelContextAvailable(),
         onClosed: () => {
           void recordUiEvent("candidate.detail_closed", candidate);
           activeDetail = undefined;
         },
         onRequestExactPreview: (detail) => void loadExactPreview(candidate, detail),
+        onRequestAgentReview: (detail) => void handoffForHeadlessReview(candidate, detail),
       });
     },
   });
   status.textContent = serverToolsAvailable()
     ? "请先在 App 内浏览候选详情；只有你请求精确预览并确认后，才会把选择交给 Agent。"
-    : "当前 Host 未提供 serverTools；仍可浏览基础详情，但不能翻页、加载精确预览或确认。";
+    : updateModelContextAvailable()
+      ? "当前 Host 未提供 serverTools；可浏览当前页基础详情并选择一个候选交给 Agent 审核，但不能在 App 内翻页或加载精确预览。"
+      : "当前 Host 既未提供 serverTools，也未提供 updateModelContext；只能浏览当前页基础详情。";
   if (result.diagnosticsDegraded) {
     status.textContent += " 诊断日志处于降级状态。";
   }
@@ -141,6 +150,41 @@ function render(result: SearchResult) {
   if (first && !reportedCapabilities.has(result.resultSetId) && serverToolsAvailable()) {
     reportedCapabilities.add(result.resultSetId);
     void recordUiEvent("host.capabilities_detected", first);
+  }
+}
+
+async function handoffForHeadlessReview(
+  candidate: Candidate,
+  elements: DetailViewElements,
+) {
+  if (!activeResult || serverToolsAvailable() || !updateModelContextAvailable()) {
+    elements.confirmButton.disabled = true;
+    elements.status.textContent =
+      "当前 Host 无法通过 updateModelContext 交接选择；未启动 Agent 审核。";
+    return;
+  }
+  const resultSetId = activeResult.resultSetId;
+  elements.confirmButton.disabled = true;
+  elements.confirmButton.textContent = "正在交给 Agent…";
+  elements.status.textContent =
+    "正在交接这个候选；不会在 App 内伪装精确预览，也不会授权 Apply。";
+  try {
+    await updateModelContextForHeadlessReview({
+      resultSetId,
+      candidate,
+      updateModelContext: (input) => app.updateModelContext(input),
+    });
+    elements.confirmButton.textContent = "已选择并交给 Agent";
+    elements.confirmButton.setAttribute("aria-pressed", "true");
+    elements.status.textContent =
+      "已交给 Agent 对这个候选执行一次 headless 精确审核；该路径不代表精确图片已在 App 内加载。";
+    status.textContent = `已选择 ${candidate.templateId} 并交给 Agent 审核；尚未授权 Apply。`;
+  } catch (error) {
+    console.error(error);
+    elements.confirmButton.disabled = false;
+    elements.confirmButton.textContent = "重试交给 Agent 审核";
+    elements.status.textContent = "Host 上下文更新失败；没有启动 Agent 审核。";
+    status.textContent = "选择交接失败；请重试或在对话中明确指定候选。";
   }
 }
 
@@ -364,7 +408,9 @@ app
     const context = app.getHostContext();
     if (context) applyHostContext(context);
     if (!serverToolsAvailable()) {
-      status.textContent = "当前 Host 未授权 serverTools；仍可查看基础详情，但不能翻页或确认。";
+      status.textContent = updateModelContextAvailable()
+        ? "当前 Host 未授权 serverTools；仍可查看当前页详情并选择一个候选交给 Agent 审核。"
+        : "当前 Host 未授权 serverTools 或 updateModelContext；只能查看已返回的基础详情。";
     }
   })
   .catch((error: unknown) => {

@@ -87,8 +87,10 @@ if (
   !packagedReadme.includes(`0.5.1 protocol migration`) ||
   !packagedReadme.includes("Structured diagnostics and export") ||
   !packagedReadme.includes("figure_library_search_page") ||
+  !packagedReadme.includes("updateModelContext.text") ||
   !packagedSkill.includes(`Scientific Figure Library ${packageJson.version}`) ||
   !packagedSkill.includes("materialization protocol v2") ||
+  !packagedSkill.includes("选择并交给 Agent 审核") ||
   !packagedSkill.includes("figure_library_export_diagnostics")
 ) {
   throw new Error("packaged 0.5.1 migration guidance is incomplete");
@@ -97,6 +99,7 @@ for (const marker of [
   versionedAppUri,
   "figure_library_search_page",
   "figure_library_preview_exact_headless",
+  "updateModelContextFallback",
   "figure_library_record_ui_event",
   "figure_library_export_diagnostics",
 ]) {
@@ -104,7 +107,13 @@ for (const marker of [
     throw new Error(`packaged server omitted ${marker}`);
   }
 }
-for (const marker of ["candidate-dialog", "查看详情", "查看精确预览", "确认并交给 Agent"]) {
+for (const marker of [
+  "candidate-dialog",
+  "查看详情",
+  "查看精确预览",
+  "确认并交给 Agent",
+  "选择并交给 Agent 审核",
+]) {
   if (!packagedApp.includes(marker)) {
     throw new Error(`packaged MCP App omitted ${marker}`);
   }

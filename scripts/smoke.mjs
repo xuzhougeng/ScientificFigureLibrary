@@ -434,6 +434,14 @@ try {
   ) {
     throw new Error("exact Local Published describe failed or overstated execution");
   }
+  const previewCapabilities = structured(described).previewConfirmationCapabilities;
+  if (
+    previewCapabilities?.updateModelContextFallback !== true ||
+    previewCapabilities?.fallbackHandoffMode !== "headless_exact_review" ||
+    previewCapabilities?.fallbackCandidateLimit !== 1
+  ) {
+    throw new Error("describe omitted the single-candidate updateModelContext fallback");
+  }
 
   const materializeDestination = externalMaterializeDestination
     ? path.resolve(externalMaterializeDestination)
