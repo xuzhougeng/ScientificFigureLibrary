@@ -5,14 +5,21 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 import { canonicalJson, canonicalJsonClone } from "./canonical-json.ts";
+import { MCP_IMAGE_MEDIA_TYPES, assertMcpImageBytes } from "./image-validation.ts";
+import { assertLibraryOperationContext } from "./library-runtime.ts";
 import {
+  effectiveValidationState as effectiveStoredValidationState,
   type FigureCodeRelationship,
   type JsonValue,
   type LifecycleApplyResult,
   type LifecyclePlan,
   type PublicLifecyclePlanKind,
   type ReviewAssessmentInput,
+  type ReviewSnapshotV1,
   type RevisionAssetInput,
+  type TemplateContentV1,
+  templateSeriesDigest,
+  type ValidationStateInputV1,
   type VersionedTemplateCandidate,
   VersionedTemplateLibrary,
 } from "./versioned-library.ts";
@@ -218,6 +225,29 @@ const IntakeSchema = z.object({
   sourceManifest: z.unknown().optional(),
 });
 
+const PrimaryPreviewOverrideSchema = z.object({
+  confirmedBy: z.literal("user"),
+  reason: z.string().trim().min(1).max(4_000),
+});
+const ValidationStateSchema = z.object({
+  schema: z.literal("figure-library.validation-state.v1"),
+  plotExecution: z.object({
+    status: z.enum(["not_run", "passed", "failed"]),
+    scope: z.enum(["synthetic_data", "example_data", "real_data", "unknown"]),
+    evidenceAssetIds: z.array(z.string().regex(SAFE_ID)).max(100).optional(),
+  }),
+  upstreamWorkflow: z.object({
+    status: z.enum(["unknown", "not_run", "partial", "passed", "failed", "not_applicable"]),
+    scope: z.string().trim().max(1_000).optional(),
+    evidenceAssetIds: z.array(z.string().regex(SAFE_ID)).max(100).optional(),
+  }),
+  scientificValidation: z.object({
+    status: z.enum(["not_assessed", "limited", "validated", "rejected", "not_applicable"]),
+    decisionSource: z.enum(["user", "external_review"]).optional(),
+    assessmentAssetId: z.string().regex(SAFE_ID).optional(),
+  }),
+});
+
 const WorkingPlanInput = z.object({
   mode: z.enum(["create", "update"]).optional(),
   templateId: z.string().regex(SAFE_ID).optional(),
@@ -239,11 +269,13 @@ const WorkingPlanInput = z.object({
   referenceAssets: z.array(SupportingAssetSchema).max(100).optional().default([]),
   evidenceAssets: z.array(SupportingAssetSchema).max(100).optional().default([]),
   primaryVisualAssetId: z.string().regex(SAFE_ID).optional(),
+  primaryPreviewOverride: PrimaryPreviewOverrideSchema.optional(),
   canonicalCodeAssetId: z.string().regex(SAFE_ID).optional(),
   figureCodeLinks: z.array(FigureCodeLinkSchema).max(100).optional().default([]),
   confirmations: ConfirmationsSchema.optional(),
   assessment: ReviewAssessmentSchema.optional(),
   agentAssessment: z.record(z.string(), z.unknown()).optional(),
+  validationState: ValidationStateSchema.optional(),
   provenance: z.record(z.string(), z.unknown()).optional(),
 });
 
@@ -255,6 +287,11 @@ const WorkingApplyInput = z.object({
   expectedSeriesDigest: z.string().regex(HASH).nullable(),
 });
 const ReviewOpenInput = z.object({ templateId: z.string().regex(SAFE_ID).optional() });
+const WorkingPreviewInput = z.object({
+  templateId: z.string().regex(SAFE_ID),
+  revisionId: z.string().regex(SAFE_ID),
+  contentDigest: z.string().regex(HASH),
+});
 const TemplateIdInput = z.object({ templateId: z.string().regex(SAFE_ID) });
 const RevisionDiffInput = z.object({
   templateId: z.string().regex(SAFE_ID),
@@ -342,13 +379,31 @@ function missingWorkingConfirmations(input: WorkingPlanRequest) {
   for (const asset of input.visualAssets) {
     if (!asset.visualRole) missing.push(`visualRole:${asset.assetId}`);
   }
-  if (!input.primaryVisualAssetId) missing.push("primaryVisualAssetId");
   if (!confirmations?.createOrUpdate) missing.push("confirmation:createOrUpdate");
   if (!confirmations?.figureUnitBoundary) missing.push("confirmation:figureUnitBoundary");
   if (input.visualAssets.length > 1 && !confirmations?.multiImageGrouping) {
     missing.push("confirmation:multiImageGrouping");
   }
-  if (!confirmations?.primaryPreview) missing.push("confirmation:primaryPreview");
+  const sourceVisuals = input.visualAssets.filter(
+    (asset) => asset.visualRole === "source_reference",
+  );
+  const automaticPrimarySelection =
+    !input.primaryPreviewOverride &&
+    Boolean(input.primaryVisualAssetId) &&
+    (
+      (sourceVisuals.length === 1 &&
+        input.primaryVisualAssetId === sourceVisuals[0]?.assetId) ||
+      (input.visualAssets.length === 1 &&
+        input.primaryVisualAssetId === input.visualAssets[0]?.assetId)
+    );
+  if (
+    input.primaryVisualAssetId &&
+    !automaticPrimarySelection &&
+    !confirmations?.primaryPreview &&
+    !input.primaryPreviewOverride
+  ) {
+    missing.push("confirmation:primaryPreview");
+  }
   if (!confirmations?.assetKind) missing.push("confirmation:assetKind");
   if (!confirmations?.executionClaim) missing.push("confirmation:executionClaim");
   if (!confirmations?.duplicateDecision) missing.push("confirmation:duplicateDecision");
@@ -429,7 +484,108 @@ function publicPlanBody(plan: LifecyclePlan) {
 }
 
 function planSummary(entry: CachedPlan) {
-  return { ...publicPlanBody(entry.backendPlan), planDigest: entry.publicDigest, written: false as const };
+  const body = publicPlanBody(entry.backendPlan);
+  const previewSelector =
+    entry.kind === "working" &&
+    (entry.backendPlan.action === "create_working" ||
+      entry.backendPlan.action === "update_working")
+      ? {
+          templateId: entry.backendPlan.templateId,
+          revisionId: entry.backendPlan.content.revisionId,
+          contentDigest: entry.backendPlan.content.contentDigest,
+        }
+      : undefined;
+  return {
+    ...body,
+    planDigest: entry.publicDigest,
+    written: false as const,
+    ...(previewSelector ? { previewSelector } : {}),
+  };
+}
+
+type ReviewSummary = ReturnType<typeof summarizeReview>;
+
+function summarizeReview(content: TemplateContentV1, review: ReviewSnapshotV1) {
+  const openGates = review.blockingGates.filter((item) => item.status === "open");
+  return {
+    validationErrors: review.validationErrors,
+    openGates,
+    warnings: review.warnings,
+    publishEligible: review.validationErrors.length === 0 && openGates.length === 0,
+    canonicalPreviewDecision: content.canonicalPreviewDecision ?? null,
+    validationState: effectiveStoredValidationState(content),
+  };
+}
+
+function reviewSummaryDetails(summary: ReviewSummary, prefix = "REVIEW") {
+  return [
+    `${prefix}_VALIDATION_ERRORS: ${summary.validationErrors.map((item) => item.code).join(", ") || "none"}`,
+    `${prefix}_OPEN_GATES: ${summary.openGates.map((item) => item.gateId).join(", ") || "none"}`,
+    `${prefix}_WARNINGS: ${summary.warnings.map((item) => item.code).join(", ") || "none"}`,
+    `${prefix}_PUBLISH_ELIGIBLE: ${summary.publishEligible}`,
+    `${prefix}_CANONICAL_PREVIEW_DECISION: ${canonicalJson(summary.canonicalPreviewDecision)}`,
+    `${prefix}_VALIDATION_STATE: ${canonicalJson(summary.validationState)}`,
+  ];
+}
+
+function reviewSnapshotDetails(
+  scope: "WORKING" | "PUBLISHED",
+  review: ReviewSnapshotV1 | undefined,
+) {
+  return [
+    `${scope}_REVIEW_ID: ${review?.reviewId ?? "none"}`,
+    `${scope}_VALIDATION_ERRORS: ${review?.validationErrors.map((item) => item.code).join(", ") || "none"}`,
+    `${scope}_OPEN_GATES: ${review?.blockingGates
+      .filter((item) => item.status === "open")
+      .map((item) => item.gateId)
+      .join(", ") || "none"}`,
+    `${scope}_WARNINGS: ${review?.warnings.map((item) => item.code).join(", ") || "none"}`,
+    ...(review?.validationErrors.map(
+      (item) =>
+        `${scope}_VALIDATION_ERROR: ${item.code} | PATH=${item.path ?? "none"} | MESSAGE=${JSON.stringify(item.message)}`,
+    ) ?? []),
+    ...(review?.blockingGates.map(
+      (item) =>
+        `${scope}_REVIEW_GATE: ${item.gateId} | STATUS=${item.status} | CODE=${item.code} | PATH=${item.path ?? "none"} | MESSAGE=${JSON.stringify(item.message)} | RESOLUTION=${item.resolution ? JSON.stringify(item.resolution) : "none"}`,
+    ) ?? []),
+    ...(review?.warnings.map(
+      (item) =>
+        `${scope}_REVIEW_WARNING: ${item.code} | PATH=${item.path ?? "none"} | MESSAGE=${JSON.stringify(item.message)}`,
+    ) ?? []),
+  ];
+}
+
+async function summaryForResult(
+  library: VersionedTemplateLibrary,
+  result: LifecycleApplyResult,
+): Promise<ReviewSummary> {
+  if (!result.revisionId || !result.contentDigest || !result.reviewId) {
+    throw new Error(`${result.action} result lacks the immutable Content/Review selector`);
+  }
+  const [content, review] = await Promise.all([
+    library.getContent(result.templateId, result.revisionId, result.contentDigest),
+    library.getReview(result.templateId, result.reviewId),
+  ]);
+  if (!content || !review) {
+    throw new Error(`${result.action} result cannot resolve its immutable Content/Review`);
+  }
+  if (review.revisionId !== content.revisionId) {
+    throw new Error(`${result.action} result Review does not target its immutable Content`);
+  }
+  if (result.action === "publish") {
+    if (!result.releaseId) throw new Error("publish result lacks its immutable Release selector");
+    const release = await library.getRelease(result.templateId, result.releaseId);
+    if (
+      !release ||
+      release.revisionId !== content.revisionId ||
+      release.contentDigest !== content.contentDigest ||
+      release.reviewId !== review.reviewId ||
+      release.reviewDigest !== review.reviewDigest
+    ) {
+      throw new Error("publish result does not match its immutable Content/Review/Release");
+    }
+  }
+  return summarizeReview(content, review);
 }
 
 async function directCandidate(input: WorkingPlanRequest): Promise<VersionedTemplateCandidate> {
@@ -437,6 +593,7 @@ async function directCandidate(input: WorkingPlanRequest): Promise<VersionedTemp
   const byId = new Map(verified.map((asset) => [asset.assetId, asset]));
   const visualPaths = new Map<string, string>();
   const codePaths = new Map<string, string>();
+  const assetPaths = new Map<string, string>();
   const assets: RevisionAssetInput[] = [];
   for (const asset of verified) {
     const extension = extensionFromSource(asset.sourcePath);
@@ -474,10 +631,31 @@ async function directCandidate(input: WorkingPlanRequest): Promise<VersionedTemp
         ...(asset.origin ? { origin: jsonValue(asset.origin) } : {}),
       });
     }
+    assetPaths.set(asset.assetId, logicalPath);
   }
 
-  const primaryPreview = visualPaths.get(input.primaryVisualAssetId!);
-  if (!primaryPreview) throw new Error("primaryVisualAssetId must select one visual asset");
+  const sourceVisualIds = input.visualAssets
+    .filter((asset) => asset.visualRole === "source_reference")
+    .map((asset) => asset.assetId);
+  const automaticPrimarySelection =
+    !input.primaryPreviewOverride &&
+    Boolean(input.primaryVisualAssetId) &&
+    (
+      (sourceVisualIds.length === 1 &&
+        input.primaryVisualAssetId === sourceVisualIds[0]) ||
+      (input.visualAssets.length === 1 &&
+        input.primaryVisualAssetId === input.visualAssets[0]?.assetId)
+    );
+  const primaryPreview =
+    input.primaryVisualAssetId && !automaticPrimarySelection
+      ? visualPaths.get(input.primaryVisualAssetId)
+      : undefined;
+  if (input.primaryVisualAssetId && !automaticPrimarySelection && !primaryPreview) {
+    throw new Error("primaryVisualAssetId must select one visual asset");
+  }
+  if (input.primaryPreviewOverride && !primaryPreview) {
+    throw new Error("primaryPreviewOverride requires primaryVisualAssetId");
+  }
   const canonicalCode = input.canonicalCodeAssetId
     ? codePaths.get(input.canonicalCodeAssetId)
     : undefined;
@@ -502,8 +680,81 @@ async function directCandidate(input: WorkingPlanRequest): Promise<VersionedTemp
     };
   });
 
+  const mapEvidenceAssetIds = (assetIds: string[] | undefined, label: string) =>
+    assetIds?.map((assetId) => {
+      const source = byId.get(assetId);
+      const logicalPath = assetPaths.get(assetId);
+      if (!source || !logicalPath || source.category !== "evidence") {
+        throw new Error(`${label} must reference an evidence asset: ${assetId}`);
+      }
+      return logicalPath;
+    });
+  const validationState: ValidationStateInputV1 | undefined = input.validationState
+    ? {
+        schema: input.validationState.schema,
+        plotExecution: {
+          status: input.validationState.plotExecution.status,
+          scope: input.validationState.plotExecution.scope,
+          ...(input.validationState.plotExecution.evidenceAssetIds
+            ? {
+                evidenceAssetPaths: mapEvidenceAssetIds(
+                  input.validationState.plotExecution.evidenceAssetIds,
+                  "plotExecution.evidenceAssetIds",
+                ),
+              }
+            : {}),
+        },
+        upstreamWorkflow: {
+          status: input.validationState.upstreamWorkflow.status,
+          ...(input.validationState.upstreamWorkflow.scope
+            ? { scope: input.validationState.upstreamWorkflow.scope }
+            : {}),
+          ...(input.validationState.upstreamWorkflow.evidenceAssetIds
+            ? {
+                evidenceAssetPaths: mapEvidenceAssetIds(
+                  input.validationState.upstreamWorkflow.evidenceAssetIds,
+                  "upstreamWorkflow.evidenceAssetIds",
+                ),
+              }
+            : {}),
+        },
+        scientificValidation: {
+          status: input.validationState.scientificValidation.status,
+          ...(input.validationState.scientificValidation.decisionSource
+            ? { decisionSource: input.validationState.scientificValidation.decisionSource }
+            : {}),
+          ...(input.validationState.scientificValidation.assessmentAssetId
+            ? {
+                assessmentAssetPath: (() => {
+                  const assetId = input.validationState!.scientificValidation.assessmentAssetId!;
+                  const source = byId.get(assetId);
+                  const logicalPath = assetPaths.get(assetId);
+                  if (
+                    !source ||
+                    !logicalPath ||
+                    (source.category !== "reference" && source.category !== "evidence")
+                  ) {
+                    throw new Error(
+                      `scientificValidation.assessmentAssetId must reference a reference/evidence asset: ${assetId}`,
+                    );
+                  }
+                  return logicalPath;
+                })(),
+              }
+            : {}),
+        },
+      }
+    : undefined;
+  if (
+    input.executionStatus &&
+    validationState &&
+    input.executionStatus !== validationState.plotExecution.status
+  ) {
+    throw new Error("executionStatus conflicts with validationState.plotExecution.status");
+  }
+
   const visualInference = figureCodeLinks.some((link) => link.relationship === "visual_inference");
-  const executionStatus = input.executionStatus ?? "not_run";
+  const executionStatus = input.executionStatus ?? validationState?.plotExecution.status ?? "not_run";
   const codeStatus = input.assetKind === "visual_reference" ? "none" : input.codeStatus ?? "scaffold";
   if (visualInference && (executionStatus !== "not_run" || codeStatus !== "scaffold")) {
     throw new Error("visual_inference must remain scaffold/not_run and inspired_by_not_reproduced");
@@ -538,7 +789,11 @@ async function directCandidate(input: WorkingPlanRequest): Promise<VersionedTemp
     plotFamily: input.plotFamily,
     codeStatus,
     executionStatus,
-    primaryPreview,
+    ...(primaryPreview ? { primaryPreview } : {}),
+    ...(input.primaryPreviewOverride
+      ? { primaryPreviewOverride: input.primaryPreviewOverride }
+      : {}),
+    ...(validationState ? { validationState } : {}),
     ...(canonicalCode ? { canonicalImplementation: { assetPath: canonicalCode, selectedBy: "user" as const } } : {}),
     visualGrouping: {
       visualAssetPaths: input.visualAssets.map((asset) => visualPaths.get(asset.assetId)!),
@@ -555,7 +810,8 @@ async function directCandidate(input: WorkingPlanRequest): Promise<VersionedTemp
       agentAssessment: input.agentAssessment ?? null,
       userDecision: {
         confirmations: input.confirmations,
-        primaryVisualAssetId: input.primaryVisualAssetId,
+        primaryVisualAssetId: input.primaryVisualAssetId ?? null,
+        primaryPreviewOverride: input.primaryPreviewOverride ?? null,
         canonicalCodeAssetId: input.canonicalCodeAssetId ?? null,
         figureCodeLinks: input.figureCodeLinks,
       },
@@ -563,6 +819,45 @@ async function directCandidate(input: WorkingPlanRequest): Promise<VersionedTemp
     intakeBinding: { adapterId, importId, sourceManifest, requiredAssetSha256 },
     assets,
   };
+}
+
+async function loadPendingWorkingPreview(entry: CachedPlan) {
+  const plan = entry.backendPlan;
+  if (
+    entry.kind !== "working" ||
+    (plan.action !== "create_working" && plan.action !== "update_working")
+  ) {
+    throw new Error("cached selector does not resolve to a pending Working plan");
+  }
+  const logicalPath = plan.content.primaryPreview;
+  if (!logicalPath) return undefined;
+  const asset = plan.content.assets.find((item) => item.logicalPath === logicalPath);
+  if (!asset || asset.role !== "visual" || !asset.visualRole) {
+    throw new Error("canonical preview does not resolve to a visual asset with a visual role");
+  }
+  const source = plan.assetSources.find((item) => item.logicalPath === logicalPath);
+  if (!source) throw new Error("pending Working preview source is unavailable");
+  let bytes: Uint8Array;
+  if (source.sourcePath !== undefined && source.bytesBase64 === undefined) {
+    const stat = await fs.lstat(source.sourcePath);
+    if (stat.isSymbolicLink() || !stat.isFile()) {
+      throw new Error("pending Working preview source is not a regular file");
+    }
+    bytes = new Uint8Array(await fs.readFile(source.sourcePath));
+  } else if (source.bytesBase64 !== undefined && source.sourcePath === undefined) {
+    bytes = new Uint8Array(Buffer.from(source.bytesBase64, "base64"));
+  } else {
+    throw new Error("pending Working preview source binding is invalid");
+  }
+  if (bytes.byteLength !== asset.bytes || sha256(bytes) !== asset.sha256) {
+    throw new Error("pending Working preview source changed after planning");
+  }
+  if (!MCP_IMAGE_MEDIA_TYPES.has(asset.mediaType)) {
+    throw new Error(`canonical preview media type ${asset.mediaType} cannot be returned as an MCP image`);
+  }
+  const extension = path.posix.extname(asset.logicalPath).toLocaleLowerCase();
+  assertMcpImageBytes({ bytes, mimeType: asset.mediaType, extension });
+  return { content: plan.content, asset, bytes, mimeType: asset.mediaType };
 }
 
 function planDetails(plan: ReturnType<typeof planSummary>) {
@@ -633,8 +928,9 @@ export function registerLifecycleTools(options: {
 }) {
   const { server, currentLibrary } = options;
   const plans = new PublicPlanCache();
+  const pendingWorkingPlans = new Map<string, string>();
 
-  async function replay(input: {
+  async function replay(library: VersionedTemplateLibrary, input: {
     kind: PublicLifecyclePlanKind;
     planDigest: string;
     operationId: string;
@@ -642,10 +938,14 @@ export function registerLifecycleTools(options: {
     expectedSeriesDigest: string | null;
     expectedAction?: LifecyclePlan["action"];
   }) {
-    return (await currentLibrary()).replayPublicOperation(input);
+    return library.replayPublicOperation(input);
   }
 
-  function applyResult(planDigest: string, result: LifecycleApplyResult) {
+  function applyResult(
+    planDigest: string,
+    result: LifecycleApplyResult,
+    reviewSummary?: ReviewSummary,
+  ) {
     const outcome = result.idempotentReplay ? "replayed" : "applied";
     const responseEnvelope = envelope(
       outcome,
@@ -653,7 +953,10 @@ export function registerLifecycleTools(options: {
       `${result.action} completed for ${result.templateId}`,
       result.action === "publish" ? "none" : "inspect_review",
     );
-    return terminalResult(responseEnvelope, { planDigest, result }, [
+    return terminalResult(
+      responseEnvelope,
+      { planDigest, result, ...(reviewSummary ? { reviewSummary } : {}) },
+      [
       `PLAN_DIGEST: ${planDigest}`,
       `OPERATION_ID: ${result.operationId}`,
       `ACTION: ${result.action}`,
@@ -662,7 +965,66 @@ export function registerLifecycleTools(options: {
       ...(result.contentDigest ? [`CONTENT_DIGEST: ${result.contentDigest}`] : []),
       ...(result.reviewId ? [`REVIEW_ID: ${result.reviewId}`] : []),
       ...(result.releaseId ? [`RELEASE_ID: ${result.releaseId}`] : []),
-    ]);
+      ...(reviewSummary ? reviewSummaryDetails(reviewSummary) : []),
+      ],
+    );
+  }
+
+  function workingPreviewResult(
+    selector: z.infer<typeof WorkingPreviewInput>,
+    loaded: {
+      content: TemplateContentV1;
+      asset: TemplateContentV1["assets"][number];
+      bytes: Uint8Array;
+      mimeType: string;
+      selectorScope: "pending_plan" | "working_head";
+    },
+  ): CallToolResult {
+    const digest = sha256(loaded.bytes);
+    const responseEnvelope = envelope(
+      "ok",
+      "working_preview_ready",
+      `Verified the canonical preview for the exact ${
+        loaded.selectorScope === "pending_plan" ? "pending Working plan" : "current Working Revision"
+      } ${selector.templateId}`,
+      "none",
+    );
+    return {
+      content: [
+        {
+          type: "text",
+          text: textEnvelope(responseEnvelope, [
+            `SELECTOR_SCOPE: ${loaded.selectorScope}`,
+            `TEMPLATE_ID: ${selector.templateId}`,
+            `REVISION_ID: ${selector.revisionId}`,
+            `CONTENT_DIGEST: ${selector.contentDigest}`,
+            `CANONICAL_PREVIEW: ${loaded.asset.logicalPath}`,
+            `VISUAL_ROLE: ${loaded.asset.visualRole}`,
+            `MIME_TYPE: ${loaded.mimeType}`,
+            `BYTES: ${loaded.bytes.byteLength}`,
+            `SHA256: ${digest}`,
+          ]),
+        },
+        {
+          type: "image",
+          data: Buffer.from(loaded.bytes).toString("base64"),
+          mimeType: loaded.mimeType,
+        },
+      ],
+      structuredContent: {
+        envelope: responseEnvelope,
+        selector,
+        selectorScope: loaded.selectorScope,
+        templateId: selector.templateId,
+        revisionId: selector.revisionId,
+        contentDigest: selector.contentDigest,
+        canonicalPreview: loaded.asset.logicalPath,
+        visualRole: loaded.asset.visualRole,
+        mimeType: loaded.mimeType,
+        bytes: loaded.bytes.byteLength,
+        sha256: digest,
+      },
+    };
   }
 
   server.registerTool(
@@ -681,7 +1043,12 @@ export function registerLifecycleTools(options: {
           for (const series of await library.listSeries()) {
             if (!series.workingHead) continue;
             const content = await library.getContent(series.templateId, series.workingHead.revisionId, series.workingHead.contentDigest);
-            seriesList.push({ ...series, ...(content ? { title: content.title } : {}) });
+            if (!content) {
+              throw new Error(
+                `Working Head cannot resolve its immutable Content Revision: ${series.templateId}`,
+              );
+            }
+            seriesList.push({ ...series, title: content.title });
           }
           return terminalResult(
             envelope("ok", "working_series_listed", `${seriesList.length} Series have a Working Head`, "none"),
@@ -704,32 +1071,68 @@ export function registerLifecycleTools(options: {
         const workingContent = series.workingHead
           ? await library.getContent(templateId, series.workingHead.revisionId, series.workingHead.contentDigest)
           : undefined;
-        const review = series.workingHead ? await library.getReview(templateId, series.workingHead.reviewId) : undefined;
+        const workingReview = series.workingHead
+          ? await library.getReview(templateId, series.workingHead.reviewId)
+          : undefined;
+        const publishedReview = publishedRelease
+          ? await library.getReview(templateId, publishedRelease.reviewId)
+          : undefined;
+        if (series.workingHead && !workingContent) {
+          throw new Error("Working Head cannot resolve its immutable Content Revision");
+        }
+        if (
+          series.publishedHead &&
+          (!publishedContent ||
+            !publishedRelease ||
+            publishedRelease.revisionId !== publishedContent.revisionId ||
+            publishedRelease.contentDigest !== publishedContent.contentDigest)
+        ) {
+          throw new Error("Published Head cannot resolve its bound immutable Content/Release");
+        }
+        if (
+          series.workingHead &&
+          (!workingReview ||
+            workingReview.reviewId !== series.workingHead.reviewId ||
+            workingReview.revisionId !== series.workingHead.revisionId ||
+            workingReview.reviewDigest !== series.workingHead.reviewDigest)
+        ) {
+          throw new Error("Working Head does not match its immutable Review snapshot");
+        }
+        if (
+          publishedRelease &&
+          (!publishedReview ||
+            publishedReview.reviewId !== publishedRelease.reviewId ||
+            publishedReview.revisionId !== publishedRelease.revisionId ||
+            publishedReview.reviewDigest !== publishedRelease.reviewDigest)
+        ) {
+          throw new Error("Published Release does not match its immutable Review snapshot");
+        }
+        const review = workingReview ?? publishedReview;
         const diff = series.publishedHead && series.workingHead
           ? await library.diff(templateId, series.publishedHead.revisionId, series.workingHead.revisionId)
           : undefined;
         return terminalResult(
           envelope("ok", "review_loaded", `Loaded review state for ${templateId}`, "none"),
-          { view: "review", templateId, series, ...(publishedContent ? { publishedContent } : {}), ...(publishedRelease ? { publishedRelease } : {}), ...(workingContent ? { workingContent } : {}), ...(review ? { review } : {}), ...(diff ? { diff } : {}), history },
+          {
+            view: "review",
+            templateId,
+            series,
+            ...(publishedContent ? { publishedContent } : {}),
+            ...(publishedRelease ? { publishedRelease } : {}),
+            ...(workingContent ? { workingContent } : {}),
+            ...(workingReview ? { workingReview } : {}),
+            ...(publishedReview ? { publishedReview } : {}),
+            ...(review ? { review } : {}),
+            ...(diff ? { diff } : {}),
+            history,
+          },
           [
             `TEMPLATE_ID: ${templateId}`,
             `PUBLISHED_REVISION: ${series.publishedHead?.revisionId ?? "none"}`,
             `WORKING_REVISION: ${series.workingHead?.revisionId ?? "none"}`,
-            `VALIDATION_ERRORS: ${review?.validationErrors.map((item) => item.code).join(", ") || "none"}`,
-            `BLOCKING_GATES: ${review?.blockingGates.filter((item) => item.status === "open").map((item) => item.gateId).join(", ") || "none"}`,
+            ...reviewSnapshotDetails("WORKING", workingReview),
+            ...reviewSnapshotDetails("PUBLISHED", publishedReview),
             `REVIEW_WARNINGS: ${review?.warnings.map((item) => item.code).join(", ") || "none"}`,
-            ...(review?.validationErrors.map(
-              (item) =>
-                `VALIDATION_ERROR: ${item.code} | PATH=${item.path ?? "none"} | MESSAGE=${JSON.stringify(item.message)}`,
-            ) ?? []),
-            ...(review?.blockingGates.map(
-              (item) =>
-                `REVIEW_GATE: ${item.gateId} | STATUS=${item.status} | CODE=${item.code} | PATH=${item.path ?? "none"} | MESSAGE=${JSON.stringify(item.message)} | RESOLUTION=${item.resolution ? JSON.stringify(item.resolution) : "none"}`,
-            ) ?? []),
-            ...(review?.warnings.map(
-              (item) =>
-                `REVIEW_WARNING: ${item.code} | PATH=${item.path ?? "none"} | MESSAGE=${JSON.stringify(item.message)}`,
-            ) ?? []),
             ...(diff
               ? [
                   ...diff.fieldChanges.map(
@@ -752,6 +1155,188 @@ export function registerLifecycleTools(options: {
         );
       } catch (error) {
         return blockedResult("review_read_failed", "Review inspection failed", error, "none");
+      }
+    },
+  );
+
+  server.registerTool(
+    "figure_library_preview_working_revision",
+    {
+      title: "Preview an exact active Working selector",
+      description:
+        "Return the canonical image for an exact active pending Working plan or current Working Head. This read-only tool does not create a preview receipt or authorize materialization.",
+      inputSchema: WorkingPreviewInput.shape,
+      annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: false,
+      },
+    },
+    async ({ templateId, revisionId, contentDigest }): Promise<CallToolResult> => {
+      const selector = { templateId, revisionId, contentDigest };
+      try {
+        const library = await currentLibrary();
+        const pendingDigest = pendingWorkingPlans.get(templateId);
+        const pending = pendingDigest ? plans.get(pendingDigest) : undefined;
+        if (pendingDigest && !pending) pendingWorkingPlans.delete(templateId);
+        if (pending) {
+          const plan = pending.backendPlan;
+          if (
+            pending.kind !== "working" ||
+            (plan.action !== "create_working" && plan.action !== "update_working")
+          ) {
+            pendingWorkingPlans.delete(templateId);
+          } else if (
+            plan.content.revisionId !== revisionId ||
+            plan.content.contentDigest !== contentDigest
+          ) {
+            return terminalResult(
+              envelope(
+                "conflict",
+                "working_revision_stale",
+                `The exact selector is not the active pending Working plan for ${templateId}`,
+                "create_new_plan",
+              ),
+              {
+                selector,
+                pendingSelector: {
+                  templateId,
+                  revisionId: plan.content.revisionId,
+                  contentDigest: plan.content.contentDigest,
+                },
+              },
+            );
+          } else {
+            assertLibraryOperationContext(library.runtimeContext, plan.libraryContext);
+            const currentSeries = await library.getSeries(templateId);
+            const currentSeriesDigest = currentSeries
+              ? templateSeriesDigest(currentSeries)
+              : null;
+            if (currentSeriesDigest !== plan.expectedSeriesDigest) {
+              throw new Error(
+                "pending Working plan is stale because the template Series changed after planning",
+              );
+            }
+            const loaded = await loadPendingWorkingPreview(pending);
+            if (!loaded) {
+              return terminalResult(
+                envelope(
+                  "blocked",
+                  "working_preview_unavailable",
+                  `The pending Working plan has no canonical preview: ${templateId}`,
+                  "inspect_review",
+                ),
+                { selector },
+              );
+            }
+            return workingPreviewResult(selector, {
+              ...loaded,
+              selectorScope: "pending_plan",
+            });
+          }
+        }
+        const series = await library.getSeries(templateId);
+        if (!series) {
+          return terminalResult(
+            envelope(
+              "not_found",
+              "template_not_found",
+              `Unknown versioned template: ${templateId}`,
+              "none",
+            ),
+            { selector },
+          );
+        }
+        if (!series.workingHead) {
+          return terminalResult(
+            envelope(
+              "not_found",
+              "working_revision_not_found",
+              `Template ${templateId} has no current Working Revision`,
+              "inspect_review",
+            ),
+            { selector },
+          );
+        }
+        if (
+          series.workingHead.revisionId !== revisionId ||
+          series.workingHead.contentDigest !== contentDigest
+        ) {
+          return terminalResult(
+            envelope(
+              "conflict",
+              "working_revision_stale",
+              `The exact selector is not the current Working Head for ${templateId}`,
+              "create_new_plan",
+            ),
+            { selector, workingHead: series.workingHead },
+          );
+        }
+        const [content, preview] = await Promise.all([
+          library.getContent(templateId, revisionId, contentDigest),
+          library.getPreview(templateId, { revisionId, contentDigest, scope: "working" }),
+        ]);
+        if (!content) {
+          return terminalResult(
+            envelope(
+              "blocked",
+              "working_preview_unavailable",
+              `The exact Working Revision content is unavailable for ${templateId}`,
+              "inspect_review",
+            ),
+            { selector },
+          );
+        }
+        if (!preview) {
+          return terminalResult(
+            envelope(
+              "blocked",
+              "working_preview_unavailable",
+              `The exact Working Revision has no canonical preview: ${templateId}`,
+              "inspect_review",
+            ),
+            { selector },
+          );
+        }
+        const asset = content.assets.find((item) => item.logicalPath === preview.logicalPath);
+        if (!asset || asset.role !== "visual" || !asset.visualRole) {
+          throw new Error("canonical preview does not resolve to a visual asset with a visual role");
+        }
+        return workingPreviewResult(selector, {
+          content,
+          asset,
+          bytes: preview.bytes,
+          mimeType: preview.mimeType,
+          selectorScope: "working_head",
+        });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        if (
+          message.includes("current working revision") ||
+          message.includes("changed after planning") ||
+          message.includes("stale library context") ||
+          message.includes("pending Working plan is stale")
+        ) {
+          return terminalResult(
+            envelope(
+              "conflict",
+              "working_revision_stale",
+              `Working preview selector is stale: ${message}`,
+              "create_new_plan",
+            ),
+            { selector },
+          );
+        }
+        return terminalResult(
+          envelope(
+            "blocked",
+            "working_preview_unavailable",
+            `Working preview is unavailable or invalid: ${message}`,
+            "inspect_review",
+          ),
+          { selector },
+        );
       }
     },
   );
@@ -867,20 +1452,46 @@ export function registerLifecycleTools(options: {
         }
         const candidate = await directCandidate(input);
         const library = await currentLibrary();
-        const backendPlan = input.mode === "create"
-          ? await library.planCreateWorking({ templateId: input.templateId, candidate, assessment: input.assessment as ReviewAssessmentInput | undefined })
-          : await library.planUpdateWorking({ templateId: input.templateId!, candidate, assessment: input.assessment as ReviewAssessmentInput | undefined });
+        const assessment = input.assessment as ReviewAssessmentInput | undefined;
+        let backendPlan;
+        if (input.mode === "create") {
+          backendPlan = await library.planCreateWorking({
+            templateId: input.templateId,
+            candidate,
+            assessment,
+          });
+        } else {
+          const existing = await library.getSeries(input.templateId!);
+          backendPlan =
+            existing?.publishedHead && !existing.workingHead
+              ? await library.planCreateWorking({
+                  templateId: input.templateId,
+                  candidate,
+                  assessment,
+                })
+              : await library.planUpdateWorking({
+                  templateId: input.templateId!,
+                  candidate,
+                  assessment,
+                });
+        }
         const digestPayload = {
           schema: "figure-library.public-lifecycle-plan-digest.v1",
           kind: "working",
           exactPlan: publicPlanBody(backendPlan),
         };
         const entry = plans.remember({ kind: "working", digestPayload, backendPlan });
+        pendingWorkingPlans.set(backendPlan.templateId, entry.publicDigest);
         const plan = planSummary(entry);
+        const reviewSummary = summarizeReview(backendPlan.content, backendPlan.review);
         return terminalResult(
           envelope("needs_user_confirmation", "working_revision_plan_ready", `Review ${plan.action} for ${plan.templateId}; no files were written`, "apply_confirmed_plan"),
-          { plan },
-          planDetails(plan),
+          {
+            plan,
+            reviewSummary,
+            ...(plan.previewSelector ? { previewSelector: plan.previewSelector } : {}),
+          },
+          [...planDetails(plan), ...reviewSummaryDetails(reviewSummary)],
         );
       } catch (error) {
         return blockedResult("working_revision_plan_failed", "Working Revision planning failed", error, "create_new_plan");
@@ -898,19 +1509,30 @@ export function registerLifecycleTools(options: {
     },
     async (input): Promise<CallToolResult> => {
       try {
+        const library = await currentLibrary();
         const entry = plans.get(input.planDigest);
         if (!entry) {
-          const result = await replay({ kind: "working", ...input });
+          const result = await replay(library, { kind: "working", ...input });
+          const reviewSummary = result
+            ? await summaryForResult(library, result)
+            : undefined;
           return result
-            ? applyResult(input.planDigest, result)
+            ? applyResult(input.planDigest, result, reviewSummary)
             : terminalResult(envelope("blocked", "plan_not_available", "The unapplied plan expired or the server restarted", "create_new_plan"));
         }
         if (entry.kind !== "working") return terminalResult(envelope("conflict", "plan_kind_mismatch", "The plan is not a Working Revision plan", "create_new_plan"));
         if (entry.backendPlan.templateId !== input.expectedTemplateId || entry.backendPlan.expectedSeriesDigest !== input.expectedSeriesDigest || entry.backendPlan.action !== input.expectedAction) {
           return terminalResult(envelope("conflict", "plan_expectation_mismatch", "Apply expectations do not match the reviewed plan", "create_new_plan"));
         }
-        const result = await (await currentLibrary()).applyPlan(entry.backendPlan, input.operationId, { kind: entry.kind, planDigest: entry.publicDigest });
-        return applyResult(entry.publicDigest, result);
+        const result = await library.applyPlan(entry.backendPlan, input.operationId, { kind: entry.kind, planDigest: entry.publicDigest });
+        if (pendingWorkingPlans.get(result.templateId) === entry.publicDigest) {
+          pendingWorkingPlans.delete(result.templateId);
+        }
+        return applyResult(
+          entry.publicDigest,
+          result,
+          await summaryForResult(library, result),
+        );
       } catch (error) {
         return blockedResult("working_revision_apply_failed", "Working Revision Apply failed", error, "create_new_plan");
       }
@@ -936,17 +1558,47 @@ export function registerLifecycleTools(options: {
       },
       async (input): Promise<CallToolResult> => {
         try {
-          const backendPlan = await config.plan(await currentLibrary(), input as never);
+          const library = await currentLibrary();
+          const backendPlan = await config.plan(library, input as never);
           const entry = plans.remember({
             kind: config.kind,
             backendPlan,
             digestPayload: { schema: "figure-library.public-lifecycle-plan-digest.v1", kind: config.kind, exactPlan: publicPlanBody(backendPlan) },
           });
           const plan = planSummary(entry);
+          let reviewSummary: ReviewSummary | undefined;
+          if (config.kind === "publish" && backendPlan.action === "publish") {
+            const [content, review] = await Promise.all([
+              library.getContent(
+                backendPlan.templateId,
+                backendPlan.release.revisionId,
+                backendPlan.release.contentDigest,
+              ),
+              library.getReview(backendPlan.templateId, backendPlan.release.reviewId),
+            ]);
+            if (!content || !review) {
+              throw new Error("publish plan cannot resolve its immutable Content/Review");
+            }
+            if (
+              content.revisionId !== backendPlan.release.revisionId ||
+              content.contentDigest !== backendPlan.release.contentDigest ||
+              review.reviewId !== backendPlan.release.reviewId ||
+              review.revisionId !== backendPlan.release.revisionId ||
+              review.reviewDigest !== backendPlan.release.reviewDigest
+            ) {
+              throw new Error(
+                "publish plan does not match its immutable Content/Review selector",
+              );
+            }
+            reviewSummary = summarizeReview(content, review);
+          }
           return terminalResult(
             envelope("needs_user_confirmation", "lifecycle_plan_ready", `Review ${plan.action} for ${plan.templateId}; no files were written`, "apply_confirmed_plan"),
-            { plan },
-            planDetails(plan),
+            { plan, ...(reviewSummary ? { reviewSummary } : {}) },
+            [
+              ...planDetails(plan),
+              ...(reviewSummary ? reviewSummaryDetails(reviewSummary) : []),
+            ],
           );
         } catch (error) {
           return blockedResult("lifecycle_plan_blocked", `${config.planTitle} failed`, error, "inspect_review");
@@ -963,19 +1615,28 @@ export function registerLifecycleTools(options: {
       },
       async (input): Promise<CallToolResult> => {
         try {
+          const library = await currentLibrary();
           const entry = plans.get(input.planDigest);
           if (!entry) {
-            const result = await replay({ kind: config.kind, ...input });
+            const result = await replay(library, { kind: config.kind, ...input });
+            const reviewSummary =
+              result && config.kind === "publish"
+                ? await summaryForResult(library, result)
+                : undefined;
             return result
-              ? applyResult(input.planDigest, result)
+              ? applyResult(input.planDigest, result, reviewSummary)
               : terminalResult(envelope("blocked", "plan_not_available", "The unapplied plan expired or the server restarted", "create_new_plan"));
           }
           if (entry.kind !== config.kind) return terminalResult(envelope("conflict", "plan_kind_mismatch", `The plan does not match ${config.applyName}`, "create_new_plan"));
           if (entry.backendPlan.templateId !== input.expectedTemplateId || entry.backendPlan.expectedSeriesDigest !== input.expectedSeriesDigest) {
             return terminalResult(envelope("conflict", "plan_expectation_mismatch", "Apply expectations do not match the reviewed plan", "create_new_plan"));
           }
-          const result = await (await currentLibrary()).applyPlan(entry.backendPlan, input.operationId, { kind: entry.kind, planDigest: entry.publicDigest });
-          return applyResult(entry.publicDigest, result);
+          const result = await library.applyPlan(entry.backendPlan, input.operationId, { kind: entry.kind, planDigest: entry.publicDigest });
+          const reviewSummary =
+            config.kind === "publish"
+              ? await summaryForResult(library, result)
+              : undefined;
+          return applyResult(entry.publicDigest, result, reviewSummary);
         } catch (error) {
           return blockedResult("lifecycle_apply_failed", `${config.applyTitle} failed`, error, "create_new_plan");
         }

@@ -3,15 +3,16 @@ name: figure-library
 description: Build, review, search, select, and materialize immutable scientific-figure references from one global Local Published library and FigureYa.
 ---
 
-# Scientific Figure Library 0.5.1
+# Scientific Figure Library 0.5.2
 
 Use this Skill when a user wants to store an uploaded figure/code pair, review
 or publish a local template, search for a plotting reference, or materialize an
 exact template into a project.
 
-Version 0.5.1 uses materialization protocol v2. This is an intentional
-patch-version breaking change: there is no receipt-free 0.5.0 materialization
-plan path.
+Version 0.5.2 retains materialization protocol v2 and adds truthful Working
+preview, Working/Published review separation, Release-bound warnings, canonical
+preview decisions, and a three-part validation state. There is no receipt-free
+0.5.0 materialization plan path.
 
 ## Non-negotiable boundaries
 
@@ -23,7 +24,8 @@ plan path.
   does not contain a model and never executes code.
 - Host Agent observations, deterministic/rule findings, and user decisions are
   distinct. Do not present an Agent inference as source fact or user approval.
-- `not_run` never means reproduced, validated, or verified.
+- Plot `not_run` never means reproduced, validated, or verified. Plot
+  execution, upstream workflow, and scientific validation are separate claims.
 - Treat all code and materialized files as untrusted. Never run a dependency
   installer automatically.
 
@@ -102,7 +104,8 @@ confirms that all writers are stopped and approves the exact unchanged plan.
 
 - For every uploaded image, first use the host image viewer. Record only what
   is actually visible: chart family, panels, axes, encodings, labels, and
-  annotations.
+  annotations. Include every uploaded original in `visualAssets` as a
+  `source_reference`; never omit it merely because a rendered output exists.
 - Read supplied code as text. Identify its language, intended output, inputs,
   dependencies, and whether it is user-supplied, author-provided,
   Agent-generated, or adapted. Do not execute it.
@@ -117,10 +120,11 @@ Before planning, state what will be stored and ask the user to confirm:
 1. `create` a new Series, `update` an exact Series, or reuse an existing one;
 2. title and complete Figure Unit boundary;
 3. multi-image grouping, if applicable;
-4. primary preview;
+4. canonical primary preview and any required user override;
 5. each visual role: `source_reference` or `rendered_output`;
 6. asset kind: `plot_template` or `visual_reference`;
-7. truthful execution claim: `not_run`, `failed`, or `passed`;
+7. truthful `plotExecution`, `upstreamWorkflow`, and
+   `scientificValidation` state;
 8. duplicate decision: `create_new`, `update_exact`, or `reuse_existing`;
 9. license and provenance;
 10. for `plot_template`, each code origin, canonical implementation, and every
@@ -132,16 +136,35 @@ Allowed relationships are `user_supplied_pair`, `author_provided_original`,
 Use `visual_reference` when reliable code is absent. A `plot_template` requires
 code and a canonical code asset selected by the user. Any `visual_inference`
 must be `scaffold` / `not_run` and described as inspired by the visual, not as
-a reproduction. `passed` is permitted only with a visual marked
+a reproduction. `plotExecution.passed` is permitted only with a visual marked
 `rendered_output`, a `generated_output` link, and an evidence asset.
 
-### Plan, review, then Apply
+Canonical preview rules:
+
+- exactly one `source_reference` defaults to that source, even when rendered
+  outputs also exist;
+- exactly one total visual is the only available choice;
+- multiple sources, or multiple rendered-only visuals without a selection, are
+  `canonical_preview_ambiguous`;
+- choosing rendered while a source exists requires
+  `primaryPreviewOverride: { confirmedBy: "user", reason }`, otherwise stop on
+  `canonical_preview_override_required`.
+
+The Server validates only assets the Host declares. Version 0.5.2 deliberately
+has no separate upload digest declaration, so it cannot detect that a Host
+omitted an uploaded original entirely. This is a Host contract, not evidence
+that omission detection passed.
+
+### Plan, preview, review, then Apply
 
 Call `figure_library_plan_working_revision` with:
 
 - `mode`, optional exact `templateId`, title and searchable metadata;
 - `visualAssets`, `codeAssets`, optional reference/evidence assets;
-- `primaryVisualAssetId` and optional `canonicalCodeAssetId`;
+- optional `primaryVisualAssetId`, optional user-confirmed
+  `primaryPreviewOverride`, and optional `canonicalCodeAssetId`;
+- `validationState`; keep `executionStatus` only as its compatible
+  `plotExecution.status` projection;
 - evidence-backed `figureCodeLinks` with `confirmedBy: "user"`;
 - all applicable confirmation booleans set only after the user confirmed;
 - `assessment` separated into validation errors, blocking gates, and warnings;
@@ -156,8 +179,18 @@ The plan writes nothing. Show the user at least:
 
 - action and `templateId`;
 - `revisionId`, `contentDigest`, and every stored asset hash;
-- `reviewId` and validation errors, open gates, and warnings;
-- `expectedSeriesDigest` and `planDigest`.
+- `reviewId` and the unified `reviewSummary` (validation errors, open gates,
+  warnings, `publishEligible`, canonical decision, and validation state);
+- the exact `previewSelector` plus `expectedSeriesDigest` and `planDigest`.
+
+Call `figure_library_preview_working_revision` once with the unchanged
+`templateId`, `revisionId`, and `contentDigest` selector when the Working
+image must be inspected. Before Apply it resolves only the latest exact,
+session-local pending Working plan for that Series; after Apply it resolves the
+matching current Working Head. It is read-only, accepts no destination, creates
+no preview receipt, and never authorizes materialization. A superseded selector,
+missing Working target, or invalid image is terminal; do not broaden or retry
+it.
 
 Only after the user approves that exact plan call
 `figure_library_apply_working_revision` with the returned `planDigest`, a
@@ -167,14 +200,19 @@ bytes or Series state changed, create a new plan and request confirmation again.
 
 ## 3. Review, gate, publish, discard, or restore
 
-- `figure_library_review_open` lists Working Series or inspects one exact
-  Series.
+- `figure_library_review_open` reports `workingReview` and
+  `publishedReview` separately for one Series; compatibility `review` means
+  `workingReview ?? publishedReview`. Published findings come from the
+  immutable Review bound by its Release.
 - `figure_library_template_history` reads immutable Revision/Review/Release
   history.
 - `figure_library_diff_revisions` compares two exact Revisions.
 
 Validation Errors and open Blocking Review Gates prevent publication. Warnings
-remain visible but are not waivers; 0.5 has no waiver mechanism.
+remain visible before and after publication because Published search/review
+loads the Release-bound immutable Review; warnings are not waivers and 0.5 has
+no waiver mechanism. Working and publish plan/apply responses expose the same
+`reviewSummary` shape.
 
 Every mutation is plan/apply:
 
@@ -218,8 +256,12 @@ both unchanged. Never resolve by bare `templateId` or let a same-named provider
 shadow another.
 
 The retrieval score is ranking only. It is not confidence, approval, or visual
-similarity. FigureYa is upstream-published but locally `not_reviewed`, code
-`provided`, execution `not_run`; do not call it SFL-approved or reproduced.
+similarity. Local Published cards/details show Release-bound warnings and
+separate plot, upstream, and scientific summaries. A legacy plot `passed`
+means upstream unknown and scientific not assessed. FigureYa is
+upstream-published but locally `not_reviewed`, code `provided`, plot
+`not_run`, upstream `unknown`, and scientific `not_assessed`; do not call it
+SFL-approved or reproduced.
 
 Search defaults to 6 candidates per page and returns the true `total`,
 `resultSetId`, `pageIndex`, `hasMore`, and opaque `nextCursor`. In the MCP App,
@@ -369,7 +411,7 @@ Defaults are `scope: "current_session"`, `detail: "sanitized_bundle"`,
 with the requested ISO timestamps. `full_local`, user text, or absolute paths
 require an explicit user request; secrets, image bytes/Data URLs,
 preview challenges/receipts, plan tokens, selectors, and source assets remain
-excluded. In 0.5.1, `includeUserText` is forward-compatible input only: the
+excluded. In 0.5.2, `includeUserText` is forward-compatible input only: the
 recorder does not collect conversation/free text, even when it is true.
 
 Return the tool's bundle name, byte length, SHA-256, redaction state, compact

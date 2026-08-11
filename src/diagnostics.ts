@@ -421,7 +421,7 @@ export class DiagnosticsManager {
     const errorLines = input.detail === "summary" ? "" : errors.map((event) => JSON.stringify(event)).join("\n");
     const environment = {
       schema: "figure-library.diagnostics-environment.v1",
-      appVersion: "0.5.1",
+      appVersion: "0.5.2",
       sessionId: this.sessionId,
       createdAt: createdAt.toISOString(),
       nodeVersion: process.version,
@@ -447,7 +447,7 @@ export class DiagnosticsManager {
     }));
     const manifest = {
       schemaVersion: DIAGNOSTICS_BUNDLE_SCHEMA_VERSION,
-      applicationVersion: "0.5.1",
+      applicationVersion: "0.5.2",
       sessionId: this.sessionId,
       createdAt: createdAt.toISOString(),
       scope: input.scope,

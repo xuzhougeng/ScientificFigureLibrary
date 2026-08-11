@@ -84,21 +84,26 @@ const packagedServer = strFromU8(unpacked["dist/index.js"]);
 const packagedApp = strFromU8(unpacked["dist/mcp-app.html"]);
 const versionedAppUri = `ui://figure-library/candidates-v${packageJson.version}.html`;
 if (
-  !packagedReadme.includes(`0.5.1 protocol migration`) ||
+  !packagedReadme.includes(`0.5.2 review truthfulness`) ||
+  !packagedReadme.includes("figure_library_preview_working_revision") ||
+  !packagedReadme.includes("canonical_preview_override_required") ||
+  !packagedReadme.includes("three-part validation state") ||
   !packagedReadme.includes("Structured diagnostics and export") ||
   !packagedReadme.includes("figure_library_search_page") ||
   !packagedReadme.includes("updateModelContext.text") ||
   !packagedSkill.includes(`Scientific Figure Library ${packageJson.version}`) ||
   !packagedSkill.includes("materialization protocol v2") ||
+  !packagedSkill.includes("figure_library_preview_working_revision") ||
   !packagedSkill.includes("选择并交给 Agent 审核") ||
   !packagedSkill.includes("figure_library_export_diagnostics")
 ) {
-  throw new Error("packaged 0.5.1 migration guidance is incomplete");
+  throw new Error("packaged 0.5.2 guidance is incomplete");
 }
 for (const marker of [
   versionedAppUri,
   "figure_library_search_page",
   "figure_library_preview_exact_headless",
+  "figure_library_preview_working_revision",
   "updateModelContextFallback",
   "figure_library_record_ui_event",
   "figure_library_export_diagnostics",

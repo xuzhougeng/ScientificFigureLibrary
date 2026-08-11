@@ -151,6 +151,18 @@ Review distinguishes:
 - non-blocking Review Warnings.
 
 There is no waiver in 0.5. Validation errors and open gates block publish.
+Working and Published Reviews are read separately. A Published candidate loads
+the immutable Review Snapshot named by its Release, so warnings remain visible
+after the Working Head is cleared or a newer Working Revision exists.
+Lifecycle plan/apply responses expose one `reviewSummary` containing errors,
+open gates, warnings, publish eligibility, canonical decision, and validation
+state.
+
+A Working preview is selected only by exact `templateId + revisionId +
+contentDigest`. Before Apply it may resolve the latest session-local pending
+Working plan for that Series; after Apply it resolves the matching current
+Working Head. Newer pending plans make prior selectors stale. It is read-only
+and creates neither a preview receipt nor materialization authority.
 
 ## Direct-intake Figure Unit
 
@@ -161,22 +173,51 @@ content.
 
 A Figure Unit contains:
 
-- one or more visuals and one primary preview;
+- one or more visuals and one canonical `primaryPreview`;
+- an optional `canonicalPreviewDecision`
+  (`default_uploaded_source`, `only_visual_available`,
+  `user_selected_source`, or `user_override_rendered`);
 - explicit visual roles (`source_reference` or `rendered_output`);
 - an explicit multi-image grouping when needed;
 - `visual_reference` or `plot_template` asset kind;
 - for a plot template, code assets, code origins, a user-selected canonical
   implementation, and evidence-backed many-to-many figure-code links;
-- provenance, annotations, review findings, and execution state.
+- provenance, annotations, review findings, and three-part validation state.
 
 Relationship values are `user_supplied_pair`, `author_provided_original`,
 `visual_inference`, `adapted_from_template`, and `generated_output`. Code origin
 values are `user_supplied`, `author_provided`, `agent_generated`, and `adapted`.
 
 `visual_inference` is always `scaffold` / `not_run`; it is inspired by a visual,
-not reproduced from original data. `passed` requires a rendered output, a
-generated-output relationship, and evidence. SFL itself never generates this
-evidence because it does not execute code.
+not reproduced from original data. `plotExecution.passed` requires a rendered
+output, a generated-output relationship, and evidence. SFL itself never
+generates this evidence because it does not execute code.
+
+Canonical preview selection defaults to the sole `source_reference`; if only
+one visual exists it selects that visual. Multiple sources or multiple
+rendered-only visuals without an explicit choice are ambiguous. Selecting a
+rendered output while any source exists requires a user-confirmed reason.
+Legacy content without `canonicalPreviewDecision` remains readable.
+
+The Host must declare every uploaded original as a `source_reference` in
+`visualAssets`. Version 0.5.2 has no separate upload digest manifest, so the
+Server cannot detect an original that the Host omitted entirely.
+
+`figure-library.validation-state.v1` separates:
+
+- `plotExecution`: `not_run|passed|failed`, with data scope and optional
+  evidence; `passed` requires evidence;
+- `upstreamWorkflow`: `unknown|not_run|partial|passed|failed|not_applicable`,
+  with scope/evidence required for `partial|passed|failed`;
+- `scientificValidation`:
+  `not_assessed|limited|validated|rejected|not_applicable`, with a user or
+  external-review decision source and an assessment reference/evidence asset
+  required for `limited|validated|rejected`.
+
+Legacy `executionStatus` remains the plot-status projection. A legacy
+`passed` reads as plot passed with unknown scope, upstream unknown, and
+scientific not assessed; it does not prove an upstream replay or scientific
+conclusion.
 
 Host Agent assessment and user decisions are stored separately. The server
 performs deterministic validation only and never invokes the Host Agent.
@@ -221,9 +262,12 @@ hash/size identity, and materialization mode. Non-archived FigureYa catalog
 entries may be described or previewed from their source identity but cannot be
 materialized as if an archive existed.
 
-Search ranking is not review. FigureYa's upstream-published state is distinct
-from SFL local approval. Its execution state remains `not_run` unless separate
-local evidence is ingested and reviewed as a local template.
+Search ranking is not review. Local Published candidates inherit warnings
+from the Review bound by the exact Release and display plot, upstream, and
+scientific summaries separately. FigureYa's upstream-published state is
+distinct from SFL local approval. Its plot state remains `not_run`, upstream
+state `unknown`, and scientific state `not_assessed` unless separate local
+evidence is ingested and reviewed as a local template.
 
 ## Materialization and project reproducibility
 

@@ -155,6 +155,60 @@ export type ExecutionStatus = "not_run" | "passed" | "failed" | "unknown";
 export type ImportAdapter = "direct" | "gallery" | "figure-transfer-package";
 export type IdentityMode = "stable-source" | "content-addressed";
 
+/**
+ * Search-facing projection of the immutable Revision validation state. The
+ * stored Revision uses canonical asset paths rather than caller asset ids.
+ * This remains optional on TemplateCandidate so older providers and cached
+ * search payloads can still be read and conservatively projected by clients.
+ */
+export interface ValidationStateSummaryV1 {
+  schema: "figure-library.validation-state.v1";
+  plotExecution: {
+    status: "not_run" | "passed" | "failed";
+    scope: "synthetic_data" | "example_data" | "real_data" | "unknown";
+    evidenceAssetPaths?: string[];
+  };
+  upstreamWorkflow: {
+    status:
+      | "unknown"
+      | "not_run"
+      | "partial"
+      | "passed"
+      | "failed"
+      | "not_applicable";
+    scope?: string;
+    evidenceAssetPaths?: string[];
+  };
+  scientificValidation: {
+    status:
+      | "not_assessed"
+      | "limited"
+      | "validated"
+      | "rejected"
+      | "not_applicable";
+    decisionSource?: "user" | "external_review";
+    assessmentAssetPath?: string;
+  };
+}
+
+export type CanonicalPreviewDecisionSummary =
+  | {
+      assetPath: string;
+      reason: "default_uploaded_source" | "only_visual_available";
+      selectedBy: "policy";
+    }
+  | {
+      assetPath: string;
+      reason: "user_selected_source";
+      selectedBy: "user";
+    }
+  | {
+      assetPath: string;
+      reason: "user_override_rendered";
+      selectedBy: "user";
+      note: string;
+    };
+
 export interface AssetFingerprintsV1 {
   algorithm: "figure-library.asset-fingerprints.v1";
   previewSha256?: string;
@@ -206,6 +260,8 @@ export interface TemplateCandidate {
   reviewStatus: ReviewStatus;
   codeStatus: CodeStatus;
   executionStatus: ExecutionStatus;
+  validationState?: ValidationStateSummaryV1;
+  canonicalPreviewDecision?: CanonicalPreviewDecisionSummary;
   upstreamStatus?: "published" | "available" | "unavailable" | "unknown";
   license: string;
   sourceUrl?: string;

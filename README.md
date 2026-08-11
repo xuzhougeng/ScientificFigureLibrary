@@ -17,11 +17,17 @@ The standard core has two retrieval providers:
 provider-qualified and carry an `exactSelector`; a bare `templateId` is never
 enough to describe, preview, or materialize an exact result.
 
-> **0.5.1 protocol migration:** this patch release intentionally breaks the
-> 0.5.1 materialization-plan input. `figure_library_plan_materialize` now
-> requires a session-local, single-use `previewReceipt` produced only after an
-> exact preview and explicit confirmation. Old callers must adopt protocol v2;
-> there is no receipt-free compatibility path.
+> **0.5.1 protocol migration (still required in 0.5.2):** 0.5.1 deliberately
+> broke the 0.5.0 materialization-plan input. `figure_library_plan_materialize`
+> still requires a session-local, single-use `previewReceipt` produced only
+> after an exact preview and explicit confirmation. Old callers must adopt
+> protocol v2; there is no receipt-free compatibility path.
+>
+> **0.5.2 review truthfulness:** Working preview now has its own exact read-only
+> selector; Working and Published Reviews are reported separately; Published
+> warnings remain bound to their immutable Release; canonical preview choices
+> and the three-part validation state are exposed consistently across review,
+> planning, search, and details.
 
 The host Agent, not this server, inspects an uploaded figure and code, reasons
 about their relationship, and asks the user to confirm the Figure Unit. SFL
@@ -52,13 +58,26 @@ SFL treats every supplied or downloaded asset as untrusted reference material.
 It copies and hashes files but never runs plotting code, notebooks, shell
 scripts, or dependency installers.
 
-Execution state has a literal meaning:
+Validation state has three independent parts. `plotExecution` records only the
+plot run, `upstreamWorkflow` records the upstream analysis workflow, and
+`scientificValidation` records a user or external-review assessment. Plot
+execution never implies either of the other two:
 
-- `not_run`: SFL has no execution evidence. Never call it reproduced,
-  validated, or verified.
-- `failed`: an execution attempt is recorded as failed.
-- `passed`: requires a `rendered_output`, a `generated_output` figure-code
-  relationship, and an evidence asset.
+- `plotExecution.status: not_run`: SFL has no plot-execution evidence.
+- `plotExecution.status: failed`: a plot execution attempt is recorded as
+  failed.
+- `plotExecution.status: passed`: requires a `rendered_output`, a
+  `generated_output` figure-code relationship, and an evidence asset.
+- `upstreamWorkflow.status: partial|passed|failed`: requires a non-empty scope
+  and evidence; otherwise use `unknown`, `not_run`, or `not_applicable`.
+- `scientificValidation.status: limited|validated|rejected`: requires a
+  `decisionSource` (`user` or `external_review`) and a referenced assessment
+  asset; otherwise use `not_assessed` or `not_applicable`.
+
+The legacy `executionStatus` field remains a compatibility projection of
+`plotExecution.status`. A legacy `passed` Release reads as plot passed with
+unknown scope, upstream unknown, and scientific not assessed; it is never
+promoted to full workflow reproduction or scientific validation.
 
 Code inferred from a visual must use relationship `visual_inference` and remain
 `scaffold` / `not_run` with the claim `inspired_by_not_reproduced`.
@@ -186,13 +205,14 @@ planning, the Agent must inspect the actual files and collect or confirm:
 1. create, update, or reuse an exact existing template;
 2. title and Figure Unit boundary;
 3. every visual asset and whether it is a `source_reference` or
-   `rendered_output`;
+   `rendered_output`; every user-uploaded original figure must be included in
+   `visualAssets` as `source_reference`;
 4. multi-image grouping when more than one visual belongs to the Figure Unit;
-5. the primary preview;
+5. the canonical primary preview and, when required, the user's override;
 6. `plot_template` or `visual_reference`;
 7. for a plot template, all code assets, their origins, the canonical
    implementation, and evidence-backed many-to-many figure-code links;
-8. the truthful execution claim;
+8. the truthful three-part validation state;
 9. duplicate decision: `create_new`, `update_exact`, or `reuse_existing`;
 10. provenance, license, and any review findings.
 
@@ -211,12 +231,40 @@ requires code and a user-selected canonical implementation. If reliable code
 is absent, use `visual_reference` rather than pretending that a reproducible
 template exists.
 
+Canonical preview selection is deterministic:
+
+- exactly one `source_reference` is the default
+  (`default_uploaded_source`), even when rendered outputs also exist;
+- one total visual is the only available choice (`only_visual_available`);
+- an explicit source selection is recorded as `user_selected_source`;
+- multiple sources, or multiple rendered-only visuals without a selection,
+  return `canonical_preview_ambiguous`;
+- choosing a rendered output while a source exists requires
+  `primaryPreviewOverride: { confirmedBy: "user", reason }` and is recorded as
+  `user_override_rendered`; without it the plan returns
+  `canonical_preview_override_required`.
+
+This 0.5.2 boundary is intentionally Host-governed: the Host must include the
+uploaded original in `visualAssets` as `source_reference`. The Server verifies
+declared assets but does not receive a separate upload manifest, so it cannot
+detect that a Host omitted an original entirely. No digest-declaration hard
+check is added in this release.
+
 Call `figure_library_plan_working_revision` first. It verifies regular,
 non-symlink host files and produces a complete immutable candidate and review
 snapshot without writing. Absolute source paths are input-only and are not
 persisted in the public Revision. Show the returned action, IDs, digests, asset
-hashes, validation errors, gates, and warnings. Only after the user confirms
-that exact plan call `figure_library_apply_working_revision` with:
+hashes, `reviewSummary`, canonical decision, validation state, and the exact
+Working preview selector. Call `figure_library_preview_working_revision` with
+that unchanged `templateId`, `revisionId`, and `contentDigest` to inspect the
+canonical image before Apply. The selector resolves only the latest exact,
+session-local pending Working plan for that Series; after Apply it resolves the
+matching current Working Head. A newer plan makes the prior pending selector
+stale, and publication removes the Working target. This tool is read-only: it
+accepts no destination, creates no preview receipt, and never authorizes
+materialization. Show validation errors, gates, and warnings. Only after the
+user confirms that exact plan call `figure_library_apply_working_revision`
+with:
 
 - `planDigest`
 - stable `operationId`
@@ -270,6 +318,14 @@ history creates a new Working candidate and requires review; it never rewinds
 the Published pointer directly. Adopting a flat-v1 template is explicit and
 non-destructive, with a migration receipt.
 
+`figure_library_review_open` returns `workingReview` and `publishedReview`
+separately when both exist; compatibility field `review` resolves to
+`workingReview ?? publishedReview`. Published review findings come from the
+Review Snapshot bound by the Release and therefore remain visible after the
+Working Head is cleared or replaced. Working and publish plan/apply responses
+use one `reviewSummary` shape containing validation errors, open gates,
+warnings, `publishEligible`, canonical preview decision, and validation state.
+
 ## Unified search and exact selectors
 
 `figure_library_search` searches the complete relevance-matched Local
@@ -303,6 +359,12 @@ Same-named templates from different providers do not shadow one another.
 FigureYa is upstream-published but locally `not_reviewed`; its code is
 `provided` and `not_run`. Never describe a FigureYa search result as locally
 approved, reproduced, or verified by SFL.
+
+Local Published search cards and details inherit warnings from the immutable
+Review bound by the exact Release and display separate plot-execution,
+upstream-workflow, and scientific-validation summaries. They do not fall back
+to the current Working Head and do not collapse a plot `passed` result into a
+claim of complete reproduction.
 
 The MCP App paginates all matched candidates through App-only
 `figure_library_search_page` and renders each usable candidate as a real
@@ -340,7 +402,7 @@ handoff remains disabled with an explicit capability error.
 `figure_library_describe` publishes these App/headless tool names, the
 component thumbnail `_meta` key, the model-image exclusion flag, receipt gate,
 and diagnostics export/resource capabilities so Hosts can inspect the exact
-0.5.1 boundary without guessing.
+0.5.2 boundary without guessing.
 
 `figure_library_preview` remains a compatibility tool that returns/copies one
 standard MCP image, but it never authorizes materialization and must not be
@@ -508,7 +570,7 @@ SHA-256 values, total payload bytes, scope, and redaction mode. Image bytes,
 Data URLs, selectors, preview challenges/receipts, plan tokens, credentials,
 cookies, environment variables, conversation/free text, source assets, and
 sensitive paths are excluded or redacted. `includeUserText` is accepted for
-forward compatibility, but 0.5.1 does not collect conversation/free text and
+forward compatibility, but 0.5.2 does not collect conversation/free text and
 therefore still records `userTextIncluded: false`. Absolute paths appear only
 when the user explicitly sets `includeAbsolutePaths: true`.
 
@@ -528,7 +590,7 @@ alone must not be described as delivery to the user.
 | Diagnostics export | `figure_library_export_diagnostics` |
 | Global binding | `figure_library_plan_bind_global`, `figure_library_apply_bind_global` |
 | Write-lock recovery | `figure_library_plan_recover_write_lock`, `figure_library_apply_recover_write_lock` |
-| Review inspection | `figure_library_review_open`, `figure_library_template_history`, `figure_library_diff_revisions` |
+| Review inspection | `figure_library_review_open`, `figure_library_preview_working_revision`, `figure_library_template_history`, `figure_library_diff_revisions` |
 | Direct intake | `figure_library_plan_working_revision`, `figure_library_apply_working_revision` |
 | Gate, publish, discard, restore, adoption | the lifecycle plan/apply pairs listed above |
 | Exact acquisition | `figure_library_plan_materialize`, `figure_library_apply_materialize` |
@@ -543,7 +605,7 @@ Build a standalone npm package:
 
 ```bash
 npm run package:npm
-npm install --global ./release/scientific-figure-library-0.5.1.tgz
+npm install --global ./release/scientific-figure-library-0.5.2.tgz
 ```
 
 Use `scientific-figure-library` as the MCP command after installation.
@@ -554,7 +616,7 @@ Build the Wisp plugin:
 npm run package:wisp
 ```
 
-Install `release/scientific-figure-library-wisp-0.5.1.zip` from Wisp
+Install `release/scientific-figure-library-wisp-0.5.2.zip` from Wisp
 **Settings → Plugins**, enable it, and start a fresh session. The Wisp bundle is
 an adapter around the same standard MCP server; global Library selection is not
 tied to a Wisp project.
@@ -590,7 +652,7 @@ npm run package:source-pack -- \
 
 The helper verifies selected ZIP identities and caps a transport pack at 200
 MiB. Extract the resulting
-`release/figure-library-source-pack-volcano-0.5.1.zip` before use.
+`release/figure-library-source-pack-volcano-0.5.2.zip` before use.
 
 ## Catalog development
 

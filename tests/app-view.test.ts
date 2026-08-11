@@ -64,6 +64,17 @@ function candidate(
     reviewStatus: providerId.includes("local") ? "approved" : "not_reviewed",
     codeStatus: "provided",
     executionStatus: "not_run",
+    validationState: {
+      schema: "figure-library.validation-state.v1",
+      plotExecution: { status: "not_run", scope: "unknown" },
+      upstreamWorkflow: { status: "not_run" },
+      scientificValidation: { status: "not_assessed" },
+    },
+    canonicalPreviewDecision: {
+      assetPath: "visuals/source/preview.png",
+      reason: "default_uploaded_source",
+      selectedBy: "policy",
+    },
     management: {
       templateId,
       canArchive: false,
@@ -75,7 +86,7 @@ function candidate(
 function searchResult(candidates: Candidate[]): SearchResult {
   return {
     query: "柱状图 bar chart",
-    libraryVersion: "0.5.1",
+    libraryVersion: "0.5.2",
     materializationProtocolVersion: 2,
     intentFamilies: ["bar"],
     reviewRequired: true,
@@ -144,6 +155,18 @@ test("thumbnail, title, and explicit action open candidate details without exact
     Array.from(cards.querySelectorAll(".source")).map((node) => node.textContent),
     ["Local Published", "FigureYa"],
   );
+  const validationSummaries = Array.from(cards.querySelectorAll(".validation-summary")).map(
+    (node) => node.textContent ?? "",
+  );
+  assert.equal(validationSummaries.length, 2);
+  assert.ok(
+    validationSummaries.every(
+      (text) =>
+        text.includes("绘图执行：not_run（范围：unknown）") &&
+        text.includes("上游流程：not_run") &&
+        text.includes("科学验证：not_assessed"),
+    ),
+  );
   (cards.querySelectorAll(".preview-button")[0] as HTMLButtonElement).click();
   (cards.querySelectorAll(".candidate-title")[1] as HTMLButtonElement).click();
   (cards.querySelectorAll(".candidate-action")[1] as HTMLButtonElement).click();
@@ -193,6 +216,11 @@ test("basic detail remains available without serverTools and exposes complete me
   assert.match(detail.dialog.textContent ?? "", /One category and one numeric value/u);
   assert.match(detail.dialog.textContent ?? "", /bar chart match/u);
   assert.match(detail.dialog.textContent ?? "", /not executed/u);
+  assert.match(detail.dialog.textContent ?? "", /绘图执行：not_run（范围：unknown）/u);
+  assert.match(detail.dialog.textContent ?? "", /上游流程：not_run/u);
+  assert.match(detail.dialog.textContent ?? "", /科学验证：not_assessed/u);
+  assert.match(detail.dialog.textContent ?? "", /default_uploaded_source/u);
+  assert.match(detail.dialog.textContent ?? "", /visuals\/source\/preview.png/u);
   assert.equal(detail.exactPreviewButton.disabled, true);
   assert.equal(detail.confirmButton.disabled, true);
   assert.equal(detail.confirmButton.textContent, "Host 不支持选择交接");
@@ -205,6 +233,41 @@ test("basic detail remains available without serverTools and exposes complete me
   );
   assert.equal(closed, 1);
   assert.equal(document.activeElement, opener);
+});
+
+test("legacy candidates without validationState render a conservative three-part projection", () => {
+  const window = new Window();
+  const document = window.document as unknown as Document;
+  const opener = document.createElement("button");
+  document.body.append(opener);
+  const legacy = candidate(
+    "org.scientificfigurelibrary.local",
+    "legacy-state",
+    "ready",
+    "data:image/png;base64,iVBORw0KGgo=",
+  );
+  legacy.executionStatus = "passed";
+  delete legacy.validationState;
+  delete legacy.canonicalPreviewDecision;
+
+  const detail = openCandidateDetail({
+    document,
+    candidate: legacy,
+    opener,
+    serverToolsAvailable: true,
+    updateModelContextAvailable: true,
+    onRequestExactPreview() {},
+    onRequestAgentReview() {
+      assert.fail("serverTools path must not use the headless handoff button");
+    },
+  });
+
+  const text = detail.dialog.textContent ?? "";
+  assert.match(text, /绘图执行：passed（范围：unknown）/u);
+  assert.match(text, /上游流程：unknown/u);
+  assert.match(text, /科学验证：not_assessed/u);
+  assert.doesNotMatch(text, /Canonical 预览/u);
+  detail.closeButton.click();
 });
 
 test("unavailable previews still open details but keep exact preview and confirmation disabled", () => {

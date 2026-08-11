@@ -27,6 +27,7 @@ import {
 
 export const TEMPLATE_SERIES_SCHEMA = "figure-library.template-series.v1" as const;
 export const TEMPLATE_CONTENT_SCHEMA = "figure-library.template-content.v1" as const;
+export const VALIDATION_STATE_SCHEMA = "figure-library.validation-state.v1" as const;
 export const REVIEW_SNAPSHOT_SCHEMA = "figure-library.review-snapshot.v1" as const;
 export const TEMPLATE_RELEASE_SCHEMA = "figure-library.template-release.v1" as const;
 export const LIFECYCLE_PLAN_SCHEMA = "figure-library.lifecycle-plan.v1" as const;
@@ -53,6 +54,25 @@ export type JsonValue = JsonPrimitive | JsonValue[] | { [key: string]: JsonValue
 export type VersionedAssetKind = "plot_template" | "visual_reference";
 export type VersionedCodeStatus = "none" | "scaffold" | "reviewed";
 export type ExecutionStatus = "not_run" | "passed" | "failed";
+export type PlotExecutionScope =
+  | "synthetic_data"
+  | "example_data"
+  | "real_data"
+  | "unknown";
+export type UpstreamWorkflowStatus =
+  | "unknown"
+  | "not_run"
+  | "partial"
+  | "passed"
+  | "failed"
+  | "not_applicable";
+export type ScientificValidationStatus =
+  | "not_assessed"
+  | "limited"
+  | "validated"
+  | "rejected"
+  | "not_applicable";
+export type ScientificValidationDecisionSource = "user" | "external_review";
 export type RevisionAssetRole = "visual" | "code" | "reference" | "evidence";
 export type VisualAssetRole = "source_reference" | "rendered_output";
 export type FigureCodeRelationship =
@@ -99,6 +119,60 @@ export interface CanonicalImplementationSelection {
   selectedBy: "user";
 }
 
+export interface PlotExecutionValidationV1 {
+  status: ExecutionStatus;
+  scope: PlotExecutionScope;
+  evidenceAssetPaths?: string[];
+}
+
+export interface UpstreamWorkflowValidationV1 {
+  status: UpstreamWorkflowStatus;
+  scope?: string;
+  evidenceAssetPaths?: string[];
+}
+
+export interface ScientificValidationV1 {
+  status: ScientificValidationStatus;
+  decisionSource?: ScientificValidationDecisionSource;
+  assessmentAssetPath?: string;
+}
+
+export interface ValidationStateV1 {
+  schema: typeof VALIDATION_STATE_SCHEMA;
+  plotExecution: PlotExecutionValidationV1;
+  upstreamWorkflow: UpstreamWorkflowValidationV1;
+  scientificValidation: ScientificValidationV1;
+}
+
+/**
+ * Lifecycle adapters resolve public asset IDs to canonical logical paths before
+ * passing this structure to the versioned-library core.
+ */
+export type ValidationStateInputV1 = ValidationStateV1;
+
+export interface PrimaryPreviewOverride {
+  confirmedBy: "user";
+  reason: string;
+}
+
+export type CanonicalPreviewDecision =
+  | {
+      assetPath: string;
+      reason: "default_uploaded_source" | "only_visual_available";
+      selectedBy: "policy";
+    }
+  | {
+      assetPath: string;
+      reason: "user_selected_source";
+      selectedBy: "user";
+    }
+  | {
+      assetPath: string;
+      reason: "user_override_rendered";
+      selectedBy: "user";
+      note: string;
+    };
+
 export interface FigureCodeLink {
   visualAssetPath: string;
   codeAssetPaths: string[];
@@ -134,7 +208,9 @@ export interface VersionedTemplateCandidate {
   plotFamily?: string;
   codeStatus: VersionedCodeStatus;
   executionStatus?: ExecutionStatus;
+  validationState?: ValidationStateInputV1;
   primaryPreview?: string;
+  primaryPreviewOverride?: PrimaryPreviewOverride;
   canonicalImplementation?: CanonicalImplementationSelection;
   visualGrouping?: ConfirmedVisualGrouping;
   figureCodeLinks?: FigureCodeLink[];
@@ -226,7 +302,9 @@ export interface TemplateContentV1 {
   plotFamily: string;
   codeStatus: VersionedCodeStatus;
   executionStatus: ExecutionStatus;
+  validationState?: ValidationStateV1;
   primaryPreview?: string;
+  canonicalPreviewDecision?: CanonicalPreviewDecision;
   canonicalImplementation?: CanonicalImplementationSelection;
   visualGrouping?: ConfirmedVisualGrouping;
   figureCodeLinks: FigureCodeLink[];
@@ -552,6 +630,40 @@ export function validateRevisionAssetPath(value: string) {
   return segments.join("/");
 }
 
+export function legacyValidationStateFromExecutionStatus(
+  executionStatus: ExecutionStatus,
+  evidenceAssetPaths: string[] = [],
+): ValidationStateV1 {
+  if (!(["not_run", "passed", "failed"] as const).includes(executionStatus)) {
+    throw new Error("invalid legacy executionStatus");
+  }
+  const normalizedEvidence = [...new Set(evidenceAssetPaths.map(validateRevisionAssetPath))].sort(
+    compareCanonicalStrings,
+  );
+  return {
+    schema: VALIDATION_STATE_SCHEMA,
+    plotExecution: {
+      status: executionStatus,
+      scope: "unknown",
+      ...(normalizedEvidence.length ? { evidenceAssetPaths: normalizedEvidence } : {}),
+    },
+    upstreamWorkflow: { status: "unknown" },
+    scientificValidation: { status: "not_assessed" },
+  };
+}
+
+export function effectiveValidationState(
+  content: Pick<TemplateContentV1, "executionStatus" | "validationState" | "assets">,
+): ValidationStateV1 {
+  if (content.validationState) return canonicalJsonClone(content.validationState);
+  return legacyValidationStateFromExecutionStatus(
+    content.executionStatus,
+    content.assets
+      .filter((asset) => asset.role === "evidence")
+      .map((asset) => asset.logicalPath),
+  );
+}
+
 function resolveContained(root: string, relative: string) {
   const safe = validateRevisionAssetPath(relative);
   const resolved = path.resolve(root, ...safe.split("/"));
@@ -804,6 +916,191 @@ function assertCanonicalAssetPath(
   return normalized;
 }
 
+
+function normalizeValidationState(
+  value: ValidationStateInputV1 | undefined,
+  fallbackStatus: ExecutionStatus,
+  fallbackEvidenceAssetPaths: string[],
+): ValidationStateV1 {
+  if (value === undefined) {
+    return legacyValidationStateFromExecutionStatus(fallbackStatus, fallbackEvidenceAssetPaths);
+  }
+  if (!isRecord(value) || value.schema !== VALIDATION_STATE_SCHEMA) {
+    throw new Error("invalid validation state schema");
+  }
+  if (!isRecord(value.plotExecution)) throw new Error("invalid plotExecution validation state");
+  if (!(["not_run", "passed", "failed"] as const).includes(value.plotExecution.status as ExecutionStatus)) {
+    throw new Error("invalid plotExecution status");
+  }
+  if (!(["synthetic_data", "example_data", "real_data", "unknown"] as const).includes(
+    value.plotExecution.scope as PlotExecutionScope,
+  )) {
+    throw new Error("invalid plotExecution scope");
+  }
+  if (!isRecord(value.upstreamWorkflow)) throw new Error("invalid upstreamWorkflow validation state");
+  if (!(["unknown", "not_run", "partial", "passed", "failed", "not_applicable"] as const).includes(
+    value.upstreamWorkflow.status as UpstreamWorkflowStatus,
+  )) {
+    throw new Error("invalid upstreamWorkflow status");
+  }
+  if (!isRecord(value.scientificValidation)) {
+    throw new Error("invalid scientificValidation state");
+  }
+  if (!(["not_assessed", "limited", "validated", "rejected", "not_applicable"] as const).includes(
+    value.scientificValidation.status as ScientificValidationStatus,
+  )) {
+    throw new Error("invalid scientificValidation status");
+  }
+  const normalizePaths = (paths: unknown, label: string) => {
+    if (paths === undefined) return [] as string[];
+    if (!Array.isArray(paths)) throw new Error(`${label} must be an array`);
+    return uniqueStrings(paths as string[], label)
+      .map(validateRevisionAssetPath)
+      .sort(compareCanonicalStrings);
+  };
+  const plotEvidence = normalizePaths(
+    value.plotExecution.evidenceAssetPaths,
+    "plotExecution.evidenceAssetPaths",
+  );
+  const upstreamEvidence = normalizePaths(
+    value.upstreamWorkflow.evidenceAssetPaths,
+    "upstreamWorkflow.evidenceAssetPaths",
+  );
+  if (
+    value.upstreamWorkflow.scope !== undefined &&
+    typeof value.upstreamWorkflow.scope !== "string"
+  ) {
+    throw new Error("invalid upstreamWorkflow scope");
+  }
+  const upstreamScope = normalizedText(value.upstreamWorkflow.scope);
+  const decisionSource = value.scientificValidation.decisionSource;
+  if (
+    decisionSource !== undefined &&
+    decisionSource !== "user" &&
+    decisionSource !== "external_review"
+  ) {
+    throw new Error("invalid scientificValidation decisionSource");
+  }
+  const assessmentAssetPath = value.scientificValidation.assessmentAssetPath;
+  if (assessmentAssetPath !== undefined && typeof assessmentAssetPath !== "string") {
+    throw new Error("invalid scientificValidation assessmentAssetPath");
+  }
+  return {
+    schema: VALIDATION_STATE_SCHEMA,
+    plotExecution: {
+      status: value.plotExecution.status as ExecutionStatus,
+      scope: value.plotExecution.scope as PlotExecutionScope,
+      ...(plotEvidence.length ? { evidenceAssetPaths: plotEvidence } : {}),
+    },
+    upstreamWorkflow: {
+      status: value.upstreamWorkflow.status as UpstreamWorkflowStatus,
+      ...(upstreamScope ? { scope: upstreamScope } : {}),
+      ...(upstreamEvidence.length ? { evidenceAssetPaths: upstreamEvidence } : {}),
+    },
+    scientificValidation: {
+      status: value.scientificValidation.status as ScientificValidationStatus,
+      ...(decisionSource ? { decisionSource } : {}),
+      ...(assessmentAssetPath
+        ? { assessmentAssetPath: validateRevisionAssetPath(assessmentAssetPath) }
+        : {}),
+    },
+  };
+}
+
+interface CanonicalPreviewResolution {
+  primaryPreview?: string;
+  canonicalPreviewDecision?: CanonicalPreviewDecision;
+  error?: { code: "canonical_preview_ambiguous" | "canonical_preview_override_required"; message: string };
+}
+
+function resolveCanonicalPreview(
+  visualAssets: StoredRevisionAsset[],
+  requestedPath: string | undefined,
+  override: PrimaryPreviewOverride | undefined,
+): CanonicalPreviewResolution {
+  if (
+    override &&
+    (override.confirmedBy !== "user" ||
+      typeof override.reason !== "string" ||
+      !normalizedText(override.reason))
+  ) {
+    throw new Error("primaryPreviewOverride requires explicit user confirmation and a reason");
+  }
+  const requested = requestedPath ? validateRevisionAssetPath(requestedPath) : undefined;
+  const sources = visualAssets.filter((asset) => asset.visualRole === "source_reference");
+  if (!requested) {
+    if (sources.length === 1) {
+      return {
+        primaryPreview: sources[0]!.logicalPath,
+        canonicalPreviewDecision: {
+          assetPath: sources[0]!.logicalPath,
+          reason: "default_uploaded_source",
+          selectedBy: "policy",
+        },
+      };
+    }
+    if (visualAssets.length === 1) {
+      return {
+        primaryPreview: visualAssets[0]!.logicalPath,
+        canonicalPreviewDecision: {
+          assetPath: visualAssets[0]!.logicalPath,
+          reason: "only_visual_available",
+          selectedBy: "policy",
+        },
+      };
+    }
+    if (visualAssets.length > 1) {
+      return {
+        error: {
+          code: "canonical_preview_ambiguous",
+          message: "Multiple eligible visuals require an explicit canonical preview selection",
+        },
+      };
+    }
+    return {};
+  }
+  const selected = visualAssets.find((asset) => asset.logicalPath === requested);
+  if (!selected) return { primaryPreview: requested };
+  if (selected.visualRole === "source_reference") {
+    return {
+      primaryPreview: requested,
+      canonicalPreviewDecision: {
+        assetPath: requested,
+        reason: "user_selected_source",
+        selectedBy: "user",
+      },
+    };
+  }
+  if (visualAssets.length === 1) {
+    return {
+      primaryPreview: requested,
+      canonicalPreviewDecision: {
+        assetPath: requested,
+        reason: "only_visual_available",
+        selectedBy: "policy",
+      },
+    };
+  }
+  if (override) {
+    return {
+      primaryPreview: requested,
+      canonicalPreviewDecision: {
+        assetPath: requested,
+        reason: "user_override_rendered",
+        selectedBy: "user",
+        note: normalizedText(override.reason),
+      },
+    };
+  }
+  return {
+    primaryPreview: requested,
+    error: {
+      code: "canonical_preview_override_required",
+      message: "Selecting a rendered output over other eligible visuals requires a user-confirmed reason",
+    },
+  };
+}
+
 interface PreparedCandidate {
   content: TemplateContentV1;
   review: ReviewSnapshotV1;
@@ -899,9 +1196,36 @@ async function prepareCandidate(options: {
   sources.sort((left, right) => compareCanonicalStrings(left.logicalPath, right.logicalPath));
 
   const assetsByPath = new Map(storedAssets.map((asset) => [asset.logicalPath, asset]));
-  const primaryPreview = candidate.primaryPreview
-    ? validateRevisionAssetPath(candidate.primaryPreview)
-    : undefined;
+  const visualAssets = storedAssets.filter((asset) => asset.role === "visual");
+  const codeAssets = storedAssets.filter((asset) => asset.role === "code");
+  const evidenceAssetPaths = storedAssets
+    .filter((asset) => asset.role === "evidence")
+    .map((asset) => asset.logicalPath);
+  const candidateValidationStatus =
+    isRecord(candidate.validationState) &&
+    isRecord(candidate.validationState.plotExecution) &&
+    (["not_run", "passed", "failed"] as const).includes(
+      candidate.validationState.plotExecution.status as ExecutionStatus,
+    )
+      ? (candidate.validationState.plotExecution.status as ExecutionStatus)
+      : undefined;
+  const fallbackExecutionStatus =
+    candidate.executionStatus ?? candidateValidationStatus ?? "not_run";
+  const validationState = normalizeValidationState(
+    candidate.validationState,
+    fallbackExecutionStatus,
+    evidenceAssetPaths,
+  );
+  const executionStatus = validationState.plotExecution.status;
+  const executionStatusConflict =
+    candidate.executionStatus !== undefined &&
+    candidate.executionStatus !== validationState.plotExecution.status;
+  const previewResolution = resolveCanonicalPreview(
+    visualAssets,
+    candidate.primaryPreview,
+    candidate.primaryPreviewOverride,
+  );
+  const { primaryPreview, canonicalPreviewDecision } = previewResolution;
   const canonicalImplementation = candidate.canonicalImplementation
     ? {
         assetPath: validateRevisionAssetPath(candidate.canonicalImplementation.assetPath),
@@ -1015,8 +1339,10 @@ async function prepareCandidate(options: {
     language: normalizedText(candidate.language) || "none",
     plotFamily: normalizedText(candidate.plotFamily),
     codeStatus: candidate.codeStatus,
-    executionStatus: candidate.executionStatus ?? "not_run",
+    executionStatus,
+    validationState,
     ...(primaryPreview ? { primaryPreview } : {}),
+    ...(canonicalPreviewDecision ? { canonicalPreviewDecision } : {}),
     ...(canonicalImplementation ? { canonicalImplementation } : {}),
     ...(visualGrouping ? { visualGrouping } : {}),
     figureCodeLinks,
@@ -1056,12 +1382,80 @@ async function prepareCandidate(options: {
     domainWarnings.push({ id: issueId("warning", base), ...base, source: "rule" });
   };
 
-  const visualAssets = storedAssets.filter((asset) => asset.role === "visual");
-  const codeAssets = storedAssets.filter((asset) => asset.role === "code");
+  if (executionStatusConflict) {
+    addError(
+      "execution_status_conflicts_with_validation_state",
+      "executionStatus must match validationState.plotExecution.status",
+      "executionStatus",
+    );
+  }
+  if (previewResolution.error) {
+    addError(previewResolution.error.code, previewResolution.error.message, "primaryPreview");
+  }
+  const plotEvidencePaths = validationState.plotExecution.evidenceAssetPaths ?? [];
+  if (plotEvidencePaths.some((assetPath) => assetsByPath.get(assetPath)?.role !== "evidence")) {
+    addError(
+      "invalid_plot_execution_evidence",
+      "Plot execution evidence must reference stored evidence assets",
+      "validationState.plotExecution.evidenceAssetPaths",
+    );
+  }
+  if (
+    validationState.plotExecution.status === "passed" &&
+    !plotEvidencePaths.length
+  ) {
+    addError(
+      "passed_execution_requires_evidence",
+      "A passed plot execution requires at least one evidence asset",
+      "validationState.plotExecution.evidenceAssetPaths",
+    );
+  }
+  const upstreamEvidencePaths = validationState.upstreamWorkflow.evidenceAssetPaths ?? [];
+  if (upstreamEvidencePaths.some((assetPath) => assetsByPath.get(assetPath)?.role !== "evidence")) {
+    addError(
+      "invalid_upstream_workflow_evidence",
+      "Upstream workflow evidence must reference stored evidence assets",
+      "validationState.upstreamWorkflow.evidenceAssetPaths",
+    );
+  }
+  if (["partial", "passed", "failed"].includes(validationState.upstreamWorkflow.status)) {
+    if (!validationState.upstreamWorkflow.scope) {
+      addError(
+        "upstream_workflow_scope_required",
+        "A partial, passed, or failed upstream workflow requires a non-empty scope",
+        "validationState.upstreamWorkflow.scope",
+      );
+    }
+    if (!upstreamEvidencePaths.length) {
+      addError(
+        "upstream_workflow_evidence_required",
+        "A partial, passed, or failed upstream workflow requires evidence",
+        "validationState.upstreamWorkflow.evidenceAssetPaths",
+      );
+    }
+  }
+  if (["limited", "validated", "rejected"].includes(validationState.scientificValidation.status)) {
+    if (!validationState.scientificValidation.decisionSource) {
+      addError(
+        "scientific_validation_decision_source_required",
+        "A scientific validation assessment requires a user or external-review decision source",
+        "validationState.scientificValidation.decisionSource",
+      );
+    }
+    const assessmentPath = validationState.scientificValidation.assessmentAssetPath;
+    const assessmentRole = assessmentPath ? assetsByPath.get(assessmentPath)?.role : undefined;
+    if (!assessmentPath || (assessmentRole !== "reference" && assessmentRole !== "evidence")) {
+      addError(
+        "scientific_validation_assessment_required",
+        "A scientific validation assessment requires a stored reference or evidence asset",
+        "validationState.scientificValidation.assessmentAssetPath",
+      );
+    }
+  }
   if (!visualAssets.length) addError("missing_visual_asset", "A Figure Unit requires a visual asset", "assets");
-  if (!primaryPreview) {
+  if (!primaryPreview && !previewResolution.error) {
     addError("primary_preview_required", "A primary preview must be selected", "primaryPreview");
-  } else if (assetsByPath.get(primaryPreview)?.role !== "visual") {
+  } else if (primaryPreview && assetsByPath.get(primaryPreview)?.role !== "visual") {
     addError("invalid_primary_preview", "The primary preview must reference a visual asset", "primaryPreview");
   }
   if (candidate.assetKind === "plot_template") {
@@ -1201,6 +1595,16 @@ async function prepareCandidate(options: {
       "scaffold_must_be_not_run",
       "Scaffold code cannot claim a passed or failed execution",
       "executionStatus",
+    );
+  }
+  if (
+    content.executionStatus === "passed" &&
+    !visualAssets.some((asset) => asset.visualRole === "rendered_output")
+  ) {
+    addError(
+      "passed_execution_requires_rendered_output",
+      "A passed execution requires a rendered_output visual",
+      "validationState.plotExecution.status",
     );
   }
   if (
@@ -1366,7 +1770,9 @@ export interface PublishedVersionedTemplateCandidate {
   plotFamily: string;
   codeStatus: VersionedCodeStatus;
   executionStatus: ExecutionStatus;
+  validationState: ValidationStateV1;
   primaryPreview?: string;
+  canonicalPreviewDecision?: CanonicalPreviewDecision;
   previewAvailable: boolean;
 }
 
@@ -1614,10 +2020,95 @@ function validateContentValue(
   }
   if (totalBytes > MAX_REVISION_BYTES) throw new Error("stored revision exceeds size limit");
   const byPath = new Map(assets.map((asset) => [asset.logicalPath, asset]));
+  let validationState: ValidationStateV1 | undefined;
+  if (value.validationState !== undefined) {
+    validationState = normalizeValidationState(
+      value.validationState as unknown as ValidationStateInputV1,
+      value.executionStatus as ExecutionStatus,
+      [],
+    );
+    if (canonicalJson(validationState) !== canonicalJson(value.validationState)) {
+      throw new Error("validationState is not canonically normalized");
+    }
+    if (validationState.plotExecution.status !== value.executionStatus) {
+      throw new Error("executionStatus conflicts with validationState.plotExecution.status");
+    }
+    const plotEvidence = validationState.plotExecution.evidenceAssetPaths ?? [];
+    if (plotEvidence.some((assetPath) => byPath.get(assetPath)?.role !== "evidence")) {
+      throw new Error("plotExecution evidence must reference evidence assets");
+    }
+    if (validationState.plotExecution.status === "passed" && !plotEvidence.length) {
+      throw new Error("passed plotExecution requires evidence assets");
+    }
+    const upstreamEvidence = validationState.upstreamWorkflow.evidenceAssetPaths ?? [];
+    if (upstreamEvidence.some((assetPath) => byPath.get(assetPath)?.role !== "evidence")) {
+      throw new Error("upstreamWorkflow evidence must reference evidence assets");
+    }
+    if (["partial", "passed", "failed"].includes(validationState.upstreamWorkflow.status)) {
+      if (!validationState.upstreamWorkflow.scope || !upstreamEvidence.length) {
+        throw new Error("partial, passed, or failed upstreamWorkflow requires scope and evidence");
+      }
+    }
+    if (["limited", "validated", "rejected"].includes(validationState.scientificValidation.status)) {
+      const assessmentPath = validationState.scientificValidation.assessmentAssetPath;
+      const assessmentRole = assessmentPath ? byPath.get(assessmentPath)?.role : undefined;
+      if (
+        !validationState.scientificValidation.decisionSource ||
+        !assessmentPath ||
+        (assessmentRole !== "reference" && assessmentRole !== "evidence")
+      ) {
+        throw new Error(
+          "limited, validated, or rejected scientificValidation requires a decision source and assessment asset",
+        );
+      }
+    }
+  }
   if (value.primaryPreview !== undefined) {
     if (typeof value.primaryPreview !== "string") throw new Error("invalid primaryPreview");
     const preview = validateRevisionAssetPath(value.primaryPreview);
     if (byPath.get(preview)?.role !== "visual") throw new Error("primaryPreview must reference a visual asset");
+  }
+  if (value.canonicalPreviewDecision !== undefined) {
+    if (!isRecord(value.canonicalPreviewDecision)) {
+      throw new Error("invalid canonical preview decision");
+    }
+    assertString(value.canonicalPreviewDecision.assetPath, "canonical preview assetPath");
+    const decisionPath = validateRevisionAssetPath(value.canonicalPreviewDecision.assetPath);
+    if (decisionPath !== value.primaryPreview || byPath.get(decisionPath)?.role !== "visual") {
+      throw new Error("canonical preview decision must match primaryPreview");
+    }
+    const selected = byPath.get(decisionPath)!;
+    const visualAssets = assets.filter((asset) => asset.role === "visual");
+    const reason = value.canonicalPreviewDecision.reason;
+    if (reason === "default_uploaded_source") {
+      if (
+        value.canonicalPreviewDecision.selectedBy !== "policy" ||
+        selected.visualRole !== "source_reference" ||
+        visualAssets.filter((asset) => asset.visualRole === "source_reference").length !== 1
+      ) {
+        throw new Error("invalid default_uploaded_source decision");
+      }
+    } else if (reason === "only_visual_available") {
+      if (value.canonicalPreviewDecision.selectedBy !== "policy" || visualAssets.length !== 1) {
+        throw new Error("invalid only_visual_available decision");
+      }
+    } else if (reason === "user_selected_source") {
+      if (value.canonicalPreviewDecision.selectedBy !== "user" || selected.visualRole !== "source_reference") {
+        throw new Error("invalid user_selected_source decision");
+      }
+    } else if (reason === "user_override_rendered") {
+      if (
+        value.canonicalPreviewDecision.selectedBy !== "user" ||
+        selected.visualRole !== "rendered_output" ||
+        visualAssets.length <= 1 ||
+        typeof value.canonicalPreviewDecision.note !== "string" ||
+        !value.canonicalPreviewDecision.note.trim()
+      ) {
+        throw new Error("invalid user_override_rendered decision");
+      }
+    } else {
+      throw new Error("invalid canonical preview decision reason");
+    }
   }
   if (value.canonicalImplementation !== undefined) {
     if (!isRecord(value.canonicalImplementation) || value.canonicalImplementation.selectedBy !== "user") {
@@ -1676,6 +2167,14 @@ function validateContentValue(
     }
     if (link.confidence !== undefined && (typeof link.confidence !== "number" || !Number.isFinite(link.confidence) || link.confidence < 0 || link.confidence > 1)) {
       throw new Error("invalid figure-code confidence");
+    }
+  }
+  if (validationState?.plotExecution.status === "passed") {
+    if (!assets.some((asset) => asset.role === "visual" && asset.visualRole === "rendered_output")) {
+      throw new Error("passed plotExecution requires a rendered_output visual");
+    }
+    if (!value.figureCodeLinks.some((link) => isRecord(link) && link.relationship === "generated_output")) {
+      throw new Error("passed plotExecution requires a generated_output relationship");
     }
   }
   if (!isRecord(value.visualGrouping) || value.visualGrouping.confirmedBy !== "user") {
@@ -2253,7 +2752,11 @@ export class VersionedTemplateLibrary {
         plotFamily: content.plotFamily,
         codeStatus: content.codeStatus,
         executionStatus: content.executionStatus,
+        validationState: effectiveValidationState(content),
         ...(content.primaryPreview ? { primaryPreview: content.primaryPreview } : {}),
+        ...(content.canonicalPreviewDecision
+          ? { canonicalPreviewDecision: canonicalJsonClone(content.canonicalPreviewDecision) }
+          : {}),
         previewAvailable,
       });
     }
@@ -3002,6 +3505,7 @@ export class VersionedTemplateLibrary {
     const contentWithoutDigest: Omit<TemplateContentV1, "contentDigest"> = {
       ...source,
       revisionId,
+      validationState: effectiveValidationState(source),
       ...(series.publishedHead ? { parentRevisionId: series.publishedHead.revisionId } : {}),
       restoredFromReleaseId: sourceRelease.releaseId,
       createdAt,
@@ -4280,7 +4784,7 @@ export class VersionedTemplateLibrary {
               contentDigest: _contentDigest,
               ...rest
             } = item;
-            return rest;
+            return { ...rest, validationState: effectiveValidationState(item) };
           };
           if (canonicalJson(stripRestoreMetadata(content)) !== canonicalJson(stripRestoreMetadata(sourceContent))) {
             throw new Error("restore_release content differs from the selected historical release");

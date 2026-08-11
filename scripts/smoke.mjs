@@ -16,22 +16,27 @@ const intakeDirectory = path.join(smokeRoot, "direct-intake");
 await fs.mkdir(libraryDirectory, { recursive: true });
 await fs.mkdir(intakeDirectory, { recursive: true });
 const visualPath = path.join(intakeDirectory, "reference.png");
+const renderedPath = path.join(intakeDirectory, "rendered.png");
 const codePath = path.join(intakeDirectory, "plot.R");
-await fs.writeFile(
-  visualPath,
-  Buffer.from(
-    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=",
-    "base64",
-  ),
+const evidencePath = path.join(intakeDirectory, "execution.json");
+const onePixelPng = Buffer.from(
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=",
+  "base64",
 );
+await fs.writeFile(visualPath, onePixelPng);
+await fs.writeFile(renderedPath, onePixelPng);
 await fs.writeFile(codePath, "plot(1:3)\n");
+await fs.writeFile(
+  evidencePath,
+  `${JSON.stringify({ schema: "figure-library.smoke-execution.v1", exitCode: 0 })}\n`,
+);
 
 const childEnvironment = Object.fromEntries(
   Object.entries(process.env).filter((entry) => typeof entry[1] === "string"),
 );
 childEnvironment.FIGURE_LIBRARY_DIR = libraryDirectory;
 
-const client = new Client({ name: "scientific-figure-library-smoke", version: "0.5.1" });
+const client = new Client({ name: "scientific-figure-library-smoke", version: "0.5.2" });
 const transport = new StdioClientTransport({
   command: process.execPath,
   args: [serverEntry],
@@ -96,6 +101,7 @@ try {
     "figure_library_plan_recover_write_lock",
     "figure_library_apply_recover_write_lock",
     "figure_library_review_open",
+    "figure_library_preview_working_revision",
     "figure_library_template_history",
     "figure_library_diff_revisions",
     "figure_library_plan_working_revision",
@@ -120,10 +126,10 @@ try {
     "figure_library_apply_template_bundle_import",
   ].sort();
   for (const name of required) {
-    if (!names.includes(name)) throw new Error(`missing 0.5.1 tool ${name}`);
+    if (!names.includes(name)) throw new Error(`missing 0.5.2 tool ${name}`);
   }
-  if (names.length !== 39 || names.length !== required.length) {
-    throw new Error(`expected exactly 39 standard tools, received ${names.length}`);
+  if (names.length !== 40 || names.length !== required.length) {
+    throw new Error(`expected exactly 40 standard tools, received ${names.length}`);
   }
   for (const [toolName, visibility] of [
     ["figure_library_search", "model"],
@@ -139,7 +145,7 @@ try {
     }
   }
   if (names.some((name) => name.startsWith("figure_capture_"))) {
-    throw new Error("standard 0.5.1 server registered an experimental Capture tool");
+    throw new Error("standard 0.5.2 server registered an experimental Capture tool");
   }
   for (const forbidden of [
     "figure_library_project_status",
@@ -155,9 +161,9 @@ try {
     opened.isError ||
     outcome(opened).outcome !== "ok" ||
     outcome(opened).nextAction !== "ask_user" ||
-    structured(opened).libraryVersion !== "0.5.1"
+    structured(opened).libraryVersion !== "0.5.2"
   ) {
-    throw new Error("open did not report the 0.5.1 direct-intake workbench");
+    throw new Error("open did not report the 0.5.2 direct-intake workbench");
   }
 
   smokeStep = "initial-status";
@@ -168,7 +174,7 @@ try {
   if (
     initialStatus.isError ||
     outcome(initialStatus).outcome !== "ok" ||
-    structured(initialStatus).serverVersion !== "0.5.1" ||
+    structured(initialStatus).serverVersion !== "0.5.2" ||
     structured(initialStatus).standardCore?.captureToolsRegistered !== false ||
     structured(initialStatus).standardCore?.projectPinToolsRegistered !== false
   ) {
@@ -177,7 +183,7 @@ try {
   assertTextFields(
     initialStatus,
     [
-      "SERVER_VERSION: 0.5.1",
+      "SERVER_VERSION: 0.5.2",
       `LIBRARY_ROOT: ${libraryDirectory}`,
       "LIBRARY_SOURCE: FIGURE_LIBRARY_DIR",
       "CAPTURE_TOOLS_REGISTERED: false",
@@ -265,7 +271,7 @@ try {
       mode: "create",
       templateId: "smoke-direct-volcano",
       title: "smoke-direct-unique volcano reference",
-      description: "A user-confirmed image/code Figure Unit for the 0.5.1 stdio smoke.",
+      description: "A user-confirmed image/code Figure Unit for the 0.5.2 stdio smoke.",
       tags: ["smoke-direct-unique", "volcano"],
       visualProfile: "volcano scatter x log2FC y negative log10 adjusted p value",
       dataProfile: "gene log2FC pvalue padj",
@@ -275,12 +281,28 @@ try {
       language: "R",
       plotFamily: "volcano",
       codeStatus: "reviewed",
-      executionStatus: "not_run",
+      executionStatus: "passed",
+      validationState: {
+        schema: "figure-library.validation-state.v1",
+        plotExecution: {
+          status: "passed",
+          scope: "synthetic_data",
+          evidenceAssetIds: ["execution-evidence"],
+        },
+        upstreamWorkflow: { status: "not_run" },
+        scientificValidation: { status: "not_assessed" },
+      },
       visualAssets: [
         {
           assetId: "source-visual",
           sourcePath: visualPath,
           visualRole: "source_reference",
+          mediaType: "image/png",
+        },
+        {
+          assetId: "rendered-visual",
+          sourcePath: renderedPath,
+          visualRole: "rendered_output",
           mediaType: "image/png",
         },
       ],
@@ -292,21 +314,34 @@ try {
           codeOrigin: "user_supplied",
         },
       ],
-      primaryVisualAssetId: "source-visual",
+      evidenceAssets: [
+        {
+          assetId: "execution-evidence",
+          sourcePath: evidencePath,
+          mediaType: "application/json",
+        },
+      ],
       canonicalCodeAssetId: "canonical-code",
       figureCodeLinks: [
         {
           visualAssetId: "source-visual",
           codeAssetIds: ["canonical-code"],
           relationship: "user_supplied_pair",
-          evidence: "The smoke user supplied and confirmed this exact image/code pair.",
+          evidence: "The smoke user supplied and confirmed this exact source image/code pair.",
+          confirmedBy: "user",
+        },
+        {
+          visualAssetId: "rendered-visual",
+          codeAssetIds: ["canonical-code"],
+          relationship: "generated_output",
+          evidence: "The synthetic smoke execution record links this rendered output to the code.",
           confirmedBy: "user",
         },
       ],
       confirmations: {
         createOrUpdate: true,
         figureUnitBoundary: true,
-        primaryPreview: true,
+        multiImageGrouping: true,
         assetKind: true,
         canonicalImplementation: true,
         codeRelationships: true,
@@ -314,15 +349,49 @@ try {
         executionClaim: true,
         duplicateDecision: "create_new",
       },
+      assessment: {
+        warnings: [
+          {
+            code: "upstream_workflow_not_run",
+            message: "The upstream workflow was not run in this synthetic smoke.",
+            source: "agent",
+          },
+        ],
+      },
     },
   });
-  const workingPlan = structured(workingPlanned).plan;
+  const workingStructured = structured(workingPlanned);
+  const workingPlan = workingStructured.plan;
+  const workingReviewSummary = workingStructured.reviewSummary;
+  const workingPreviewSelector = workingStructured.previewSelector;
   if (
     workingPlanned.isError ||
     outcome(workingPlanned).outcome !== "needs_user_confirmation" ||
-    workingPlan?.action !== "create_working"
+    workingPlan?.action !== "create_working" ||
+    workingReviewSummary?.publishEligible !== true ||
+    workingReviewSummary?.canonicalPreviewDecision?.reason !==
+      "default_uploaded_source" ||
+    workingReviewSummary?.canonicalPreviewDecision?.assetPath !==
+      "visuals/source/source-visual.png" ||
+    workingReviewSummary?.validationState?.plotExecution?.status !== "passed" ||
+    workingReviewSummary?.validationState?.plotExecution?.scope !==
+      "synthetic_data" ||
+    workingReviewSummary?.validationState?.upstreamWorkflow?.status !==
+      "not_run" ||
+    workingReviewSummary?.validationState?.scientificValidation?.status !==
+      "not_assessed" ||
+    !workingReviewSummary?.warnings?.some(
+      (warning) => warning.code === "upstream_workflow_not_run",
+    ) ||
+    workingPreviewSelector?.templateId !== workingPlan.templateId ||
+    workingPreviewSelector?.revisionId !== workingPlan.content?.revisionId ||
+    workingPreviewSelector?.contentDigest !== workingPlan.content?.contentDigest
   ) {
-    throw new Error(`direct intake planning failed: ${JSON.stringify(workingPlanned.content)}`);
+    throw new Error(
+      `direct intake planning omitted the v0.5.2 review summary or selector: ${JSON.stringify(
+        workingStructured,
+      )}`,
+    );
   }
   assertTextFields(
     workingPlanned,
@@ -331,9 +400,35 @@ try {
       "ACTION: create_working",
       "TEMPLATE_ID: smoke-direct-volcano",
       "BLOCKING_GATES: none",
+      "REVIEW_WARNINGS: upstream_workflow_not_run",
+      "REVIEW_PUBLISH_ELIGIBLE: true",
+      "default_uploaded_source",
+      "synthetic_data",
     ],
     "working plan",
   );
+
+  smokeStep = "working-preview-before-apply";
+  const workingPreview = await client.callTool({
+    name: "figure_library_preview_working_revision",
+    arguments: workingPreviewSelector,
+  });
+  const workingPreviewResult = structured(workingPreview);
+  if (
+    workingPreview.isError ||
+    outcome(workingPreview).code !== "working_preview_ready" ||
+    workingPreviewResult.canonicalPreview !== "visuals/source/source-visual.png" ||
+    workingPreviewResult.visualRole !== "source_reference" ||
+    workingPreviewResult.bytes !== onePixelPng.byteLength ||
+    typeof workingPreviewResult.sha256 !== "string" ||
+    !workingPreview.content?.some((block) => block.type === "image")
+  ) {
+    throw new Error(
+      `planned Working preview did not return the canonical source image: ${JSON.stringify(
+        workingPreview.content,
+      )}`,
+    );
+  }
   const workingApplyArguments = {
     planDigest: workingPlan.planDigest,
     operationId: "smoke-direct-working",
@@ -345,7 +440,18 @@ try {
     name: "figure_library_apply_working_revision",
     arguments: workingApplyArguments,
   });
-  if (workingApplied.isError || outcome(workingApplied).outcome !== "applied") {
+  const workingAppliedSummary = structured(workingApplied).reviewSummary;
+  if (
+    workingApplied.isError ||
+    outcome(workingApplied).outcome !== "applied" ||
+    workingAppliedSummary?.canonicalPreviewDecision?.reason !==
+      "default_uploaded_source" ||
+    workingAppliedSummary?.validationState?.plotExecution?.scope !==
+      "synthetic_data" ||
+    !workingAppliedSummary?.warnings?.some(
+      (warning) => warning.code === "upstream_workflow_not_run",
+    )
+  ) {
     throw new Error(`direct intake Apply failed: ${JSON.stringify(workingApplied.content)}`);
   }
   const workingReplay = await client.callTool({
@@ -360,25 +466,59 @@ try {
     name: "figure_library_review_open",
     arguments: { templateId: "smoke-direct-volcano" },
   });
+  const reviewBeforePublish = structured(review);
   if (
     review.isError ||
     outcome(review).outcome !== "ok" ||
-    !structured(review).series?.workingHead ||
-    structured(review).series?.publishedHead
+    !reviewBeforePublish.series?.workingHead ||
+    reviewBeforePublish.series?.publishedHead ||
+    !reviewBeforePublish.workingReview ||
+    reviewBeforePublish.publishedReview ||
+    reviewBeforePublish.review?.reviewId !==
+      reviewBeforePublish.workingReview.reviewId ||
+    !reviewBeforePublish.workingReview.warnings?.some(
+      (warning) => warning.code === "upstream_workflow_not_run",
+    ) ||
+    reviewBeforePublish.workingContent?.canonicalPreviewDecision?.reason !==
+      "default_uploaded_source" ||
+    reviewBeforePublish.workingContent?.validationState?.plotExecution?.scope !==
+      "synthetic_data"
   ) {
-    throw new Error("Review Workbench did not isolate the unpublished Working Revision");
+    throw new Error(
+      `Review Workbench did not expose the exact unpublished Working truth: ${JSON.stringify(
+        reviewBeforePublish,
+      )}`,
+    );
   }
+  assertTextFields(
+    review,
+    [
+      "WORKING_WARNINGS: upstream_workflow_not_run",
+      "PUBLISHED_WARNINGS: none",
+    ],
+    "pre-publish review",
+  );
 
   smokeStep = "publish";
   const publishPlanned = await client.callTool({
     name: "figure_library_plan_publish_working_revision",
     arguments: { templateId: "smoke-direct-volcano" },
   });
-  const publishPlan = structured(publishPlanned).plan;
+  const publishStructured = structured(publishPlanned);
+  const publishPlan = publishStructured.plan;
+  const publishReviewSummary = publishStructured.reviewSummary;
   if (
     publishPlanned.isError ||
     outcome(publishPlanned).outcome !== "needs_user_confirmation" ||
-    publishPlan?.action !== "publish"
+    publishPlan?.action !== "publish" ||
+    publishReviewSummary?.publishEligible !== true ||
+    publishReviewSummary?.canonicalPreviewDecision?.reason !==
+      "default_uploaded_source" ||
+    publishReviewSummary?.validationState?.plotExecution?.scope !==
+      "synthetic_data" ||
+    !publishReviewSummary?.warnings?.some(
+      (warning) => warning.code === "upstream_workflow_not_run",
+    )
   ) {
     throw new Error(`Publish planning failed: ${JSON.stringify(publishPlanned.content)}`);
   }
@@ -391,13 +531,60 @@ try {
       expectedSeriesDigest: publishPlan.expectedSeriesDigest,
     },
   });
+  const publishedStructured = structured(published);
   if (
     published.isError ||
     outcome(published).outcome !== "applied" ||
-    !structured(published).result?.releaseId
+    !publishedStructured.result?.releaseId ||
+    publishedStructured.reviewSummary?.canonicalPreviewDecision?.reason !==
+      "default_uploaded_source" ||
+    publishedStructured.reviewSummary?.validationState?.plotExecution?.scope !==
+      "synthetic_data" ||
+    !publishedStructured.reviewSummary?.warnings?.some(
+      (warning) => warning.code === "upstream_workflow_not_run",
+    )
   ) {
     throw new Error(`atomic Publish Apply failed: ${JSON.stringify(published.content)}`);
   }
+
+  smokeStep = "post-publish-review";
+  const postPublishReview = await client.callTool({
+    name: "figure_library_review_open",
+    arguments: { templateId: "smoke-direct-volcano" },
+  });
+  const postPublishStructured = structured(postPublishReview);
+  if (
+    postPublishReview.isError ||
+    outcome(postPublishReview).outcome !== "ok" ||
+    postPublishStructured.series?.workingHead ||
+    !postPublishStructured.series?.publishedHead ||
+    postPublishStructured.workingReview ||
+    !postPublishStructured.publishedReview ||
+    postPublishStructured.review?.reviewId !==
+      postPublishStructured.publishedReview.reviewId ||
+    !postPublishStructured.publishedReview.warnings?.some(
+      (warning) => warning.code === "upstream_workflow_not_run",
+    ) ||
+    postPublishStructured.publishedContent?.canonicalPreviewDecision?.reason !==
+      "default_uploaded_source" ||
+    postPublishStructured.publishedContent?.validationState?.plotExecution?.scope !==
+      "synthetic_data"
+  ) {
+    throw new Error(
+      `post-publish Review lost immutable warnings or state: ${JSON.stringify(
+        postPublishStructured,
+      )}`,
+    );
+  }
+  assertTextFields(
+    postPublishReview,
+    [
+      "WORKING_WARNINGS: none",
+      "PUBLISHED_WARNINGS: upstream_workflow_not_run",
+      "REVIEW_WARNINGS: upstream_workflow_not_run",
+    ],
+    "post-publish review",
+  );
 
   smokeStep = "unified-search-describe";
   const unified = await client.callTool({
@@ -418,23 +605,74 @@ try {
     unified.isError ||
     outcome(unified).outcome !== "ok" ||
     !local?.exactSelector ||
-    !unifiedCandidates.some((candidate) => candidate.providerId === "org.figureya.module")
+    !unifiedCandidates.some((candidate) => candidate.providerId === "org.figureya.module") ||
+    local.validationState?.plotExecution?.status !== "passed" ||
+    local.validationState?.plotExecution?.scope !== "synthetic_data" ||
+    local.validationState?.upstreamWorkflow?.status !== "not_run" ||
+    local.validationState?.scientificValidation?.status !== "not_assessed" ||
+    local.canonicalPreviewDecision?.reason !== "default_uploaded_source" ||
+    !local.warnings?.includes(
+      "The upstream workflow was not run in this synthetic smoke.",
+    )
   ) {
-    throw new Error("ordinary search did not merge Local Published and FigureYa");
+    throw new Error(
+      `ordinary search lost Published Review/canonical/validation truth: ${JSON.stringify(
+        local,
+      )}`,
+    );
   }
+  assertTextFields(
+    unified,
+    [
+      "plotExecution=passed (scope=synthetic_data)",
+      "upstreamWorkflow=not_run",
+      "scientificValidation=not_assessed",
+      "CANONICAL_PREVIEW: default_uploaded_source",
+      "The upstream workflow was not run in this synthetic smoke.",
+    ],
+    "Published search",
+  );
 
   const described = await client.callTool({
     name: "figure_library_describe",
     arguments: { providerId: local.providerId, exactSelector: local.exactSelector },
   });
+  const describedStructured = structured(described);
   if (
     described.isError ||
     outcome(described).outcome !== "ok" ||
-    structured(described).content?.executionStatus !== "not_run"
+    describedStructured.content?.executionStatus !== "passed" ||
+    describedStructured.validationState?.plotExecution?.scope !==
+      "synthetic_data" ||
+    describedStructured.validationState?.upstreamWorkflow?.status !==
+      "not_run" ||
+    describedStructured.validationState?.scientificValidation?.status !==
+      "not_assessed" ||
+    describedStructured.canonicalPreviewDecision?.reason !==
+      "default_uploaded_source" ||
+    !describedStructured.review?.warnings?.some(
+      (warning) => warning.code === "upstream_workflow_not_run",
+    )
   ) {
-    throw new Error("exact Local Published describe failed or overstated execution");
+    throw new Error(
+      `exact Local Published describe lost Release-bound truth: ${JSON.stringify(
+        describedStructured,
+      )}`,
+    );
   }
-  const previewCapabilities = structured(described).previewConfirmationCapabilities;
+  assertTextFields(
+    described,
+    [
+      "PLOT_EXECUTION_STATUS: passed",
+      "PLOT_EXECUTION_SCOPE: synthetic_data",
+      "UPSTREAM_WORKFLOW_STATUS: not_run",
+      "SCIENTIFIC_VALIDATION_STATUS: not_assessed",
+      "default_uploaded_source",
+      "REVIEW_WARNINGS: The upstream workflow was not run in this synthetic smoke.",
+    ],
+    "Published describe",
+  );
+  const previewCapabilities = describedStructured.previewConfirmationCapabilities;
   if (
     previewCapabilities?.updateModelContextFallback !== true ||
     previewCapabilities?.fallbackHandoffMode !== "headless_exact_review" ||
@@ -661,13 +899,13 @@ try {
     throw new Error("diagnostic resource link did not return the generated ZIP bytes");
   }
 
-  const resource = await client.readResource({ uri: "ui://figure-library/candidates-v0.5.1.html" });
+  const resource = await client.readResource({ uri: "ui://figure-library/candidates-v0.5.2.html" });
   if (!resource.contents[0]?.mimeType?.startsWith("text/html")) {
     throw new Error("MCP App resource was not returned as HTML");
   }
 
   console.log(
-    `OK 0.5.1: ${names.length} standard tools; model/app visibility split; compact search thumbnails; no Capture/project pins; unified providers; direct intake; immutable Publish; preview-confirmed protocol-v2 materialization/replay; sanitized diagnostics resource; portable template bundle/import; terminal anti-loop outcomes${externalMaterializeDestination ? `; materialized ${structured(materialized).result.target}` : ""}`,
+    `OK 0.5.2: ${names.length} standard tools; model/app visibility split; compact search thumbnails; no Capture/project pins; unified providers; direct intake; immutable Publish; preview-confirmed protocol-v2 materialization/replay; sanitized diagnostics resource; portable template bundle/import; terminal anti-loop outcomes${externalMaterializeDestination ? `; materialized ${structured(materialized).result.target}` : ""}`,
   );
 } catch (error) {
   console.error(`SMOKE_STEP_FAILED: ${smokeStep}`);

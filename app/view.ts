@@ -1,3 +1,8 @@
+import type {
+  CanonicalPreviewDecisionSummary,
+  ValidationStateSummaryV1,
+} from "../src/types.ts";
+
 export interface CandidatePreviewMeta {
   previewDataUrl: string;
   previewMimeType?: "image/png" | "image/jpeg" | "image/webp";
@@ -40,6 +45,8 @@ export interface Candidate {
   reviewStatus: "not_reviewed" | "draft" | "approved" | "archived";
   codeStatus: "none" | "scaffold" | "provided" | "reviewed";
   executionStatus: "not_run" | "passed" | "failed" | "unknown";
+  validationState?: ValidationStateSummaryV1;
+  canonicalPreviewDecision?: CanonicalPreviewDecisionSummary;
   management: {
     templateId: string;
     adapter?: "direct" | "gallery" | "figure-transfer-package";
@@ -145,6 +152,47 @@ function previewFailureLabel(status: Candidate["previewStatus"]) {
   return "无可用预览";
 }
 
+function effectiveCandidateValidationState(
+  candidate: Candidate,
+): ValidationStateSummaryV1 {
+  const value = candidate.validationState;
+  if (
+    value?.schema === "figure-library.validation-state.v1" &&
+    value.plotExecution &&
+    value.upstreamWorkflow &&
+    value.scientificValidation
+  ) {
+    return value;
+  }
+  return {
+    schema: "figure-library.validation-state.v1",
+    plotExecution: {
+      status:
+        candidate.executionStatus === "passed" || candidate.executionStatus === "failed"
+          ? candidate.executionStatus
+          : "not_run",
+      scope: "unknown",
+    },
+    upstreamWorkflow: { status: "unknown" },
+    scientificValidation: { status: "not_assessed" },
+  };
+}
+
+function validationSummaryLines(candidate: Candidate) {
+  const state = effectiveCandidateValidationState(candidate);
+  return [
+    `绘图执行：${state.plotExecution.status}（范围：${state.plotExecution.scope}）`,
+    `上游流程：${state.upstreamWorkflow.status}${
+      state.upstreamWorkflow.scope ? `（范围：${state.upstreamWorkflow.scope}）` : ""
+    }`,
+    `科学验证：${state.scientificValidation.status}${
+      state.scientificValidation.decisionSource
+        ? `（来源：${state.scientificValidation.decisionSource}）`
+        : ""
+    }`,
+  ];
+}
+
 function candidateTags(candidate: Candidate) {
   return [
     candidate.assetKind,
@@ -152,7 +200,9 @@ function candidateTags(candidate: Candidate) {
     candidate.plotFamily,
     candidate.reviewStatus,
     candidate.codeStatus,
-    candidate.executionStatus,
+    candidate.canonicalPreviewDecision
+      ? `canonical:${candidate.canonicalPreviewDecision.reason}`
+      : "",
     candidate.exactSelector.kind,
     candidate.management.adapter,
     candidate.management.galleryId ? `gallery:${candidate.management.galleryId}` : "",
@@ -292,7 +342,16 @@ export function renderCandidateCards(options: {
     );
     top.append(heading, element(document, "span", "score", `召回 ${candidate.retrievalScore}`));
     const description = candidate.description || candidate.excerpt || "查看模板详情以确认输入要求。";
-    content.append(top, element(document, "p", "description", description));
+    content.append(
+      top,
+      element(document, "p", "description", description),
+      element(
+        document,
+        "p",
+        "validation-summary",
+        validationSummaryLines(candidate).join(" · "),
+      ),
+    );
 
     const tags = candidateTags(candidate);
     if (tags.length) content.append(chips(document, tags, 6));
@@ -367,6 +426,18 @@ export function openCandidateDetail(options: {
   }
   if (candidate.dataProfile) {
     appendDetailSection(document, metadata, "数据特征", [candidate.dataProfile]);
+  }
+  appendDetailSection(document, metadata, "验证状态", validationSummaryLines(candidate));
+  if (candidate.canonicalPreviewDecision) {
+    appendDetailSection(document, metadata, "Canonical 预览", [
+      `${candidate.canonicalPreviewDecision.reason}：${
+        candidate.canonicalPreviewDecision.assetPath
+      }${
+        candidate.canonicalPreviewDecision.reason === "user_override_rendered"
+          ? `（${candidate.canonicalPreviewDecision.note}）`
+          : ""
+      }`,
+    ]);
   }
   appendDetailSection(document, metadata, "检索原因", candidate.reasons);
   appendDetailSection(document, metadata, "警告", candidate.warnings, "detail-list warning-list");

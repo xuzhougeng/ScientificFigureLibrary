@@ -70,6 +70,7 @@ const STANDARD_TOOLS = [
   "figure_library_preview",
   "figure_library_preview_exact",
   "figure_library_preview_exact_headless",
+  "figure_library_preview_working_revision",
   "figure_library_record_ui_event",
   "figure_library_review_open",
   "figure_library_search",
@@ -105,7 +106,6 @@ function candidate(title: string): VersionedTemplateCandidate {
     plotFamily: "volcano",
     codeStatus: "reviewed",
     executionStatus: "not_run",
-    primaryPreview: "visuals/source/preview.png",
     canonicalImplementation: { assetPath: "code/plot.R", selectedBy: "user" },
     visualGrouping: {
       visualAssetPaths: ["visuals/source/preview.png"],
@@ -149,6 +149,15 @@ test("standard server unifies Local Published and FigureYa while hiding Working/
     const publishedPlan = await library.planCreateWorking({
       templateId: "local-published-volcano",
       candidate: candidate("Local crossprovideruniquemarker volcano"),
+      assessment: {
+        warnings: [
+          {
+            code: "upstream_workflow_not_run",
+            message: "Published immutable Review warning: upstream workflow was not run.",
+            source: "agent",
+          },
+        ],
+      },
     });
     await library.applyCreateWorking(publishedPlan, "server-local-working");
     await library.applyPublish(
@@ -192,7 +201,7 @@ test("standard server unifies Local Published and FigureYa while hiding Working/
     // still omit serverTools, so updateModelContext must be able to hand the
     // selected candidate to the model-visible headless preview/confirm tools.
     const client = new Client(
-      { name: "server-integration-test", version: "0.5.1" },
+      { name: "server-integration-test", version: "0.5.2" },
       {
         capabilities: {
           extensions: {
@@ -284,6 +293,39 @@ test("standard server unifies Local Published and FigureYa while hiding Working/
       assert.equal(localThumbnail.previewByteLength, ONE_PIXEL_PNG.byteLength);
       assert.match(String(localThumbnail.previewSha256), /^[a-f0-9]{64}$/u);
       assert.equal(typeof localThumbnail.candidateId, "string");
+      assert.deepEqual(localThumbnail.warnings, [
+        "Published immutable Review warning: upstream workflow was not run.",
+      ]);
+      const localValidationState = record(localThumbnail.validationState);
+      assert.equal(localValidationState.schema, "figure-library.validation-state.v1");
+      assert.deepEqual(record(localValidationState.plotExecution), {
+        status: "not_run",
+        scope: "unknown",
+      });
+      assert.deepEqual(record(localValidationState.upstreamWorkflow), { status: "unknown" });
+      assert.deepEqual(record(localValidationState.scientificValidation), {
+        status: "not_assessed",
+      });
+      assert.deepEqual(record(localThumbnail.canonicalPreviewDecision), {
+        assetPath: "visuals/source/preview.png",
+        reason: "default_uploaded_source",
+        selectedBy: "policy",
+      });
+      const figureYaCandidate = candidates.find(
+        (item) => item.providerId === FIGUREYA_PROVIDER_ID,
+      );
+      assert.ok(figureYaCandidate);
+      const figureYaValidationState = record(figureYaCandidate.validationState);
+      assert.deepEqual(record(figureYaValidationState.plotExecution), {
+        status: "not_run",
+        scope: "unknown",
+      });
+      assert.deepEqual(record(figureYaValidationState.upstreamWorkflow), {
+        status: "unknown",
+      });
+      assert.deepEqual(record(figureYaValidationState.scientificValidation), {
+        status: "not_assessed",
+      });
       const searchedMeta = record(record(searched)._meta);
       const candidatePreviews = record(searchedMeta.candidatePreviews);
       const localPreview = record(candidatePreviews[String(localThumbnail.candidateId)]);
@@ -333,6 +375,14 @@ test("standard server unifies Local Published and FigureYa while hiding Working/
         ),
       );
       assert.match(toolText(searched), /EXACT_SELECTOR:/u);
+      assert.match(toolText(searched), /plotExecution=not_run \(scope=unknown\)/u);
+      assert.match(toolText(searched), /upstreamWorkflow=unknown/u);
+      assert.match(toolText(searched), /scientificValidation=not_assessed/u);
+      assert.match(toolText(searched), /CANONICAL_PREVIEW: default_uploaded_source/u);
+      assert.match(
+        toolText(searched),
+        /Published immutable Review warning: upstream workflow was not run\./u,
+      );
       assert.match(toolText(searched), /NEXT_ACTION: ask_user/u);
       assert.doesNotMatch(toolText(searched), /data:image\//u);
 
@@ -498,6 +548,27 @@ test("standard server unifies Local Published and FigureYa while hiding Working/
       });
       const describedLocalStructured = record(describedLocal.structuredContent);
       assert.equal(describedLocalStructured.materializationProtocolVersion, 2);
+      const describedReview = record(describedLocalStructured.review);
+      assert.deepEqual(
+        records(describedReview.warnings).map((warning) => warning.message),
+        ["Published immutable Review warning: upstream workflow was not run."],
+      );
+      assert.deepEqual(
+        record(describedLocalStructured.validationState),
+        localValidationState,
+      );
+      assert.deepEqual(
+        record(describedLocalStructured.canonicalPreviewDecision),
+        record(localThumbnail.canonicalPreviewDecision),
+      );
+      assert.match(toolText(describedLocal), /PLOT_EXECUTION_STATUS: not_run/u);
+      assert.match(toolText(describedLocal), /UPSTREAM_WORKFLOW_STATUS: unknown/u);
+      assert.match(toolText(describedLocal), /SCIENTIFIC_VALIDATION_STATUS: not_assessed/u);
+      assert.match(toolText(describedLocal), /default_uploaded_source/u);
+      assert.match(
+        toolText(describedLocal),
+        /REVIEW_WARNINGS: Published immutable Review warning: upstream workflow was not run\./u,
+      );
       assert.deepEqual(record(describedLocalStructured.previewConfirmationCapabilities), {
         app: true,
         headless: true,
@@ -524,7 +595,7 @@ test("standard server unifies Local Published and FigureYa while hiding Working/
         arguments: {},
       });
       const statusStructured = record(status.structuredContent);
-      assert.equal(statusStructured.serverVersion, "0.5.1");
+      assert.equal(statusStructured.serverVersion, "0.5.2");
       const libraryStatus = record(statusStructured.library);
       const marker = await readLibraryRootMarker(libraryRoot);
       assert.ok(marker);
@@ -541,7 +612,7 @@ test("standard server unifies Local Published and FigureYa while hiding Working/
       assert.equal(standardCore.flatEntriesInOrdinarySearch, false);
       const text = toolText(status);
       for (const field of [
-        "SERVER_VERSION: 0.5.1",
+        "SERVER_VERSION: 0.5.2",
         `LIBRARY_ROOT: ${libraryRoot}`,
         `LIBRARY_ID: ${marker.value.libraryId}`,
         "PUBLISHED: 5",
@@ -589,7 +660,7 @@ test("standard server unifies Local Published and FigureYa while hiding Working/
       await fs.writeFile(blockedDiagnosticsPath, "fixture");
       process.env.SFL_DIAGNOSTICS_DIR = blockedDiagnosticsPath;
       const otherServer = await createServer();
-      const otherClient = new Client({ name: "server-isolation-test", version: "0.5.1" });
+      const otherClient = new Client({ name: "server-isolation-test", version: "0.5.2" });
       const [otherClientTransport, otherServerTransport] =
         InMemoryTransport.createLinkedPair();
       await otherServer.connect(otherServerTransport);
@@ -704,6 +775,11 @@ test("standard server unifies Local Published and FigureYa while hiding Working/
           targetTemplateId: "missing-template",
         },
         figure_library_plan_working_revision: {},
+        figure_library_preview_working_revision: {
+          templateId: "missing-template",
+          revisionId: "missing-revision",
+          contentDigest: hash,
+        },
         figure_library_review_open: {},
         figure_library_template_history: { templateId: "missing-template" },
       };

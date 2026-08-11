@@ -55,17 +55,20 @@ import type {
   FigureYaExactSelector,
   SearchRequest,
   TemplateCandidate,
+  ValidationStateSummaryV1,
 } from "./types.ts";
 import {
+  effectiveValidationState,
+  legacyValidationStateFromExecutionStatus,
   VersionedTemplateLibrary,
   type PublishedVersionedTemplateCandidate,
   type TemplateContentV1,
   type TemplateReleaseV1,
 } from "./versioned-library.ts";
 
-export const VERSION = "0.5.1";
+export const VERSION = "0.5.2";
 export const MATERIALIZATION_PROTOCOL_VERSION = 2;
-const RESOURCE_URI = "ui://figure-library/candidates-v0.5.1.html";
+const RESOURCE_URI = "ui://figure-library/candidates-v0.5.2.html";
 const APP_HTML = path.resolve(import.meta.dirname, "mcp-app.html");
 const HASH = /^[a-f0-9]{64}$/u;
 
@@ -187,6 +190,32 @@ function failed(prefix: string, error: unknown): CallToolResult {
   return terminal(outcome("failed", "operation_failed", `${prefix}: ${message}`));
 }
 
+function compatibilityValidationState(
+  executionStatus: TemplateCandidate["executionStatus"],
+): ValidationStateSummaryV1 {
+  return legacyValidationStateFromExecutionStatus(
+    executionStatus === "passed" || executionStatus === "failed"
+      ? executionStatus
+      : "not_run",
+  );
+}
+
+function candidateValidationState(candidate: TemplateCandidate) {
+  return candidate.validationState ?? compatibilityValidationState(candidate.executionStatus);
+}
+
+function validationStateText(state: ValidationStateSummaryV1) {
+  return [
+    `plotExecution=${state.plotExecution.status} (scope=${state.plotExecution.scope})`,
+    `upstreamWorkflow=${state.upstreamWorkflow.status} (scope=${
+      state.upstreamWorkflow.scope ?? "unspecified"
+    })`,
+    `scientificValidation=${state.scientificValidation.status} (source=${
+      state.scientificValidation.decisionSource ?? "unspecified"
+    })`,
+  ];
+}
+
 function localSelector(item: PublishedVersionedTemplateCandidate): ExactTemplateSelector {
   return {
     schema: "figure-library.provider-selector.v1",
@@ -219,6 +248,26 @@ function localSelectorIdentity(selector: ExactTemplateSelector) {
   return { templateId, revisionId, contentDigest, releaseId };
 }
 
+async function releaseBoundReview(
+  context: CurrentLibraryContext,
+  release: TemplateReleaseV1,
+) {
+  const review = await context.versionedLibrary.getReview(
+    release.templateId,
+    release.reviewId,
+  );
+  if (
+    !review ||
+    review.revisionId !== release.revisionId ||
+    review.reviewDigest !== release.reviewDigest
+  ) {
+    throw new Error(
+      `Published release does not match its immutable Review: ${release.templateId}/${release.releaseId}`,
+    );
+  }
+  return review;
+}
+
 async function resolveLocalPublished(
   context: CurrentLibraryContext,
   selector: ExactTemplateSelector,
@@ -247,7 +296,8 @@ async function resolveLocalPublished(
   ) {
     throw new Error("stale or unreachable Local Published exact selector");
   }
-  return { identity, content, release };
+  const review = await releaseBoundReview(context, release);
+  return { identity, content, release, review };
 }
 
 function matchesLocalFilters(
@@ -306,13 +356,25 @@ async function localCandidates(
 
   return Promise.all(
     scored.map(async ({ item, evidence }) => {
-      const content = await context.versionedLibrary.getContent(
-        item.templateId,
-        item.revisionId,
-        item.contentDigest,
-      );
-      if (!content) throw new Error(`Published content disappeared: ${item.templateId}`);
+      const [content, release] = await Promise.all([
+        context.versionedLibrary.getContent(
+          item.templateId,
+          item.revisionId,
+          item.contentDigest,
+        ),
+        context.versionedLibrary.getRelease(item.templateId, item.releaseId),
+      ]);
+      if (
+        !content ||
+        !release ||
+        release.revisionId !== item.revisionId ||
+        release.contentDigest !== item.contentDigest
+      ) {
+        throw new Error(`Published content or Release disappeared: ${item.templateId}`);
+      }
+      const review = await releaseBoundReview(context, release);
       const selector = localSelector(item);
+      const validationState = effectiveValidationState(content);
       return {
         templateId: item.templateId,
         providerId: LOCAL_LIBRARY_PROVIDER_ID,
@@ -322,10 +384,7 @@ async function localCandidates(
         retrievalScore: evidence.score,
         matchedTerms: evidence.matchedTerms.slice(0, 12),
         reasons: evidence.reasons,
-        warnings:
-          item.executionStatus === "not_run"
-            ? ["Stored code has not been executed by ScientificFigureLibrary; not_run is not reproduction evidence."]
-            : [],
+        warnings: [...new Set(review.warnings.map((warning) => warning.message))],
         excerpt: item.description.slice(0, 420),
         description: item.description,
         application: item.visualProfile,
@@ -354,6 +413,10 @@ async function localCandidates(
         reviewStatus: "approved" as const,
         codeStatus: item.codeStatus,
         executionStatus: item.executionStatus,
+        validationState,
+        ...(content.canonicalPreviewDecision
+          ? { canonicalPreviewDecision: content.canonicalPreviewDecision }
+          : {}),
         upstreamStatus: "published" as const,
         license: item.license,
         management: {
@@ -379,7 +442,14 @@ function candidateText(candidates: TemplateCandidate[]) {
       `   TEMPLATE_ID: ${candidate.templateId}`,
       `   EXACT_SELECTOR: ${JSON.stringify(candidate.exactSelector)}`,
       `   RETRIEVAL_SCORE: ${candidate.retrievalScore}/100`,
-      `   STATE: review=${candidate.reviewStatus}; code=${candidate.codeStatus}; execution=${candidate.executionStatus}`,
+      `   STATE: review=${candidate.reviewStatus}; code=${candidate.codeStatus}; ${validationStateText(
+        candidateValidationState(candidate),
+      ).join("; ")}`,
+      ...(candidate.canonicalPreviewDecision
+        ? [
+            `   CANONICAL_PREVIEW: ${candidate.canonicalPreviewDecision.reason}; asset=${candidate.canonicalPreviewDecision.assetPath}`,
+          ]
+        : []),
       `   PREVIEW_AVAILABLE: ${candidate.previewAvailable}`,
       `   REASONS: ${candidate.reasons.join("; ") || "catalog metadata match"}`,
       ...(candidate.warnings.length
@@ -611,7 +681,7 @@ export async function createServer() {
       const responseEnvelope = outcome(
         "ok",
         "library_ready",
-        "Scientific Figure Library 0.5.1 is ready. Standard core uses direct user-confirmed image/code intake; Web Capture and project pins are not registered. Ask for a plotting goal before searching.",
+        "Scientific Figure Library 0.5.2 is ready. Standard core uses direct user-confirmed image/code intake; Web Capture and project pins are not registered. Ask for a plotting goal before searching.",
         "ask_user",
       );
       return terminal(responseEnvelope, {
@@ -820,7 +890,14 @@ export async function createServer() {
           input.providerIds.includes(LOCAL_LIBRARY_PROVIDER_ID)
             ? localCandidates(context, request)
             : [],
-          input.providerIds.includes(FIGUREYA_PROVIDER_ID) ? index.searchAll(request) : [],
+          input.providerIds.includes(FIGUREYA_PROVIDER_ID)
+            ? index.searchAll(request).then((candidates) =>
+                candidates.map((candidate) => ({
+                  ...candidate,
+                  validationState: legacyValidationStateFromExecutionStatus("not_run"),
+                })),
+              )
+            : [],
         ]);
         const ranked = [...local, ...figureYa].sort((left, right) => {
           const score = right.retrievalScore - left.retrievalScore;
@@ -1027,7 +1104,8 @@ export async function createServer() {
         }
         if (providerId === LOCAL_LIBRARY_PROVIDER_ID) {
           const resolved = await resolveLocalPublished(await currentLibraries(), exactSelector);
-          const { content, release } = resolved;
+          const { content, release, review } = resolved;
+          const validationState = effectiveValidationState(content);
           return terminal(
             outcome("ok", "local_published_described", `Loaded exact Local Published release ${release.releaseId}.`),
             {
@@ -1035,6 +1113,11 @@ export async function createServer() {
               exactSelector,
               content,
               release,
+              review,
+              validationState,
+              ...(content.canonicalPreviewDecision
+                ? { canonicalPreviewDecision: content.canonicalPreviewDecision }
+                : {}),
               materializationProtocolVersion: MATERIALIZATION_PROTOCOL_VERSION,
               previewConfirmationCapabilities,
               diagnosticsExportCapabilities,
@@ -1046,7 +1129,20 @@ export async function createServer() {
               `ASSET_KIND: ${content.assetKind}`,
               `LANGUAGE: ${content.language}`,
               `CODE_STATUS: ${content.codeStatus}`,
-              `EXECUTION_STATUS: ${content.executionStatus}`,
+              `PLOT_EXECUTION_STATUS: ${validationState.plotExecution.status}`,
+              `PLOT_EXECUTION_SCOPE: ${validationState.plotExecution.scope}`,
+              `UPSTREAM_WORKFLOW_STATUS: ${validationState.upstreamWorkflow.status}`,
+              `UPSTREAM_WORKFLOW_SCOPE: ${validationState.upstreamWorkflow.scope ?? "unspecified"}`,
+              `SCIENTIFIC_VALIDATION_STATUS: ${validationState.scientificValidation.status}`,
+              `SCIENTIFIC_VALIDATION_SOURCE: ${validationState.scientificValidation.decisionSource ?? "unspecified"}`,
+              `CANONICAL_PREVIEW_DECISION: ${
+                content.canonicalPreviewDecision
+                  ? JSON.stringify(content.canonicalPreviewDecision)
+                  : "legacy_unspecified"
+              }`,
+              `REVIEW_WARNINGS: ${
+                review.warnings.map((warning) => warning.message).join("; ") || "none"
+              }`,
               `ASSETS: ${content.assets.map((asset) => `${asset.logicalPath}:${asset.sha256}`).join(", ")}`,
             ],
           );
@@ -1074,6 +1170,7 @@ export async function createServer() {
         } else {
           throw new Error(`unsupported FigureYa selector kind: ${exactSelector.kind}`);
         }
+        const validationState = legacyValidationStateFromExecutionStatus("not_run");
         return terminal(
           outcome("ok", "figureya_module_described", `Loaded commit-pinned FigureYa metadata for ${moduleId}.`),
           {
@@ -1092,6 +1189,7 @@ export async function createServer() {
             reviewStatus: "not_reviewed",
             codeStatus: module.codeFiles.length ? "provided" : "none",
             executionStatus: "not_run",
+            validationState,
             upstreamStatus: "published",
             sourceUrl: module.sourceUrl,
             reportUrl: module.reportUrl,
@@ -1106,7 +1204,12 @@ export async function createServer() {
             `TITLE: ${module.title}`,
             "LOCAL_REVIEW_STATUS: not_reviewed",
             `CODE_STATUS: ${module.codeFiles.length ? "provided" : "none"}`,
-            "EXECUTION_STATUS: not_run",
+            `PLOT_EXECUTION_STATUS: ${validationState.plotExecution.status}`,
+            `PLOT_EXECUTION_SCOPE: ${validationState.plotExecution.scope}`,
+            `UPSTREAM_WORKFLOW_STATUS: ${validationState.upstreamWorkflow.status}`,
+            `UPSTREAM_WORKFLOW_SCOPE: ${validationState.upstreamWorkflow.scope ?? "unspecified"}`,
+            `SCIENTIFIC_VALIDATION_STATUS: ${validationState.scientificValidation.status}`,
+            `SCIENTIFIC_VALIDATION_SOURCE: ${validationState.scientificValidation.decisionSource ?? "unspecified"}`,
             `INPUT_FILES: ${module.inputFiles.join(", ") || "none identified"}`,
             `CODE_FILES: ${module.codeFiles.join(", ") || "none identified"}`,
           ],
