@@ -40,6 +40,8 @@ export interface PreviewBinding {
   previewSha256: string;
   catalogRevision: string;
   libraryBindingDigest: string;
+  transportRenditionSha256?: string;
+  encoderPolicyVersion?: string;
 }
 
 interface ChallengeState extends PreviewBinding {

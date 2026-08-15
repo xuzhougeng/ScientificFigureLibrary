@@ -85,6 +85,7 @@ const packagedApp = strFromU8(unpacked["dist/mcp-app.html"]);
 const versionedAppUri = `ui://figure-library/candidates-v${packageJson.version}.html`;
 if (
   !packagedReadme.includes(`0.5.2 review truthfulness`) ||
+  !packagedReadme.includes(`0.5.3 transport image adapter`) ||
   !packagedReadme.includes("figure_library_preview_working_revision") ||
   !packagedReadme.includes("canonical_preview_override_required") ||
   !packagedReadme.includes("three-part validation state") ||
@@ -107,6 +108,7 @@ for (const marker of [
   "updateModelContextFallback",
   "figure_library_record_ui_event",
   "figure_library_export_diagnostics",
+  "transport-image-v1",
 ]) {
   if (!packagedServer.includes(marker)) {
     throw new Error(`packaged server omitted ${marker}`);
