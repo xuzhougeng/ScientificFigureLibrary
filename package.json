@@ -1,6 +1,6 @@
 {
   "name": "scientific-figure-library",
-  "version": "0.3.0",
+  "version": "0.5.3",
   "description": "A portable MCP server and MCP App for searching, importing, and materializing scientific figure templates.",
   "type": "module",
   "bin": {
@@ -31,6 +31,7 @@
     "@modelcontextprotocol/ext-apps": "^1.7.0",
     "@modelcontextprotocol/sdk": "^1.29.0",
     "@types/node": "^22.19.5",
+    "@types/pngjs": "^6.0.5",
     "esbuild": "^0.25.0",
     "fflate": "^0.8.2",
     "happy-dom": "^18.0.1",
@@ -48,6 +49,8 @@
     "url": "https://github.com/xuzhougeng/ScientificFigureLibrary"
   },
   "dependencies": {
+    "jpeg-js": "^0.4.4",
+    "pngjs": "^7.0.0",
     "yaml": "^2.9.0"
   }
 }

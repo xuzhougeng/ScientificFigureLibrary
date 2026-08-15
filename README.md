@@ -27,6 +27,11 @@ enough to describe, preview, or materialize an exact result.
 > warnings remain bound to their immutable Release; canonical preview choices
 > and the three-part validation state are exposed consistently across review,
 > planning, search, and details.
+>
+> **0.5.3 transport image adapter:** MCP image payloads are adapted to the
+> existing search and preview Data URL budgets before they leave the server.
+> Canonical Preview bytes, Revision Content Digests, and `previewSha256` remain
+> unchanged; derived transport images live only under rebuildable `indexes/`.
 
 The host Agent, not this server, inspects an uploaded figure and code, reasons
 about their relationship, and asks the user to confirm the Figure Unit. SFL
@@ -243,7 +248,7 @@ Canonical preview selection is deterministic:
   `user_override_rendered`; without it the plan returns
   `canonical_preview_override_required`.
 
-This 0.3.0 boundary is intentionally Host-governed: the Host must include the
+This 0.5.3 boundary is intentionally Host-governed: the Host must include the
 uploaded original in `visualAssets` as `source_reference`. The Server verifies
 declared assets but does not receive a separate upload manifest, so it cannot
 detect that a Host omitted an original entirely. No digest-declaration hard
@@ -339,7 +344,10 @@ well as the structured `pagination` object. The cursor is bound to the query,
 filters, page size, Library root, Local Published revision, and FigureYa
 catalog revision. Catalog or Library changes return `search_results_stale`
 instead of silently drifting. Each page carries verified PNG/JPEG/WebP
-thumbnails with a 256 KiB per-image and 3 MiB per-page safety ceiling. The
+thumbnails. Search uses a 256 KiB per-image and 3 MiB per-page Data URL
+ceiling; exact, Working, and compatibility preview use a 1 MiB single-image
+Data URL ceiling. Oversized canonical assets are scaled or JPEG-compressed
+only for transport. The
 model-visible `structuredContent` contains only compact candidate summaries;
 thumbnail Data URLs are keyed by result-scoped `candidateId` under result
 `_meta.candidatePreviews`, which MCP Apps expose only to the component.
@@ -401,7 +409,7 @@ handoff remains disabled with an explicit capability error.
 `figure_library_describe` publishes these App/headless tool names, the
 component thumbnail `_meta` key, the model-image exclusion flag, receipt gate,
 and diagnostics export/resource capabilities so Hosts can inspect the exact
-0.3.0 boundary without guessing.
+0.5.3 boundary without guessing.
 
 `figure_library_preview` remains a compatibility tool that returns/copies one
 standard MCP image, but it never authorizes materialization and must not be
@@ -569,7 +577,7 @@ SHA-256 values, total payload bytes, scope, and redaction mode. Image bytes,
 Data URLs, selectors, preview challenges/receipts, plan tokens, credentials,
 cookies, environment variables, conversation/free text, source assets, and
 sensitive paths are excluded or redacted. `includeUserText` is accepted for
-forward compatibility, but 0.3.0 does not collect conversation/free text and
+forward compatibility, but 0.5.3 does not collect conversation/free text and
 therefore still records `userTextIncluded: false`. Absolute paths appear only
 when the user explicitly sets `includeAbsolutePaths: true`.
 
@@ -604,7 +612,7 @@ Build a standalone npm package:
 
 ```bash
 npm run package:npm
-npm install --global ./release/scientific-figure-library-0.3.0.tgz
+npm install --global ./release/scientific-figure-library-0.5.3.tgz
 ```
 
 Use `scientific-figure-library` as the MCP command after installation.
@@ -615,7 +623,7 @@ Build the Wisp plugin:
 npm run package:wisp
 ```
 
-Install `release/scientific-figure-library-wisp-0.3.0.zip` from Wisp
+Install `release/scientific-figure-library-wisp-0.5.3.zip` from Wisp
 **Settings → Plugins**, enable it, and start a fresh session. The Wisp bundle is
 an adapter around the same standard MCP server; global Library selection is not
 tied to a Wisp project.
@@ -651,7 +659,7 @@ npm run package:source-pack -- \
 
 The helper verifies selected ZIP identities and caps a transport pack at 200
 MiB. Extract the resulting
-`release/figure-library-source-pack-volcano-0.3.0.zip` before use.
+`release/figure-library-source-pack-volcano-0.5.3.zip` before use.
 
 ## Catalog development
 

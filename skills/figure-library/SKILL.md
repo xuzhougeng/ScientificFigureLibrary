@@ -3,16 +3,16 @@ name: figure-library
 description: Build, review, search, select, and materialize immutable scientific-figure references from one global Local Published library and FigureYa.
 ---
 
-# Scientific Figure Library 0.3.0
+# Scientific Figure Library 0.5.3
 
 Use this Skill when a user wants to store an uploaded figure/code pair, review
 or publish a local template, search for a plotting reference, or materialize an
 exact template into a project.
 
-Version 0.3.0 retains materialization protocol v2 and adds truthful Working
-preview, Working/Published review separation, Release-bound warnings, canonical
-preview decisions, and a three-part validation state. There is no receipt-free
-0.5.0 materialization plan path.
+Version 0.5.3 retains materialization protocol v2 and the 0.5.2 review
+truthfulness contract, and adds a server-side transport image adapter so search
+and preview stay within Data URL budgets without changing Canonical Preview
+bytes. There is no receipt-free 0.5.0 materialization plan path.
 
 ## Non-negotiable boundaries
 
@@ -150,7 +150,7 @@ Canonical preview rules:
   `primaryPreviewOverride: { confirmedBy: "user", reason }`, otherwise stop on
   `canonical_preview_override_required`.
 
-The Server validates only assets the Host declares. Version 0.3.0 deliberately
+The Server validates only assets the Host declares. Version 0.5.3 deliberately
 has no separate upload digest declaration, so it cannot detect that a Host
 omitted an uploaded original entirely. This is a Host contract, not evidence
 that omission detection passed.
@@ -411,7 +411,7 @@ Defaults are `scope: "current_session"`, `detail: "sanitized_bundle"`,
 with the requested ISO timestamps. `full_local`, user text, or absolute paths
 require an explicit user request; secrets, image bytes/Data URLs,
 preview challenges/receipts, plan tokens, selectors, and source assets remain
-excluded. In 0.3.0, `includeUserText` is forward-compatible input only: the
+excluded. In 0.5.3, `includeUserText` is forward-compatible input only: the
 recorder does not collect conversation/free text, even when it is true.
 
 Return the tool's bundle name, byte length, SHA-256, redaction state, compact

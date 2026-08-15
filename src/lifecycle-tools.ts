@@ -6,6 +6,7 @@ import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 import { canonicalJson, canonicalJsonClone } from "./canonical-json.ts";
 import { MCP_IMAGE_MEDIA_TYPES, assertMcpImageBytes } from "./image-validation.ts";
+import { prepareTransportImage, singlePreviewBudget } from "./transport-image.ts";
 import { assertLibraryOperationContext } from "./library-runtime.ts";
 import {
   effectiveValidationState as effectiveStoredValidationState,
@@ -970,7 +971,7 @@ export function registerLifecycleTools(options: {
     );
   }
 
-  function workingPreviewResult(
+  async function workingPreviewResult(
     selector: z.infer<typeof WorkingPreviewInput>,
     loaded: {
       content: TemplateContentV1;
@@ -978,9 +979,29 @@ export function registerLifecycleTools(options: {
       bytes: Uint8Array;
       mimeType: string;
       selectorScope: "pending_plan" | "working_head";
+      libraryRoot: string;
     },
-  ): CallToolResult {
+  ): Promise<CallToolResult> {
     const digest = sha256(loaded.bytes);
+    const transport = await prepareTransportImage({
+      sourceBytes: loaded.bytes,
+      sourceMime: loaded.mimeType,
+      sourceSha256: digest,
+      purpose: "WorkingPreview",
+      maxDataUrlBytes: singlePreviewBudget(),
+      libraryRoot: loaded.libraryRoot,
+    });
+    if (!transport.ok) {
+      return terminalResult(
+        envelope(
+          "blocked",
+          "working_preview_unavailable",
+          `Canonical preview could not be adapted for MCP transport: ${transport.reason}`,
+          "inspect_review",
+        ),
+        { selector },
+      );
+    }
     const responseEnvelope = envelope(
       "ok",
       "working_preview_ready",
@@ -1007,8 +1028,8 @@ export function registerLifecycleTools(options: {
         },
         {
           type: "image",
-          data: Buffer.from(loaded.bytes).toString("base64"),
-          mimeType: loaded.mimeType,
+          data: Buffer.from(transport.transportBytes).toString("base64"),
+          mimeType: transport.transportMime,
         },
       ],
       structuredContent: {
@@ -1233,6 +1254,7 @@ export function registerLifecycleTools(options: {
             return workingPreviewResult(selector, {
               ...loaded,
               selectorScope: "pending_plan",
+              libraryRoot: library.root,
             });
           }
         }
@@ -1309,6 +1331,7 @@ export function registerLifecycleTools(options: {
           bytes: preview.bytes,
           mimeType: preview.mimeType,
           selectorScope: "working_head",
+          libraryRoot: library.root,
         });
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);

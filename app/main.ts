@@ -25,7 +25,7 @@ const status = document.getElementById("status")!;
 const previous = document.getElementById("previous-page") as HTMLButtonElement;
 const next = document.getElementById("next-page") as HTMLButtonElement;
 const pageStatus = document.getElementById("page-status")!;
-const app = new App({ name: "Scientific Figure Library", version: "0.3.0" });
+const app = new App({ name: "Scientific Figure Library", version: "0.5.3" });
 
 let activeResult: SearchResult | undefined;
 let activeResultSetId: string | undefined;
