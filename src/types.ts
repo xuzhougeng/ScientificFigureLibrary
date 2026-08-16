@@ -3,6 +3,97 @@ export interface CatalogFile {
   size: number;
 }
 
+export type MaterializeMode = "template" | "full";
+
+/**
+ * Provider identifiers are deliberately open strings.  A provider owns the
+ * interpretation of `kind` and `identity`; consumers must not infer an
+ * identity from a display name or a directory name.
+ */
+export interface ExactTemplateSelector<
+  TKind extends string = string,
+  TIdentity extends Record<string, unknown> = Record<string, unknown>,
+> {
+  schema: "figure-library.provider-selector.v1";
+  providerId: string;
+  kind: TKind;
+  identity: TIdentity;
+}
+
+export interface Sha256ArchiveIdentity extends Record<string, unknown> {
+  algorithm: "sha256";
+  digest: string;
+  bytes: number;
+}
+
+export interface LegacyGitBlobArchiveIdentity extends Record<string, unknown> {
+  algorithm: "git-blob-sha1";
+  digest: string;
+  bytes: number;
+  legacy: true;
+}
+
+export type FigureYaArchiveIdentity =
+  | Sha256ArchiveIdentity
+  | LegacyGitBlobArchiveIdentity;
+
+export interface FigureYaPreviewIdentity extends Record<string, unknown> {
+  algorithm: "sha256";
+  digest: string;
+  bytes: number;
+  mediaType: "image/png" | "image/jpeg" | "image/gif" | "image/webp";
+}
+
+export interface FigureYaSelectorIdentity extends Record<string, unknown> {
+  moduleId: string;
+  sourceCommit: string;
+  archiveCommit: string;
+  archive: FigureYaArchiveIdentity;
+  preview?: FigureYaPreviewIdentity;
+  mode: MaterializeMode;
+}
+
+export type FigureYaExactSelector = ExactTemplateSelector<
+  "figureya-module.v1",
+  FigureYaSelectorIdentity
+>;
+
+export interface FigureYaSourceSelectorIdentity extends Record<string, unknown> {
+  moduleId: string;
+  sourceCommit: string;
+  preview?: FigureYaPreviewIdentity;
+}
+
+export type FigureYaSourceExactSelector = ExactTemplateSelector<
+  "figureya-source-module.v1",
+  FigureYaSourceSelectorIdentity
+>;
+
+export interface LocalPublishedSelectorIdentity extends Record<string, unknown> {
+  templateId: string;
+  revisionId: string;
+  contentDigest: string;
+  releaseId: string;
+}
+
+export type LocalPublishedExactSelector = ExactTemplateSelector<
+  "local-published.v1",
+  LocalPublishedSelectorIdentity
+>;
+
+export interface ProviderPreviewRef {
+  schema: "figure-library.provider-preview-ref.v1";
+  providerId: string;
+  exactSelector: ExactTemplateSelector;
+}
+
+export type PreviewStatus =
+  | "ready"
+  | "missing"
+  | "unreadable"
+  | "unsupported"
+  | "too_large";
+
 export interface FigureYaModule {
   moduleId: string;
   title: string;
@@ -17,13 +108,21 @@ export interface FigureYaModule {
   archiveAvailable: boolean;
   archiveBytes?: number;
   archiveGitBlobSha1?: string;
+  archiveSha256?: string;
+  archiveIdentity?: "sha256" | "legacy-git-blob-sha1";
+  primaryPreview?: string;
+  previewBytes?: number;
+  previewSha256?: string;
+  previewMediaType?: FigureYaPreviewIdentity["mediaType"];
+  canonicalCode?: string;
+  requiredFiles?: string[];
   sourceUrl: string;
   reportUrl?: string;
   fullText: string;
 }
 
 export interface FigureYaCatalog {
-  schema: "figure-library.figureya-catalog.v1";
+  schema: "figure-library.figureya-catalog.v1" | "figure-library.figureya-catalog.v2";
   generatedAt: string;
   figureya: {
     repository: string;
@@ -50,10 +149,65 @@ export interface SearchRequest {
 }
 
 export type AssetKind = "plot_template" | "visual_reference";
-export type ReviewStatus = "draft" | "approved" | "archived";
-export type CodeStatus = "none" | "scaffold" | "reviewed";
+export type ReviewStatus = "not_reviewed" | "draft" | "approved" | "archived";
+export type CodeStatus = "none" | "scaffold" | "provided" | "reviewed";
+export type ExecutionStatus = "not_run" | "passed" | "failed" | "unknown";
 export type ImportAdapter = "direct" | "gallery" | "figure-transfer-package";
 export type IdentityMode = "stable-source" | "content-addressed";
+
+/**
+ * Search-facing projection of the immutable Revision validation state. The
+ * stored Revision uses canonical asset paths rather than caller asset ids.
+ * This remains optional on TemplateCandidate so older providers and cached
+ * search payloads can still be read and conservatively projected by clients.
+ */
+export interface ValidationStateSummaryV1 {
+  schema: "figure-library.validation-state.v1";
+  plotExecution: {
+    status: "not_run" | "passed" | "failed";
+    scope: "synthetic_data" | "example_data" | "real_data" | "unknown";
+    evidenceAssetPaths?: string[];
+  };
+  upstreamWorkflow: {
+    status:
+      | "unknown"
+      | "not_run"
+      | "partial"
+      | "passed"
+      | "failed"
+      | "not_applicable";
+    scope?: string;
+    evidenceAssetPaths?: string[];
+  };
+  scientificValidation: {
+    status:
+      | "not_assessed"
+      | "limited"
+      | "validated"
+      | "rejected"
+      | "not_applicable";
+    decisionSource?: "user" | "external_review";
+    assessmentAssetPath?: string;
+  };
+}
+
+export type CanonicalPreviewDecisionSummary =
+  | {
+      assetPath: string;
+      reason: "default_uploaded_source" | "only_visual_available";
+      selectedBy: "policy";
+    }
+  | {
+      assetPath: string;
+      reason: "user_selected_source";
+      selectedBy: "user";
+    }
+  | {
+      assetPath: string;
+      reason: "user_override_rendered";
+      selectedBy: "user";
+      note: string;
+    };
 
 export interface AssetFingerprintsV1 {
   algorithm: "figure-library.asset-fingerprints.v1";
@@ -77,7 +231,8 @@ export interface ManagementReference {
 
 export interface TemplateCandidate {
   templateId: string;
-  sourceId: "figureya" | "user";
+  providerId: string;
+  exactSelector: ExactTemplateSelector;
   sourceLabel: string;
   title: string;
   retrievalScore: number;
@@ -93,15 +248,24 @@ export interface TemplateCandidate {
   packages: string[];
   materializable: boolean;
   previewAvailable: boolean;
+  previewRef?: ProviderPreviewRef;
+  previewStatus?: PreviewStatus;
+  previewDataUrl?: string;
+  previewMimeType?: "image/png" | "image/jpeg" | "image/webp";
+  previewByteLength?: number;
+  previewSha256?: string;
   assetKind: AssetKind;
   language: string;
   plotFamily: string;
   reviewStatus: ReviewStatus;
   codeStatus: CodeStatus;
+  executionStatus: ExecutionStatus;
+  validationState?: ValidationStateSummaryV1;
+  canonicalPreviewDecision?: CanonicalPreviewDecisionSummary;
+  upstreamStatus?: "published" | "available" | "unavailable" | "unknown";
   license: string;
   sourceUrl?: string;
   reportUrl?: string;
-  previewDataUrl?: string;
   management: ManagementReference;
 }
 

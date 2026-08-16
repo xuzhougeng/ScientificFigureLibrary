@@ -3,6 +3,7 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { buildSearchIntent, scoreSearchableTemplate } from "./catalog.ts";
+import { LOCAL_LIBRARY_PROVIDER_ID } from "./providers.ts";
 import {
   assetFingerprints,
   discoverGalleryEntries,
@@ -191,9 +192,27 @@ function userCandidate(
   if (templateAssetKind(template) === "visual_reference") {
     warnings.push("只有视觉参考，没有附带绘图代码");
   }
+  const contentDigest =
+    template.registry?.contentHash && /^[a-f0-9]{64}$/u.test(template.registry.contentHash)
+      ? template.registry.contentHash
+      : sha256(
+          JSON.stringify({
+            templateId: template.templateId,
+            preview: template.preview?.sha256,
+            code: template.code.map((file) => file.sha256).sort(),
+            references: (template.references ?? []).map((file) => file.sha256).sort(),
+          }),
+        );
+  const exactSelector = {
+    schema: "figure-library.provider-selector.v1" as const,
+    providerId: LOCAL_LIBRARY_PROVIDER_ID,
+    kind: "legacy-flat.v1",
+    identity: { templateId: template.templateId, contentDigest },
+  };
   return {
     templateId: template.templateId,
-    sourceId: "user",
+    providerId: LOCAL_LIBRARY_PROVIDER_ID,
+    exactSelector,
     sourceLabel: "User Library",
     title: template.title,
     retrievalScore: evidence.score,
@@ -213,11 +232,20 @@ function userCandidate(
     previewAvailable: Boolean(
       template.preview && EMBEDDABLE_IMAGE_TYPES.has(template.preview.mediaType),
     ),
+    previewRef:
+      template.preview && EMBEDDABLE_IMAGE_TYPES.has(template.preview.mediaType)
+        ? {
+            schema: "figure-library.provider-preview-ref.v1" as const,
+            providerId: LOCAL_LIBRARY_PROVIDER_ID,
+            exactSelector,
+          }
+        : undefined,
     assetKind: templateAssetKind(template),
     language: template.language ?? inferStoredLanguage(template),
     plotFamily: template.plotFamily ?? "",
     reviewStatus: template.reviewStatus ?? "approved",
     codeStatus: template.codeStatus ?? (template.code.length ? "reviewed" : "none"),
+    executionStatus: "not_run" as const,
     license: template.license,
     sourceUrl: template.provenance?.url,
     management: managementReference(template),
@@ -2018,26 +2046,7 @@ export class UserTemplateLibrary {
       )
       .slice(0, limit);
 
-    return Promise.all(
-      ranked.map(async ({ template, directory, evidence }) => {
-        const candidate = userCandidate(template, evidence);
-        if (!template.preview || !EMBEDDABLE_IMAGE_TYPES.has(template.preview.mediaType)) {
-          return candidate;
-        }
-        try {
-          const bytes = await checkedStoredBytes(directory, template.preview, MAX_IMAGE_BYTES);
-          return {
-            ...candidate,
-            previewDataUrl: `data:${template.preview.mediaType};base64,${Buffer.from(bytes).toString("base64")}`,
-          };
-        } catch {
-          return {
-            ...candidate,
-            warnings: [...candidate.warnings, "预览文件缺失或校验失败"],
-          };
-        }
-      }),
-    );
+    return ranked.map(({ template, evidence }) => userCandidate(template, evidence));
   }
 
   async preview(templateId: string) {

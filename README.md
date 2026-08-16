@@ -1,51 +1,125 @@
 # Scientific Figure Library
 
-Scientific Figure Library is a standard MCP server and MCP App for finding,
-importing, and materializing scientific figure references. It is not tied to
-Wisp: any stdio MCP host can use it. The included Wisp manifest and Skill are a
-thin optional adapter.
+Scientific Figure Library (SFL) is a standard stdio MCP server and MCP App for
+building, reviewing, finding, and materializing reusable scientific-figure
+references. Version 0.5 makes one **user-selected global Library** the durable,
+cross-project source of truth. Wisp, Codex, Claude, and other MCP hosts can use
+the same Library without copying it into every project.
 
-The library has two template sources:
+The standard core has two retrieval providers:
 
-- **FigureYa** — 319 searchable modules with local thumbnails and
-  commit-pinned archives.
-- **User Library** — figures and plotting code copied from paths supplied by
-  the MCP host.
+- **Local Published** (`org.scientificfigurelibrary.local`) — immutable,
+  locally reviewed Releases from the global Library.
+- **FigureYa** (`org.figureya.module`) — the bundled 319-module search catalog,
+  with commit-pinned source/archive identities.
 
-The host Agent analyzes an uploaded image, a natural-language request, or a data
-file. It builds a compact retrieval intent, searches both sources, inspects the
-top preview, and decides whether that candidate actually matches before
-materializing anything. The catalog score orders retrieval candidates; it is
-not a recommendation or visual-similarity score.
+`figure_library_search` queries both providers together by default. Results are
+provider-qualified and carry an `exactSelector`; a bare `templateId` is never
+enough to describe, preview, or materialize an exact result.
 
-For image input, the Agent must first inspect the user's image with the host's
-`view_image`, then inspect the top candidate with `figure_library_preview`.
-The final recommendation includes an Agent-produced visual pass/reject score
-covering chart family, layout, axes/geometry, encodings, and annotations/style,
-plus a separate data-compatibility verdict.
+> **0.5.1 protocol migration (still required in 0.5.2):** 0.5.1 deliberately
+> broke the 0.5.0 materialization-plan input. `figure_library_plan_materialize`
+> still requires a session-local, single-use `previewReceipt` produced only
+> after an exact preview and explicit confirmation. Old callers must adopt
+> protocol v2; there is no receipt-free compatibility path.
+>
+> **0.5.2 review truthfulness:** Working preview now has its own exact read-only
+> selector; Working and Published Reviews are reported separately; Published
+> warnings remain bound to their immutable Release; canonical preview choices
+> and the three-part validation state are exposed consistently across review,
+> planning, search, and details.
 
-## Safety contract
+The host Agent, not this server, inspects an uploaded figure and code, reasons
+about their relationship, and asks the user to confirm the Figure Unit. SFL
+then verifies bytes, records hashes and provenance, creates immutable
+Revisions, enforces review gates, and publishes Releases. The server contains
+no second model and does not execute plotting code.
 
-The server copies and extracts reference files but never executes plotting code
-or dependency installers. It verifies imported user files with SHA-256 and
-verifies FigureYa archives against the pinned catalog.
+## 0.5 design boundaries
 
-**Materialization errors are terminal.** `figure_library_materialize` returns a
-`STOP:` error that instructs the Agent to report the exact failure and wait for
-the user. The Agent must not switch extraction modes, use another downloader,
-fetch the complete repository, recreate the template, or generate a
-substitute/demo plot. This behavior is covered by the MCP smoke test.
+- The Library is global and cross-project. A project receives a
+  `template.lock.json` when a template is materialized; there are no project
+  pins and no project-scoped Library.
+- Direct user-supplied image/code intake is the standard path.
+- Web Capture and `figure_capture_*` tools are not registered in the 0.5
+  standard core. The experimental 0.4.2 Capture work remains isolated from the
+  standard design.
+- Legacy flat `figure-library.template.v1` entries are migration input only.
+  They do not appear in ordinary search until explicitly adopted.
+- Working Revisions are visible only through review tools. Ordinary
+  search/describe/preview/materialize operate on Published Releases or exact
+  FigureYa modules.
+- CiteBox is an explicit intake adapter, not a search provider. SFL never reads
+  or writes CiteBox SQLite directly.
 
-## Build
+## Safety and truthfulness contract
 
-Requirements: Node.js 22 or newer.
+SFL treats every supplied or downloaded asset as untrusted reference material.
+It copies and hashes files but never runs plotting code, notebooks, shell
+scripts, or dependency installers.
+
+Validation state has three independent parts. `plotExecution` records only the
+plot run, `upstreamWorkflow` records the upstream analysis workflow, and
+`scientificValidation` records a user or external-review assessment. Plot
+execution never implies either of the other two:
+
+- `plotExecution.status: not_run`: SFL has no plot-execution evidence.
+- `plotExecution.status: failed`: a plot execution attempt is recorded as
+  failed.
+- `plotExecution.status: passed`: requires a `rendered_output`, a
+  `generated_output` figure-code relationship, and an evidence asset.
+- `upstreamWorkflow.status: partial|passed|failed`: requires a non-empty scope
+  and evidence; otherwise use `unknown`, `not_run`, or `not_applicable`.
+- `scientificValidation.status: limited|validated|rejected`: requires a
+  `decisionSource` (`user` or `external_review`) and a referenced assessment
+  asset; otherwise use `not_assessed` or `not_applicable`.
+
+The legacy `executionStatus` field remains a compatibility projection of
+`plotExecution.status`. A legacy `passed` Release reads as plot passed with
+unknown scope, upstream unknown, and scientific not assessed; it is never
+promoted to full workflow reproduction or scientific validation.
+
+Code inferred from a visual must use relationship `visual_inference` and remain
+`scaffold` / `not_run` with the claim `inspired_by_not_reproduced`.
+
+All public operations return a terminal outcome envelope:
+
+```text
+OUTCOME: <ok|needs_user_input|needs_user_confirmation|applied|...>
+TERMINAL: true
+RETRY_SAME_CALL: false
+CODE: <stable code>
+NEXT_ACTION: <none|ask_user|apply_confirmed_plan|create_new_plan|...>
+```
+
+An Agent must inspect `OUTCOME`, `CODE`, and `NEXT_ACTION` once. It must not
+repeat an identical failed or blocked tool call. If a plan is stale or absent,
+create a new plan; if user input is missing, ask the user; otherwise stop and
+report the exact failure.
+
+`figure_library_open` and the paginated candidate gallery are MCP App entry
+points. A Host may reject App display before the server runs with MCP `-32601`
+or `Capability is not granted`. That is a Host UI-capability result, not
+permission to retry. Ordinary headless tools can still be used. A real
+App-local exact-preview acceptance requires Host `serverTools`. When
+`serverTools` is absent but
+`updateModelContext.text` is available, the sidebar may let the user select one
+current-page candidate and hand it to the Agent for a single headless exact
+review. That fallback must not be reported as an exact image loaded in the App.
+If both capabilities are absent, the sidebar displays a capability error. A
+backend `view_image` check is never evidence that the user's sidebar displayed
+the image.
+
+## Requirements and build
+
+Node.js 22 or newer is required.
 
 ```bash
 npm install
 npm run check
 ```
 
-## Use with any stdio MCP client
+Run the compiled server from any stdio MCP host:
 
 ```json
 {
@@ -54,8 +128,6 @@ npm run check
       "command": "node",
       "args": ["/absolute/path/to/ScientificFigureLibrary/dist/index.js"],
       "env": {
-        "FIGURE_LIBRARY_DIR": "/absolute/path/to/my-figure-library",
-        "FIGURE_GALLERY_DIR": "/optional/path/to/my-personal-gallery",
         "FIGUREYA_SOURCE_PACK_DIR": "/optional/path/to/FigureYaSourcePack"
       }
     }
@@ -63,321 +135,497 @@ npm run check
 }
 ```
 
-`FIGURE_LIBRARY_DIR` defaults to `~/.figure-library`. The server exposes:
+The preferred global binding is the user locator described below. An optional
+`FIGURE_LIBRARY_DIR` environment variable is an administrative override; when
+present, it takes precedence over the locator.
 
-- `figure_library_open` — open an empty candidate workbench.
-- `figure_library_search` — search FigureYa and/or the user library.
-- `figure_library_import` — safely copy a user figure and/or code into the
-  library, or validate and import a Figure Transfer Package. Direct-write mode
-  remains for v0.2 compatibility; new Agents should use plan/apply.
-- `figure_library_plan_import` — validate a direct import, calculate stable
-  identity and component-level duplicate evidence, and write nothing.
-- `figure_library_apply_import` — revalidate and apply one exact confirmed
-  direct-import plan.
-- `figure_library_diff` — validate one Transfer Package or Gallery entry and
-  return a read-only create/update/unchanged diff.
-- `figure_library_upsert` — explicitly apply a stable Transfer Package or
-  Gallery create/update.
-- `figure_library_sync` — validate or synchronize a Personal Gallery; dry-run
-  is the default.
-- `figure_library_archive` — logically archive any User Library entry by
-  `templateId`, legacy `galleryId`, or adapter-scoped Registry source.
-- `figure_library_preview` — return a candidate as MCP image content and,
-  optionally, a checked project-local preview path for Agent inspection.
-- `figure_library_source_status` — inspect effective User Library/Gallery paths,
-  lifecycle counts, integrity counts, and a FigureYa Source Pack.
-- `figure_library_audit` — read and verify manifests/files, legacy entries, and
-  component-level duplicate evidence without writing.
-- `figure_library_reconcile` — dry-run, apply, or roll back an explicitly
-  approved logical duplicate archive using a write lock and recovery journal.
-- `figure_library_describe` — inspect one exact template.
-- `figure_library_materialize` — write one selected reference to a project.
+## One global, portable Library
 
-The MCP server does not contain a second model. Agent reasoning stays in the
-host: understand input → build retrieval intent → search → view the top
-candidate → visually and semantically audit it → materialize only an accepted
-template. For attachments, the host makes files available locally and the Agent
-passes those paths to `figure_library_import`. For search, the Agent passes
-compact descriptions, not raw datasets.
+The user chooses the Library directory. SFL does not silently use the current
+project. Bind it with a read-only plan followed by explicit Apply:
 
-`figure_library_preview` returns standard MCP image content. In Wisp, pass an
-absolute project-local `destination` (for example,
-`/project/.wisp/figure-library-previews`) and call `view_image` on the returned
-path. This keeps visual judgment with the Agent even when the host exposes only
-the text portion of an MCP tool result.
+1. Call `figure_library_plan_bind_global` with an absolute
+   `libraryDirectory`.
+2. Show the user the exact path, `libraryId`, inventories, migration mode, and
+   `planDigest`.
+3. After confirmation, call `figure_library_apply_bind_global` with the
+   visible `planDigest` and a stable `operationId` in the same server session.
+   Apply accepts only a server-issued cached digest; client-authored opaque
+   plans are deliberately rejected as an authority boundary.
+4. Start a new host session if the host caches MCP state.
 
-## Stable direct imports
+The locator is deliberately small and machine-local:
 
-For new direct imports, plan first:
+- Windows: `%APPDATA%\ScientificFigureLibrary\locator.json`
+- Linux/WSL: `$XDG_CONFIG_HOME/scientific-figure-library/locator.json`, or
+  `~/.config/scientific-figure-library/locator.json`
 
-```json
-{
-  "title": "Our lab volcano plot",
-  "description": "Labeled differential-expression volcano plot",
-  "tags": ["volcano", "differential expression"],
-  "visualProfile": "log2FC x-axis, -log10 FDR y-axis, labeled hits",
-  "dataProfile": "gene, log2FC, adjusted p value",
-  "sourceKey": "manual:lab-volcano-v1",
-  "imagePath": "/project/references/volcano.png",
-  "codePaths": ["/project/references/volcano.R"],
-  "license": "Internal lab reference"
-}
-```
-
-`sourceKey` is optional, but recommended for an entry that should be updated in
-place. It is a portable logical key: 1–200 lowercase ASCII letters, digits,
-dot, underscore, colon, or hyphen. Never use a host path, URL with query data,
-token, email, patient identifier, or other secret. Personal Gallery entries
-must use `gallery_id` and Gallery sync rather than a direct `sourceKey`.
-
-The plan returns `action`, confirmed title, proposed/existing `templateId`,
-component fingerprints, matching templates, and `planDigest`, with
-`written: false`. Present these fields, review status, and license to the user.
-Only then call `figure_library_apply_import` with the same import fields plus:
-
-```json
-{
-  "planDigest": "<64-hex plan digest>",
-  "expectedAction": "create",
-  "expectedTemplateId": "user-direct-<16-hex>",
-  "operationId": "lab-volcano-create-1"
-}
-```
-
-The apply step re-reads files and the User Library. A stale plan is rejected.
-An exact create replay is safe. A `duplicate_candidate` requires an explicit
-`reuse` or `create_separate` decision and reason; a `source_conflict` requires
-an explicit `replace_source` reason. Template IDs never contain the raw
-`sourceKey` and do not change when an existing stable source's title changes.
-
-Without `sourceKey`, identity is content-addressed from the complete asset
-fingerprint. Metadata can be revised for the same asset, but changing preview
-or code intentionally produces a new-source candidate.
-
-Supported visual references are PNG, JPEG, WebP, SVG, and PDF (20 MiB maximum).
-Up to 20 R, R Markdown, Quarto, Python, notebook, Julia, MATLAB, Markdown,
-TeX, shell, JSON, or YAML files may be imported (5 MiB each, 50 MiB total).
-Original absolute paths are never stored in the shareable manifest.
-
-## Figure Transfer Package v1
-
-`figure_library_import` accepts `packagePath` instead of the direct-import
-fields. A v1 package is a ZIP containing exactly `manifest.json` and one figure
-at the archive root:
+The locator records the absolute directory, `libraryId`, and configuration
+revision. The portable Library itself contains relative POSIX paths and this
+authoritative layout:
 
 ```text
-figure-transfer-package.zip
-├── manifest.json
-└── figure.png
+<library-root>/
+├── library.json
+├── store/
+│   ├── templates/<templateId>/
+│   │   ├── series.json
+│   │   ├── revisions/<revisionId>/
+│   │   │   ├── content.json
+│   │   │   └── assets/...
+│   │   ├── reviews/<reviewId>.json
+│   │   └── releases/<releaseId>.json
+│   ├── operations/
+│   │   ├── intents/
+│   │   └── receipts/public-materializations/<providerId>/<operationId>.json
+│   ├── imports/<adapterId>/<importId>/receipts/<receiptId>/
+│   ├── migrations/flat-v1/
+│   ├── exports/
+│   └── quarantine/
+├── indexes/                 # derived and rebuildable
+└── locks/                   # runtime only
 ```
 
-The interoperable manifest contract is:
+`library.json` plus `store/` are authoritative and should be backed up.
+`indexes/` can be rebuilt. `locks/` must not be migrated or copied as Library
+content. The root marker is `figure-library.root.v1`, storage layout
+`figure-library.store-layout.v1`, with SHA-256 and RFC 8785 canonical JSON.
 
-```json
-{
-  "schema": "figure-transfer-package.v1",
-  "version": 1,
-  "producer": { "name": "CiteBox", "version": "0.31.0" },
-  "exportedAt": "2026-08-01T01:02:03Z",
-  "source": {
-    "sourceId": "paper-42",
-    "figureId": "7",
-    "parentFigureId": null,
-    "figureLabel": "Fig 2",
-    "subfigureLabels": ["a", "b"],
-    "caption": "Original figure caption",
-    "page": 12,
-    "paper": {
-      "title": "Paper title",
-      "authors": ["First Author"],
-      "year": 2026,
-      "journal": "Journal name",
-      "doi": "10.1234/example",
-      "url": "https://example.org/paper"
-    },
-    "license": {
-      "scope": "article figure",
-      "text": "CC BY 4.0"
-    }
-  },
-  "figure": {
-    "file": "figure.png",
-    "mediaType": "image/png",
-    "bytes": 12345,
-    "sha256": "<64 lowercase-or-uppercase hex characters>"
-  }
-}
-```
+If neither a locator nor `FIGURE_LIBRARY_DIR` exists, legacy
+`~/.figure-library` may be inspected read-only. Writes fail closed until the
+user explicitly binds a global Library. `figure_library_source_status` reports
+the effective root, source, locator, `libraryId`, write state, counts, lock
+state, and FigureYa source-pack state.
 
-Unknown or unavailable provenance values must be represented explicitly with
-an empty string, empty array, `null`, or `"unknown"` according to the field
-type. IDs may be strings or non-negative integers. The importer rejects an
-unsupported schema/version, unsafe or extra archive paths, oversized content,
-extension/media-type/signature mismatch, byte-count mismatch, and SHA-256
-mismatch. It stores the original manifest as read-only metadata and never
-executes package content.
+## Direct image/code intake
 
-A Transfer Package enters the User Library as a `draft` `visual_reference`, so
-default search does not present uncurated paper figures. Its stable producer +
-source + figure identity makes repeated imports idempotent. If its content
-changes, inspect it with `figure_library_diff`, then explicitly apply it with
-`figure_library_upsert`.
+One Working Revision represents one user-confirmed **Figure Unit**. Before
+planning, the Agent must inspect the actual files and collect or confirm:
 
-## Personal Gallery v1
+1. create, update, or reuse an exact existing template;
+2. title and Figure Unit boundary;
+3. every visual asset and whether it is a `source_reference` or
+   `rendered_output`; every user-uploaded original figure must be included in
+   `visualAssets` as `source_reference`;
+4. multi-image grouping when more than one visual belongs to the Figure Unit;
+5. the canonical primary preview and, when required, the user's override;
+6. `plot_template` or `visual_reference`;
+7. for a plot template, all code assets, their origins, the canonical
+   implementation, and evidence-backed many-to-many figure-code links;
+8. the truthful three-part validation state;
+9. duplicate decision: `create_new`, `update_exact`, or `reuse_existing`;
+10. provenance, license, and any review findings.
 
-The Gallery remains the editable source of truth; the User Library is a
-rebuildable search snapshot. A Gallery root contains entries like:
+Supported figure-code relationships are:
+
+- `user_supplied_pair`
+- `author_provided_original`
+- `visual_inference`
+- `adapted_from_template`
+- `generated_output`
+
+Code origins are `user_supplied`, `author_provided`, `agent_generated`, or
+`adapted`. R, Python, Julia, MATLAB, and other languages are accepted as
+metadata; SFL does not privilege or execute a language. A `plot_template`
+requires code and a user-selected canonical implementation. If reliable code
+is absent, use `visual_reference` rather than pretending that a reproducible
+template exists.
+
+Canonical preview selection is deterministic:
+
+- exactly one `source_reference` is the default
+  (`default_uploaded_source`), even when rendered outputs also exist;
+- one total visual is the only available choice (`only_visual_available`);
+- an explicit source selection is recorded as `user_selected_source`;
+- multiple sources, or multiple rendered-only visuals without a selection,
+  return `canonical_preview_ambiguous`;
+- choosing a rendered output while a source exists requires
+  `primaryPreviewOverride: { confirmedBy: "user", reason }` and is recorded as
+  `user_override_rendered`; without it the plan returns
+  `canonical_preview_override_required`.
+
+This 0.5.2 boundary is intentionally Host-governed: the Host must include the
+uploaded original in `visualAssets` as `source_reference`. The Server verifies
+declared assets but does not receive a separate upload manifest, so it cannot
+detect that a Host omitted an original entirely. No digest-declaration hard
+check is added in this release.
+
+Call `figure_library_plan_working_revision` first. It verifies regular,
+non-symlink host files and produces a complete immutable candidate and review
+snapshot without writing. Absolute source paths are input-only and are not
+persisted in the public Revision. Show the returned action, IDs, digests, asset
+hashes, `reviewSummary`, canonical decision, validation state, and the exact
+Working preview selector. Call `figure_library_preview_working_revision` with
+that unchanged `templateId`, `revisionId`, and `contentDigest` to inspect the
+canonical image before Apply. The selector resolves only the latest exact,
+session-local pending Working plan for that Series; after Apply it resolves the
+matching current Working Head. A newer plan makes the prior pending selector
+stale, and publication removes the Working target. This tool is read-only: it
+accepts no destination, creates no preview receipt, and never authorizes
+materialization. Show validation errors, gates, and warnings. Only after the
+user confirms that exact plan call `figure_library_apply_working_revision`
+with:
+
+- `planDigest`
+- stable `operationId`
+- `expectedAction`
+- `expectedTemplateId`
+- `expectedSeriesDigest`
+
+Apply rechecks source bytes and series state. Operation IDs are idempotent;
+stale plans are rejected rather than silently adapted.
+
+## Immutable review and publication
+
+The canonical schemas are:
+
+- `figure-library.template-series.v1`
+- `figure-library.template-content.v1`
+- `figure-library.review-snapshot.v1`
+- `figure-library.template-release.v1`
+
+A `templateId` identifies a stable Series. A Content Revision and Release are
+immutable. A Series has at most one Working Head and one Published Head. Every
+Working save creates a full new Revision; history is never edited in place.
+
+Validation findings are intentionally separate:
+
+- **Validation Error** — structurally or semantically invalid content; blocks
+  publication.
+- **Blocking Review Gate** — an explicit review decision is required; blocks
+  publication while open.
+- **Review Warning** — visible but not itself blocking.
+
+There is no waiver path in 0.5. Review with
+`figure_library_review_open`, `figure_library_template_history`, and
+`figure_library_diff_revisions`. Lifecycle changes use separate plan/apply
+pairs:
+
+- `figure_library_plan_review_gate_update` /
+  `figure_library_apply_review_gate_update`
+- `figure_library_plan_publish_working_revision` /
+  `figure_library_apply_publish_working_revision`
+- `figure_library_plan_discard_working_revision` /
+  `figure_library_apply_discard_working_revision`
+- `figure_library_plan_restore_release` /
+  `figure_library_apply_restore_release`
+- `figure_library_plan_adopt_versioning` /
+  `figure_library_apply_adopt_versioning`
+
+Publishing atomically creates the immutable Release and switches the Published
+pointer. The old Published Release remains usable until that switch. Restoring
+history creates a new Working candidate and requires review; it never rewinds
+the Published pointer directly. Adopting a flat-v1 template is explicit and
+non-destructive, with a migration receipt.
+
+`figure_library_review_open` returns `workingReview` and `publishedReview`
+separately when both exist; compatibility field `review` resolves to
+`workingReview ?? publishedReview`. Published review findings come from the
+Review Snapshot bound by the Release and therefore remain visible after the
+Working Head is cleared or replaced. Working and publish plan/apply responses
+use one `reviewSummary` shape containing validation errors, open gates,
+warnings, `publishEligible`, canonical preview decision, and validation state.
+
+## Unified search and exact selectors
+
+`figure_library_search` searches the complete relevance-matched Local
+Published and FigureYa set unless `providerIds` explicitly narrows it. Working
+Revisions, Capture records, and unadopted flat entries are excluded. The
+retrieval score only orders candidates; it is not visual similarity,
+confidence, or approval.
+
+The first page defaults to 6 candidates (`limit` maximum 12). Responses expose
+`resultSetId`, true `total`, `pageIndex`, `hasMore`, and opaque `nextCursor` as
+well as the structured `pagination` object. The cursor is bound to the query,
+filters, page size, Library root, Local Published revision, and FigureYa
+catalog revision. Catalog or Library changes return `search_results_stale`
+instead of silently drifting. Each page carries verified PNG/JPEG/WebP
+thumbnails with a 256 KiB per-image and 3 MiB per-page safety ceiling. The
+model-visible `structuredContent` contains only compact candidate summaries;
+thumbnail Data URLs are keyed by result-scoped `candidateId` under result
+`_meta.candidatePreviews`, which MCP Apps expose only to the component.
+
+Each candidate includes `providerId` and `exactSelector`:
+
+- Local Published identity: `templateId`, `revisionId`, `contentDigest`, and
+  `releaseId`.
+- FigureYa identity: `moduleId`, source commit, archive commit, archive
+  integrity identity, and materialization mode when an archive exists.
+
+Always pass the returned provider and selector unchanged to
+`figure_library_describe`, `figure_library_preview`, and materialization.
+Same-named templates from different providers do not shadow one another.
+
+FigureYa is upstream-published but locally `not_reviewed`; its code is
+`provided` and `not_run`. Never describe a FigureYa search result as locally
+approved, reproduced, or verified by SFL.
+
+Local Published search cards and details inherit warnings from the immutable
+Review bound by the exact Release and display separate plot-execution,
+upstream-workflow, and scientific-validation summaries. They do not fall back
+to the current Working Head and do not collapse a plot `passed` result into a
+claim of complete reproduction.
+
+The MCP App paginates all matched candidates through App-only
+`figure_library_search_page` and renders each usable candidate as a real
+lazy-loaded `<img>`. Clicking the thumbnail, title, or **查看详情** opens an
+accessible dialog with a larger candidate image, the complete description,
+and only metadata actually present in the search result. This basic detail is
+fully local to the App: it works without `serverTools`, does not call the
+Agent, and does not update model context.
+
+After search, the Agent must stop and wait for user selection. It must not call
+exact preview for every candidate or substitute a backend `view_image` pass.
+Only an explicit request such as “帮我选择模板” permits limited visual review
+of a small top-ranked subset.
+
+When Host `serverTools` is available, **查看精确预览** calls App-only
+`figure_library_preview_exact`, which returns the exact image and one-time
+`previewChallenge` in component-only `_meta`. It never accepts a destination,
+writes files, downloads archives, or accesses the network. The confirmation
+button remains disabled until that exact `<img>` fires `load`; `error` keeps it
+disabled. Clicking **确认并交给 Agent** calls App-only
+`figure_library_confirm_selection`, then sends only the provider, selector,
+preview hash, receipt, and compact selection summary through
+`updateModelContext`.
+
+When `serverTools` is absent but `updateModelContext.text` is available, the
+exact-preview action stays disabled and the separate button becomes **选择并交给
+Agent 审核**. Only that click submits one compact candidate through
+`updateModelContext`; the Agent may call `figure_library_preview_exact_headless`
+once for that candidate, review it, call
+`figure_library_confirm_selection_headless`, and create a read-only materialize
+plan. It must not inspect other candidates, Apply, or claim that the exact
+image loaded in the App. If `updateModelContext` is also absent, selection
+handoff remains disabled with an explicit capability error.
+
+`figure_library_describe` publishes these App/headless tool names, the
+component thumbnail `_meta` key, the model-image exclusion flag, receipt gate,
+and diagnostics export/resource capabilities so Hosts can inspect the exact
+0.5.2 boundary without guessing.
+
+`figure_library_preview` remains a compatibility tool that returns/copies one
+standard MCP image, but it never authorizes materialization and must not be
+presented as sidebar display evidence.
+
+## Exact materialization
+
+Materialization protocol v2 is preview/confirm/plan/apply only:
+
+1. Search and retain `resultSetId`, `providerId`, and `exactSelector`.
+2. Choose the capability-aware confirmation path:
+   - Apps Host with `serverTools`: the App calls App-only
+     `figure_library_preview_exact` and `figure_library_confirm_selection` only
+     after the exact image visibly loads and the user clicks confirmation.
+   - Apps Host without `serverTools` but with `updateModelContext.text`: after
+     the user clicks **选择并交给 Agent 审核**, call model-visible
+     `figure_library_preview_exact_headless` once for that single candidate and
+     then `figure_library_confirm_selection_headless`.
+   - Host with no Apps UI: use the same model-visible tools only after the user
+     selects a candidate or explicitly delegates selection to the Agent.
+   Both headless routes cannot technically prove that the user saw the image in
+   the App; acceptance reports must preserve this boundary.
+3. Pass the returned single-use `previewReceipt` with the unchanged
+   `providerId`, `exactSelector`, absolute `destination`, optional absolute
+   `sourcePackDir`, and `allowNetwork` to
+   `figure_library_plan_materialize`. Missing receipts return
+   `preview_required`; mismatches, changed preview/catalog/root, replay, or
+   server restart are rejected. A receipt has no wall-clock TTL but is valid
+   only in the issuing server session and is consumed after one successful
+   plan.
+4. Present the exact selector, target, confirmation mode, and acquisition
+   policy.
+5. `figure_library_apply_materialize` with `planDigest`, `operationId`,
+   `expectedProviderId`, and `expectedTarget`. Apply consumes only the plan and
+   does not request the receipt again.
+
+The target is `<destination>/<templateId>` and is never overwritten. Both
+providers use a common envelope:
 
 ```text
-gallery/lab-volcano/
-├── figure.yml
-├── preview.png
-├── description.md
-├── source/
-│   └── provenance.yml
-└── code/
-    ├── example.R
-    ├── data_schema.yml
-    └── example.csv
+<destination>/<templateId>/
+├── TEMPLATE.md
+├── template.json
+├── template.lock.json
+├── assets/
+│   ├── visuals/
+│   ├── code/
+│   ├── references/
+│   └── evidence/
+└── upstream/                 # FigureYa only; untouched source module
 ```
 
-`figure.yml` uses this schema:
+Keep `assets/` and `upstream/` unchanged when exact replay matters. Write
+project adaptations separately. The lock records the provider-qualified exact
+identity and file hashes so another project or Agent can reproduce the same
+selection without project pins.
 
-```yaml
-schema: figure-library.gallery-entry.v1
-gallery_id: lab-volcano
-title: Lab volcano plot
-tags: [volcano, differential expression]
-visual_profile: log2FC x-axis, -log10 FDR y-axis, labeled hits
-data_profile: gene, log2FC, adjusted p value
-packages: [ggplot2]
-license: Internal lab reference
-asset_kind: plot_template       # plot_template | visual_reference
-language: R
-plot_family: volcano
-review_status: approved         # draft | approved | archived
-code_status: reviewed           # none | scaffold | reviewed
-preview: preview.png             # optional default
-description_file: description.md # optional default
-provenance_file: source/provenance.yml # optional default
-source_commit: 0123456789abcdef  # optional; sync can also supply it
-content_hash: <optional computed SHA-256>
+`template.lock.json` alone is not server authority. Durable Apply replay also
+requires the immutable global-Library Receipt at
+`store/operations/receipts/public-materializations/<providerId>/<operationId>.json`.
+The Receipt binds the public plan, exact selector, complete target inventory,
+and a hash of the physical target path without storing that absolute path.
+Replay revalidates the current provider identity and every target byte; a
+pre-created or copied lock without the Receipt is never reported as success.
+
+Any materialization failure is terminal. Do not retry the same call, change
+mode/provider/downloader, fetch a full repository, or generate a substitute.
+Report the error and wait for a new user decision.
+
+## CiteBox and other intake adapters
+
+CiteBox figures enter through an explicit export/API/MCP handoff. They are not
+mixed into ordinary search before local review, and SFL must never access the
+CiteBox SQLite database directly.
+
+The host selects a CiteBox Figure, obtains self-contained exported assets, and
+then creates a Working Revision with `intake.adapterId: "citebox"`. Preserve
+the selected Figure ID, paper DOI/title, figure label, page, caption, export
+hash, retrieval time, and other available provenance in `sourceManifest` and
+Revision provenance. Copy all selected assets into the Revision. CiteBox
+authority or publication status is provenance only and is not inherited as SFL
+approval.
+
+Other integrations follow the same adapter contract under
+`store/imports/<adapterId>/<importId>/`: explicit source manifest, selected
+asset hashes, self-contained immutable Revision, receipt, and local review.
+
+## Migration and portability
+
+Binding can optionally stage a non-destructive copy of a legacy flat-v1
+Library with `migrationMode: "copy_legacy"`. Staging does not make entries
+searchable. Each template is adopted explicitly through the versioning
+plan/apply tools and receives a receipt; original flat content is retained.
+
+Portable bundle operations are exposed as explicit MCP plan/apply pairs and
+implemented by `src/portable-bundles.ts`:
+
+- full Library backup/export;
+- exact Published-template export;
+- full Library restore;
+- full Library fork;
+- Published-template bundle import as a new Working Revision.
+
+Use `figure_library_plan_bundle_export` /
+`figure_library_apply_bundle_export` for a full backup or exact Published
+template export. Export Apply must echo the visible absolute target as
+`expectedTarget`; the Library stores only its digest in an immutable pre-write
+intent. If the server stops after the complete bundle rename but before its
+receipt, the same `operationId + planDigest + expectedTarget` verifies every
+byte and rolls the receipt forward after restart. Use `figure_library_plan_full_restore` /
+`figure_library_apply_full_restore` for restore or fork. Use
+`figure_library_plan_template_bundle_import` /
+`figure_library_apply_template_bundle_import` to import a Published template as
+Working. In the same server session, Apply needs the visible `planDigest` and
+a stable operation ID. Apply does not accept a client-authored opaque plan. If
+the in-memory plan is unavailable, the tool
+returns terminal `plan_not_available` and requires a new plan rather than an
+identical retry, except when an authoritative pre-write export intent and its
+complete exact target allow deterministic recovery.
+
+Full backups exclude `indexes/` and `locks/`. Restore preserves the source
+`libraryId`, requires explicit authority-transfer confirmation, and does not
+change the active locator. Fork creates a new `libraryId` and records
+`forkedFromLibraryId`. Importing a Published-template bundle never inherits the
+source Library's approval; it creates a Working Revision requiring local review
+and publication.
+
+See [`docs/GLOBAL_LIBRARY_0.5.md`](docs/GLOBAL_LIBRARY_0.5.md) for the storage,
+locator, lifecycle, migration, and portability model.
+
+## Structured diagnostics and export
+
+Each MCP Server process creates an independent diagnostics session and writes
+bounded JSONL outside the global Library and project repositories. Set
+`SFL_DIAGNOSTICS_DIR` to an absolute directory to override the system temporary
+diagnostics directory. The default limits are 5 MiB per JSONL segment and
+50 MiB total across JSONL/ZIP files. Rotation is oldest-first. A diagnostics
+write failure never fails search, preview, confirmation, or planning; affected
+tool/status output reports `diagnosticsDegraded` instead.
+
+The logger records fixed structured events for server startup, capability
+detection, search stages, candidate detail open/close, exact preview request,
+image load/error, confirmation, model-context update, materialization planning,
+and tool failures. App-only `figure_library_record_ui_event` accepts only a
+fixed enum plus the current result/candidate identifiers and bounded numeric
+metrics; it rate-limits at 120 events/minute and 1000 events/session. It is an
+internal component tool, not an Agent workflow tool.
+
+Call public `figure_library_export_diagnostics` only when the user explicitly
+requests logs/a diagnostic bundle, supplies a correlation ID or time range, or
+accepts export after a failure. Defaults are current session, sanitized ZIP,
+no user text, and no absolute paths. The ZIP contains:
+
+```text
+scientific-figure-library-diagnostics-<timestamp>.zip
+├── summary.md
+├── events.jsonl
+├── errors.jsonl
+├── environment.json
+└── manifest.json
 ```
 
-`provenance.yml` may contain `producer`, `producer_version`, `exported_at`,
-`source_id`, `figure_id`, `parent_figure_id`, `figure_label`,
-`subfigure_labels`, `caption`, `paper_title`, `authors`, `year`, `journal`,
-`doi`, `page`, `url`, `license_scope`, and `rights`. The original description
-and provenance files are retained in the snapshot. Gallery code/data files may
-be R, R Markdown, Quarto, Python, notebook, Julia, MATLAB, shell, Markdown,
-TeX, JSON, YAML, CSV, TSV, or text files; none are executed.
+The manifest records schema/app version, session, creation time, file sizes and
+SHA-256 values, total payload bytes, scope, and redaction mode. Image bytes,
+Data URLs, selectors, preview challenges/receipts, plan tokens, credentials,
+cookies, environment variables, conversation/free text, source assets, and
+sensitive paths are excluded or redacted. `includeUserText` is accepted for
+forward compatibility, but 0.5.2 does not collect conversation/free text and
+therefore still records `userTextIncluded: false`. Absolute paths appear only
+when the user explicitly sets `includeAbsolutePaths: true`.
 
-The importer computes `content_hash` from normalized searchable metadata,
-provenance, and every stored file descriptor (`file`, bytes, SHA-256, and role),
-with object keys and set-like tags/packages sorted; `content_hash` itself and
-`source_commit` are excluded. If `content_hash` is present in `figure.yml`, it
-must match. Stable `gallery_id` maps to one stable template ID and registry
-record containing `gallery_id`, `template_id`, `content_hash`, and
-`source_commit`.
+The result contains only a compact summary, size, SHA-256, and a session-bound
+`figure-library://diagnostics/<bundleId>` resource link; it never injects the
+JSONL or ZIP into model-visible structured content. If the Host cannot download
+resource links, report that integration limitation. A local path is returned
+only when absolute paths were explicitly requested, and local file existence
+alone must not be described as delivery to the user.
 
-Preview a complete sync without writing:
+## MCP tools in the 0.5 standard core
 
-```json
-{
-  "galleryDirectory": "/absolute/path/to/gallery-repository",
-  "dryRun": true,
-  "sourceCommit": "0123456789abcdef"
-}
-```
+| Area | Tools |
+| --- | --- |
+| Workbench and retrieval | `figure_library_open`, `figure_library_search`, `figure_library_describe`, `figure_library_preview`, `figure_library_preview_exact_headless`, `figure_library_confirm_selection_headless`, `figure_library_source_status` |
+| App-only component tools | `figure_library_search_page`, `figure_library_preview_exact`, `figure_library_confirm_selection`, `figure_library_record_ui_event` |
+| Diagnostics export | `figure_library_export_diagnostics` |
+| Global binding | `figure_library_plan_bind_global`, `figure_library_apply_bind_global` |
+| Write-lock recovery | `figure_library_plan_recover_write_lock`, `figure_library_apply_recover_write_lock` |
+| Review inspection | `figure_library_review_open`, `figure_library_preview_working_revision`, `figure_library_template_history`, `figure_library_diff_revisions` |
+| Direct intake | `figure_library_plan_working_revision`, `figure_library_apply_working_revision` |
+| Gate, publish, discard, restore, adoption | the lifecycle plan/apply pairs listed above |
+| Exact acquisition | `figure_library_plan_materialize`, `figure_library_apply_materialize` |
+| Portable bundles | `figure_library_plan_bundle_export`, `figure_library_apply_bundle_export`, `figure_library_plan_full_restore`, `figure_library_apply_full_restore`, `figure_library_plan_template_bundle_import`, `figure_library_apply_template_bundle_import` |
 
-Set `dryRun` to `false` only after reviewing the returned per-field diffs.
-Sync imports approved entries, skips drafts, and treats `archived` as a logical
-archive rather than a deletion. Missing entries are never deleted implicitly.
-Default search includes approved entries only; an explicit `reviewStatus`
-filter can be used for review/audit. Search and sync also accept `assetKind`,
-`language`, `plotFamily`, and `codeStatus` filters, keeping visual-only
-references separate from reusable R templates.
-
-## Identity, management, audit, and reconcile
-
-Every new Registry entry records an adapter-scoped logical source and versioned
-component fingerprints for preview, executable code, data, metadata, and the
-full asset. Component overlap is duplicate evidence only: equal previews or
-similar titles never trigger an automatic merge.
-
-`registry.contentHash` remains the v0.2-compatible normalized **source snapshot
-hash**. It is not the byte hash of the current `template.json`: local lifecycle
-operations such as archive change review state without redefining the imported
-source. Audit therefore calculates separate `manifestSha256` and
-`verifiedFileSetDigest` values from the current manifest and verified files.
-
-Search and describe return a `management` object. Use its `templateId` as the
-normal archive reference. `registrySourceId` is deliberately distinct from the
-top-level search source (`figureya` or `user`). Gallery authority remains in
-`figure.yml`; if a Gallery snapshot is locally archived while its Gallery entry
-is still approved, the next sync will plan to restore the authoritative state.
-
-Audit before any legacy cleanup:
-
-```json
-{
-  "scope": "all",
-  "includeArchived": true
-}
-```
-
-Audit reports unreadable/invalid entries instead of silently omitting them,
-verifies every declared file, marks Registry-less legacy direct templates, and
-returns a duplicate evidence graph plus a deterministic **recommendation only**
-for the canonical ID.
-
-`figure_library_reconcile` defaults to `mode: "dry-run"`. Its `expectedState`
-must copy the exact `manifestSha256`, `verifiedFileSetDigest`, and review status
-from the reviewed audit. Apply only after backing up the complete User Library
-and approving the exact canonical/duplicate IDs, hashes, and reason. Apply:
-
-- acquires the same User Library write lock as import/upsert/sync/archive;
-- archives only the named duplicate manifests;
-- retains every directory and reference file;
-- records a recovery journal and append-only alias ledger;
-- refuses stale state and incomplete prior transactions.
-
-Rollback uses the same `reconcileId` and refuses to overwrite any later
-manifest change. Never manually delete a lock, transaction directory, template
-directory, or migration ledger until the interrupted state has been inspected.
-If a dead process leaves `prepared`, `committing`, or `rolling-back`, first
-verify that its recorded lock owner is no longer running and inspect the
-journal. After the stale lock is deliberately cleared, rollback with the exact
-same reconcile ID/canonical/duplicate IDs. Recovery accepts only manifests that
-still equal that journal's before/after hashes and removes only a matching
-partial apply ledger.
+There are no `figure_capture_*`, project status/pin, direct-write import, sync,
+archive/reconcile, or one-step materialize tools in the standard 0.5 server.
 
 ## Distribution
 
-The standalone npm tarball contains the server, App, FigureYa search catalog,
-and thumbnails, but not the large archive collection:
+Build a standalone npm package:
 
 ```bash
 npm run package:npm
-npm install --global ./release/scientific-figure-library-0.3.0.tgz
+npm install --global ./release/scientific-figure-library-0.5.2.tgz
 ```
 
 Use `scientific-figure-library` as the MCP command after installation.
 
-For Wisp:
+Build the Wisp plugin:
 
 ```bash
 npm run package:wisp
 ```
 
-Install `release/scientific-figure-library-wisp-0.3.0.zip` from Wisp
-**Settings → Plugins**, enable it for a project, and start a fresh session.
+Install `release/scientific-figure-library-wisp-0.5.2.zip` from Wisp
+**Settings → Plugins**, enable it, and start a fresh session. The Wisp bundle is
+an adapter around the same standard MCP server; global Library selection is not
+tied to a Wisp project.
 
 ## FigureYa Source Pack
 
-The core plugin and the optional Source Pack are deliberately separate. A
-Source Pack is an ordinary directory containing the existing per-module ZIPs
-from FigureYa-compressed:
+The plugin contains the FigureYa catalog and thumbnails, not the roughly 3 GiB
+archive collection. A Source Pack is an ordinary directory containing pinned
+per-module ZIPs from FigureYa-compressed:
 
 ```text
 FigureYaSourcePack/
@@ -386,16 +634,14 @@ FigureYaSourcePack/
     └── FigureYa9heatmap.zip
 ```
 
-Pass this directory as `sourcePackDir` or set
-`FIGUREYA_SOURCE_PACK_DIR`. Resolution order is:
+Pass an absolute directory as `sourcePackDir` or set
+`FIGUREYA_SOURCE_PACK_DIR`. Archive resolution is:
 
-1. Local Source Pack.
-2. Bases configured in `FIGUREYA_ARCHIVE_BASE_URLS`.
-3. The commit-pinned FigureYa-compressed archive on GitHub.
+1. local Source Pack;
+2. bases configured in `FIGUREYA_ARCHIVE_BASE_URLS`;
+3. the commit-pinned FigureYa-compressed archive on GitHub.
 
-The complete pinned archive collection is roughly 3 GiB, so it is not embedded
-in either plugin package. It can be copied by USB/shared storage or split into
-small transport packs:
+Create a small transport pack from a local checkout:
 
 ```bash
 npm run package:source-pack -- \
@@ -404,39 +650,13 @@ npm run package:source-pack -- \
   --modules FigureYa59volcanoV2
 ```
 
-The helper verifies every selected ZIP and caps one transport pack at 200 MiB.
-Extract the resulting
-`release/figure-library-source-pack-volcano-0.3.0.zip` before use.
-
-## Materialized layouts
-
-FigureYa template:
-
-```text
-<destination>/<template-id>/
-├── upstream/
-├── TEMPLATE.md
-└── template.lock.json
-```
-
-User template:
-
-```text
-<destination>/<template-id>/
-├── reference/
-│   ├── preview.*
-│   └── code/
-├── TEMPLATE.md
-└── template.lock.json
-```
-
-An existing target is never overwritten. Keep `upstream/` or `reference/`
-unchanged and adapt plotting code in a separate file.
+The helper verifies selected ZIP identities and caps a transport pack at 200
+MiB. Extract the resulting
+`release/figure-library-source-pack-volcano-0.5.2.zip` before use.
 
 ## Catalog development
 
-The repository includes a generated FigureYa catalog. To regenerate it from
-local checkouts:
+Regenerate the bundled catalog from local checkouts:
 
 ```bash
 git -C /path/to/FigureYa-compressed ls-tree --name-only HEAD |
@@ -450,5 +670,6 @@ git -C /path/to/FigureYa-compressed ls-tree --name-only HEAD |
 ## License
 
 Project code is MIT licensed. FigureYa-derived catalog data, thumbnails, and
-downloaded templates remain CC BY-NC-SA 4.0. User-imported material keeps the
-license supplied at import. See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+downloaded templates remain CC BY-NC-SA 4.0. User-supplied and adapter-imported
+material keeps its recorded source license. See
+[`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md).

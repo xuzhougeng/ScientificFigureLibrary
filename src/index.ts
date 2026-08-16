@@ -2,7 +2,7 @@ import process from "node:process";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { createServer } from "./server.ts";
 
-const VERSION = "0.3.0";
+const VERSION = "0.5.2";
 
 if (process.argv.includes("--help")) {
   console.log(`Scientific Figure Library ${VERSION}
@@ -20,9 +20,12 @@ if (process.argv.includes("--version")) {
   process.exit(0);
 }
 
-createServer()
-  .then((server) => server.connect(new StdioServerTransport()))
-  .catch((error) => {
-    console.error(error);
-    process.exit(1);
-  });
+try {
+  // Keep startup itself awaited: hosts may send initialize immediately, and
+  // Catalog/preview validation must finish before stdio becomes authoritative.
+  const server = await createServer();
+  await server.connect(new StdioServerTransport());
+} catch (error) {
+  console.error(error);
+  process.exit(1);
+}

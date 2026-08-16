@@ -1,63 +1,34 @@
 #!/usr/bin/env node
 
-import { createHash } from "node:crypto";
-import { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { strToU8, zipSync } from "fflate";
+import { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 
 const root = path.resolve(import.meta.dirname, "..");
-const materializeAt = process.argv[2];
+const externalMaterializeDestination = process.argv[2];
 const serverEntry =
   process.env.FIGURE_LIBRARY_SMOKE_SERVER ?? path.join(root, "dist", "index.js");
-const smokeRoot = await fs.mkdtemp(path.join(os.tmpdir(), "figure-library-smoke-"));
-const libraryDirectory = path.join(smokeRoot, "library");
-const sourceDirectory = path.join(smokeRoot, "source");
-await fs.mkdir(sourceDirectory);
-const codePath = path.join(sourceDirectory, "smoke-plot.R");
-await fs.writeFile(codePath, "# unique-smoke-ridge-reference\n");
-const plannedCodePath = path.join(sourceDirectory, "planned-smoke-plot.R");
-await fs.writeFile(plannedCodePath, "# planned-smoke-lifecycle-reference\n");
-const transferImage = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]);
-const transferPackagePath = path.join(sourceDirectory, "figure-transfer-package.zip");
-const transferManifest = {
-  schema: "figure-transfer-package.v1",
-  version: 1,
-  producer: { name: "CiteBox", version: "smoke" },
-  exportedAt: "2026-08-01T00:00:00Z",
-  source: {
-    sourceId: "smoke-paper",
-    figureId: "1",
-    parentFigureId: null,
-    figureLabel: "Fig 1",
-    subfigureLabels: [],
-    caption: "MCP smoke transfer figure",
-    page: 1,
-    paper: {
-      title: "MCP Smoke Paper",
-      authors: [],
-      year: 2026,
-      journal: null,
-      doi: null,
-      url: null,
-    },
-    license: { scope: "unknown", text: null },
-  },
-  figure: {
-    file: "figure.png",
-    mediaType: "image/png",
-    bytes: transferImage.byteLength,
-    sha256: createHash("sha256").update(transferImage).digest("hex"),
-  },
-};
+const smokeRoot = await fs.mkdtemp(path.join(os.tmpdir(), "figure-library-0.5-smoke-"));
+const libraryDirectory = path.join(smokeRoot, "global-library");
+const intakeDirectory = path.join(smokeRoot, "direct-intake");
+await fs.mkdir(libraryDirectory, { recursive: true });
+await fs.mkdir(intakeDirectory, { recursive: true });
+const visualPath = path.join(intakeDirectory, "reference.png");
+const renderedPath = path.join(intakeDirectory, "rendered.png");
+const codePath = path.join(intakeDirectory, "plot.R");
+const evidencePath = path.join(intakeDirectory, "execution.json");
+const onePixelPng = Buffer.from(
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=",
+  "base64",
+);
+await fs.writeFile(visualPath, onePixelPng);
+await fs.writeFile(renderedPath, onePixelPng);
+await fs.writeFile(codePath, "plot(1:3)\n");
 await fs.writeFile(
-  transferPackagePath,
-  zipSync({
-    "manifest.json": strToU8(JSON.stringify(transferManifest)),
-    "figure.png": transferImage,
-  }),
+  evidencePath,
+  `${JSON.stringify({ schema: "figure-library.smoke-execution.v1", exitCode: 0 })}\n`,
 );
 
 const childEnvironment = Object.fromEntries(
@@ -65,7 +36,7 @@ const childEnvironment = Object.fromEntries(
 );
 childEnvironment.FIGURE_LIBRARY_DIR = libraryDirectory;
 
-const client = new Client({ name: "scientific-figure-library-smoke", version: "0.3.0" });
+const client = new Client({ name: "scientific-figure-library-smoke", version: "0.5.2" });
 const transport = new StdioClientTransport({
   command: process.execPath,
   args: [serverEntry],
@@ -73,303 +44,878 @@ const transport = new StdioClientTransport({
   env: childEnvironment,
 });
 transport.stderr?.on("data", (chunk) => process.stderr.write(chunk));
+let smokeStep = "connect";
+
+function structured(result) {
+  if (!result.structuredContent || typeof result.structuredContent !== "object") {
+    throw new Error(`tool omitted structuredContent: ${JSON.stringify(result.content)}`);
+  }
+  return result.structuredContent;
+}
+
+function outcome(result) {
+  const value = structured(result).envelope;
+  if (!value || typeof value !== "object") {
+    throw new Error(`tool omitted terminal outcome envelope: ${JSON.stringify(result.content)}`);
+  }
+  if (value.terminal !== true || value.retrySameCall !== false) {
+    throw new Error(`tool outcome is not anti-loop terminal: ${JSON.stringify(value)}`);
+  }
+  return value;
+}
+
+function text(result) {
+  return (result.content ?? [])
+    .filter((block) => block.type === "text")
+    .map((block) => block.text)
+    .join("\n");
+}
+
+function assertTextFields(result, fields, label) {
+  const visible = text(result);
+  for (const field of fields) {
+    if (!visible.includes(field)) throw new Error(`${label} text omitted ${field}`);
+  }
+}
 
 try {
   await client.connect(transport);
-  const tools = await client.listTools();
-  const names = tools.tools.map((tool) => tool.name);
-  for (const required of [
+  smokeStep = "list-tools";
+  const listed = await client.listTools();
+  const names = listed.tools.map((tool) => tool.name).sort();
+  const required = [
     "figure_library_open",
     "figure_library_search",
-    "figure_library_import",
-    "figure_library_plan_import",
-    "figure_library_apply_import",
-    "figure_library_diff",
-    "figure_library_upsert",
-    "figure_library_sync",
-    "figure_library_archive",
-    "figure_library_preview",
-    "figure_library_source_status",
-    "figure_library_audit",
-    "figure_library_reconcile",
+    "figure_library_search_page",
     "figure_library_describe",
-    "figure_library_materialize",
+    "figure_library_preview",
+    "figure_library_preview_exact",
+    "figure_library_preview_exact_headless",
+    "figure_library_confirm_selection",
+    "figure_library_confirm_selection_headless",
+    "figure_library_record_ui_event",
+    "figure_library_export_diagnostics",
+    "figure_library_source_status",
+    "figure_library_plan_bind_global",
+    "figure_library_apply_bind_global",
+    "figure_library_plan_recover_write_lock",
+    "figure_library_apply_recover_write_lock",
+    "figure_library_review_open",
+    "figure_library_preview_working_revision",
+    "figure_library_template_history",
+    "figure_library_diff_revisions",
+    "figure_library_plan_working_revision",
+    "figure_library_apply_working_revision",
+    "figure_library_plan_review_gate_update",
+    "figure_library_apply_review_gate_update",
+    "figure_library_plan_publish_working_revision",
+    "figure_library_apply_publish_working_revision",
+    "figure_library_plan_discard_working_revision",
+    "figure_library_apply_discard_working_revision",
+    "figure_library_plan_restore_release",
+    "figure_library_apply_restore_release",
+    "figure_library_plan_adopt_versioning",
+    "figure_library_apply_adopt_versioning",
+    "figure_library_plan_materialize",
+    "figure_library_apply_materialize",
+    "figure_library_plan_bundle_export",
+    "figure_library_apply_bundle_export",
+    "figure_library_plan_full_restore",
+    "figure_library_apply_full_restore",
+    "figure_library_plan_template_bundle_import",
+    "figure_library_apply_template_bundle_import",
+  ].sort();
+  for (const name of required) {
+    if (!names.includes(name)) throw new Error(`missing 0.5.2 tool ${name}`);
+  }
+  if (names.length !== 40 || names.length !== required.length) {
+    throw new Error(`expected exactly 40 standard tools, received ${names.length}`);
+  }
+  for (const [toolName, visibility] of [
+    ["figure_library_search", "model"],
+    ["figure_library_search_page", "app"],
+    ["figure_library_preview_exact", "app"],
+    ["figure_library_preview_exact_headless", "model"],
+    ["figure_library_record_ui_event", "app"],
+    ["figure_library_export_diagnostics", "model"],
   ]) {
-    if (!names.includes(required)) throw new Error(`missing tool ${required}`);
+    const tool = listed.tools.find((candidate) => candidate.name === toolName);
+    if (JSON.stringify(tool?._meta?.ui?.visibility) !== JSON.stringify([visibility])) {
+      throw new Error(`${toolName} visibility is not ${visibility}-only`);
+    }
+  }
+  if (names.some((name) => name.startsWith("figure_capture_"))) {
+    throw new Error("standard 0.5.2 server registered an experimental Capture tool");
+  }
+  for (const forbidden of [
+    "figure_library_project_status",
+    "figure_library_plan_project_use",
+    "figure_library_apply_project_use",
+  ]) {
+    if (names.includes(forbidden)) throw new Error(`standard server registered ${forbidden}`);
   }
 
-  const opened = await client.callTool({
-    name: "figure_library_open",
-    arguments: {},
-  });
-  if (opened.isError || opened.structuredContent?.candidates?.length !== 0) {
-    throw new Error("open smoke call did not return an empty workbench");
-  }
-
-  const volcanoResult = await client.callTool({
-    name: "figure_library_search",
-    arguments: {
-      query: "volcano differential expression",
-      dataProfile: "gene; log2FC; pvalue; padj",
-      visualProfile:
-        "single panel; x=log2FC; y=-log10(padj); threshold lines; up/down colors; labels",
-      sourceIds: ["figureya", "user"],
-      limit: 6,
-    },
-  });
+  smokeStep = "open";
+  const opened = await client.callTool({ name: "figure_library_open", arguments: {} });
   if (
-    volcanoResult.isError ||
-    volcanoResult.structuredContent?.candidates?.[0]?.templateId !==
-      "FigureYa59volcanoV2" ||
-    volcanoResult.structuredContent?.reviewRequired !== true
+    opened.isError ||
+    outcome(opened).outcome !== "ok" ||
+    outcome(opened).nextAction !== "ask_user" ||
+    structured(opened).libraryVersion !== "0.5.2"
   ) {
-    throw new Error("volcano retrieval did not return the expected review candidate");
+    throw new Error("open did not report the 0.5.2 direct-intake workbench");
   }
 
-  const previewDirectory = path.join(smokeRoot, "previews");
-  const previewed = await client.callTool({
-    name: "figure_library_preview",
-    arguments: {
-      templateId: "FigureYa59volcanoV2",
-      destination: previewDirectory,
-    },
-  });
-  const previewPath = previewed.structuredContent?.path;
-  if (
-    previewed.isError ||
-    typeof previewPath !== "string" ||
-    !previewed.content?.some((item) => item.type === "image")
-  ) {
-    throw new Error("preview smoke call did not return image content and a local path");
-  }
-  const previewStat = await fs.stat(previewPath);
-  if (!previewStat.isFile() || path.dirname(previewPath) !== previewDirectory) {
-    throw new Error("preview smoke call wrote an unexpected local file");
-  }
-
-  const imported = await client.callTool({
-    name: "figure_library_import",
-    arguments: {
-      title: "Unique smoke ridge reference",
-      description:
-        "A unique-smoke-ridge-reference for MCP verification; explicitly not a volcano plot.",
-      tags: ["unique-smoke-ridge-reference"],
-      codePaths: [codePath],
-    },
-  });
-  const userTemplateId = imported.structuredContent?.templateId;
-  if (imported.isError || typeof userTemplateId !== "string") {
-    throw new Error(`user import smoke call failed: ${JSON.stringify(imported.content)}`);
-  }
-
-  const planned = await client.callTool({
-    name: "figure_library_plan_import",
-    arguments: {
-      title: "Planned smoke lifecycle reference",
-      description: "A direct import that exercises plan, apply, management, archive, and audit.",
-      sourceKey: "smoke:planned-lifecycle",
-      codePaths: [plannedCodePath],
-    },
-  });
-  const plannedTemplateId = planned.structuredContent?.proposedTemplateId;
-  const planDigest = planned.structuredContent?.planDigest;
-  if (
-    planned.isError ||
-    planned.structuredContent?.action !== "create" ||
-    planned.structuredContent?.written !== false ||
-    typeof plannedTemplateId !== "string" ||
-    typeof planDigest !== "string"
-  ) {
-    throw new Error(`direct import plan smoke call failed: ${JSON.stringify(planned.content)}`);
-  }
-  const plannedApplied = await client.callTool({
-    name: "figure_library_apply_import",
-    arguments: {
-      title: "Planned smoke lifecycle reference",
-      description: "A direct import that exercises plan, apply, management, archive, and audit.",
-      sourceKey: "smoke:planned-lifecycle",
-      codePaths: [plannedCodePath],
-      planDigest,
-      expectedAction: "create",
-      expectedTemplateId: plannedTemplateId,
-      operationId: "smoke-planned-create",
-    },
-  });
-  if (
-    plannedApplied.isError ||
-    plannedApplied.structuredContent?.templateId !== plannedTemplateId ||
-    plannedApplied.structuredContent?.action !== "create"
-  ) {
-    throw new Error(`direct import apply smoke call failed: ${JSON.stringify(plannedApplied.content)}`);
-  }
-
-  const transferImported = await client.callTool({
-    name: "figure_library_import",
-    arguments: { packagePath: transferPackagePath },
-  });
-  if (
-    transferImported.isError ||
-    transferImported.structuredContent?.reviewStatus !== "draft" ||
-    transferImported.structuredContent?.action !== "create"
-  ) {
-    throw new Error(`transfer import smoke call failed: ${JSON.stringify(transferImported.content)}`);
-  }
-  const transferDiff = await client.callTool({
-    name: "figure_library_diff",
-    arguments: { packagePath: transferPackagePath },
-  });
-  if (transferDiff.isError || transferDiff.structuredContent?.action !== "unchanged") {
-    throw new Error("transfer diff smoke call was not idempotent");
-  }
-  const transferUpsert = await client.callTool({
-    name: "figure_library_upsert",
-    arguments: { packagePath: transferPackagePath },
-  });
-  if (transferUpsert.isError || transferUpsert.structuredContent?.action !== "unchanged") {
-    throw new Error("transfer upsert smoke call was not idempotent");
-  }
-  const emptyGallery = path.join(smokeRoot, "empty-gallery");
-  await fs.mkdir(emptyGallery);
-  const galleryDryRun = await client.callTool({
-    name: "figure_library_sync",
-    arguments: { galleryDirectory: emptyGallery, dryRun: true },
-  });
-  if (galleryDryRun.isError || galleryDryRun.structuredContent?.entries !== 0) {
-    throw new Error("empty Gallery dry-run smoke call failed");
-  }
-
-  const mergedResult = await client.callTool({
-    name: "figure_library_search",
-    arguments: {
-      query: "volcano differential expression",
-      sourceIds: ["figureya", "user"],
-      limit: 3,
-    },
-  });
-  if (
-    mergedResult.isError ||
-    mergedResult.structuredContent?.candidates?.[0]?.templateId !==
-      "FigureYa59volcanoV2"
-  ) {
-    throw new Error("cross-source retrieval scores were not globally comparable");
-  }
-
-  const result = await client.callTool({
-    name: "figure_library_search",
-    arguments: {
-      query: "unique smoke ridge reference",
-      sourceIds: ["user"],
-      limit: 3,
-    },
-  });
-  if (
-    result.isError ||
-    result.structuredContent?.candidates?.[0]?.templateId !== userTemplateId
-  ) {
-    throw new Error("search smoke call did not return the imported user template");
-  }
-
-  const described = await client.callTool({
-    name: "figure_library_describe",
-    arguments: { templateId: userTemplateId },
-  });
-  if (described.isError || described.structuredContent?.sourceId !== "user") {
-    throw new Error("describe smoke call failed for the imported user template");
-  }
-
-  const userMaterialized = await client.callTool({
-    name: "figure_library_materialize",
-    arguments: {
-      templateId: userTemplateId,
-      destination: path.join(smokeRoot, "user-output"),
-    },
-  });
-  if (userMaterialized.isError || !userMaterialized.structuredContent?.target) {
-    throw new Error("user template materialization smoke call failed");
-  }
-
-  const sourceStatus = await client.callTool({
+  smokeStep = "initial-status";
+  const initialStatus = await client.callTool({
     name: "figure_library_source_status",
     arguments: {},
   });
-  if (sourceStatus.isError || sourceStatus.structuredContent?.userTemplateCount !== 3) {
-    throw new Error("source status smoke call failed");
+  if (
+    initialStatus.isError ||
+    outcome(initialStatus).outcome !== "ok" ||
+    structured(initialStatus).serverVersion !== "0.5.2" ||
+    structured(initialStatus).standardCore?.captureToolsRegistered !== false ||
+    structured(initialStatus).standardCore?.projectPinToolsRegistered !== false
+  ) {
+    throw new Error("initial source status did not expose the complete standard-core state");
+  }
+  assertTextFields(
+    initialStatus,
+    [
+      "SERVER_VERSION: 0.5.2",
+      `LIBRARY_ROOT: ${libraryDirectory}`,
+      "LIBRARY_SOURCE: FIGURE_LIBRARY_DIR",
+      "CAPTURE_TOOLS_REGISTERED: false",
+      "PROJECT_PIN_TOOLS_REGISTERED: false",
+    ],
+    "source status",
+  );
+
+  smokeStep = "figureya-search-preview";
+  const figureYaSearch = await client.callTool({
+    name: "figure_library_search",
+    arguments: {
+      query: "volcano differential expression log2 fold change adjusted p value",
+      dataProfile: "gene log2FC pvalue padj",
+      limit: 6,
+    },
+  });
+  const figureYaCandidates = structured(figureYaSearch).candidates ?? [];
+  const figureYa = figureYaCandidates.find(
+    (candidate) =>
+      candidate.providerId === "org.figureya.module" && candidate.previewAvailable === true,
+  );
+  if (
+    figureYaSearch.isError ||
+    outcome(figureYaSearch).outcome !== "ok" ||
+    outcome(figureYaSearch).nextAction !== "ask_user" ||
+    !figureYa ||
+    !figureYa.exactSelector ||
+    figureYa.previewStatus !== "ready" ||
+    "previewDataUrl" in figureYa ||
+    typeof figureYa.candidateId !== "string" ||
+    typeof figureYa.previewSha256 !== "string"
+  ) {
+    throw new Error("unified search did not stop for user selection with a compact FigureYa result");
+  }
+  if (JSON.stringify(structured(figureYaSearch)).includes("data:image/")) {
+    throw new Error("model-visible search structuredContent contains an image Data URL");
+  }
+  const figureYaThumbnail = figureYaSearch._meta?.candidatePreviews?.[figureYa.candidateId];
+  if (
+    typeof figureYaThumbnail?.previewDataUrl !== "string" ||
+    !figureYaThumbnail.previewDataUrl.startsWith("data:image/") ||
+    figureYaThumbnail.previewSha256 !== figureYa.previewSha256
+  ) {
+    throw new Error("component-only search metadata omitted the verified FigureYa thumbnail");
+  }
+  if (structured(figureYaSearch).pagination?.nextCursor) {
+    const secondPage = await client.callTool({
+      name: "figure_library_search_page",
+      arguments: {
+        resultSetId: structured(figureYaSearch).resultSetId,
+        cursor: structured(figureYaSearch).pagination.nextCursor,
+      },
+    });
+    if (
+      outcome(secondPage).outcome !== "ok" ||
+      structured(secondPage).resultSetId !== structured(figureYaSearch).resultSetId ||
+      structured(secondPage).pageIndex !== 2
+    ) {
+      throw new Error("App-only pagination did not continue the existing result set");
+    }
+  }
+  const previewed = await client.callTool({
+    name: "figure_library_preview",
+    arguments: {
+      providerId: figureYa.providerId,
+      exactSelector: figureYa.exactSelector,
+      destination: path.join(smokeRoot, "previews"),
+    },
+  });
+  const previewPath = structured(previewed).path;
+  if (
+    previewed.isError ||
+    typeof previewPath !== "string" ||
+    !(await fs.stat(previewPath)).isFile() ||
+    !previewed.content?.some((block) => block.type === "image")
+  ) {
+    throw new Error("exact FigureYa preview did not return one verified MCP image and path");
   }
 
-  const plannedArchive = await client.callTool({
-    name: "figure_library_archive",
-    arguments: { templateId: plannedTemplateId },
+  smokeStep = "direct-intake-working";
+  const workingPlanned = await client.callTool({
+    name: "figure_library_plan_working_revision",
+    arguments: {
+      mode: "create",
+      templateId: "smoke-direct-volcano",
+      title: "smoke-direct-unique volcano reference",
+      description: "A user-confirmed image/code Figure Unit for the 0.5.2 stdio smoke.",
+      tags: ["smoke-direct-unique", "volcano"],
+      visualProfile: "volcano scatter x log2FC y negative log10 adjusted p value",
+      dataProfile: "gene log2FC pvalue padj",
+      packages: ["ggplot2"],
+      license: "reference only",
+      assetKind: "plot_template",
+      language: "R",
+      plotFamily: "volcano",
+      codeStatus: "reviewed",
+      executionStatus: "passed",
+      validationState: {
+        schema: "figure-library.validation-state.v1",
+        plotExecution: {
+          status: "passed",
+          scope: "synthetic_data",
+          evidenceAssetIds: ["execution-evidence"],
+        },
+        upstreamWorkflow: { status: "not_run" },
+        scientificValidation: { status: "not_assessed" },
+      },
+      visualAssets: [
+        {
+          assetId: "source-visual",
+          sourcePath: visualPath,
+          visualRole: "source_reference",
+          mediaType: "image/png",
+        },
+        {
+          assetId: "rendered-visual",
+          sourcePath: renderedPath,
+          visualRole: "rendered_output",
+          mediaType: "image/png",
+        },
+      ],
+      codeAssets: [
+        {
+          assetId: "canonical-code",
+          sourcePath: codePath,
+          language: "R",
+          codeOrigin: "user_supplied",
+        },
+      ],
+      evidenceAssets: [
+        {
+          assetId: "execution-evidence",
+          sourcePath: evidencePath,
+          mediaType: "application/json",
+        },
+      ],
+      canonicalCodeAssetId: "canonical-code",
+      figureCodeLinks: [
+        {
+          visualAssetId: "source-visual",
+          codeAssetIds: ["canonical-code"],
+          relationship: "user_supplied_pair",
+          evidence: "The smoke user supplied and confirmed this exact source image/code pair.",
+          confirmedBy: "user",
+        },
+        {
+          visualAssetId: "rendered-visual",
+          codeAssetIds: ["canonical-code"],
+          relationship: "generated_output",
+          evidence: "The synthetic smoke execution record links this rendered output to the code.",
+          confirmedBy: "user",
+        },
+      ],
+      confirmations: {
+        createOrUpdate: true,
+        figureUnitBoundary: true,
+        multiImageGrouping: true,
+        assetKind: true,
+        canonicalImplementation: true,
+        codeRelationships: true,
+        codeOrigin: true,
+        executionClaim: true,
+        duplicateDecision: "create_new",
+      },
+      assessment: {
+        warnings: [
+          {
+            code: "upstream_workflow_not_run",
+            message: "The upstream workflow was not run in this synthetic smoke.",
+            source: "agent",
+          },
+        ],
+      },
+    },
   });
+  const workingStructured = structured(workingPlanned);
+  const workingPlan = workingStructured.plan;
+  const workingReviewSummary = workingStructured.reviewSummary;
+  const workingPreviewSelector = workingStructured.previewSelector;
   if (
-    plannedArchive.isError ||
-    plannedArchive.structuredContent?.changed !== true ||
-    plannedArchive.structuredContent?.filesRetained !== true
+    workingPlanned.isError ||
+    outcome(workingPlanned).outcome !== "needs_user_confirmation" ||
+    workingPlan?.action !== "create_working" ||
+    workingReviewSummary?.publishEligible !== true ||
+    workingReviewSummary?.canonicalPreviewDecision?.reason !==
+      "default_uploaded_source" ||
+    workingReviewSummary?.canonicalPreviewDecision?.assetPath !==
+      "visuals/source/source-visual.png" ||
+    workingReviewSummary?.validationState?.plotExecution?.status !== "passed" ||
+    workingReviewSummary?.validationState?.plotExecution?.scope !==
+      "synthetic_data" ||
+    workingReviewSummary?.validationState?.upstreamWorkflow?.status !==
+      "not_run" ||
+    workingReviewSummary?.validationState?.scientificValidation?.status !==
+      "not_assessed" ||
+    !workingReviewSummary?.warnings?.some(
+      (warning) => warning.code === "upstream_workflow_not_run",
+    ) ||
+    workingPreviewSelector?.templateId !== workingPlan.templateId ||
+    workingPreviewSelector?.revisionId !== workingPlan.content?.revisionId ||
+    workingPreviewSelector?.contentDigest !== workingPlan.content?.contentDigest
   ) {
-    throw new Error(`template archive smoke call failed: ${JSON.stringify(plannedArchive.content)}`);
+    throw new Error(
+      `direct intake planning omitted the v0.5.2 review summary or selector: ${JSON.stringify(
+        workingStructured,
+      )}`,
+    );
   }
-  const audit = await client.callTool({
-    name: "figure_library_audit",
-    arguments: { scope: "all", includeArchived: true },
+  assertTextFields(
+    workingPlanned,
+    [
+      `PLAN_DIGEST: ${workingPlan.planDigest}`,
+      "ACTION: create_working",
+      "TEMPLATE_ID: smoke-direct-volcano",
+      "BLOCKING_GATES: none",
+      "REVIEW_WARNINGS: upstream_workflow_not_run",
+      "REVIEW_PUBLISH_ELIGIBLE: true",
+      "default_uploaded_source",
+      "synthetic_data",
+    ],
+    "working plan",
+  );
+
+  smokeStep = "working-preview-before-apply";
+  const workingPreview = await client.callTool({
+    name: "figure_library_preview_working_revision",
+    arguments: workingPreviewSelector,
   });
+  const workingPreviewResult = structured(workingPreview);
   if (
-    audit.isError ||
-    audit.structuredContent?.userTemplateCount !== 3 ||
-    !audit.structuredContent?.templates?.some(
-      (item) => item.templateId === plannedTemplateId && item.reviewStatus === "archived",
+    workingPreview.isError ||
+    outcome(workingPreview).code !== "working_preview_ready" ||
+    workingPreviewResult.canonicalPreview !== "visuals/source/source-visual.png" ||
+    workingPreviewResult.visualRole !== "source_reference" ||
+    workingPreviewResult.bytes !== onePixelPng.byteLength ||
+    typeof workingPreviewResult.sha256 !== "string" ||
+    !workingPreview.content?.some((block) => block.type === "image")
+  ) {
+    throw new Error(
+      `planned Working preview did not return the canonical source image: ${JSON.stringify(
+        workingPreview.content,
+      )}`,
+    );
+  }
+  const workingApplyArguments = {
+    planDigest: workingPlan.planDigest,
+    operationId: "smoke-direct-working",
+    expectedAction: workingPlan.action,
+    expectedTemplateId: workingPlan.templateId,
+    expectedSeriesDigest: workingPlan.expectedSeriesDigest,
+  };
+  const workingApplied = await client.callTool({
+    name: "figure_library_apply_working_revision",
+    arguments: workingApplyArguments,
+  });
+  const workingAppliedSummary = structured(workingApplied).reviewSummary;
+  if (
+    workingApplied.isError ||
+    outcome(workingApplied).outcome !== "applied" ||
+    workingAppliedSummary?.canonicalPreviewDecision?.reason !==
+      "default_uploaded_source" ||
+    workingAppliedSummary?.validationState?.plotExecution?.scope !==
+      "synthetic_data" ||
+    !workingAppliedSummary?.warnings?.some(
+      (warning) => warning.code === "upstream_workflow_not_run",
     )
   ) {
-    throw new Error(`user-library audit smoke call failed: ${JSON.stringify(audit.content)}`);
+    throw new Error(`direct intake Apply failed: ${JSON.stringify(workingApplied.content)}`);
+  }
+  const workingReplay = await client.callTool({
+    name: "figure_library_apply_working_revision",
+    arguments: workingApplyArguments,
+  });
+  if (outcome(workingReplay).outcome !== "replayed") {
+    throw new Error("Working Revision operationId replay was not idempotent");
   }
 
-  const resource = await client.readResource({
-    uri: "ui://figure-library/candidates.html",
+  const review = await client.callTool({
+    name: "figure_library_review_open",
+    arguments: { templateId: "smoke-direct-volcano" },
   });
+  const reviewBeforePublish = structured(review);
+  if (
+    review.isError ||
+    outcome(review).outcome !== "ok" ||
+    !reviewBeforePublish.series?.workingHead ||
+    reviewBeforePublish.series?.publishedHead ||
+    !reviewBeforePublish.workingReview ||
+    reviewBeforePublish.publishedReview ||
+    reviewBeforePublish.review?.reviewId !==
+      reviewBeforePublish.workingReview.reviewId ||
+    !reviewBeforePublish.workingReview.warnings?.some(
+      (warning) => warning.code === "upstream_workflow_not_run",
+    ) ||
+    reviewBeforePublish.workingContent?.canonicalPreviewDecision?.reason !==
+      "default_uploaded_source" ||
+    reviewBeforePublish.workingContent?.validationState?.plotExecution?.scope !==
+      "synthetic_data"
+  ) {
+    throw new Error(
+      `Review Workbench did not expose the exact unpublished Working truth: ${JSON.stringify(
+        reviewBeforePublish,
+      )}`,
+    );
+  }
+  assertTextFields(
+    review,
+    [
+      "WORKING_WARNINGS: upstream_workflow_not_run",
+      "PUBLISHED_WARNINGS: none",
+    ],
+    "pre-publish review",
+  );
+
+  smokeStep = "publish";
+  const publishPlanned = await client.callTool({
+    name: "figure_library_plan_publish_working_revision",
+    arguments: { templateId: "smoke-direct-volcano" },
+  });
+  const publishStructured = structured(publishPlanned);
+  const publishPlan = publishStructured.plan;
+  const publishReviewSummary = publishStructured.reviewSummary;
+  if (
+    publishPlanned.isError ||
+    outcome(publishPlanned).outcome !== "needs_user_confirmation" ||
+    publishPlan?.action !== "publish" ||
+    publishReviewSummary?.publishEligible !== true ||
+    publishReviewSummary?.canonicalPreviewDecision?.reason !==
+      "default_uploaded_source" ||
+    publishReviewSummary?.validationState?.plotExecution?.scope !==
+      "synthetic_data" ||
+    !publishReviewSummary?.warnings?.some(
+      (warning) => warning.code === "upstream_workflow_not_run",
+    )
+  ) {
+    throw new Error(`Publish planning failed: ${JSON.stringify(publishPlanned.content)}`);
+  }
+  const published = await client.callTool({
+    name: "figure_library_apply_publish_working_revision",
+    arguments: {
+      planDigest: publishPlan.planDigest,
+      operationId: "smoke-direct-publish",
+      expectedTemplateId: publishPlan.templateId,
+      expectedSeriesDigest: publishPlan.expectedSeriesDigest,
+    },
+  });
+  const publishedStructured = structured(published);
+  if (
+    published.isError ||
+    outcome(published).outcome !== "applied" ||
+    !publishedStructured.result?.releaseId ||
+    publishedStructured.reviewSummary?.canonicalPreviewDecision?.reason !==
+      "default_uploaded_source" ||
+    publishedStructured.reviewSummary?.validationState?.plotExecution?.scope !==
+      "synthetic_data" ||
+    !publishedStructured.reviewSummary?.warnings?.some(
+      (warning) => warning.code === "upstream_workflow_not_run",
+    )
+  ) {
+    throw new Error(`atomic Publish Apply failed: ${JSON.stringify(published.content)}`);
+  }
+
+  smokeStep = "post-publish-review";
+  const postPublishReview = await client.callTool({
+    name: "figure_library_review_open",
+    arguments: { templateId: "smoke-direct-volcano" },
+  });
+  const postPublishStructured = structured(postPublishReview);
+  if (
+    postPublishReview.isError ||
+    outcome(postPublishReview).outcome !== "ok" ||
+    postPublishStructured.series?.workingHead ||
+    !postPublishStructured.series?.publishedHead ||
+    postPublishStructured.workingReview ||
+    !postPublishStructured.publishedReview ||
+    postPublishStructured.review?.reviewId !==
+      postPublishStructured.publishedReview.reviewId ||
+    !postPublishStructured.publishedReview.warnings?.some(
+      (warning) => warning.code === "upstream_workflow_not_run",
+    ) ||
+    postPublishStructured.publishedContent?.canonicalPreviewDecision?.reason !==
+      "default_uploaded_source" ||
+    postPublishStructured.publishedContent?.validationState?.plotExecution?.scope !==
+      "synthetic_data"
+  ) {
+    throw new Error(
+      `post-publish Review lost immutable warnings or state: ${JSON.stringify(
+        postPublishStructured,
+      )}`,
+    );
+  }
+  assertTextFields(
+    postPublishReview,
+    [
+      "WORKING_WARNINGS: none",
+      "PUBLISHED_WARNINGS: upstream_workflow_not_run",
+      "REVIEW_WARNINGS: upstream_workflow_not_run",
+    ],
+    "post-publish review",
+  );
+
+  smokeStep = "unified-search-describe";
+  const unified = await client.callTool({
+    name: "figure_library_search",
+    arguments: {
+      query: "smoke-direct-unique volcano differential expression",
+      dataProfile: "gene log2FC pvalue padj",
+      limit: 6,
+    },
+  });
+  const unifiedCandidates = structured(unified).candidates ?? [];
+  const local = unifiedCandidates.find(
+    (candidate) =>
+      candidate.providerId === "org.scientificfigurelibrary.local" &&
+      candidate.templateId === "smoke-direct-volcano",
+  );
+  if (
+    unified.isError ||
+    outcome(unified).outcome !== "ok" ||
+    !local?.exactSelector ||
+    !unifiedCandidates.some((candidate) => candidate.providerId === "org.figureya.module") ||
+    local.validationState?.plotExecution?.status !== "passed" ||
+    local.validationState?.plotExecution?.scope !== "synthetic_data" ||
+    local.validationState?.upstreamWorkflow?.status !== "not_run" ||
+    local.validationState?.scientificValidation?.status !== "not_assessed" ||
+    local.canonicalPreviewDecision?.reason !== "default_uploaded_source" ||
+    !local.warnings?.includes(
+      "The upstream workflow was not run in this synthetic smoke.",
+    )
+  ) {
+    throw new Error(
+      `ordinary search lost Published Review/canonical/validation truth: ${JSON.stringify(
+        local,
+      )}`,
+    );
+  }
+  assertTextFields(
+    unified,
+    [
+      "plotExecution=passed (scope=synthetic_data)",
+      "upstreamWorkflow=not_run",
+      "scientificValidation=not_assessed",
+      "CANONICAL_PREVIEW: default_uploaded_source",
+      "The upstream workflow was not run in this synthetic smoke.",
+    ],
+    "Published search",
+  );
+
+  const described = await client.callTool({
+    name: "figure_library_describe",
+    arguments: { providerId: local.providerId, exactSelector: local.exactSelector },
+  });
+  const describedStructured = structured(described);
+  if (
+    described.isError ||
+    outcome(described).outcome !== "ok" ||
+    describedStructured.content?.executionStatus !== "passed" ||
+    describedStructured.validationState?.plotExecution?.scope !==
+      "synthetic_data" ||
+    describedStructured.validationState?.upstreamWorkflow?.status !==
+      "not_run" ||
+    describedStructured.validationState?.scientificValidation?.status !==
+      "not_assessed" ||
+    describedStructured.canonicalPreviewDecision?.reason !==
+      "default_uploaded_source" ||
+    !describedStructured.review?.warnings?.some(
+      (warning) => warning.code === "upstream_workflow_not_run",
+    )
+  ) {
+    throw new Error(
+      `exact Local Published describe lost Release-bound truth: ${JSON.stringify(
+        describedStructured,
+      )}`,
+    );
+  }
+  assertTextFields(
+    described,
+    [
+      "PLOT_EXECUTION_STATUS: passed",
+      "PLOT_EXECUTION_SCOPE: synthetic_data",
+      "UPSTREAM_WORKFLOW_STATUS: not_run",
+      "SCIENTIFIC_VALIDATION_STATUS: not_assessed",
+      "default_uploaded_source",
+      "REVIEW_WARNINGS: The upstream workflow was not run in this synthetic smoke.",
+    ],
+    "Published describe",
+  );
+  const previewCapabilities = describedStructured.previewConfirmationCapabilities;
+  if (
+    previewCapabilities?.updateModelContextFallback !== true ||
+    previewCapabilities?.fallbackHandoffMode !== "headless_exact_review" ||
+    previewCapabilities?.fallbackCandidateLimit !== 1
+  ) {
+    throw new Error("describe omitted the single-candidate updateModelContext fallback");
+  }
+
+  const materializeDestination = externalMaterializeDestination
+    ? path.resolve(externalMaterializeDestination)
+    : path.join(smokeRoot, "materialized");
+  smokeStep = "materialization";
+  const materializationWithoutPreview = await client.callTool({
+    name: "figure_library_plan_materialize",
+    arguments: {
+      providerId: local.providerId,
+      exactSelector: local.exactSelector,
+      destination: materializeDestination,
+      allowNetwork: false,
+    },
+  });
+  if (outcome(materializationWithoutPreview).code !== "preview_required") {
+    throw new Error("materialization plan did not fail closed without previewReceipt");
+  }
+  const exactConfirmationPreview = await client.callTool({
+    name: "figure_library_preview_exact_headless",
+    arguments: {
+      resultSetId: structured(unified).resultSetId,
+      providerId: local.providerId,
+      exactSelector: local.exactSelector,
+    },
+  });
+  if (
+    outcome(exactConfirmationPreview).code !== "exact_preview_ready" ||
+    !exactConfirmationPreview.content?.some((block) => block.type === "image") ||
+    typeof structured(exactConfirmationPreview).previewChallenge !== "string" ||
+    typeof structured(exactConfirmationPreview).previewSha256 !== "string"
+  ) {
+    throw new Error("exact confirmation preview omitted image, SHA-256, or challenge");
+  }
+  const headlessConfirmation = await client.callTool({
+    name: "figure_library_confirm_selection_headless",
+    arguments: {
+      previewChallenge: structured(exactConfirmationPreview).previewChallenge,
+    },
+  });
+  if (
+    outcome(headlessConfirmation).code !== "preview_confirmed_headless" ||
+    typeof structured(headlessConfirmation).previewReceipt !== "string"
+  ) {
+    throw new Error("headless confirmation did not issue a previewReceipt");
+  }
+  const materializationPlanned = await client.callTool({
+    name: "figure_library_plan_materialize",
+    arguments: {
+      providerId: local.providerId,
+      exactSelector: local.exactSelector,
+      previewReceipt: structured(headlessConfirmation).previewReceipt,
+      destination: materializeDestination,
+      allowNetwork: false,
+    },
+  });
+  const materializationPlan = structured(materializationPlanned).plan;
+  if (
+    materializationPlanned.isError ||
+    outcome(materializationPlanned).outcome !== "needs_user_confirmation" ||
+    materializationPlan?.written !== false
+  ) {
+    throw new Error(`materialization planning failed: ${JSON.stringify(materializationPlanned.content)}`);
+  }
+  assertTextFields(
+    materializationPlanned,
+    [
+      `PLAN_DIGEST: ${materializationPlan.planDigest}`,
+      `PROVIDER_ID: ${local.providerId}`,
+      `EXACT_SELECTOR: ${JSON.stringify(local.exactSelector)}`,
+      `TARGET: ${materializationPlan.target}`,
+      "ALLOW_NETWORK: false",
+      "SOURCE_PACK_DIR: none",
+    ],
+    "materialization plan",
+  );
+  const materializationArguments = {
+    planDigest: materializationPlan.planDigest,
+    operationId: "smoke-direct-materialize",
+    expectedProviderId: materializationPlan.providerId,
+    expectedTarget: materializationPlan.target,
+  };
+  const materialized = await client.callTool({
+    name: "figure_library_apply_materialize",
+    arguments: materializationArguments,
+  });
+  if (
+    materialized.isError ||
+    outcome(materialized).outcome !== "applied" ||
+    !(await fs.stat(structured(materialized).result.target)).isDirectory()
+  ) {
+    throw new Error(`exact materialization Apply failed: ${JSON.stringify(materialized.content)}`);
+  }
+  const materializationReplay = await client.callTool({
+    name: "figure_library_apply_materialize",
+    arguments: materializationArguments,
+  });
+  if (outcome(materializationReplay).outcome !== "replayed") {
+    throw new Error("materialization operationId replay was not idempotent");
+  }
+  const missingPlan = await client.callTool({
+    name: "figure_library_apply_materialize",
+    arguments: {
+      planDigest: "f".repeat(64),
+      operationId: "smoke-missing-plan",
+      expectedProviderId: local.providerId,
+      expectedTarget: path.join(smokeRoot, "missing-materialization"),
+    },
+  });
+  if (
+    missingPlan.isError ||
+    outcome(missingPlan).outcome !== "blocked" ||
+    outcome(missingPlan).code !== "materialization_plan_not_available"
+  ) {
+    throw new Error("missing materialization plan did not terminate without retry");
+  }
+
+  smokeStep = "bundle-export-import";
+  const bundlePlanned = await client.callTool({
+    name: "figure_library_plan_bundle_export",
+    arguments: {
+      kind: "published_template",
+      templateId: "smoke-direct-volcano",
+      destination: path.join(smokeRoot, "bundles"),
+      targetName: "smoke-published-template",
+    },
+  });
+  const bundlePlan = structured(bundlePlanned).plan;
+  if (
+    bundlePlanned.isError ||
+    outcome(bundlePlanned).outcome !== "needs_user_confirmation" ||
+    !bundlePlan?.planDigest
+  ) {
+    throw new Error(`bundle export planning failed: ${JSON.stringify(bundlePlanned.content)}`);
+  }
+  assertTextFields(
+    bundlePlanned,
+    [
+      `PLAN_DIGEST: ${bundlePlan.planDigest}`,
+      "KIND: published_template",
+      `TARGET: ${path.join(bundlePlan.destination, bundlePlan.targetName)}`,
+    ],
+    "bundle export plan",
+  );
+  const bundleApplied = await client.callTool({
+    name: "figure_library_apply_bundle_export",
+    arguments: {
+      planDigest: bundlePlan.planDigest,
+      operationId: "smoke-template-bundle-export",
+      expectedTarget: path.join(bundlePlan.destination, bundlePlan.targetName),
+    },
+  });
+  if (bundleApplied.isError || outcome(bundleApplied).outcome !== "applied") {
+    throw new Error(`text-only bundle Apply failed: ${JSON.stringify(bundleApplied.content)}`);
+  }
+  const bundleDirectory = structured(bundleApplied).result.target;
+  const importPlanned = await client.callTool({
+    name: "figure_library_plan_template_bundle_import",
+    arguments: {
+      bundleDirectory,
+      targetTemplateId: "smoke-bundle-import",
+      mode: "create",
+    },
+  });
+  const importPlan = structured(importPlanned).plan;
+  const imported = await client.callTool({
+    name: "figure_library_apply_template_bundle_import",
+    arguments: {
+      planDigest: importPlan.planDigest,
+      operationId: "smoke-template-bundle-import",
+    },
+  });
+  if (
+    imported.isError ||
+    outcome(imported).outcome !== "applied" ||
+    structured(imported).authorityInherited !== false
+  ) {
+    throw new Error(`template bundle did not import as a local Working Revision`);
+  }
+
+  smokeStep = "final-status-resource";
+  const finalStatus = await client.callTool({
+    name: "figure_library_source_status",
+    arguments: {},
+  });
+  if (
+    finalStatus.isError ||
+    structured(finalStatus).library?.publishedCount !== 1 ||
+    structured(finalStatus).library?.workingCount !== 1 ||
+    structured(finalStatus).providers?.local?.ordinarySearchScope !== "Published only"
+  ) {
+    throw new Error(`final source status did not preserve Published/Working isolation`);
+  }
+
+  smokeStep = "diagnostics-export";
+  const diagnosticsExport = await client.callTool({
+    name: "figure_library_export_diagnostics",
+    arguments: {},
+  });
+  const diagnostics = structured(diagnosticsExport);
+  if (
+    diagnosticsExport.isError ||
+    outcome(diagnosticsExport).code !== "diagnostics_exported" ||
+    typeof diagnostics.resourceUri !== "string" ||
+    typeof diagnostics.sha256 !== "string" ||
+    !(diagnostics.byteLength > 0) ||
+    "localPath" in diagnostics ||
+    JSON.stringify(diagnostics).match(/events\.jsonl|data:image|previewReceipt|previewChallenge/u)
+  ) {
+    throw new Error("diagnostic export did not return a compact sanitized resource link");
+  }
+  const diagnosticsResource = await client.readResource({ uri: diagnostics.resourceUri });
+  if (
+    diagnosticsResource.contents[0]?.mimeType !== "application/zip" ||
+    typeof diagnosticsResource.contents[0]?.blob !== "string" ||
+    Buffer.from(diagnosticsResource.contents[0].blob, "base64").byteLength !== diagnostics.byteLength
+  ) {
+    throw new Error("diagnostic resource link did not return the generated ZIP bytes");
+  }
+
+  const resource = await client.readResource({ uri: "ui://figure-library/candidates-v0.5.2.html" });
   if (!resource.contents[0]?.mimeType?.startsWith("text/html")) {
     throw new Error("MCP App resource was not returned as HTML");
   }
 
-  const stopped = await client.callTool({
-    name: "figure_library_materialize",
-    arguments: {
-      templateId: "FigureYa59volcanoV2",
-      destination: path.join(smokeRoot, "hard-stop-output"),
-      sourcePackDir: path.join(smokeRoot, "missing-pack"),
-      allowNetwork: false,
-    },
-  });
-  const stopText = stopped.content?.find((item) => item.type === "text")?.text ?? "";
-  const stopNormalized = stopText.toLocaleLowerCase();
-  if (
-    !stopped.isError ||
-    !stopText.startsWith("STOP:") ||
-    !stopNormalized.includes("do not retry") ||
-    !stopNormalized.includes("substitute/demo plot")
-  ) {
-    throw new Error("materialization failure did not enforce the hard-stop policy");
-  }
-
-  let materialized = "";
-  if (materializeAt) {
-    const downloaded = await client.callTool({
-      name: "figure_library_materialize",
-      arguments: {
-        templateId: "FigureYa59volcanoV2",
-        destination: path.resolve(materializeAt),
-        mode: "template",
-        sourcePackDir: process.env.FIGUREYA_SOURCE_PACK_DIR,
-        allowNetwork: !process.env.FIGUREYA_SOURCE_PACK_DIR,
-      },
-    });
-    if (downloaded.isError || !downloaded.structuredContent?.target) {
-      throw new Error(`FigureYa materialization failed: ${JSON.stringify(downloaded.content)}`);
-    }
-    materialized = `; materialized ${downloaded.structuredContent.target}`;
-  }
-
   console.log(
-    `OK: ${names.join(", ")}; Agent review preview; legacy import plus plan/apply/archive/audit lifecycle; diff/upsert/sync; user search/materialization; app resource; hard stop${materialized}`,
+    `OK 0.5.2: ${names.length} standard tools; model/app visibility split; compact search thumbnails; no Capture/project pins; unified providers; direct intake; immutable Publish; preview-confirmed protocol-v2 materialization/replay; sanitized diagnostics resource; portable template bundle/import; terminal anti-loop outcomes${externalMaterializeDestination ? `; materialized ${structured(materialized).result.target}` : ""}`,
   );
+} catch (error) {
+  console.error(`SMOKE_STEP_FAILED: ${smokeStep}`);
+  throw error;
 } finally {
   await client.close().catch(() => undefined);
-  await fs.rm(smokeRoot, { recursive: true, force: true });
+  if (!externalMaterializeDestination) {
+    await fs.rm(smokeRoot, { recursive: true, force: true });
+  } else {
+    // Preserve only the explicitly requested external materialization; remove all smoke fixtures.
+    await fs.rm(smokeRoot, { recursive: true, force: true });
+  }
 }

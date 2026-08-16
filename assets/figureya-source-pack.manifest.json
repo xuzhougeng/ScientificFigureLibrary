@@ -1,6 +1,8 @@
 {
   "schema": "figure-library.source-pack.v1",
   "sourceId": "figureya",
+  "providerId": "org.figureya.module",
+  "archiveIdentity": "legacy-git-blob-sha1",
   "archiveRepository": "https://github.com/ying-ge/FigureYa-compressed",
   "archiveCommit": "7268ae379e6ed49595643fb59d547ce418db0c21",
   "archives": [
