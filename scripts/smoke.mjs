@@ -899,7 +899,7 @@ try {
     throw new Error("diagnostic resource link did not return the generated ZIP bytes");
   }
 
-  const resource = await client.readResource({ uri: "ui://figure-library/candidates-v0.5.3.html" });
+  const resource = await client.readResource({ uri: "ui://figure-library/candidates-v0.5.4.html" });
   if (!resource.contents[0]?.mimeType?.startsWith("text/html")) {
     throw new Error("MCP App resource was not returned as HTML");
   }

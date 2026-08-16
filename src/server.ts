@@ -76,7 +76,7 @@ import {
 
 export const VERSION = "0.5.4";
 export const MATERIALIZATION_PROTOCOL_VERSION = 2;
-const RESOURCE_URI = "ui://figure-library/candidates-v0.5.3.html";
+const RESOURCE_URI = "ui://figure-library/candidates-v0.5.4.html";
 const APP_HTML = path.resolve(import.meta.dirname, "mcp-app.html");
 const HASH = /^[a-f0-9]{64}$/u;
 
