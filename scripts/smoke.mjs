@@ -36,7 +36,7 @@ const childEnvironment = Object.fromEntries(
 );
 childEnvironment.FIGURE_LIBRARY_DIR = libraryDirectory;
 
-const client = new Client({ name: "scientific-figure-library-smoke", version: "0.5.2" });
+const client = new Client({ name: "scientific-figure-library-smoke", version: "0.3.0" });
 const transport = new StdioClientTransport({
   command: process.execPath,
   args: [serverEntry],
@@ -126,7 +126,7 @@ try {
     "figure_library_apply_template_bundle_import",
   ].sort();
   for (const name of required) {
-    if (!names.includes(name)) throw new Error(`missing 0.5.2 tool ${name}`);
+    if (!names.includes(name)) throw new Error(`missing 0.3.0 tool ${name}`);
   }
   if (names.length !== 40 || names.length !== required.length) {
     throw new Error(`expected exactly 40 standard tools, received ${names.length}`);
@@ -145,7 +145,7 @@ try {
     }
   }
   if (names.some((name) => name.startsWith("figure_capture_"))) {
-    throw new Error("standard 0.5.2 server registered an experimental Capture tool");
+    throw new Error("standard 0.3.0 server registered an experimental Capture tool");
   }
   for (const forbidden of [
     "figure_library_project_status",
@@ -161,9 +161,9 @@ try {
     opened.isError ||
     outcome(opened).outcome !== "ok" ||
     outcome(opened).nextAction !== "ask_user" ||
-    structured(opened).libraryVersion !== "0.5.2"
+    structured(opened).libraryVersion !== "0.3.0"
   ) {
-    throw new Error("open did not report the 0.5.2 direct-intake workbench");
+    throw new Error("open did not report the 0.3.0 direct-intake workbench");
   }
 
   smokeStep = "initial-status";
@@ -174,7 +174,7 @@ try {
   if (
     initialStatus.isError ||
     outcome(initialStatus).outcome !== "ok" ||
-    structured(initialStatus).serverVersion !== "0.5.2" ||
+    structured(initialStatus).serverVersion !== "0.3.0" ||
     structured(initialStatus).standardCore?.captureToolsRegistered !== false ||
     structured(initialStatus).standardCore?.projectPinToolsRegistered !== false
   ) {
@@ -183,7 +183,7 @@ try {
   assertTextFields(
     initialStatus,
     [
-      "SERVER_VERSION: 0.5.2",
+      "SERVER_VERSION: 0.3.0",
       `LIBRARY_ROOT: ${libraryDirectory}`,
       "LIBRARY_SOURCE: FIGURE_LIBRARY_DIR",
       "CAPTURE_TOOLS_REGISTERED: false",
@@ -271,7 +271,7 @@ try {
       mode: "create",
       templateId: "smoke-direct-volcano",
       title: "smoke-direct-unique volcano reference",
-      description: "A user-confirmed image/code Figure Unit for the 0.5.2 stdio smoke.",
+      description: "A user-confirmed image/code Figure Unit for the 0.3.0 stdio smoke.",
       tags: ["smoke-direct-unique", "volcano"],
       visualProfile: "volcano scatter x log2FC y negative log10 adjusted p value",
       dataProfile: "gene log2FC pvalue padj",
@@ -388,7 +388,7 @@ try {
     workingPreviewSelector?.contentDigest !== workingPlan.content?.contentDigest
   ) {
     throw new Error(
-      `direct intake planning omitted the v0.5.2 review summary or selector: ${JSON.stringify(
+      `direct intake planning omitted the v0.3.0 review summary or selector: ${JSON.stringify(
         workingStructured,
       )}`,
     );
@@ -899,13 +899,13 @@ try {
     throw new Error("diagnostic resource link did not return the generated ZIP bytes");
   }
 
-  const resource = await client.readResource({ uri: "ui://figure-library/candidates-v0.5.2.html" });
+  const resource = await client.readResource({ uri: "ui://figure-library/candidates-v0.3.0.html" });
   if (!resource.contents[0]?.mimeType?.startsWith("text/html")) {
     throw new Error("MCP App resource was not returned as HTML");
   }
 
   console.log(
-    `OK 0.5.2: ${names.length} standard tools; model/app visibility split; compact search thumbnails; no Capture/project pins; unified providers; direct intake; immutable Publish; preview-confirmed protocol-v2 materialization/replay; sanitized diagnostics resource; portable template bundle/import; terminal anti-loop outcomes${externalMaterializeDestination ? `; materialized ${structured(materialized).result.target}` : ""}`,
+    `OK 0.3.0: ${names.length} standard tools; model/app visibility split; compact search thumbnails; no Capture/project pins; unified providers; direct intake; immutable Publish; preview-confirmed protocol-v2 materialization/replay; sanitized diagnostics resource; portable template bundle/import; terminal anti-loop outcomes${externalMaterializeDestination ? `; materialized ${structured(materialized).result.target}` : ""}`,
   );
 } catch (error) {
   console.error(`SMOKE_STEP_FAILED: ${smokeStep}`);

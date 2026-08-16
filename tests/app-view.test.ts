@@ -86,7 +86,7 @@ function candidate(
 function searchResult(candidates: Candidate[]): SearchResult {
   return {
     query: "柱状图 bar chart",
-    libraryVersion: "0.5.2",
+    libraryVersion: "0.3.0",
     materializationProtocolVersion: 2,
     intentFamilies: ["bar"],
     reviewRequired: true,

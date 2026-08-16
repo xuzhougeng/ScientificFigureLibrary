@@ -201,7 +201,7 @@ test("standard server unifies Local Published and FigureYa while hiding Working/
     // still omit serverTools, so updateModelContext must be able to hand the
     // selected candidate to the model-visible headless preview/confirm tools.
     const client = new Client(
-      { name: "server-integration-test", version: "0.5.2" },
+      { name: "server-integration-test", version: "0.3.0" },
       {
         capabilities: {
           extensions: {
@@ -595,7 +595,7 @@ test("standard server unifies Local Published and FigureYa while hiding Working/
         arguments: {},
       });
       const statusStructured = record(status.structuredContent);
-      assert.equal(statusStructured.serverVersion, "0.5.2");
+      assert.equal(statusStructured.serverVersion, "0.3.0");
       const libraryStatus = record(statusStructured.library);
       const marker = await readLibraryRootMarker(libraryRoot);
       assert.ok(marker);
@@ -612,7 +612,7 @@ test("standard server unifies Local Published and FigureYa while hiding Working/
       assert.equal(standardCore.flatEntriesInOrdinarySearch, false);
       const text = toolText(status);
       for (const field of [
-        "SERVER_VERSION: 0.5.2",
+        "SERVER_VERSION: 0.3.0",
         `LIBRARY_ROOT: ${libraryRoot}`,
         `LIBRARY_ID: ${marker.value.libraryId}`,
         "PUBLISHED: 5",
@@ -660,7 +660,7 @@ test("standard server unifies Local Published and FigureYa while hiding Working/
       await fs.writeFile(blockedDiagnosticsPath, "fixture");
       process.env.SFL_DIAGNOSTICS_DIR = blockedDiagnosticsPath;
       const otherServer = await createServer();
-      const otherClient = new Client({ name: "server-isolation-test", version: "0.5.2" });
+      const otherClient = new Client({ name: "server-isolation-test", version: "0.3.0" });
       const [otherClientTransport, otherServerTransport] =
         InMemoryTransport.createLinkedPair();
       await otherServer.connect(otherServerTransport);

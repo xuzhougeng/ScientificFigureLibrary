@@ -38,6 +38,17 @@ function toolText(value: unknown) {
     .join("\n");
 }
 
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&");
+}
+
+function pathLinePattern(label: string, filePath: string) {
+  const variants = new Set([filePath]);
+  if (filePath.startsWith("/var/")) variants.add(`/private${filePath}`);
+  if (filePath.startsWith("/private/var/")) variants.add(filePath.slice("/private".length));
+  return new RegExp(`${label}: (?:${[...variants].map(escapeRegExp).join("|")})`, "u");
+}
+
 function fixtureCandidate(): VersionedTemplateCandidate {
   return {
     title: "Portable bundle MCP fixture",
@@ -192,10 +203,7 @@ test("text-only hosts can export and import an exact template using cached planD
       record(record(importPlanned.structuredContent).envelope).outcome,
       "needs_user_confirmation",
     );
-    assert.match(
-      toolText(importPlanned),
-      new RegExp(`BUNDLE_DIRECTORY: ${bundleDirectory.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&")}`, "u"),
-    );
+    assert.match(toolText(importPlanned), pathLinePattern("BUNDLE_DIRECTORY", bundleDirectory));
     assert.match(toolText(importPlanned), /BUNDLE_INVENTORY_DIGEST: [a-f0-9]{64}/u);
     assert.match(toolText(importPlanned), /SOURCE_LIBRARY_ID: [0-9a-f-]{36}/u);
     assert.match(toolText(importPlanned), /SOURCE_PUBLISHED_SELECTOR: .*"templateId":"bundle-mcp-source"/u);
@@ -280,12 +288,9 @@ test("full backup Fork uses cached planDigest and missing cache is terminal", as
       },
     });
     const forkPlan = record(record(forkPlanned.structuredContent).plan);
-    assert.match(
-      toolText(forkPlanned),
-      new RegExp(`BUNDLE_DIRECTORY: ${bundleDirectory.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&")}`, "u"),
-    );
+    assert.match(toolText(forkPlanned), pathLinePattern("BUNDLE_DIRECTORY", bundleDirectory));
     assert.match(toolText(forkPlanned), /BUNDLE_INVENTORY_DIGEST: [a-f0-9]{64}/u);
-    assert.match(toolText(forkPlanned), new RegExp(`TARGET_DIRECTORY: ${targetDirectory.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&")}`, "u"));
+    assert.match(toolText(forkPlanned), pathLinePattern("TARGET_DIRECTORY", targetDirectory));
     const forkApplied = await connection.client.callTool({
       name: "figure_library_apply_full_restore",
       arguments: {

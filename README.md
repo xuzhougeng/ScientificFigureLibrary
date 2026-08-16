@@ -17,13 +17,12 @@ The standard core has two retrieval providers:
 provider-qualified and carry an `exactSelector`; a bare `templateId` is never
 enough to describe, preview, or materialize an exact result.
 
-> **0.5.1 protocol migration (still required in 0.5.2):** 0.5.1 deliberately
-> broke the 0.5.0 materialization-plan input. `figure_library_plan_materialize`
-> still requires a session-local, single-use `previewReceipt` produced only
-> after an exact preview and explicit confirmation. Old callers must adopt
-> protocol v2; there is no receipt-free compatibility path.
+> **0.3.0 materialization protocol v2:** `figure_library_plan_materialize`
+> requires a session-local, single-use `previewReceipt` produced only
+> after an exact preview and explicit confirmation. There is no receipt-free
+> compatibility path.
 >
-> **0.5.2 review truthfulness:** Working preview now has its own exact read-only
+> **0.3.0 review truthfulness:** Working preview now has its own exact read-only
 > selector; Working and Published Reviews are reported separately; Published
 > warnings remain bound to their immutable Release; canonical preview choices
 > and the three-part validation state are exposed consistently across review,
@@ -244,7 +243,7 @@ Canonical preview selection is deterministic:
   `user_override_rendered`; without it the plan returns
   `canonical_preview_override_required`.
 
-This 0.5.2 boundary is intentionally Host-governed: the Host must include the
+This 0.3.0 boundary is intentionally Host-governed: the Host must include the
 uploaded original in `visualAssets` as `source_reference`. The Server verifies
 declared assets but does not receive a separate upload manifest, so it cannot
 detect that a Host omitted an original entirely. No digest-declaration hard
@@ -402,7 +401,7 @@ handoff remains disabled with an explicit capability error.
 `figure_library_describe` publishes these App/headless tool names, the
 component thumbnail `_meta` key, the model-image exclusion flag, receipt gate,
 and diagnostics export/resource capabilities so Hosts can inspect the exact
-0.5.2 boundary without guessing.
+0.3.0 boundary without guessing.
 
 `figure_library_preview` remains a compatibility tool that returns/copies one
 standard MCP image, but it never authorizes materialization and must not be
@@ -570,7 +569,7 @@ SHA-256 values, total payload bytes, scope, and redaction mode. Image bytes,
 Data URLs, selectors, preview challenges/receipts, plan tokens, credentials,
 cookies, environment variables, conversation/free text, source assets, and
 sensitive paths are excluded or redacted. `includeUserText` is accepted for
-forward compatibility, but 0.5.2 does not collect conversation/free text and
+forward compatibility, but 0.3.0 does not collect conversation/free text and
 therefore still records `userTextIncluded: false`. Absolute paths appear only
 when the user explicitly sets `includeAbsolutePaths: true`.
 
@@ -605,7 +604,7 @@ Build a standalone npm package:
 
 ```bash
 npm run package:npm
-npm install --global ./release/scientific-figure-library-0.5.2.tgz
+npm install --global ./release/scientific-figure-library-0.3.0.tgz
 ```
 
 Use `scientific-figure-library` as the MCP command after installation.
@@ -616,7 +615,7 @@ Build the Wisp plugin:
 npm run package:wisp
 ```
 
-Install `release/scientific-figure-library-wisp-0.5.2.zip` from Wisp
+Install `release/scientific-figure-library-wisp-0.3.0.zip` from Wisp
 **Settings → Plugins**, enable it, and start a fresh session. The Wisp bundle is
 an adapter around the same standard MCP server; global Library selection is not
 tied to a Wisp project.
@@ -652,7 +651,7 @@ npm run package:source-pack -- \
 
 The helper verifies selected ZIP identities and caps a transport pack at 200
 MiB. Extract the resulting
-`release/figure-library-source-pack-volcano-0.5.2.zip` before use.
+`release/figure-library-source-pack-volcano-0.3.0.zip` before use.
 
 ## Catalog development
 

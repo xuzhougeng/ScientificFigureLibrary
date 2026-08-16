@@ -200,7 +200,7 @@ rendered output while any source exists requires a user-confirmed reason.
 Legacy content without `canonicalPreviewDecision` remains readable.
 
 The Host must declare every uploaded original as a `source_reference` in
-`visualAssets`. Version 0.5.2 has no separate upload digest manifest, so the
+`visualAssets`. Version 0.3.0 has no separate upload digest manifest, so the
 Server cannot detect an original that the Host omitted entirely.
 
 `figure-library.validation-state.v1` separates:
