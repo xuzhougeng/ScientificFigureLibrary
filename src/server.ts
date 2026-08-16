@@ -74,7 +74,7 @@ import {
   type TemplateReleaseV1,
 } from "./versioned-library.ts";
 
-export const VERSION = "0.5.3";
+export const VERSION = "0.5.4";
 export const MATERIALIZATION_PROTOCOL_VERSION = 2;
 const RESOURCE_URI = "ui://figure-library/candidates-v0.5.3.html";
 const APP_HTML = path.resolve(import.meta.dirname, "mcp-app.html");
@@ -345,6 +345,7 @@ async function localCandidates(
           templateId: item.templateId,
           title: item.title,
           description: item.description,
+          scientificQuestion: item.scientificQuestion,
           application: item.visualProfile,
           dataProfile: item.dataProfile,
           inputFiles: [],
@@ -395,6 +396,7 @@ async function localCandidates(
         warnings: [...new Set(review.warnings.map((warning) => warning.message))],
         excerpt: item.description.slice(0, 420),
         description: item.description,
+        ...(item.scientificQuestion ? { scientificQuestion: item.scientificQuestion } : {}),
         application: item.visualProfile,
         dataProfile: item.dataProfile,
         inputFiles: content.assets
@@ -727,7 +729,7 @@ export async function createServer() {
       const responseEnvelope = outcome(
         "ok",
         "library_ready",
-        "Scientific Figure Library 0.5.3 is ready. Standard core uses direct user-confirmed image/code intake; Web Capture and project pins are not registered. Ask for a plotting goal before searching.",
+        "Scientific Figure Library 0.5.4 is ready. Standard core uses direct user-confirmed image/code intake; Web Capture and project pins are not registered. Ask for a plotting goal before searching.",
         "ask_user",
       );
       return terminal(responseEnvelope, {

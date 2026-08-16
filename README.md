@@ -28,6 +28,8 @@ enough to describe, preview, or materialize an exact result.
 > and the three-part validation state are exposed consistently across review,
 > planning, search, and details.
 >
+> **0.5.4 scientificQuestion:** optional retrieval field for the biological question a figure answers. It is not `description` or `visualProfile`, and ordinary search still returns only Local Published heads.
+
 > **0.5.3 transport image adapter:** MCP image payloads are adapted to the
 > existing search and preview Data URL budgets before they leave the server.
 > Canonical Preview bytes, Revision Content Digests, and `previewSha256` remain
