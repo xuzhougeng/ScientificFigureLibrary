@@ -3,16 +3,17 @@ name: figure-library
 description: Build, review, search, select, and materialize immutable scientific-figure references from one global Local Published library and FigureYa.
 ---
 
-# Scientific Figure Library 0.5.3
+# Scientific Figure Library 0.5.4
 
 Use this Skill when a user wants to store an uploaded figure/code pair, review
 or publish a local template, search for a plotting reference, or materialize an
 exact template into a project.
 
-Version 0.5.3 retains materialization protocol v2 and the 0.5.2 review
-truthfulness contract, and adds a server-side transport image adapter so search
-and preview stay within Data URL budgets without changing Canonical Preview
-bytes. There is no receipt-free 0.5.0 materialization plan path.
+Version 0.5.4 keeps the 0.5.3 transport image adapter and review contract, and
+adds optional `scientificQuestion` for retrieval. That field is why the figure
+is worth drawing; it is not `description` or `visualProfile`. Ordinary search
+still returns only Local Published heads. There is no receipt-free 0.5.0
+materialization plan path.
 
 ## Non-negotiable boundaries
 

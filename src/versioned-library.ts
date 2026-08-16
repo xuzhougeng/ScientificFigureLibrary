@@ -201,6 +201,7 @@ export interface VersionedTemplateCandidate {
   tags?: string[];
   visualProfile?: string;
   dataProfile?: string;
+  scientificQuestion?: string;
   packages?: string[];
   license?: string;
   assetKind: VersionedAssetKind;
@@ -295,6 +296,7 @@ export interface TemplateContentV1 {
   tags: string[];
   visualProfile: string;
   dataProfile: string;
+  scientificQuestion?: string;
   packages: string[];
   license: string;
   assetKind: VersionedAssetKind;
@@ -1333,6 +1335,9 @@ async function prepareCandidate(options: {
     tags: uniqueStrings(candidate.tags, "tags"),
     visualProfile: normalizedText(candidate.visualProfile),
     dataProfile: normalizedText(candidate.dataProfile),
+    ...(normalizedText(candidate.scientificQuestion)
+      ? { scientificQuestion: normalizedText(candidate.scientificQuestion) }
+      : {}),
     packages: uniqueStrings(candidate.packages, "packages"),
     license: normalizedText(candidate.license) || "unspecified",
     assetKind: candidate.assetKind,
@@ -1763,6 +1768,7 @@ export interface PublishedVersionedTemplateCandidate {
   tags: string[];
   visualProfile: string;
   dataProfile: string;
+  scientificQuestion?: string;
   packages: string[];
   license: string;
   assetKind: VersionedAssetKind;
@@ -1874,6 +1880,7 @@ interface LegacyTemplateV1 {
   tags: string[];
   visualProfile: string;
   dataProfile: string;
+  scientificQuestion?: string;
   packages: string[];
   license: string;
   importedAt: string;
@@ -1991,6 +1998,10 @@ function validateContentValue(
   assertString(value.title, "content title");
   for (const field of ["description", "visualProfile", "dataProfile", "license", "language", "plotFamily"] as const) {
     if (typeof value[field] !== "string") throw new Error(`invalid content ${field}`);
+  }
+  if (value.scientificQuestion !== undefined) {
+    if (typeof value.scientificQuestion !== "string") throw new Error("invalid content scientificQuestion");
+    if (value.scientificQuestion.length > 2000) throw new Error("scientificQuestion exceeds 2000 characters");
   }
   assertStringArray(value.tags, "content tags");
   assertStringArray(value.packages, "content packages");
@@ -2369,6 +2380,9 @@ function parseLegacyTemplate(value: unknown, expectedTemplateId: string): Legacy
   for (const field of ["title", "description", "visualProfile", "dataProfile", "license", "importedAt"] as const) {
     if (typeof value[field] !== "string") throw new Error(`invalid legacy ${field}`);
   }
+  if (value.scientificQuestion !== undefined && typeof value.scientificQuestion !== "string") {
+    throw new Error("invalid legacy scientificQuestion");
+  }
   assertStringArray(value.tags, "legacy tags");
   assertStringArray(value.packages, "legacy packages");
   if (!Array.isArray(value.code)) throw new Error("invalid legacy code files");
@@ -2745,6 +2759,7 @@ export class VersionedTemplateLibrary {
         tags: [...content.tags],
         visualProfile: content.visualProfile,
         dataProfile: content.dataProfile,
+        ...(content.scientificQuestion ? { scientificQuestion: content.scientificQuestion } : {}),
         packages: [...content.packages],
         license: content.license,
         assetKind: content.assetKind,
@@ -3633,6 +3648,7 @@ export class VersionedTemplateLibrary {
       tags: legacy.tags,
       visualProfile: legacy.visualProfile,
       dataProfile: legacy.dataProfile,
+      ...(legacy.scientificQuestion ? { scientificQuestion: legacy.scientificQuestion } : {}),
       packages: legacy.packages,
       license: legacy.license,
       assetKind,

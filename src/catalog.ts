@@ -284,6 +284,7 @@ export interface SearchableTemplate {
   templateId: string;
   title: string;
   description: string;
+  scientificQuestion?: string;
   application: string;
   dataProfile: string;
   inputFiles: string[];
@@ -405,6 +406,12 @@ export function scoreSearchableTemplate(
       embedded: false,
     },
     {
+      name: "科学问题",
+      value: normalizeSearchText(template.scientificQuestion ?? ""),
+      weight: 7,
+      embedded: false,
+    },
+    {
       name: "视觉特征",
       value: normalizeSearchText(template.application),
       weight: 3,
@@ -444,7 +451,7 @@ export function scoreSearchableTemplate(
   const identifier = fields[0].value;
   const compactTemplateId = normalizeSearchText(template.templateId).replace(/[^a-z0-9]+/gu, "");
   const description = fields[2].value;
-  const application = fields[3].value;
+  const application = fields[4].value;
   const familyMatches = [];
   for (const familyId of intent.families) {
     const family = FIGURE_FAMILIES.find((item) => item.id === familyId);

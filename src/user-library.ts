@@ -104,6 +104,7 @@ function isUserTemplate(value: unknown): value is UserTemplate {
     typeof item.description === "string" &&
     typeof item.visualProfile === "string" &&
     typeof item.dataProfile === "string" &&
+    (item.scientificQuestion === undefined || typeof item.scientificQuestion === "string") &&
     typeof item.license === "string" &&
     typeof item.importedAt === "string" &&
     Array.isArray(item.tags) &&
@@ -221,6 +222,7 @@ function userCandidate(
     warnings,
     excerpt: template.description.slice(0, 420),
     description: template.description,
+    ...(template.scientificQuestion ? { scientificQuestion: template.scientificQuestion } : {}),
     application: template.visualProfile,
     dataProfile: template.dataProfile,
     inputFiles: (template.references ?? [])
@@ -415,6 +417,7 @@ function templateSummary(template: UserTemplate) {
     tags: [...template.tags].sort(),
     visualProfile: template.visualProfile,
     dataProfile: template.dataProfile,
+    scientificQuestion: template.scientificQuestion ?? "",
     packages: [...template.packages].sort(),
     license: template.license,
     assetKind: templateAssetKind(template),
@@ -439,6 +442,7 @@ function preparedSummary(prepared: PreparedTemplate) {
     tags: [...prepared.tags].sort(),
     visualProfile: prepared.visualProfile,
     dataProfile: prepared.dataProfile,
+    scientificQuestion: prepared.scientificQuestion ?? "",
     packages: [...prepared.packages].sort(),
     license: prepared.license,
     assetKind: prepared.assetKind,
@@ -1198,6 +1202,7 @@ export class UserTemplateLibrary {
       tags: prepared.tags,
       visualProfile: prepared.visualProfile,
       dataProfile: prepared.dataProfile,
+      ...(prepared.scientificQuestion ? { scientificQuestion: prepared.scientificQuestion } : {}),
       packages: prepared.packages,
       license: prepared.license,
       importedAt: existing?.template.importedAt ?? now,
@@ -2024,6 +2029,7 @@ export class UserTemplateLibrary {
             templateId: template.templateId,
             title: template.title,
             description: template.description,
+            scientificQuestion: template.scientificQuestion,
             application: template.visualProfile,
             dataProfile: template.dataProfile,
             inputFiles: (template.references ?? [])

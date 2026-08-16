@@ -241,6 +241,7 @@ export interface TemplateCandidate {
   warnings: string[];
   excerpt: string;
   description: string;
+  scientificQuestion?: string;
   application: string;
   dataProfile: string;
   inputFiles: string[];
@@ -324,6 +325,7 @@ export interface UserTemplate {
   tags: string[];
   visualProfile: string;
   dataProfile: string;
+  scientificQuestion?: string;
   packages: string[];
   license: string;
   importedAt: string;
@@ -347,6 +349,7 @@ export interface UserTemplateImport {
   tags?: string[];
   visualProfile?: string;
   dataProfile?: string;
+  scientificQuestion?: string;
   packages?: string[];
   license?: string;
   assetKind?: AssetKind;

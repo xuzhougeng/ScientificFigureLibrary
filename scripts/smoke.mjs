@@ -161,9 +161,9 @@ try {
     opened.isError ||
     outcome(opened).outcome !== "ok" ||
     outcome(opened).nextAction !== "ask_user" ||
-    structured(opened).libraryVersion !== "0.5.3"
+    structured(opened).libraryVersion !== "0.5.4"
   ) {
-    throw new Error("open did not report the 0.5.3 direct-intake workbench");
+    throw new Error("open did not report the 0.5.4 direct-intake workbench");
   }
 
   smokeStep = "initial-status";
@@ -174,7 +174,7 @@ try {
   if (
     initialStatus.isError ||
     outcome(initialStatus).outcome !== "ok" ||
-    structured(initialStatus).serverVersion !== "0.5.3" ||
+    structured(initialStatus).serverVersion !== "0.5.4" ||
     structured(initialStatus).standardCore?.captureToolsRegistered !== false ||
     structured(initialStatus).standardCore?.projectPinToolsRegistered !== false
   ) {
@@ -183,7 +183,7 @@ try {
   assertTextFields(
     initialStatus,
     [
-      "SERVER_VERSION: 0.5.3",
+      "SERVER_VERSION: 0.5.4",
       `LIBRARY_ROOT: ${libraryDirectory}`,
       "LIBRARY_SOURCE: FIGURE_LIBRARY_DIR",
       "CAPTURE_TOOLS_REGISTERED: false",
