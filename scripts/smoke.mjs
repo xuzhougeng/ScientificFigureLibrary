@@ -98,6 +98,8 @@ try {
     "figure_library_source_status",
     "figure_library_plan_bind_global",
     "figure_library_apply_bind_global",
+    "figure_library_plan_bind_workspace",
+    "figure_library_apply_bind_workspace",
     "figure_library_plan_recover_write_lock",
     "figure_library_apply_recover_write_lock",
     "figure_library_review_open",
@@ -128,8 +130,8 @@ try {
   for (const name of required) {
     if (!names.includes(name)) throw new Error(`missing 0.5.3 tool ${name}`);
   }
-  if (names.length !== 40 || names.length !== required.length) {
-    throw new Error(`expected exactly 40 standard tools, received ${names.length}`);
+  if (names.length !== 42 || names.length !== required.length) {
+    throw new Error(`expected exactly 42 standard tools, received ${names.length}`);
   }
   for (const [toolName, visibility] of [
     ["figure_library_search", "model"],

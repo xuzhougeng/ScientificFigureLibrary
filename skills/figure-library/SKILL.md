@@ -74,7 +74,22 @@ for user-visible App preview.
 
 Call `figure_library_source_status` when the effective Library is unknown. It
 reports the global root/source, locator, `libraryId`, write status, lifecycle
-counts, write lock, Local Published provider, and FigureYa provider.
+counts, write lock, Local Published provider, FigureYa provider, and Local
+workspace confirmation.
+
+This machine has two roots. They are cross-project and are not inferred from
+the current Wisp cwd:
+
+- Published Library: immutable search/publish store
+- Local workspace: pre-publish inbox/drafts/gallery knowledge base
+
+If `WORKSPACE_CONFIRMED` is false, this machine has never bound a Local
+workspace. Ask once for an absolute directory (do not use the current project
+folder unless the user names it). Call `figure_library_plan_bind_workspace`,
+show the plan, then `figure_library_apply_bind_workspace` after approval.
+Later MCP starts reuse that locator silently. Rebind only when the user asks
+or the bound directory is missing/invalid.
+
 
 If writing is disabled or the user wants another Library:
 
@@ -312,6 +327,12 @@ anything during preview.
   then use the same headless preview/confirmation sequence for one selected
   candidate. Both headless routes cannot prove that the user actually saw an
   App image; say so in any acceptance report.
+
+If App `updateModelContext` reports `handoffMode=agent_plot_set`, the user
+selected 1..N templates to draw. Plot every `selectedCandidates` item in the
+current science project. Keep each `providerId` and `exactSelector`
+unchanged. Do not plot only the first item, do not inspect unselected
+candidates, and do not publish. Materialize or load each template separately.
 
 Both paths return a session-local, opaque, single-use `previewReceipt` bound to
 the exact result set, provider, selector digest, preview hash, catalog/Library

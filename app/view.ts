@@ -27,6 +27,7 @@ export interface Candidate {
   warnings: string[];
   excerpt: string;
   description: string;
+  scientificQuestion?: string;
   application?: string;
   dataProfile?: string;
   inputFiles: string[];
@@ -302,6 +303,8 @@ export function renderCandidateCards(options: {
   cards: HTMLElement;
   empty: HTMLElement;
   result: SearchResult;
+  selectedIds?: Set<string>;
+  onToggleSelect?: (candidate: Candidate, selected: boolean) => void;
   onDetail: (
     candidate: Candidate,
     elements: CandidateElements,
@@ -315,6 +318,15 @@ export function renderCandidateCards(options: {
   for (const candidate of result.candidates) {
     const card = element(document, "article", "card");
     card.dataset.candidateId = candidate.candidateId;
+    const selectLabel = element(document, "label", "candidate-select");
+    const selectBox = document.createElement("input");
+    selectBox.type = "checkbox";
+    selectBox.className = "candidate-select-input";
+    selectBox.checked = Boolean(options.selectedIds?.has(candidate.candidateId));
+    selectBox.setAttribute("aria-label", `选择 ${candidate.title} 交给 Agent 绘制`);
+    selectBox.addEventListener("click", (event) => event.stopPropagation());
+    selectBox.addEventListener("change", () => options.onToggleSelect?.(candidate, selectBox.checked));
+    selectLabel.append(selectBox, document.createTextNode("选择"));
     const previewButton = button(
       document,
       "preview preview-button",
@@ -365,7 +377,7 @@ export function renderCandidateCards(options: {
     titleButton.addEventListener("click", () => open(titleButton));
     detailButton.addEventListener("click", () => open(detailButton));
     content.append(detailButton);
-    card.append(previewButton, content);
+    card.append(selectLabel, previewButton, content);
     cards.append(card);
   }
 }
@@ -504,4 +516,19 @@ export function openCandidateDetail(options: {
   else dialog.setAttribute("open", "");
   queueMicrotask(() => closeButton.focus());
   return elements;
+}
+
+export function renderPlotSetBar(options: {
+  bar: HTMLElement;
+  submit: HTMLButtonElement;
+  countLabel: HTMLElement;
+  selectedCount: number;
+  canSubmit: boolean;
+}) {
+  const { bar, submit, countLabel, selectedCount, canSubmit } = options;
+  bar.hidden = false;
+  countLabel.textContent = `已选 ${selectedCount} 个模板`;
+  submit.disabled = !canSubmit || selectedCount < 1 || selectedCount > 8;
+  submit.textContent =
+    selectedCount > 8 ? "最多选择 8 个模板" : `交给 Agent 绘制（${selectedCount}）`;
 }

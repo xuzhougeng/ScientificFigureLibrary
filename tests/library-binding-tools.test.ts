@@ -121,3 +121,66 @@ test("text-only hosts can bind the global Library using cached planDigest", asyn
     await fs.rm(root, { recursive: true, force: true });
   }
 });
+
+
+test("text-only hosts can bind a Local workspace using cached planDigest", async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "sfl-workspace-bind-tools-"));
+  const priorConfig = process.env.XDG_CONFIG_HOME;
+  const priorOverride = process.env.FIGURE_WORKSPACE_DIR;
+  process.env.XDG_CONFIG_HOME = path.join(root, "config");
+  delete process.env.FIGURE_WORKSPACE_DIR;
+  const workspaceDirectory = path.join(root, "local-workspace");
+  const runtime = new LibraryRuntime();
+  const { WorkspaceRuntime } = await import("../src/workspace-runtime.ts");
+  const workspaceRuntime = new WorkspaceRuntime();
+  const contexts = new Map<string, CurrentLibraryContext>();
+  const currentLibraries = async () => {
+    const snapshot = await runtime.current();
+    const existing = contexts.get(snapshot.contextKey);
+    if (existing) return existing;
+    const context = {
+      snapshot,
+      versionedLibrary: new VersionedTemplateLibrary(snapshot),
+    };
+    contexts.set(snapshot.contextKey, context);
+    return context;
+  };
+  const server = new McpServer({ name: "Workspace bind test", version: "0.5.4" });
+  registerLibraryBindingTools({ server, runtime, workspaceRuntime, currentLibraries });
+  const client = new Client({ name: "workspace-bind-test", version: "0.5.4" });
+  const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+  await server.connect(serverTransport);
+  await client.connect(clientTransport);
+  try {
+    const relative = await client.callTool({
+      name: "figure_library_plan_bind_workspace",
+      arguments: { workspaceDirectory: "relative-workspace" },
+    });
+    assert.equal(record(record(relative.structuredContent).envelope).code, "absolute_workspace_directory_required");
+
+    const planned = await client.callTool({
+      name: "figure_library_plan_bind_workspace",
+      arguments: { workspaceDirectory },
+    });
+    const plan = record(record(planned.structuredContent).plan);
+    const planDigest = String(plan.planDigest);
+    assert.equal(record(record(planned.structuredContent).envelope).outcome, "needs_user_confirmation");
+    const applied = await client.callTool({
+      name: "figure_library_apply_bind_workspace",
+      arguments: { planDigest, operationId: "workspace-bind-1" },
+    });
+    assert.equal(record(record(applied.structuredContent).envelope).outcome, "applied");
+    const snapshot = await workspaceRuntime.current();
+    assert.equal(snapshot.confirmed, true);
+    assert.equal(snapshot.directory, workspaceDirectory);
+    await fs.stat(path.join(workspaceDirectory, "drafts"));
+    await fs.stat(path.join(workspaceDirectory, "gallery"));
+  } finally {
+    await client.close();
+    await server.close();
+    if (priorConfig === undefined) delete process.env.XDG_CONFIG_HOME;
+    else process.env.XDG_CONFIG_HOME = priorConfig;
+    if (priorOverride === undefined) delete process.env.FIGURE_WORKSPACE_DIR;
+    else process.env.FIGURE_WORKSPACE_DIR = priorOverride;
+  }
+});

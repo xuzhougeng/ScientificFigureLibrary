@@ -23,6 +23,7 @@ import {
   type ToolOutcomeEnvelope,
 } from "./library-binding-tools.ts";
 import { LibraryRuntime, readLibraryRootMarker } from "./library-runtime.ts";
+import { WorkspaceRuntime } from "./workspace-runtime.ts";
 import { registerLifecycleTools } from "./lifecycle-tools.ts";
 import { inspectFigureYaSourcePack } from "./materialize.ts";
 import { registerMaterializationTools } from "./materialization-tools.ts";
@@ -466,7 +467,7 @@ function candidateText(candidates: TemplateCandidate[]) {
         ? [`   WARNINGS: ${candidate.warnings.join("; ")}`]
         : []),
     ]),
-    "NEXT_STEP: wait for App updateModelContext. If it reports handoffMode=headless_exact_review, review only that one user-selected candidate; otherwise do not call an exact-preview tool unless the user explicitly delegates headless visual review.",
+    "NEXT_STEP: wait for App updateModelContext. If it reports handoffMode=agent_plot_set, plot every selected candidate in the current project. If it reports handoffMode=headless_exact_review, review only that one candidate. Otherwise do not call an exact-preview tool unless the user explicitly delegates headless visual review.",
   ].join("\n");
 }
 
@@ -689,6 +690,7 @@ interface SearchSessionState {
 export async function createServer() {
   const index = await CatalogIndex.load();
   const runtime = new LibraryRuntime();
+  const workspaceRuntime = new WorkspaceRuntime();
   const previewConfirmations = new PreviewConfirmationStore();
   const diagnostics = new DiagnosticsManager();
   await diagnostics.start();
@@ -1903,6 +1905,7 @@ export async function createServer() {
     async ({ sourcePackDir }): Promise<CallToolResult> => {
       try {
         const context = await currentLibraries();
+        const workspace = await workspaceRuntime.current();
         const [library, marker, legacyFlat, figureYa, writeLock] = await Promise.all([
           context.versionedLibrary.status(),
           readLibraryRootMarker(context.snapshot.root),
@@ -1940,6 +1943,14 @@ export async function createServer() {
             },
           },
           writeLock,
+          workspace: {
+            root: workspace.directory ?? null,
+            directorySource: workspace.directorySource,
+            locatorPath: workspace.locatorPath,
+            confirmed: workspace.confirmed,
+            kind: workspace.inspection?.kind ?? (workspace.confirmed ? "unknown" : "unbound"),
+            exists: workspace.inspection?.exists ?? false,
+          },
           standardCore: {
             directIntake: true,
             materializationProtocolVersion: MATERIALIZATION_PROTOCOL_VERSION,
@@ -1993,6 +2004,11 @@ export async function createServer() {
             `DIAGNOSTICS_DEGRADED: ${diagnostics.degraded}`,
             `DIAGNOSTICS_MAX_FILE_BYTES: ${diagnostics.maxFileBytes}`,
             `DIAGNOSTICS_MAX_TOTAL_BYTES: ${diagnostics.maxTotalBytes}`,
+            `WORKSPACE_ROOT: ${workspace.directory ?? "unbound"}`,
+            `WORKSPACE_SOURCE: ${workspace.directorySource}`,
+            `WORKSPACE_CONFIRMED: ${workspace.confirmed}`,
+            `WORKSPACE_KIND: ${workspace.inspection?.kind ?? "unbound"}`,
+            `WORKSPACE_LOCATOR_PATH: ${workspace.locatorPath}`,
           ],
         );
       } catch (error) {
@@ -2001,7 +2017,7 @@ export async function createServer() {
     },
   );
 
-  registerLibraryBindingTools({ server, runtime, currentLibraries });
+  registerLibraryBindingTools({ server, runtime, workspaceRuntime, currentLibraries });
   registerLifecycleTools({
     server,
     currentLibrary: async () => (await currentLibraries()).versionedLibrary,
