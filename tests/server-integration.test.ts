@@ -39,6 +39,7 @@ function toolText(value: unknown) {
 const STANDARD_TOOLS = [
   "figure_library_apply_adopt_versioning",
   "figure_library_apply_bind_global",
+  "figure_library_apply_bind_workspace",
   "figure_library_apply_bundle_export",
   "figure_library_apply_discard_working_revision",
   "figure_library_apply_full_restore",
@@ -57,6 +58,7 @@ const STANDARD_TOOLS = [
   "figure_library_open",
   "figure_library_plan_adopt_versioning",
   "figure_library_plan_bind_global",
+  "figure_library_plan_bind_workspace",
   "figure_library_plan_bundle_export",
   "figure_library_plan_discard_working_revision",
   "figure_library_plan_full_restore",
@@ -712,6 +714,7 @@ test("standard server unifies Local Published and FigureYa while hiding Working/
       const auditArguments: Record<string, Record<string, unknown>> = {
         figure_library_apply_adopt_versioning: genericApply,
         figure_library_apply_bind_global: opaqueApply,
+        figure_library_apply_bind_workspace: opaqueApply,
         figure_library_apply_bundle_export: {
           ...opaqueApply,
           expectedTarget: path.join(root, "missing-bundle-export"),
@@ -744,6 +747,7 @@ test("standard server unifies Local Published and FigureYa while hiding Working/
         },
         figure_library_plan_adopt_versioning: { templateId: "missing-template" },
         figure_library_plan_bind_global: { libraryDirectory: "relative-library" },
+        figure_library_plan_bind_workspace: { workspaceDirectory: "relative-workspace" },
         figure_library_plan_bundle_export: {
           kind: "full_library",
           destination: path.join(root, "bundle-exports"),

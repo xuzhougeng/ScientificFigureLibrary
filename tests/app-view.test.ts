@@ -3,6 +3,7 @@ import test from "node:test";
 import { Window } from "happy-dom";
 import {
   buildHeadlessReviewHandoff,
+  buildPlotSetHandoff,
   updateModelContextForHeadlessReview,
 } from "../app/handoff.ts";
 import {
@@ -510,4 +511,28 @@ test("exact preview load enables confirmation while image error keeps it disable
   assert.equal(errors, 1);
   assert.equal(failedDetail.confirmButton.disabled, true);
   failedDetail.closeButton.click();
+});
+
+
+test("plot-set handoff includes every selected template and requires plotting all of them", () => {
+  const first = candidate("org.scientificfigurelibrary.local", "gsea-scatter", "ready");
+  const second = candidate("org.figureya.module", "enrichment-bar", "ready");
+  first.scientificQuestion = "哪些通路被激活或抑制？";
+  const text = buildPlotSetHandoff({
+    resultSetId: "plot-set-result",
+    candidates: [first, second],
+  });
+  const selection = JSON.parse(text.split("\n")[3]!) as Record<string, unknown>;
+  const selected = selection.selectedCandidates as Array<Record<string, unknown>>;
+  const authorization = selection.authorization as Record<string, unknown>;
+  assert.equal(selection.handoffMode, "agent_plot_set");
+  assert.equal(selected.length, 2);
+  assert.equal(selected[0]?.templateId, "gsea-scatter");
+  assert.equal(selected[0]?.scientificQuestion, "哪些通路被激活或抑制？");
+  assert.equal(selected[1]?.templateId, "enrichment-bar");
+  assert.equal(authorization.mustPlotAllSelected, true);
+  assert.equal(authorization.exactReviewCandidateLimit, 2);
+  assert.match(text, /Plot every selected template/u);
+  assert.doesNotMatch(text, /Review only this one selected candidate/u);
+  assert.doesNotMatch(JSON.stringify(selection), /data:image|previewDataUrl/u);
 });
