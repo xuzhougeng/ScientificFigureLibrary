@@ -2,7 +2,7 @@
   "schema": "wisp.plugin.v1",
   "id": "figure-library",
   "display_name": "Scientific Figure Library",
-  "version": "0.5.3",
+  "version": "0.5.4",
   "description": "Search Local Published and FigureYa, then govern direct image/code intake as immutable reviewed templates.",
   "author": "xuzhougeng and contributors",
   "license": "MIT (code); CC BY-NC-SA 4.0 (FigureYa assets)",
