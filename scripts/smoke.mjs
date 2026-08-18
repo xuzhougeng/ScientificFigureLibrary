@@ -7,6 +7,7 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 
 const root = path.resolve(import.meta.dirname, "..");
+const VERSION = JSON.parse(await fs.readFile(path.join(root, "package.json"), "utf8")).version;
 const externalMaterializeDestination = process.argv[2];
 const serverEntry =
   process.env.FIGURE_LIBRARY_SMOKE_SERVER ?? path.join(root, "dist", "index.js");
@@ -163,9 +164,9 @@ try {
     opened.isError ||
     outcome(opened).outcome !== "ok" ||
     outcome(opened).nextAction !== "ask_user" ||
-    structured(opened).libraryVersion !== "0.5.4"
+    structured(opened).libraryVersion !== VERSION
   ) {
-    throw new Error("open did not report the 0.5.4 direct-intake workbench");
+    throw new Error(`open did not report the ${VERSION} direct-intake workbench`);
   }
 
   smokeStep = "initial-status";
@@ -176,7 +177,7 @@ try {
   if (
     initialStatus.isError ||
     outcome(initialStatus).outcome !== "ok" ||
-    structured(initialStatus).serverVersion !== "0.5.4" ||
+    structured(initialStatus).serverVersion !== VERSION ||
     structured(initialStatus).standardCore?.captureToolsRegistered !== false ||
     structured(initialStatus).standardCore?.projectPinToolsRegistered !== false
   ) {
@@ -185,7 +186,7 @@ try {
   assertTextFields(
     initialStatus,
     [
-      "SERVER_VERSION: 0.5.4",
+      `SERVER_VERSION: ${VERSION}`,
       `LIBRARY_ROOT: ${libraryDirectory}`,
       "LIBRARY_SOURCE: FIGURE_LIBRARY_DIR",
       "CAPTURE_TOOLS_REGISTERED: false",
@@ -901,7 +902,7 @@ try {
     throw new Error("diagnostic resource link did not return the generated ZIP bytes");
   }
 
-  const resource = await client.readResource({ uri: "ui://figure-library/candidates-v0.5.4.html" });
+  const resource = await client.readResource({ uri: `ui://figure-library/candidates-v${VERSION}.html` });
   if (!resource.contents[0]?.mimeType?.startsWith("text/html")) {
     throw new Error("MCP App resource was not returned as HTML");
   }

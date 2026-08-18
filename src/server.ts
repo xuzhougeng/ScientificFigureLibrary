@@ -74,10 +74,11 @@ import {
   type TemplateContentV1,
   type TemplateReleaseV1,
 } from "./versioned-library.ts";
+import { VERSION } from "./version.ts";
 
-export const VERSION = "0.5.4";
+export { VERSION };
 export const MATERIALIZATION_PROTOCOL_VERSION = 2;
-const RESOURCE_URI = "ui://figure-library/candidates-v0.5.4.html";
+const RESOURCE_URI = `ui://figure-library/candidates-v${VERSION}.html`;
 const APP_HTML = path.resolve(import.meta.dirname, "mcp-app.html");
 const HASH = /^[a-f0-9]{64}$/u;
 
@@ -731,7 +732,7 @@ export async function createServer() {
       const responseEnvelope = outcome(
         "ok",
         "library_ready",
-        "Scientific Figure Library 0.5.4 is ready. Standard core uses direct user-confirmed image/code intake; Web Capture and project pins are not registered. Ask for a plotting goal before searching.",
+        `Scientific Figure Library ${VERSION} is ready. Standard core uses direct user-confirmed image/code intake; Web Capture and project pins are not registered. Ask for a plotting goal before searching.`,
         "ask_user",
       );
       return terminal(responseEnvelope, {

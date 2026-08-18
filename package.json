@@ -23,7 +23,9 @@
     "package:npm": "npm run build && node -e \"require('node:fs').mkdirSync('release',{recursive:true})\" && npm pack --pack-destination release",
     "package:wisp": "npm run build && node scripts/package-wisp.mjs",
     "start": "node dist/index.js",
-    "test": "node --test tests/*.test.ts",
+    "version:check": "node scripts/check-version-sync.mjs",
+    "version:set": "node scripts/version-set.mjs",
+    "test": "node scripts/check-version-sync.mjs && node --test tests/*.test.ts",
     "test:smoke": "npm run build && node scripts/smoke.mjs",
     "check": "npm run test && npm run test:smoke"
   },
