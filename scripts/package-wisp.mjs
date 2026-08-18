@@ -82,6 +82,16 @@ const packagedReadme = strFromU8(unpacked["README.md"]);
 const packagedSkill = strFromU8(unpacked["skills/figure-library/SKILL.md"]);
 const packagedServer = strFromU8(unpacked["dist/index.js"]);
 const packagedApp = strFromU8(unpacked["dist/mcp-app.html"]);
+function packagedServerHasAppUri(source, version) {
+  const literalUri = `ui://figure-library/candidates-v${version}.html`;
+  if (source.includes(literalUri)) return true;
+  const derivedTemplate = "ui://figure-library/candidates-v${VERSION}.html";
+  const hasVersion =
+    source.includes(`version: "${version}"`) ||
+    source.includes(`"version": "${version}"`);
+  return source.includes(derivedTemplate) && hasVersion;
+}
+
 const versionedAppUri = `ui://figure-library/candidates-v${packageJson.version}.html`;
 if (
   !packagedReadme.includes(`0.5.2 review truthfulness`) ||
@@ -100,8 +110,10 @@ if (
 ) {
   throw new Error("packaged 0.5.2 guidance is incomplete");
 }
+if (!packagedServerHasAppUri(packagedServer, packageJson.version)) {
+  throw new Error(`packaged server omitted ${versionedAppUri}`);
+}
 for (const marker of [
-  versionedAppUri,
   "figure_library_search_page",
   "figure_library_preview_exact_headless",
   "figure_library_preview_working_revision",
