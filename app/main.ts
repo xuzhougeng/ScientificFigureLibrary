@@ -19,6 +19,7 @@ import {
   type DetailViewElements,
   type SearchResult,
 } from "./view.ts";
+import { VERSION } from "../src/version.ts";
 import "./styles.css";
 
 const root = document.getElementById("app")!;
@@ -32,7 +33,7 @@ const pageStatus = document.getElementById("page-status")!;
 const plotSetBar = document.getElementById("plot-set-bar")!;
 const plotSetCount = document.getElementById("plot-set-count")!;
 const plotSetSubmit = document.getElementById("plot-set-submit") as HTMLButtonElement;
-const app = new App({ name: "Scientific Figure Library", version: "0.5.4" });
+const app = new App({ name: "Scientific Figure Library", version: VERSION });
 
 let activeResult: SearchResult | undefined;
 let activeResultSetId: string | undefined;

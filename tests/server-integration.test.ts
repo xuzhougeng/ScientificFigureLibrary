@@ -9,6 +9,7 @@ import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { ensureLibraryRootMarker, readLibraryRootMarker } from "../src/library-runtime.ts";
 import { FIGUREYA_PROVIDER_ID, LOCAL_LIBRARY_PROVIDER_ID } from "../src/providers.ts";
 import { createServer } from "../src/server.ts";
+import { VERSION } from "../src/version.ts";
 import {
   VersionedTemplateLibrary,
   type VersionedTemplateCandidate,
@@ -597,7 +598,7 @@ test("standard server unifies Local Published and FigureYa while hiding Working/
         arguments: {},
       });
       const statusStructured = record(status.structuredContent);
-      assert.equal(statusStructured.serverVersion, "0.5.4");
+      assert.equal(statusStructured.serverVersion, VERSION);
       const libraryStatus = record(statusStructured.library);
       const marker = await readLibraryRootMarker(libraryRoot);
       assert.ok(marker);
@@ -614,7 +615,7 @@ test("standard server unifies Local Published and FigureYa while hiding Working/
       assert.equal(standardCore.flatEntriesInOrdinarySearch, false);
       const text = toolText(status);
       for (const field of [
-        "SERVER_VERSION: 0.5.4",
+        `SERVER_VERSION: ${VERSION}`,
         `LIBRARY_ROOT: ${libraryRoot}`,
         `LIBRARY_ID: ${marker.value.libraryId}`,
         "PUBLISHED: 5",

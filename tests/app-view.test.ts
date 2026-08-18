@@ -14,6 +14,7 @@ import {
   type Candidate,
   type SearchResult,
 } from "../app/view.ts";
+import { VERSION } from "../src/version.ts";
 
 function candidate(
   providerId: string,
@@ -87,7 +88,7 @@ function candidate(
 function searchResult(candidates: Candidate[]): SearchResult {
   return {
     query: "柱状图 bar chart",
-    libraryVersion: "0.5.4",
+    libraryVersion: VERSION,
     materializationProtocolVersion: 2,
     intentFamilies: ["bar"],
     reviewRequired: true,

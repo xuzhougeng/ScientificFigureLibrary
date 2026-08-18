@@ -3,6 +3,7 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { strToU8, zipSync } from "fflate";
+import { VERSION } from "./version.ts";
 
 export const DIAGNOSTICS_SCHEMA_VERSION = "figure-library.diagnostics-event.v1" as const;
 export const DIAGNOSTICS_BUNDLE_SCHEMA_VERSION =
@@ -421,7 +422,7 @@ export class DiagnosticsManager {
     const errorLines = input.detail === "summary" ? "" : errors.map((event) => JSON.stringify(event)).join("\n");
     const environment = {
       schema: "figure-library.diagnostics-environment.v1",
-      appVersion: "0.5.4",
+      appVersion: VERSION,
       sessionId: this.sessionId,
       createdAt: createdAt.toISOString(),
       nodeVersion: process.version,
@@ -447,7 +448,7 @@ export class DiagnosticsManager {
     }));
     const manifest = {
       schemaVersion: DIAGNOSTICS_BUNDLE_SCHEMA_VERSION,
-      applicationVersion: "0.5.4",
+      applicationVersion: VERSION,
       sessionId: this.sessionId,
       createdAt: createdAt.toISOString(),
       scope: input.scope,

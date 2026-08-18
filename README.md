@@ -626,7 +626,7 @@ Build the Wisp plugin:
 npm run package:wisp
 ```
 
-Install `release/scientific-figure-library-wisp-0.5.3.zip` from Wisp
+Install `release/scientific-figure-library-wisp-0.5.4.zip` from Wisp
 **Settings → Plugins**, enable it, and start a fresh session. The Wisp bundle is
 an adapter around the same standard MCP server; global Library selection is not
 tied to a Wisp project.
