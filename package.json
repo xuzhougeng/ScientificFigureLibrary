@@ -17,7 +17,7 @@
     "THIRD_PARTY_NOTICES.md"
   ],
   "scripts": {
-    "build": "tsc --noEmit && vite build && esbuild src/index.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/index.js --banner:js='#!/usr/bin/env node\nimport { createRequire as __nodeCreateRequire } from \"node:module\"; const require = __nodeCreateRequire(import.meta.url);'",
+    "build": "tsc --noEmit && vite build && node scripts/esbuild-server.mjs",
     "catalog": "node scripts/build-catalog.mjs",
     "package:source-pack": "node scripts/package-source-pack.mjs",
     "package:npm": "npm run build && node -e \"require('node:fs').mkdirSync('release',{recursive:true})\" && npm pack --pack-destination release",
