@@ -108,7 +108,10 @@ if (
   !packagedSkill.includes("选择并交给 Agent 审核") ||
   !packagedSkill.includes("figure_library_export_diagnostics")
 ) {
-  throw new Error("packaged 0.5.2 guidance is incomplete");
+  throw new Error("packaged 0.3.0 guidance is incomplete");
+}
+if (!packagedServerHasAppUri(packagedServer, packageJson.version)) {
+  throw new Error(`packaged server omitted ${versionedAppUri}`);
 }
 if (!packagedServerHasAppUri(packagedServer, packageJson.version)) {
   throw new Error(`packaged server omitted ${versionedAppUri}`);

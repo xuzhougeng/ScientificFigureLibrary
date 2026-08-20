@@ -17,13 +17,12 @@ The standard core has two retrieval providers:
 provider-qualified and carry an `exactSelector`; a bare `templateId` is never
 enough to describe, preview, or materialize an exact result.
 
-> **0.5.1 protocol migration (still required in 0.5.2):** 0.5.1 deliberately
-> broke the 0.5.0 materialization-plan input. `figure_library_plan_materialize`
-> still requires a session-local, single-use `previewReceipt` produced only
-> after an exact preview and explicit confirmation. Old callers must adopt
-> protocol v2; there is no receipt-free compatibility path.
+> **0.3.0 materialization protocol v2:** `figure_library_plan_materialize`
+> requires a session-local, single-use `previewReceipt` produced only
+> after an exact preview and explicit confirmation. There is no receipt-free
+> compatibility path.
 >
-> **0.5.2 review truthfulness:** Working preview now has its own exact read-only
+> **0.3.0 review truthfulness:** Working preview now has its own exact read-only
 > selector; Working and Published Reviews are reported separately; Published
 > warnings remain bound to their immutable Release; canonical preview choices
 > and the three-part validation state are exposed consistently across review,
