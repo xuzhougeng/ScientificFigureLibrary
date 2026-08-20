@@ -5,27 +5,32 @@ import {
   buildArchive,
   commonPluginFiles,
   readJson,
-  root,
   utf8,
   writeVerifiedZip,
 } from "./plugin-package-lib.mjs";
-import path from "node:path";
 
 const packageJson = await readJson("package.json");
-const manifest = await readJson(".wisp-plugin/plugin.json");
+const manifest = await readJson(".codex-plugin/plugin.json");
 if (manifest.version !== packageJson.version) {
-  throw new Error("package.json and Wisp plugin versions differ");
+  throw new Error("package.json and Codex plugin versions differ");
 }
 
-const files = [".wisp-plugin/plugin.json", ...(await commonPluginFiles())];
+const files = [
+  ".codex-plugin/plugin.json",
+  ".mcp.json",
+  ...(await commonPluginFiles()),
+];
 const archive = await buildArchive(files);
 const { unpacked, sha256, actualFiles, outputPath } = await writeVerifiedZip(
   archive,
-  `scientific-figure-library-wisp-${packageJson.version}.zip`,
+  `scientific-figure-library-codex-${packageJson.version}.zip`,
 );
-const packagedManifest = JSON.parse(utf8(unpacked[".wisp-plugin/plugin.json"]));
-if (packagedManifest.id !== "figure-library" || packagedManifest.version !== packageJson.version) {
-  throw new Error("packaged Wisp manifest identity/version is inconsistent");
+const packagedManifest = JSON.parse(utf8(unpacked[".codex-plugin/plugin.json"]));
+if (packagedManifest.name !== "figure-library" || packagedManifest.version !== packageJson.version) {
+  throw new Error("packaged Codex manifest identity/version is inconsistent");
+}
+if (!utf8(unpacked[".mcp.json"]).includes('"figure-library"')) {
+  throw new Error("packaged Codex MCP config omitted figure-library");
 }
 assertPackagedGuidance({
   packagedReadme: utf8(unpacked["README.md"]),

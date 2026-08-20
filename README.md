@@ -17,16 +17,18 @@ The standard core has two retrieval providers:
 provider-qualified and carry an `exactSelector`; a bare `templateId` is never
 enough to describe, preview, or materialize an exact result.
 
-> **0.3.0 materialization protocol v2:** `figure_library_plan_materialize`
+> **0.5.1 protocol migration (still required in 0.5.5):** `figure_library_plan_materialize`
 > requires a session-local, single-use `previewReceipt` produced only
 > after an exact preview and explicit confirmation. There is no receipt-free
 > compatibility path.
 >
-> **0.3.0 review truthfulness:** Working preview now has its own exact read-only
+> **0.5.2 review truthfulness:** Working preview now has its own exact read-only
 > selector; Working and Published Reviews are reported separately; Published
 > warnings remain bound to their immutable Release; canonical preview choices
 > and the three-part validation state are exposed consistently across review,
 > planning, search, and details.
+>
+> **0.5.5 host plugins and display modes:** the same Skill and MCP server are packaged for Wisp, Codex, and Claude. The MCP App may request `fullscreen` or `pip` when the Host advertises those modes; there is no docked-sidebar display mode.
 >
 > **0.5.4 scientificQuestion:** optional retrieval field for the biological question a figure answers. It is not `description` or `visualProfile`, and ordinary search still returns only Local Published heads.
 
@@ -610,25 +612,31 @@ archive/reconcile, or one-step materialize tools in the standard 0.5 server.
 
 ## Distribution
 
+The same standard MCP server and Skill are packaged for three hosts. Do not
+register a raw `mcp_servers.figure-library` entry **and** a host plugin at the
+same time; that duplicates tools.
+
+```bash
+npm run package:plugins
+```
+
+This writes three artifacts into `release/`:
+
+- `scientific-figure-library-wisp-0.5.5.zip` — install from Wisp **Settings → Plugins**
+- `scientific-figure-library-codex-0.5.5.zip` — Codex plugin with `.codex-plugin/plugin.json`, `.mcp.json`, and `skills/figure-library`
+- `scientific-figure-library-claude-0.5.5.zip` — Claude Code plugin with `.claude-plugin/plugin.json`, `.mcp.json`, and auto-discovered `skills/`
+
+The MCP App may request `fullscreen` or `pip` if the Host lists those modes in
+`availableDisplayModes`. Codex has no docked-sidebar display mode.
+
 Build a standalone npm package:
 
 ```bash
 npm run package:npm
-npm install --global ./release/scientific-figure-library-0.5.3.tgz
+npm install --global ./release/scientific-figure-library-0.5.5.tgz
 ```
 
 Use `scientific-figure-library` as the MCP command after installation.
-
-Build the Wisp plugin:
-
-```bash
-npm run package:wisp
-```
-
-Install `release/scientific-figure-library-wisp-0.5.4.zip` from Wisp
-**Settings → Plugins**, enable it, and start a fresh session. The Wisp bundle is
-an adapter around the same standard MCP server; global Library selection is not
-tied to a Wisp project.
 
 ## FigureYa Source Pack
 

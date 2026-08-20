@@ -1,0 +1,38 @@
+{
+  "name": "figure-library",
+  "version": "0.5.5",
+  "description": "Search Local Published and FigureYa, then govern direct image/code intake as immutable reviewed templates.",
+  "author": {
+    "name": "xuzhougeng and contributors",
+    "url": "https://github.com/xuzhougeng/ScientificFigureLibrary"
+  },
+  "homepage": "https://github.com/xuzhougeng/ScientificFigureLibrary",
+  "repository": "https://github.com/xuzhougeng/ScientificFigureLibrary",
+  "license": "MIT",
+  "keywords": [
+    "scientific-figure",
+    "mcp",
+    "plot-template",
+    "figureya"
+  ],
+  "skills": "./skills/",
+  "mcpServers": "./.mcp.json",
+  "interface": {
+    "displayName": "Scientific Figure Library",
+    "shortDescription": "Search and materialize reviewed scientific-figure templates",
+    "longDescription": "Search Local Published and FigureYa templates, review exact previews, and materialize immutable figure references into a project. The same Skill and MCP server ship in the Wisp and Claude packages.",
+    "developerName": "xuzhougeng and contributors",
+    "category": "Productivity",
+    "capabilities": [
+      "Interactive",
+      "Read",
+      "Write"
+    ],
+    "defaultPrompt": [
+      "Open Scientific Figure Library and search for a volcano plot",
+      "Find a grouped bar chart template I can materialize",
+      "Show Local Published figure templates matching this plot"
+    ],
+    "brandColor": "#246C4E"
+  }
+}

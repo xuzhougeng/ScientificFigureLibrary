@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "figure-library": {
+      "command": "node",
+      "args": [
+        "dist/index.js"
+      ]
+    }
+  }
+}

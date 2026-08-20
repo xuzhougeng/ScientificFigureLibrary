@@ -1,6 +1,6 @@
 {
   "name": "scientific-figure-library",
-  "version": "0.5.4",
+  "version": "0.5.5",
   "description": "A portable MCP server and MCP App for searching, importing, and materializing scientific figure templates.",
   "type": "module",
   "bin": {
@@ -8,6 +8,9 @@
   },
   "files": [
     ".wisp-plugin",
+    ".codex-plugin",
+    ".claude-plugin",
+    ".mcp.json",
     "assets",
     "docs",
     "dist",
@@ -27,7 +30,10 @@
     "version:set": "node scripts/version-set.mjs",
     "test": "node scripts/check-version-sync.mjs && node --test tests/*.test.ts",
     "test:smoke": "npm run build && node scripts/smoke.mjs",
-    "check": "npm run test && npm run test:smoke"
+    "check": "npm run test && npm run test:smoke",
+    "package:codex": "npm run build && node scripts/package-codex.mjs",
+    "package:claude": "npm run build && node scripts/package-claude.mjs",
+    "package:plugins": "npm run build && node scripts/package-wisp.mjs && node scripts/package-codex.mjs && node scripts/package-claude.mjs"
   },
   "devDependencies": {
     "@modelcontextprotocol/ext-apps": "^1.7.0",

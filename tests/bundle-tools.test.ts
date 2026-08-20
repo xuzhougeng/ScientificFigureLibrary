@@ -46,6 +46,8 @@ function pathLinePattern(label: string, filePath: string) {
   const variants = new Set([filePath]);
   if (filePath.startsWith("/var/")) variants.add(`/private${filePath}`);
   if (filePath.startsWith("/private/var/")) variants.add(filePath.slice("/private".length));
+  variants.add(filePath.replace(/\\Users\\ADMINI~1\\/gi, "\\Users\\Administrator\\"));
+  variants.add(filePath.replace(/\\Users\\Administrator\\/gi, "\\Users\\ADMINI~1\\"));
   return new RegExp(`${label}: (?:${[...variants].map(escapeRegExp).join("|")})`, "u");
 }
 
