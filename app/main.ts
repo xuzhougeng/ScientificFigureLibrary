@@ -20,6 +20,13 @@ import {
   type SearchResult,
 } from "./view.ts";
 import { VERSION } from "../src/version.ts";
+import {
+  applyWorkbenchDisplayMode,
+  compactWorkbenchSummary,
+  hostSupportsMode,
+  isDisplayMode,
+  type WorkbenchDisplayMode,
+} from "./display-mode.ts";
 import "./styles.css";
 
 const root = document.getElementById("app")!;
@@ -33,7 +40,23 @@ const pageStatus = document.getElementById("page-status")!;
 const plotSetBar = document.getElementById("plot-set-bar")!;
 const plotSetCount = document.getElementById("plot-set-count")!;
 const plotSetSubmit = document.getElementById("plot-set-submit") as HTMLButtonElement;
-const app = new App({ name: "Scientific Figure Library", version: VERSION });
+const displayControls = document.getElementById("display-controls")!;
+const expandBrowse = document.getElementById("expand-browse") as HTMLButtonElement;
+const keepVisible = document.getElementById("keep-visible") as HTMLButtonElement;
+const reexpand = document.getElementById("reexpand") as HTMLButtonElement;
+const pipSummary = document.getElementById("pip-summary")!;
+const displayElements = {
+  root,
+  controls: displayControls,
+  expandButton: expandBrowse,
+  keepVisibleButton: keepVisible,
+  reexpandButton: reexpand,
+  pipSummary,
+};
+const app = new App(
+  { name: "Scientific Figure Library", version: VERSION },
+  { availableDisplayModes: ["inline", "fullscreen", "pip"] },
+);
 
 let activeResult: SearchResult | undefined;
 let activeResultSetId: string | undefined;
@@ -426,6 +449,51 @@ function loadPreviousPage() {
   if (cached) render(cached);
 }
 
+function pipSummaryText() {
+  const pageCount = activeResult
+    ? Math.max(1, Math.ceil(activeResult.pagination.total / activeResult.pagination.pageSize))
+    : undefined;
+  return compactWorkbenchSummary({
+    query: activeResult?.query ?? query.textContent ?? "",
+    pageIndex: activeResult?.pagination.pageIndex,
+    pageCount,
+    selectedTitles: [...selectedCandidates.values()].map((candidate) => candidate.title),
+  });
+}
+
+function refreshDisplayChrome(mode?: WorkbenchDisplayMode) {
+  const context = app.getHostContext();
+  const requested =
+    mode ??
+    (isDisplayMode(context?.displayMode) ? context.displayMode : isDisplayMode(root.dataset.displayMode) ? root.dataset.displayMode : "inline");
+  return applyWorkbenchDisplayMode({
+    elements: displayElements,
+    mode: requested,
+    available: context?.availableDisplayModes,
+    summary: pipSummaryText(),
+  });
+}
+
+async function requestWorkbenchMode(mode: WorkbenchDisplayMode) {
+  const context = app.getHostContext();
+  if (!hostSupportsMode(context?.availableDisplayModes, mode)) {
+    refreshDisplayChrome();
+    return;
+  }
+  try {
+    const result = await app.requestDisplayMode({ mode });
+    const applied = isDisplayMode(result.mode) ? result.mode : mode;
+    refreshDisplayChrome(applied);
+    if (applied !== mode) {
+      status.textContent = `Host 将工作台放在 ${applied}，而不是请求的 ${mode}。`;
+    }
+  } catch (error) {
+    console.warn("Display mode request failed", error);
+    refreshDisplayChrome();
+    status.textContent = "当前 Host 未能切换展示模式。";
+  }
+}
+
 function applyHostContext(context: NonNullable<ReturnType<App["getHostContext"]>>) {
   if (context.theme) applyDocumentTheme(context.theme);
   if (context.styles?.variables) applyHostStyleVariables(context.styles.variables);
@@ -436,11 +504,15 @@ function applyHostContext(context: NonNullable<ReturnType<App["getHostContext"]>
     root.style.paddingBottom = `${context.safeAreaInsets.bottom + 20}px`;
     root.style.paddingLeft = `${context.safeAreaInsets.left + 20}px`;
   }
+  refreshDisplayChrome(isDisplayMode(context.displayMode) ? context.displayMode : undefined);
 }
 
 previous.addEventListener("click", loadPreviousPage);
 next.addEventListener("click", () => void loadNextPage());
 plotSetSubmit.addEventListener("click", () => void submitPlotSet());
+expandBrowse.addEventListener("click", () => void requestWorkbenchMode("fullscreen"));
+keepVisible.addEventListener("click", () => void requestWorkbenchMode("pip"));
+reexpand.addEventListener("click", () => void requestWorkbenchMode("fullscreen"));
 
 app.ontoolinput = (input) => {
   const request = input.arguments as Record<string, unknown>;
@@ -466,6 +538,7 @@ app
   .then(() => {
     const context = app.getHostContext();
     if (context) applyHostContext(context);
+    else refreshDisplayChrome();
     if (!serverToolsAvailable()) {
       status.textContent = updateModelContextAvailable()
         ? "当前 Host 未授权 serverTools；仍可查看当前页详情并选择一个候选交给 Agent 审核。"

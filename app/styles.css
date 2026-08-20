@@ -504,3 +504,57 @@ footer {
 .plot-set-bar button:disabled {
   opacity: 0.55;
 }
+
+.header-side {
+  display: grid;
+  justify-items: end;
+  gap: 10px;
+}
+
+.display-controls {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.display-controls button {
+  width: auto;
+  margin: 0;
+  padding: 7px 10px;
+  font-size: 0.75rem;
+}
+
+.pip-summary {
+  margin: 0 0 12px;
+  border-radius: 10px;
+  padding: 10px 12px;
+  background: var(--color-background-tertiary, #eef0ed);
+  color: var(--color-text-secondary, #5b675f);
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+#app[data-display-mode="pip"] .cards,
+#app[data-display-mode="pip"] .empty,
+#app[data-display-mode="pip"] .plot-set-bar,
+#app[data-display-mode="pip"] .pagination,
+#app[data-display-mode="pip"] .hint {
+  display: none;
+}
+
+#app[data-display-mode="pip"] header {
+  margin-bottom: 8px;
+}
+
+#app[data-display-mode="pip"] h1 {
+  font-size: 1.1rem;
+}
+
+@media (max-width: 560px) {
+  .header-side,
+  .display-controls {
+    justify-items: start;
+    justify-content: flex-start;
+  }
+}
