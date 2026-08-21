@@ -16,6 +16,16 @@ if (typeof version !== "string" || !/^\d+\.\d+\.\d+$/.test(version)) {
   fail(`package.json version is not a product version: ${version}`);
 }
 
+const packageLock = JSON.parse(await fs.readFile(path.join(root, "package-lock.json"), "utf8"));
+if (packageLock.version !== version) {
+  fail(`package-lock.json top-level version ${packageLock.version} !== package.json version ${version}`);
+}
+if (packageLock.packages?.[""]?.version !== version) {
+  fail(
+    `package-lock.json packages[\"\"].version ${packageLock.packages?.[""]?.version} !== package.json version ${version}`,
+  );
+}
+
 const pluginFiles = [
   [".wisp-plugin/plugin.json", "Wisp"],
   [".codex-plugin/plugin.json", "Codex"],
@@ -37,6 +47,14 @@ const readme = await fs.readFile(path.join(root, "README.md"), "utf8");
 for (const host of ["wisp", "codex", "claude"]) {
   const zip = `scientific-figure-library-${host}-${version}.zip`;
   if (!readme.includes(zip)) fail(`README does not mention the current ${host} zip ${zip}`);
+}
+const npmTarball = `scientific-figure-library-${version}.tgz`;
+if (!readme.includes(npmTarball)) {
+  fail(`README does not mention the current npm tarball ${npmTarball}`);
+}
+const sourcePack = `figure-library-source-pack-volcano-${version}.zip`;
+if (!readme.includes(sourcePack)) {
+  fail(`README does not mention the current FigureYa Source Pack example ${sourcePack}`);
 }
 
 const runtimeFiles = [
