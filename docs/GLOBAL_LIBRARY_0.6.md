@@ -1,15 +1,9 @@
-# Global Library architecture (0.5)
+# Global Library and Provider architecture (0.6)
 
-> **Historical reference.** This document describes the 0.5 Local/FigureYa
-> storage model. Scientific Figure Library 0.6 adds bundled Community and
-> signed personal Providers, public selector/lock v3, and staged publication.
-> Use [`GLOBAL_LIBRARY_0.6.md`](GLOBAL_LIBRARY_0.6.md) for the current
-> architecture.
-
-This document defines the ScientificFigureLibrary 0.5 storage and identity
-model. The standard core is a global, portable, immutable Library plus two
-retrieval providers. It is not a project database and it is not a web-capture
-system.
+This document defines the ScientificFigureLibrary 0.6 storage, Provider, and
+public-distribution identity model. The standard core is one global, portable,
+immutable Local Library plus a registry of independently qualified retrieval
+Providers. It is not a project database and it is not a web-capture system.
 
 ## Goals and non-goals
 
@@ -21,7 +15,8 @@ system.
 - deterministic plan/apply writes with stale-state and replay checks;
 - portable backup, restore, fork, and template exchange boundaries;
 - extension points for explicit intake adapters such as CiteBox;
-- unified search across Local Published and FigureYa without mixing authority.
+- unified search across Local Published, bundled Community, FigureYa, and
+  explicitly trusted personal Providers without mixing their authority.
 
 ### Non-goals
 
@@ -31,7 +26,9 @@ system.
 - treating upstream publication as local approval;
 - exposing Working, Capture, or unadopted legacy entries in ordinary search;
 - direct CiteBox SQLite access;
-- registering Web Capture tools in the standard 0.5 server.
+- registering Web Capture tools in the standard 0.6 server;
+- refreshing remote Provider catalogs during startup or ordinary search;
+- executing downloaded template code during client materialization.
 
 ## Identity layers
 
@@ -41,8 +38,12 @@ SFL deliberately separates four identities:
 2. **Series identity** — stable `templateId` across revisions.
 3. **Local Published identity** — exact `templateId + revisionId +
    contentDigest + releaseId`.
-4. **Provider identity** — `providerId + exactSelector`, required whenever a
-   Local Published or FigureYa candidate leaves search.
+4. **Provider identity** — `providerId + exactSelector`, required whenever any
+   candidate leaves search. A bare `templateId` is never cross-Provider
+   identity.
+5. **Public release identity** — Provider-qualified `templateId + semantic
+   releaseVersion + contentDigest`, with immutable Catalog, archive, and
+   preview identities.
 
 A title, filename, source path, visual similarity, or bare `templateId` is not
 an exact cross-provider identity.
@@ -113,7 +114,8 @@ writing a conflicting locator.
 The root marker schema is `figure-library.root.v1`. Storage format 1.0 uses
 layout `figure-library.store-layout.v1`, relative POSIX paths, SHA-256, and RFC
 8785 canonical JSON. `requiredCapabilities` allows a future reader to fail
-closed when it cannot implement a required storage feature; 0.5 requires none.
+closed when it cannot implement a required storage feature; storage format 1.0
+requires none.
 `extensions` is the reserved root-level extension map.
 
 Portable components reject traversal, absolute persisted paths, unsafe path
@@ -156,7 +158,7 @@ Review distinguishes:
 - open Blocking Review Gates;
 - non-blocking Review Warnings.
 
-There is no waiver in 0.5. Validation errors and open gates block publish.
+There is no waiver in 0.6. Validation errors and open gates block publish.
 Working and Published Reviews are read separately. A Published candidate loads
 the immutable Review Snapshot named by its Release, so warnings remain visible
 after the Working Head is cleared or a newer Working Revision exists.
@@ -250,30 +252,57 @@ Future adapters can add manifests under their adapter namespace without
 becoming ordinary retrieval providers. Provider registration is a separate
 contract.
 
-## Retrieval providers
+## Retrieval Providers
 
-The standard provider IDs are:
+The built-in Provider IDs are:
 
 - `org.scientificfigurelibrary.local`
+- `io.github.jarxunlai.scientific-figure-community`
 - `org.figureya.module`
 
-Unified search ranks candidates from both providers together but reports
-per-provider counts and retains provider-qualified identity. Local search reads
-only current Published Heads. FigureYa search uses the bundled catalog and
-commit-pinned archive identities. Same-named provider results coexist.
+`ProviderRegistry` routes search, revision, source status, description, exact
+preview, materialization, and replay through `ProviderAdapter`. Local and
+FigureYa use dedicated adapters. Bundled Community and every signed personal
+source use the same `PublicCatalogProviderAdapter`; only descriptor, snapshot,
+and trust state differ.
+
+When a caller omits `providerIds`, the order is Local, bundled Community,
+FigureYa, then enabled personal Providers whose owners explicitly selected
+`includeInDefaultSearch=true`, sorted by canonical `providerId`. A damaged
+personal Provider degrades a multi-source default search and remains visible in
+`sources[]`; selecting only that damaged Provider fails terminally rather than
+pretending that it returned zero results.
 
 Local exact selectors bind template, revision, content digest, and Release.
 FigureYa exact selectors bind module, source commit, archive commit, archive
-hash/size identity, and materialization mode. Non-archived FigureYa catalog
-entries may be described or previewed from their source identity but cannot be
-materialized as if an archive existed.
+hash/size identity, and materialization mode. Public selectors bind semantic
+release version, content and Catalog digests, archive repository/commit/path,
+archive size/hash, preview size/hash, and template mode. Same `templateId`
+values may coexist because identity always includes the Provider.
 
-Search ranking is not review. Local Published candidates inherit warnings
-from the Review bound by the exact Release and display plot, upstream, and
-scientific summaries separately. FigureYa's upstream-published state is
-distinct from SFL local approval. Its plot state remains `not_run`, upstream
-state `unknown`, and scientific state `not_assessed` unless separate local
-evidence is ingested and reviewed as a local template.
+Bundled Community Catalog, preview manifest, thumbnails, licenses, and source
+lock ship with the plugin and are never refreshed during startup, search, or
+App opening. Complete public-template ZIPs are not bundled; materialization may
+download only the exact archive pinned by the selector, verify it, and extract
+it without executing code. A dedicated maintainer sync command is the only path
+that replaces the vendored Community snapshot after exact-commit and inventory
+verification.
+
+Signed personal Providers use detached Ed25519 signatures over the raw UTF-8
+`source-manifest.json` bytes. Initial trust requires a public key supplied
+independently by the user. Verified snapshots are immutable and activated only
+after complete manifest, signature, Catalog, preview, path, and inventory
+validation. Sequence rules reject rollback and equivocation; authorized next
+keys support normal rotation, while emergency replacement requires an explicit
+`trust_reset` Plan/Apply. Remove unregisters a source but does not delete old
+snapshots or already materialized projects.
+
+Search ranking is not review. Local Published candidates inherit warnings from
+the Review bound by the exact Release. Public status separates upstream
+publication, publisher verification, central curation, render validation,
+recipient local review, and recipient plot execution. A centrally curated
+template never becomes the recipient's Local `approved` state merely because it
+appears in the bundled Catalog.
 
 ## Materialization and project reproducibility
 
@@ -289,10 +318,12 @@ exact selector. The target `<destination>/<templateId>` must be absent.
 └── upstream/...              # FigureYa only
 ```
 
-`template.lock.json` is the project reproducibility boundary. It records the
-provider-qualified identity, operation/plan binding, and output inventory. It
-replaces project pins: any project can materialize from the same global
-Library, while the project records exactly what it used.
+`template.lock.json` is the project reproducibility boundary. Public templates
+write `figure-library.template-lock.v3`, which records the Provider, complete
+selector, Catalog/archive identity, output inventory, licenses, and
+`codeExecutedBySflClient: false`. Existing Local/FigureYa lock and receipt
+formats remain readable. The lock replaces project pins: any project can
+materialize an exact Provider release while recording exactly what it used.
 
 The target lock is portable provenance, not proof that a server Apply occurred.
 Durable idempotent replay additionally requires the immutable authoritative
@@ -300,12 +331,39 @@ Receipt under `store/operations/receipts/public-materializations/`. That Receipt
 binds the public plan digest, operation ID, planned and resolved exact selectors,
 complete target inventory, and a digest of the physical target path without
 persisting the absolute path. Replay rechecks the current reachable Local
-Release or current FigureYa Catalog as well as every target byte. A copied or
-forged target lock without this Library Receipt cannot be replayed as success.
+Release or current Provider snapshot as well as every target byte. A copied or
+forged target lock without the authoritative Receipt cannot be replayed as
+success.
 
 Local assets are copied into `assets/`. FigureYa retains an untouched
-`upstream/` module and also builds a normalized asset envelope. Adaptations
-belong in separate project files.
+`upstream/` module and also builds a normalized asset envelope. Public archives
+are downloaded, verified, and extracted as inert files. Adaptations belong in
+separate project files; SFL never runs R, Python, shell, package installers, or
+template entrypoints during materialization.
+
+## Sanitized publication and staged GitHub PRs
+
+Publication export accepts one exact, reachable Local Published Release—not a
+Working revision, historical unreachable object, or entire Library. Plan lists
+every included and excluded asset, role, digest, license, generated-preview
+trace, public metadata, and parent-metadata conflict. Apply revalidates source
+bytes and writes a deterministic `figure-library.publication-submission.v1`
+without Library identifiers, locator/configuration, operations, receipts,
+quarantine, absolute machine paths, or unrelated templates. It does not use the
+network, sign content, run code, or create a PR.
+
+Central publication then has two independent user-reviewed gates:
+
+1. Archive Plan/Apply creates a PR containing one immutable ZIP in
+   `jarxunlai/ScientificFigureLibrary-community-archives`.
+2. Only after that Archive PR is manually merged may Catalog Plan/Apply reload
+   the ZIP from the exact merge commit and create the corresponding Catalog PR
+   in `jarxunlai/ScientificFigureLibrary-community`.
+
+SFL delegates authentication to the official `gh` CLI. It checks active login
+and repository permissions but never requests, reads, caches, prints, or writes
+the token. PR Apply uses the Git Data API without relying on cwd or a local git
+remote, records a non-secret idempotency receipt, and never merges a PR.
 
 ## Legacy migration and adoption
 
@@ -390,7 +448,10 @@ Future formats should preserve these invariants:
 - unknown required capabilities fail closed;
 - schema versions and provider IDs are explicit;
 - authoritative objects remain self-contained and content-addressed;
-- new adapters do not implicitly become trusted search providers;
+- new adapters do not implicitly become trusted search Providers;
+- a personal Provider never enters default search without explicit opt-in;
+- remote Provider updates never replace last-known-good until all bytes verify;
+- central Catalog refresh remains an explicit exact-commit maintainer action;
 - new index formats remain rebuildable;
 - new runtime locks remain excluded from migration;
 - any approval transfer remains explicit and auditable;
