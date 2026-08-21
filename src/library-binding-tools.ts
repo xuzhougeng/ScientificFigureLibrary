@@ -277,10 +277,10 @@ export function registerLibraryBindingTools(options: {
             ),
           );
         }
-        const current = await runtime.current();
+        const bindingContext = runtime.bindingContext();
         if (
-          current.directorySource === "FIGURE_LIBRARY_DIR" &&
-          !sameNativePath(input.libraryDirectory, current.root)
+          bindingContext.environmentOverrideRoot &&
+          !sameNativePath(input.libraryDirectory, bindingContext.environmentOverrideRoot)
         ) {
           return response(
             outcomeEnvelope(
@@ -291,7 +291,11 @@ export function registerLibraryBindingTools(options: {
             ),
           );
         }
-        const plan = await planGlobalLibraryBinding(input);
+        const plan = await planGlobalLibraryBinding({
+          ...input,
+          locatorPath: bindingContext.locatorPath,
+          environmentOverrideRoot: bindingContext.environmentOverrideRoot,
+        });
         const envelope = outcomeEnvelope(
           "needs_user_confirmation",
           "binding_plan_ready",
@@ -305,6 +309,8 @@ export function registerLibraryBindingTools(options: {
           `LOCATOR_PATH: ${plan.locatorPath}`,
           `LIBRARY_ID: ${plan.libraryId}`,
           `CONFIG_REVISION: ${plan.configRevision}`,
+          `LOCATOR_STATUS: ${plan.expectedLocatorStatus}`,
+          `LOCATOR_RAW_DIGEST: ${plan.expectedLocatorRawDigest ?? "none"}`,
           `TARGET_FILES: ${plan.expectedTargetInventory.length}`,
           `TARGET_STATE_DIGEST: ${plan.expectedTargetStateDigest}`,
           `MIGRATION_MODE: ${plan.migration.mode}`,
@@ -340,14 +346,17 @@ export function registerLibraryBindingTools(options: {
       try {
         const plan = recalled(bindingPlans, planDigest);
         if (!plan) return missingPlan("global Library binding");
-        const current = await runtime.current();
-        if (typeof plan.locatorPath !== "string" || !sameNativePath(plan.locatorPath, current.locatorPath)) {
+        const bindingContext = runtime.bindingContext();
+        if (
+          typeof plan.locatorPath !== "string" ||
+          !sameNativePath(plan.locatorPath, bindingContext.locatorPath)
+        ) {
           throw new Error("binding plan locatorPath does not match this runtime");
         }
         if (
-          current.directorySource === "FIGURE_LIBRARY_DIR" &&
+          bindingContext.environmentOverrideRoot &&
           (typeof plan.libraryDirectory !== "string" ||
-            !sameNativePath(plan.libraryDirectory, current.root))
+            !sameNativePath(plan.libraryDirectory, bindingContext.environmentOverrideRoot))
         ) {
           throw new Error("binding blocked by FIGURE_LIBRARY_DIR environment override");
         }
