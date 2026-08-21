@@ -461,6 +461,8 @@ class MockGhRunner implements GhRunner {
   validationPullBaseRef = "main";
   validationPullBaseRepository = CENTRAL_ARCHIVE_REPOSITORY as string;
   validationPullBaseSha: string | null = null;
+  validationDisplayTitle: string | null | undefined = undefined;
+  archiveMergeParents: string[] | null = null;
   baseCommit = BASE_COMMIT;
   baseTree = BASE_TREE;
   existingRefCommit: string | null = null;
@@ -541,6 +543,10 @@ class MockGhRunner implements GhRunner {
       if (endpoint === `repos/${repository}/git/ref/heads/main`) return this.#ok({ object: { sha: this.baseCommit } });
       if (endpoint === `repos/${repository}/git/commits/${this.baseCommit}`) return this.#ok({ tree: { sha: this.baseTree } });
     }
+    if (endpoint === `repos/${CENTRAL_ARCHIVE_REPOSITORY}/git/commits/${MERGE_COMMIT}`) {
+      const parents = this.archiveMergeParents ?? [this.archiveBaseSha, this.archiveHeadSha];
+      return this.#ok({ parents: parents.map((sha) => ({ sha })) });
+    }
     const contents = /^repos\/(.+?\/.+?)\/contents\/(.+)\?ref=(.+)$/u.exec(endpoint);
     if (contents) {
       const repository = contents[1]!;
@@ -593,12 +599,16 @@ class MockGhRunner implements GhRunner {
       return this.#ok([{ status: "added", filename: `archives/${this.archiveTemplateId}/${this.archiveReleaseVersion}/${this.archiveTemplateId}-${this.archiveReleaseVersion}.zip` }]);
     }
     if (endpoint.startsWith(`repos/${CENTRAL_ARCHIVE_REPOSITORY}/actions/workflows/validate-archive-pr.yml/runs?`)) {
+      const displayTitle = this.validationDisplayTitle === undefined
+        ? `sfl-archive-validation-v2 base=${this.archiveBaseSha} head=${this.archiveHeadSha}`
+        : this.validationDisplayTitle;
       return this.#ok({ workflow_runs: [{
         status: "completed",
         conclusion: this.validationSuccess ? "success" : "failure",
         event: this.validationEvent,
         name: this.validationWorkflowName,
         path: this.validationWorkflowPath,
+        ...(displayTitle === null ? {} : { display_title: displayTitle }),
         head_sha: this.validationHeadSha ?? this.archiveHeadSha,
         repository: { full_name: this.validationRepository },
         head_repository: { full_name: this.validationHeadRepository ?? this.archiveHeadRepository },
@@ -1071,9 +1081,27 @@ test("Catalog Plan accepts only current-policy Archive CI evidence for the exact
       name: string;
       accepted: boolean;
       mutate(runner: MockGhRunner): void;
+      error?: RegExp;
     }> = [
       { name: "exact current base", accepted: true, mutate() {} },
-      { name: "old vulnerable base success", accepted: false, mutate(runner) { runner.validationPullBaseSha = "e".repeat(40); } },
+      { name: "mutable run API base metadata", accepted: true, mutate(runner) { runner.validationPullBaseSha = "e".repeat(40); } },
+      { name: "missing run-name", accepted: false, mutate(runner) { runner.validationDisplayTitle = null; } },
+      { name: "old unversioned run-name", accepted: false, mutate(runner) { runner.validationDisplayTitle = "validate Archive PR"; } },
+      {
+        name: "wrong run-name base",
+        accepted: false,
+        mutate(runner) { runner.validationDisplayTitle = `sfl-archive-validation-v2 base=${"e".repeat(40)} head=${runner.archiveHeadSha}`; },
+      },
+      {
+        name: "wrong run-name head",
+        accepted: false,
+        mutate(runner) { runner.validationDisplayTitle = `sfl-archive-validation-v2 base=${runner.archiveBaseSha} head=${"e".repeat(40)}`; },
+      },
+      {
+        name: "wrong run-name policy version",
+        accepted: false,
+        mutate(runner) { runner.validationDisplayTitle = `sfl-archive-validation-v1 base=${runner.archiveBaseSha} head=${runner.archiveHeadSha}`; },
+      },
       { name: "wrong event", accepted: false, mutate(runner) { runner.validationEvent = "pull_request"; } },
       { name: "wrong PR number", accepted: false, mutate(runner) { runner.validationPullNumber = runner.archivePullNumber + 1; } },
       { name: "wrong run head repository", accepted: false, mutate(runner) { runner.validationHeadRepository = "attacker/archive-fork"; } },
@@ -1083,6 +1111,18 @@ test("Catalog Plan accepts only current-policy Archive CI evidence for the exact
       { name: "wrong base branch", accepted: false, mutate(runner) { runner.validationPullBaseRef = "legacy"; } },
       { name: "wrong workflow name", accepted: false, mutate(runner) { runner.validationWorkflowName = "lookalike-archive-validator"; } },
       { name: "wrong workflow path", accepted: false, mutate(runner) { runner.validationWorkflowPath = ".github/workflows/lookalike.yml"; } },
+      {
+        name: "non-merge commit",
+        accepted: false,
+        mutate(runner) { runner.archiveMergeParents = [runner.archiveBaseSha]; },
+        error: /requires a two-parent Archive merge commit/u,
+      },
+      {
+        name: "merge commit does not incorporate PR head",
+        accepted: false,
+        mutate(runner) { runner.archiveMergeParents = [runner.archiveBaseSha, "e".repeat(40)]; },
+        error: /requires a two-parent Archive merge commit/u,
+      },
     ];
 
     for (const item of cases) {
@@ -1101,7 +1141,7 @@ test("Catalog Plan accepts only current-policy Archive CI evidence for the exact
         const catalogPlan = await service.plan(request);
         assert.equal(catalogPlan.archive?.validationRun, `https://github.com/${CENTRAL_ARCHIVE_REPOSITORY}/actions/runs/99`);
       } else {
-        await assert.rejects(() => service.plan(request), /no successful fixed-render CI run/u, item.name);
+        await assert.rejects(() => service.plan(request), item.error ?? /no successful fixed-render CI run/u, item.name);
       }
       assert.equal(runner.writes.length, 0, `${item.name}: CI evidence observation must remain read-only`);
     }
