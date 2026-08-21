@@ -19,6 +19,8 @@ import {
   type ProviderSourceChangePlanV1,
   type ProviderSourcePaths,
 } from "../src/provider-sources.ts";
+import { createRuntimeProviderController } from "../src/provider-runtime.ts";
+import { UnavailableProviderAdapter } from "../src/provider-registry.ts";
 
 const PROVIDER_ID = "io.example.personal.figures";
 
@@ -41,6 +43,12 @@ interface FeedOptions {
   baseUrl?: string;
   variant?: string;
   authorizedNextKeys?: TestKey[];
+  catalogFault?:
+    | "missing_full_schema"
+    | "noncanonical_entries"
+    | "bad_status"
+    | "bad_archive"
+    | "bad_licenses";
 }
 
 class MockFeed {
@@ -70,23 +78,40 @@ class MockFeed {
     const previewBytes = new Uint8Array(PNG.sync.write(preview));
     const templateId = "personal-volcano";
     const releaseVersion = "1.0.0";
-    const previewPath = `thumbs/${templateId}/${releaseVersion}.png`;
-    const previewsBytes = new Uint8Array(zipSync({ [previewPath]: previewBytes }, { level: 0 }));
-    const catalogBytes = Buffer.from(canonicalJson({
-      schema: "figure-library.public-provider-catalog.v1",
-      provider: {
-        providerId,
-        displayName: "Personal test provider",
-        catalogRepository: "example/personal-catalog",
-        archiveRepository: "example/personal-archives",
-      },
-      generatedAt: "2026-08-21T00:00:00.000Z",
-      entries: [{
+    const templateIds = options.catalogFault === "noncanonical_entries"
+      ? [templateId, "alpha-template"]
+      : [templateId];
+    const previewArchive: Record<string, Uint8Array> = {};
+    const catalogEntries = templateIds.map((entryTemplateId) => {
+      const previewPath = `thumbs/${entryTemplateId}/${releaseVersion}.png`;
+      previewArchive[previewPath] = previewBytes;
+      return {
         schema: "figure-library.public-template-entry.v1",
         providerId,
-        templateId,
+        templateId: entryTemplateId,
         releaseVersion,
-        contentDigest: sha256(`${providerId}:${options.sequence}:${options.variant ?? "default"}`),
+        contentDigest: sha256(
+          `${providerId}:${entryTemplateId}:${options.sequence}:${options.variant ?? "default"}`,
+        ),
+        title: `Personal ${entryTemplateId}`,
+        description: "A signed personal Provider test template.",
+        search: {
+          application: "Provider source validation",
+          dataProfile: "Synthetic test data",
+          plotFamily: "scatter",
+          language: "R",
+          tags: ["personal", "test"],
+          packages: ["base"],
+          codeFiles: ["payload/code/render.R"],
+          inputFiles: ["payload/data/input.csv"],
+        },
+        archive: {
+          repository: "example/personal-archives",
+          commit: "1".repeat(40),
+          path: `archives/${entryTemplateId}/${releaseVersion}/${entryTemplateId}-${releaseVersion}.zip`,
+          bytes: 1234,
+          sha256: sha256(`archive:${entryTemplateId}:${options.sequence}`),
+        },
         preview: {
           path: previewPath,
           bytes: previewBytes.byteLength,
@@ -96,7 +121,43 @@ class MockFeed {
           height: preview.height,
           canonicalRgbaSha256: sha256(preview.data),
         },
-      }],
+        status: {
+          upstreamStatus: "published",
+          publisherVerified: true,
+          curationStatus: "unreviewed",
+          renderValidation: "publisher_attested",
+          localReviewStatus: "not_reviewed",
+          plotExecutionByRecipient: "not_run",
+        },
+        licenses: {
+          code: "MIT",
+          content: "CC-BY-4.0",
+          documentation: "CC-BY-4.0",
+        },
+      };
+    });
+    const firstEntry = catalogEntries[0]! as Record<string, unknown>;
+    if (options.catalogFault === "missing_full_schema") delete firstEntry.search;
+    if (options.catalogFault === "bad_status") {
+      (firstEntry.status as Record<string, unknown>).localReviewStatus = "approved";
+    }
+    if (options.catalogFault === "bad_archive") {
+      (firstEntry.archive as Record<string, unknown>).repository = "example/wrong-archives";
+    }
+    if (options.catalogFault === "bad_licenses") {
+      (firstEntry.licenses as Record<string, unknown>).code = "";
+    }
+    const previewsBytes = new Uint8Array(zipSync(previewArchive, { level: 0 }));
+    const catalogBytes = Buffer.from(canonicalJson({
+      schema: "figure-library.public-provider-catalog.v1",
+      provider: {
+        providerId,
+        displayName: "Personal test provider",
+        catalogRepository: "example/personal-catalog",
+        archiveRepository: "example/personal-archives",
+      },
+      generatedAt: "2026-08-21T00:00:00.000Z",
+      entries: catalogEntries,
     }));
     const manifest = {
       schema: PROVIDER_SOURCE_MANIFEST_SCHEMA,
@@ -179,6 +240,75 @@ async function temporaryManager(feed = new MockFeed()) {
     feed,
     manager: new ProviderSourceManager({ paths, fetcher: feed.fetcher }),
   };
+}
+
+async function replaceActiveSnapshotWithCoherentInvalidCatalog(
+  state: Awaited<ReturnType<typeof temporaryManager>>,
+  key: TestKey,
+) {
+  const endpoints = state.feed.publish({
+    key,
+    sequence: 1,
+    variant: "coherent-invalid-lkg",
+    catalogFault: "bad_status",
+  });
+  const manifestBytes = Buffer.from(state.feed.routes.get(endpoints.manifestUrl)!.body);
+  const signatureBytes = Buffer.from(state.feed.routes.get(endpoints.signatureUrl)!.body);
+  const catalogBytes = Buffer.from(state.feed.routes.get(endpoints.catalogUrl)!.body);
+  const manifest = JSON.parse(manifestBytes.toString("utf8")) as Record<string, unknown>;
+  const registry = JSON.parse(await fs.readFile(state.paths.registryFile, "utf8")) as Record<string, unknown>;
+  const sources = registry.sources as Array<Record<string, unknown>>;
+  const source = sources.find((candidate) => candidate.providerId === PROVIDER_ID)!;
+  const activeSnapshot = source.activeSnapshot as Record<string, unknown>;
+  const oldDirectory = path.join(
+    state.paths.dataRoot,
+    "snapshots",
+    PROVIDER_ID,
+    String(activeSnapshot.manifestSha256),
+  );
+  const nextManifestSha256 = sha256(manifestBytes);
+  const nextDirectory = path.join(
+    state.paths.dataRoot,
+    "snapshots",
+    PROVIDER_ID,
+    nextManifestSha256,
+  );
+  await fs.cp(oldDirectory, nextDirectory, { recursive: true, errorOnExist: true });
+
+  const inventoryPath = path.join(nextDirectory, "snapshot-inventory.jsonl");
+  const inventory = (await fs.readFile(inventoryPath, "utf8"))
+    .trimEnd()
+    .split("\n")
+    .map((line) => JSON.parse(line) as Record<string, unknown>);
+  const replacements = new Map<string, Buffer>([
+    ["source-manifest.json", manifestBytes],
+    ["source-manifest.sig.json", signatureBytes],
+    ["catalog.json", catalogBytes],
+  ]);
+  for (const [relative, bytes] of replacements) {
+    const target = path.join(nextDirectory, relative);
+    await fs.chmod(target, 0o666).catch(() => undefined);
+    await fs.writeFile(target, bytes);
+    const entry = inventory.find((candidate) => candidate.localPath === relative)!;
+    entry.bytes = bytes.byteLength;
+    entry.sha256 = sha256(bytes);
+  }
+  const inventoryBytes = Buffer.from(
+    `${inventory.map((entry) => canonicalJson(entry)).join("\n")}\n`,
+  );
+  await fs.chmod(inventoryPath, 0o666).catch(() => undefined);
+  await fs.writeFile(inventoryPath, inventoryBytes);
+
+  activeSnapshot.manifestSha256 = nextManifestSha256;
+  activeSnapshot.catalogSha256 = sha256(catalogBytes);
+  activeSnapshot.catalogBytes = catalogBytes.byteLength;
+  activeSnapshot.inventorySha256 = sha256(inventoryBytes);
+  const observed = source.observedRevisions as Array<Record<string, unknown>>;
+  observed.find((candidate) => candidate.sequence === 1)!.manifestSha256 = nextManifestSha256;
+  await fs.writeFile(state.paths.registryFile, `${canonicalJson(registry)}\n`, "utf8");
+
+  assert.equal((manifest.catalog as Record<string, unknown>).sha256, sha256(catalogBytes));
+  return nextDirectory;
 }
 
 test("provider source paths separate Windows and XDG config from immutable data", () => {
@@ -269,6 +399,69 @@ test("Add defaults out of ordinary search and atomically activates an immutable 
   }
 });
 
+test("signed but incomplete public Catalogs never create config or immutable snapshots", async () => {
+  const state = await temporaryManager();
+  const key = keyPair();
+  const endpoints = state.feed.publish({ key, sequence: 1, catalogFault: "missing_full_schema" });
+  try {
+    await assert.rejects(
+      () => state.manager.planChange({
+        action: "add",
+        expectedProviderId: PROVIDER_ID,
+        manifestUrl: endpoints.manifestUrl,
+        publicKeyBase64: key.publicKey,
+      }),
+      /Catalog|search/u,
+    );
+    await assert.rejects(fs.access(state.paths.registryFile));
+    await assert.rejects(fs.access(path.join(state.paths.dataRoot, "snapshots")));
+  } finally {
+    await fs.rm(state.root, { recursive: true, force: true });
+  }
+});
+
+test("full Catalog status, archive, licenses, and canonical order fail before switching and preserve last-known-good", async () => {
+  const state = await temporaryManager();
+  const key = keyPair();
+  const endpoints = state.feed.publish({ key, sequence: 1 });
+  try {
+    const add = await state.manager.planChange({
+      action: "add",
+      expectedProviderId: PROVIDER_ID,
+      manifestUrl: endpoints.manifestUrl,
+      publicKeyBase64: key.publicKey,
+    });
+    assertChangePlan(add);
+    await state.manager.applyChange({
+      planDigest: add.planDigest,
+      operationId: "add-before-full-catalog-faults",
+      expectedAction: "add",
+      expectedProviderId: PROVIDER_ID,
+    });
+    const registryBefore = await fs.readFile(state.paths.registryFile);
+    const snapshotRoot = path.join(state.paths.dataRoot, "snapshots", PROVIDER_ID);
+    const snapshotsBefore = (await fs.readdir(snapshotRoot)).sort();
+
+    for (const catalogFault of [
+      "bad_status",
+      "bad_archive",
+      "bad_licenses",
+      "noncanonical_entries",
+    ] as const) {
+      state.feed.publish({ key, sequence: 2, variant: catalogFault, catalogFault });
+      await assert.rejects(
+        () => state.manager.planChange({ action: "update", providerId: PROVIDER_ID }),
+        /Catalog|status|archive|license|canonically ordered/u,
+      );
+      assert.deepEqual(await fs.readFile(state.paths.registryFile), registryBefore);
+      assert.deepEqual((await fs.readdir(snapshotRoot)).sort(), snapshotsBefore);
+      assert.equal((await state.manager.loadLastKnownGood(PROVIDER_ID)).source.activeSnapshot.sequence, 1);
+    }
+  } finally {
+    await fs.rm(state.root, { recursive: true, force: true });
+  }
+});
+
 test("updates reject rollback and same-sequence equivocation without changing last-known-good", async () => {
   const state = await temporaryManager();
   const key = keyPair();
@@ -339,6 +532,35 @@ test("Apply re-fetches the planned remote snapshot and rejects post-Plan drift",
       plan.snapshot!.manifestSha256,
     );
     await assert.rejects(fs.access(plannedSnapshot));
+  } finally {
+    await fs.rm(state.root, { recursive: true, force: true });
+  }
+});
+
+test("Apply rejects a newly signed malformed full Catalog before any active switch", async () => {
+  const state = await temporaryManager();
+  const key = keyPair();
+  const endpoints = state.feed.publish({ key, sequence: 1 });
+  try {
+    const plan = await state.manager.planChange({
+      action: "add",
+      expectedProviderId: PROVIDER_ID,
+      manifestUrl: endpoints.manifestUrl,
+      publicKeyBase64: key.publicKey,
+    });
+    assertChangePlan(plan);
+    state.feed.publish({ key, sequence: 1, catalogFault: "bad_status" });
+    await assert.rejects(
+      () => state.manager.applyChange({
+        planDigest: plan.planDigest,
+        operationId: "malformed-full-catalog-after-plan",
+        expectedAction: "add",
+        expectedProviderId: PROVIDER_ID,
+      }),
+      /stale provider source plan.*status/u,
+    );
+    await assert.rejects(fs.access(state.paths.registryFile));
+    await assert.rejects(fs.access(path.join(state.paths.dataRoot, "snapshots")));
   } finally {
     await fs.rm(state.root, { recursive: true, force: true });
   }
@@ -629,6 +851,39 @@ test("last-known-good loading fails closed after snapshot tampering", async () =
       () => state.manager.loadLastKnownGood(PROVIDER_ID),
       /snapshot file mismatch/u,
     );
+  } finally {
+    await fs.rm(state.root, { recursive: true, force: true });
+  }
+});
+
+test("a corrupt last-known-good snapshot becomes unavailable without a network request", async () => {
+  const state = await temporaryManager();
+  const key = keyPair();
+  const endpoints = state.feed.publish({ key, sequence: 1 });
+  try {
+    const add = await state.manager.planChange({
+      action: "add",
+      expectedProviderId: PROVIDER_ID,
+      manifestUrl: endpoints.manifestUrl,
+      publicKeyBase64: key.publicKey,
+    });
+    assertChangePlan(add);
+    await state.manager.applyChange({
+      planDigest: add.planDigest,
+      operationId: "add-before-offline-lkg-corruption",
+      expectedAction: "add",
+      expectedProviderId: PROVIDER_ID,
+    });
+    await replaceActiveSnapshotWithCoherentInvalidCatalog(state, key);
+    state.feed.requests.length = 0;
+
+    await assert.rejects(
+      () => state.manager.loadLastKnownGood(PROVIDER_ID),
+      /status is invalid/u,
+    );
+    const controller = await createRuntimeProviderController({ manager: state.manager });
+    assert.ok(controller.registry.get(PROVIDER_ID) instanceof UnavailableProviderAdapter);
+    assert.equal(state.feed.requests.length, 0, "runtime LKG degradation must remain completely offline");
   } finally {
     await fs.rm(state.root, { recursive: true, force: true });
   }

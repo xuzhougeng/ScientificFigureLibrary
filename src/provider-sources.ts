@@ -5,6 +5,7 @@ import path from "node:path";
 import { canonicalJson, compareCanonicalStrings } from "./canonical-json.ts";
 import { withCrossRuntimeWriteLock } from "./cross-runtime-lock.ts";
 import { assertPortableFilesystemSegment, portableCaseFold } from "./library-runtime.ts";
+import { parsePublicProviderCatalog } from "./public-catalog-provider.ts";
 import {
   SecureProviderSourceFetcher,
   deriveProviderSourceSignatureUrl,
@@ -37,6 +38,36 @@ const PROVIDER_ID = /^[a-z0-9][a-z0-9._-]{1,126}[a-z0-9]$/u;
 const PLAN_TTL_MS = 30 * 60 * 1_000;
 const PLAN_LIMIT = 64;
 const MAX_OBSERVED_REVISIONS = 10_000;
+
+/**
+ * The fetch layer validates signed bytes, the compact preview inventory, and
+ * the preview ZIP. Before any of those bytes can become an active Provider,
+ * validate the complete public Catalog contract used by the runtime adapter.
+ * Keeping this gate here avoids a provider-source -> runtime dependency while
+ * ensuring Plan, Apply re-fetch, and last-known-good loading all share the
+ * authoritative public Catalog parser.
+ */
+function validateCompletePersonalCatalog(
+  bytes: Uint8Array,
+  expectedProviderId: string,
+  observed?: PersonalCatalogEntryObservation[],
+) {
+  const catalog = parsePublicProviderCatalog(bytes);
+  if (catalog.provider.providerId !== expectedProviderId) {
+    throw new Error("complete public Catalog providerId does not match the personal Provider source");
+  }
+  const entries: PersonalCatalogEntryObservation[] = catalog.entries.map((entry) => ({
+    templateId: entry.templateId,
+    releaseVersion: entry.releaseVersion,
+    contentDigest: entry.contentDigest,
+    identity: `${entry.templateId}@${entry.releaseVersion}`,
+    preview: { ...entry.preview },
+  }));
+  if (observed && canonicalJson(entries) !== canonicalJson(observed)) {
+    throw new Error("complete public Catalog differs from its verified preview inventory observation");
+  }
+  return entries;
+}
 
 type Environment = Readonly<Record<string, string | undefined>>;
 
@@ -850,6 +881,11 @@ export class ProviderSourceManager {
   }) {
     try {
       const snapshot = await fetchVerifiedProviderSourceSnapshot({ fetcher: this.fetcher, ...options });
+      validateCompletePersonalCatalog(
+        snapshot.catalogBytes,
+        options.expectedProviderId,
+        snapshot.catalog.entries,
+      );
       this.lastErrors.delete(options.expectedProviderId);
       return snapshot;
     } catch (error) {
@@ -1509,7 +1545,12 @@ export class ProviderSourceManager {
       throw new Error("provider source last-known-good signature sidecar is invalid");
     }
     verifyEd25519Detached(manifestBytes, parsedSignature.signature, source.signingKey);
-    const catalogEntries = parsePersonalProviderCatalogBytes(catalogBytes, providerId).entries;
+    const compactCatalogEntries = parsePersonalProviderCatalogBytes(catalogBytes, providerId).entries;
+    const catalogEntries = validateCompletePersonalCatalog(
+      catalogBytes,
+      providerId,
+      compactCatalogEntries,
+    );
     if (catalogEntries.length !== source.activeSnapshot.templateCount) {
       throw new Error("provider source last-known-good template count mismatch");
     }
