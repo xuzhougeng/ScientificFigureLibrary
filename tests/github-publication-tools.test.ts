@@ -447,20 +447,24 @@ class MockGhRunner implements GhRunner {
   archiveReleaseVersion = "1.0.0";
   archiveAuthor = "jarxunlai";
   archiveHeadRepository = CENTRAL_ARCHIVE_REPOSITORY as string;
+  archiveHeadRef = "sfl/archive/clean-room-bars/1.0.0/archive-digest";
   archiveHeadSha = CREATED_COMMIT;
+  archiveBaseRepository = CENTRAL_ARCHIVE_REPOSITORY as string;
+  archiveBaseRef = "main";
   archiveBaseSha = BASE_COMMIT;
   validationEvent = "pull_request_target";
-  validationWorkflowName = "validate-archive-pr";
+  validationWorkflowMetadataId: unknown = 339_177_621;
+  validationWorkflowMetadataName = "validate-archive-pr";
+  validationWorkflowMetadataPath = ".github/workflows/validate-archive-pr.yml";
+  validationWorkflowMetadataState = "active";
+  validationWorkflowId: unknown = undefined;
   validationWorkflowPath = ".github/workflows/validate-archive-pr.yml";
+  validationRunName: string | null | undefined = undefined;
   validationRepository = CENTRAL_ARCHIVE_REPOSITORY as string;
   validationHeadRepository: string | null = null;
+  validationHeadBranch: string | null = null;
   validationHeadSha: string | null = null;
-  validationPullNumber: number | null = null;
-  validationPullHeadRepository: string | null = null;
-  validationPullHeadSha: string | null = null;
-  validationPullBaseRef = "main";
-  validationPullBaseRepository = CENTRAL_ARCHIVE_REPOSITORY as string;
-  validationPullBaseSha: string | null = null;
+  validationPullRequests: unknown[] | null | undefined = [];
   validationDisplayTitle: string | null | undefined = undefined;
   archiveMergeParents: string[] | null = null;
   baseCommit = BASE_COMMIT;
@@ -588,43 +592,44 @@ class MockGhRunner implements GhRunner {
         merged: this.merged,
         merged_at: this.merged ? "2026-08-21T05:00:00.000Z" : null,
         merge_commit_sha: this.merged ? MERGE_COMMIT : null,
-        html_url: `https://github.com/${CENTRAL_ARCHIVE_REPOSITORY}/pull/17`,
+        html_url: `https://github.com/${CENTRAL_ARCHIVE_REPOSITORY}/pull/${this.archivePullNumber}`,
         changed_files: 1,
-        base: { ref: "main", sha: this.archiveBaseSha, repo: { full_name: CENTRAL_ARCHIVE_REPOSITORY } },
-        head: { sha: this.archiveHeadSha, repo: { full_name: this.archiveHeadRepository } },
+        base: { ref: this.archiveBaseRef, sha: this.archiveBaseSha, repo: { full_name: this.archiveBaseRepository } },
+        head: { ref: this.archiveHeadRef, sha: this.archiveHeadSha, repo: { full_name: this.archiveHeadRepository } },
         user: { login: this.archiveAuthor },
       });
     }
     if (endpoint === `repos/${CENTRAL_ARCHIVE_REPOSITORY}/pulls/${this.archivePullNumber}/files?per_page=100`) {
       return this.#ok([{ status: "added", filename: `archives/${this.archiveTemplateId}/${this.archiveReleaseVersion}/${this.archiveTemplateId}-${this.archiveReleaseVersion}.zip` }]);
     }
+    if (endpoint === `repos/${CENTRAL_ARCHIVE_REPOSITORY}/actions/workflows/validate-archive-pr.yml`) {
+      return this.#ok({
+        id: this.validationWorkflowMetadataId,
+        name: this.validationWorkflowMetadataName,
+        path: this.validationWorkflowMetadataPath,
+        state: this.validationWorkflowMetadataState,
+      });
+    }
     if (endpoint.startsWith(`repos/${CENTRAL_ARCHIVE_REPOSITORY}/actions/workflows/validate-archive-pr.yml/runs?`)) {
       const displayTitle = this.validationDisplayTitle === undefined
         ? `sfl-archive-validation-v2 base=${this.archiveBaseSha} head=${this.archiveHeadSha}`
         : this.validationDisplayTitle;
+      const runName = this.validationRunName === undefined ? displayTitle : this.validationRunName;
       return this.#ok({ workflow_runs: [{
+        id: 99,
         status: "completed",
         conclusion: this.validationSuccess ? "success" : "failure",
         event: this.validationEvent,
-        name: this.validationWorkflowName,
+        ...(runName === null ? {} : { name: runName }),
+        workflow_id: this.validationWorkflowId ?? this.validationWorkflowMetadataId,
         path: this.validationWorkflowPath,
         ...(displayTitle === null ? {} : { display_title: displayTitle }),
+        head_branch: this.validationHeadBranch ?? this.archiveHeadRef,
         head_sha: this.validationHeadSha ?? this.archiveHeadSha,
         repository: { full_name: this.validationRepository },
         head_repository: { full_name: this.validationHeadRepository ?? this.archiveHeadRepository },
         html_url: `https://github.com/${CENTRAL_ARCHIVE_REPOSITORY}/actions/runs/99`,
-        pull_requests: [{
-          number: this.validationPullNumber ?? this.archivePullNumber,
-          head: {
-            sha: this.validationPullHeadSha ?? this.archiveHeadSha,
-            repo: { url: `https://api.github.com/repos/${this.validationPullHeadRepository ?? this.archiveHeadRepository}` },
-          },
-          base: {
-            ref: this.validationPullBaseRef,
-            sha: this.validationPullBaseSha ?? this.archiveBaseSha,
-            repo: { url: `https://api.github.com/repos/${this.validationPullBaseRepository}` },
-          },
-        }],
+        ...(this.validationPullRequests === undefined ? {} : { pull_requests: this.validationPullRequests }),
       }] });
     }
     if (/\/pulls\?state=all/u.test(endpoint)) {
@@ -1083,8 +1088,9 @@ test("Catalog Plan accepts only current-policy Archive CI evidence for the exact
       mutate(runner: MockGhRunner): void;
       error?: RegExp;
     }> = [
-      { name: "exact current base", accepted: true, mutate() {} },
-      { name: "mutable run API base metadata", accepted: true, mutate(runner) { runner.validationPullBaseSha = "e".repeat(40); } },
+      { name: "post-merge custom run-name with empty pull_requests", accepted: true, mutate() {} },
+      { name: "arbitrary raw run name", accepted: true, mutate(runner) { runner.validationRunName = "custom run label"; } },
+      { name: "missing mutable pull_requests links", accepted: true, mutate(runner) { runner.validationPullRequests = undefined; } },
       { name: "missing run-name", accepted: false, mutate(runner) { runner.validationDisplayTitle = null; } },
       { name: "old unversioned run-name", accepted: false, mutate(runner) { runner.validationDisplayTitle = "validate Archive PR"; } },
       {
@@ -1103,14 +1109,19 @@ test("Catalog Plan accepts only current-policy Archive CI evidence for the exact
         mutate(runner) { runner.validationDisplayTitle = `sfl-archive-validation-v1 base=${runner.archiveBaseSha} head=${runner.archiveHeadSha}`; },
       },
       { name: "wrong event", accepted: false, mutate(runner) { runner.validationEvent = "pull_request"; } },
-      { name: "wrong PR number", accepted: false, mutate(runner) { runner.validationPullNumber = runner.archivePullNumber + 1; } },
+      { name: "wrong workflow ID", accepted: false, mutate(runner) { runner.validationWorkflowId = 9_999; } },
+      { name: "invalid workflow metadata ID", accepted: false, mutate(runner) { runner.validationWorkflowMetadataId = 0; }, error: /workflow metadata/u },
+      { name: "wrong workflow metadata name", accepted: false, mutate(runner) { runner.validationWorkflowMetadataName = "lookalike-validator"; }, error: /workflow metadata/u },
+      { name: "wrong workflow metadata path", accepted: false, mutate(runner) { runner.validationWorkflowMetadataPath = ".github/workflows/lookalike.yml"; }, error: /workflow metadata/u },
+      { name: "inactive workflow metadata", accepted: false, mutate(runner) { runner.validationWorkflowMetadataState = "disabled_manually"; }, error: /workflow metadata/u },
+      { name: "wrong run workflow path", accepted: false, mutate(runner) { runner.validationWorkflowPath = ".github/workflows/lookalike.yml"; } },
+      { name: "wrong run head branch", accepted: false, mutate(runner) { runner.validationHeadBranch = "sfl/archive/lookalike"; } },
+      { name: "wrong run repository", accepted: false, mutate(runner) { runner.validationRepository = "attacker/archive-fork"; } },
       { name: "wrong run head repository", accepted: false, mutate(runner) { runner.validationHeadRepository = "attacker/archive-fork"; } },
       { name: "wrong run head SHA", accepted: false, mutate(runner) { runner.validationHeadSha = "e".repeat(40); } },
-      { name: "wrong PR head repository", accepted: false, mutate(runner) { runner.validationPullHeadRepository = "attacker/archive-fork"; } },
-      { name: "wrong PR head SHA", accepted: false, mutate(runner) { runner.validationPullHeadSha = "e".repeat(40); } },
-      { name: "wrong base branch", accepted: false, mutate(runner) { runner.validationPullBaseRef = "legacy"; } },
-      { name: "wrong workflow name", accepted: false, mutate(runner) { runner.validationWorkflowName = "lookalike-archive-validator"; } },
-      { name: "wrong workflow path", accepted: false, mutate(runner) { runner.validationWorkflowPath = ".github/workflows/lookalike.yml"; } },
+      { name: "wrong PR base repository", accepted: false, mutate(runner) { runner.archiveBaseRepository = "attacker/archive-fork"; }, error: /requires a merged/u },
+      { name: "wrong PR base ref", accepted: false, mutate(runner) { runner.archiveBaseRef = "legacy"; }, error: /requires a merged/u },
+      { name: "wrong PR base parent", accepted: false, mutate(runner) { runner.archiveMergeParents = ["e".repeat(40), runner.archiveHeadSha]; }, error: /exact PR base and head parents/u },
       {
         name: "non-merge commit",
         accepted: false,

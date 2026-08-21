@@ -1511,11 +1511,15 @@ async function observeMergedArchivePr(runner: GhRunner, number: number): Promise
   const user = isRecord(pr.user) ? pr.user : {};
   const head = isRecord(pr.head) ? pr.head : {};
   const headRepo = isRecord(head.repo) ? head.repo : {};
+  const expectedPrUrl = `https://github.com/${CENTRAL_ARCHIVE_REPOSITORY}/pull/${number}`;
   if (
-    pr.merged !== true || typeof pr.merged_at !== "string" || typeof pr.merge_commit_sha !== "string" || !GIT_HASH.test(pr.merge_commit_sha) ||
-    baseRepo.full_name !== CENTRAL_ARCHIVE_REPOSITORY || base.ref !== BASE_BRANCH || typeof pr.html_url !== "string" ||
+    pr.number !== number || pr.merged !== true || typeof pr.merged_at !== "string" ||
+    typeof pr.merge_commit_sha !== "string" || !GIT_HASH.test(pr.merge_commit_sha) ||
+    baseRepo.full_name !== CENTRAL_ARCHIVE_REPOSITORY || base.ref !== BASE_BRANCH || pr.html_url !== expectedPrUrl ||
+    typeof base.sha !== "string" || !GIT_HASH.test(base.sha) ||
     typeof headRepo.full_name !== "string" || typeof user.login !== "string" ||
-    typeof head.sha !== "string" || !GIT_HASH.test(head.sha) || pr.changed_files !== 1
+    typeof head.ref !== "string" || !head.ref || typeof head.sha !== "string" || !GIT_HASH.test(head.sha) ||
+    pr.changed_files !== 1
   ) throw new Error("Catalog Plan requires a merged, one-file central Archive PR into main");
   const mergeCommit = await ghJson<Record<string, unknown>>(
     runner,
@@ -1526,9 +1530,10 @@ async function observeMergedArchivePr(runner: GhRunner, number: number): Promise
   const mergeHead = isRecord(mergeParents[1]) ? mergeParents[1] : {};
   if (
     mergeParents.length !== 2 || typeof mergeBase.sha !== "string" || !GIT_HASH.test(mergeBase.sha) ||
-    typeof mergeHead.sha !== "string" || !GIT_HASH.test(mergeHead.sha) || mergeHead.sha !== head.sha
+    typeof mergeHead.sha !== "string" || !GIT_HASH.test(mergeHead.sha) ||
+    mergeBase.sha !== base.sha || mergeHead.sha !== head.sha
   ) {
-    throw new Error("Catalog Plan requires a two-parent Archive merge commit whose second parent is the exact PR head");
+    throw new Error("Catalog Plan requires a two-parent Archive merge commit with the exact PR base and head parents");
   }
   const expectedValidationRunTitle =
     `${ARCHIVE_VALIDATION_RUN_TITLE_VERSION} base=${mergeBase.sha} head=${head.sha}`;
@@ -1538,6 +1543,18 @@ async function observeMergedArchivePr(runner: GhRunner, number: number): Promise
   }
   const filePath = validatePortablePath(changed[0].filename);
   assertAllowedRepositoryFile("archive", filePath);
+  const workflow = await ghJson<Record<string, unknown>>(
+    runner,
+    `repos/${CENTRAL_ARCHIVE_REPOSITORY}/actions/workflows/${ARCHIVE_VALIDATION_WORKFLOW_NAME}.yml`,
+  );
+  if (
+    !Number.isSafeInteger(workflow.id) || Number(workflow.id) <= 0 ||
+    workflow.name !== ARCHIVE_VALIDATION_WORKFLOW_NAME ||
+    workflow.path !== ARCHIVE_VALIDATION_WORKFLOW_PATH || workflow.state !== "active"
+  ) {
+    throw new Error("central Archive validation workflow metadata does not match the exact active trusted policy workflow");
+  }
+  const workflowId = Number(workflow.id);
   let validationRun = "";
   for (let page = 1; page <= 10 && !validationRun; page += 1) {
     const runs = await ghJson<Record<string, unknown>>(
@@ -1547,34 +1564,21 @@ async function observeMergedArchivePr(runner: GhRunner, number: number): Promise
     const values = Array.isArray(runs.workflow_runs) ? runs.workflow_runs : [];
     for (const raw of values) {
       if (!isRecord(raw) || raw.status !== "completed" || raw.conclusion !== "success" || raw.event !== "pull_request_target" ||
-        raw.name !== ARCHIVE_VALIDATION_WORKFLOW_NAME || raw.path !== ARCHIVE_VALIDATION_WORKFLOW_PATH ||
-        raw.display_title !== expectedValidationRunTitle || raw.head_sha !== head.sha || typeof raw.html_url !== "string") continue;
+        raw.workflow_id !== workflowId || raw.path !== ARCHIVE_VALIDATION_WORKFLOW_PATH ||
+        raw.display_title !== expectedValidationRunTitle || raw.head_branch !== head.ref || raw.head_sha !== head.sha ||
+        !Number.isSafeInteger(raw.id) || Number(raw.id) <= 0) continue;
       const runRepository = isRecord(raw.repository) ? raw.repository : {};
       const runHeadRepository = isRecord(raw.head_repository) ? raw.head_repository : {};
       if (runRepository.full_name !== CENTRAL_ARCHIVE_REPOSITORY || runHeadRepository.full_name !== headRepo.full_name) continue;
-      const pulls = Array.isArray(raw.pull_requests) ? raw.pull_requests : [];
-      const exact = pulls.some((candidate) => {
-        if (!isRecord(candidate) || candidate.number !== number) return false;
-        const candidateHead = isRecord(candidate.head) ? candidate.head : {};
-        const candidateHeadRepo = isRecord(candidateHead.repo) ? candidateHead.repo : {};
-        const candidateBase = isRecord(candidate.base) ? candidate.base : {};
-        const candidateBaseRepo = isRecord(candidateBase.repo) ? candidateBase.repo : {};
-        const expectedHeadRepoUrl = `https://api.github.com/repos/${headRepo.full_name}`;
-        const expectedBaseRepoUrl = `https://api.github.com/repos/${CENTRAL_ARCHIVE_REPOSITORY}`;
-        const headRepoMatches = candidateHeadRepo.full_name === headRepo.full_name || candidateHeadRepo.url === expectedHeadRepoUrl;
-        const baseRepoMatches = candidateBaseRepo.full_name === CENTRAL_ARCHIVE_REPOSITORY || candidateBaseRepo.url === expectedBaseRepoUrl;
-        return candidateHead.sha === head.sha && headRepoMatches && candidateBase.ref === BASE_BRANCH &&
-          baseRepoMatches;
-      });
-      if (exact) {
-        validationRun = raw.html_url;
-        break;
-      }
+      const expectedRunUrl = `https://github.com/${CENTRAL_ARCHIVE_REPOSITORY}/actions/runs/${Number(raw.id)}`;
+      if (raw.html_url !== expectedRunUrl) continue;
+      validationRun = expectedRunUrl;
+      break;
     }
     if (values.length < 100) break;
   }
   if (!validationRun) {
-    throw new Error("merged Archive PR has no successful fixed-render CI run with the exact trusted policy run-name for its exact PR, head repository/commit, and merge-parent base commit");
+    throw new Error("merged Archive PR has no successful fixed-render CI run from the exact trusted workflow for its merge-parent base and exact PR head repository, branch, and commit");
   }
   return {
     number,
