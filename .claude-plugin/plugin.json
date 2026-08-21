@@ -1,7 +1,7 @@
 {
   "name": "figure-library",
-  "version": "0.5.5",
-  "description": "Search Local Published and FigureYa, then govern direct image/code intake as immutable reviewed templates.",
+  "version": "0.6.0",
+  "description": "Search Local Published, bundled Community, FigureYa, and explicitly trusted personal Providers, then govern immutable figure references and staged publication.",
   "author": {
     "name": "xuzhougeng and contributors"
   },

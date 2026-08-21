@@ -3,7 +3,7 @@ name: figure-library
 description: Build, review, search, select, materialize, and safely publish immutable scientific-figure references from Local Published, bundled Community, FigureYa, and explicitly trusted personal Providers.
 ---
 
-# Scientific Figure Library 0.5.5
+# Scientific Figure Library 0.6.0
 
 Use this Skill when a user wants to store an uploaded figure/code pair, review
 or publish a local template, search for a plotting reference, or materialize an
@@ -24,7 +24,7 @@ path.
 - The Library is one user-selected, cross-project global store. Never infer the
   Library root from the current project and never create a project pin.
 - Standard core uses direct image/code intake. Do not call `figure_capture_*`;
-  Capture tools are not registered in 0.5.
+  Capture tools are not registered in the standard 0.6 server.
 - The server hashes, validates, versions, reviews, and materializes files. It
   does not contain a model and never executes code.
 - Host Agent observations, deterministic/rule findings, and user decisions are
@@ -235,8 +235,8 @@ bytes or Series state changed, create a new plan and request confirmation again.
 
 Validation Errors and open Blocking Review Gates prevent publication. Warnings
 remain visible before and after publication because Published search/review
-loads the Release-bound immutable Review; warnings are not waivers and 0.5 has
-no waiver mechanism. Working and publish plan/apply responses expose the same
+loads the Release-bound immutable Review; warnings are not waivers and the
+standard server has no waiver mechanism. Working and publish plan/apply responses expose the same
 `reviewSummary` shape.
 
 Every mutation is plan/apply:
@@ -445,8 +445,8 @@ For `figure_library_plan_publication_pr`, the only allowed actions are:
   in `jarxunlai/ScientificFigureLibrary-community-archives`.
 - `catalog`: only after the corresponding Archive PR was manually merged,
   fetch its exact merge commit, revalidate ZIP/inventory/preview, and propose
-  only the Catalog entry, thumbnail, preview manifest, Catalog, and source lock
-  changes in `jarxunlai/ScientificFigureLibrary-community`.
+  only the Catalog entry, thumbnail, preview manifest, aggregate Catalog, and
+  human review record changes in `jarxunlai/ScientificFigureLibrary-community`.
 
 Show expected login, repository/base commit, head/fork, branch, commit message,
 PR title/body, every file, archive/content digests, and `written: false`.

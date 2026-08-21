@@ -2,7 +2,7 @@
 
 Scientific Figure Library (SFL) is a standard stdio MCP server and MCP App for
 building, reviewing, finding, and materializing reusable scientific-figure
-references. Version 0.5 makes one **user-selected global Library** the durable,
+references. Version 0.6 keeps one **user-selected global Library** as the durable,
 cross-project source of truth. Wisp, Codex, Claude, and other MCP hosts can use
 the same Library without copying it into every project.
 
@@ -32,7 +32,7 @@ materialize an exact result.
 > licensed submission. Export does not publish, sign, execute code, or create a
 > pull request.
 
-> **0.5.1 protocol migration (still required in 0.5.5):** `figure_library_plan_materialize`
+> **0.5.1 protocol migration (still required in 0.6.0):** `figure_library_plan_materialize`
 > requires a session-local, single-use `previewReceipt` produced only
 > after an exact preview and explicit confirmation. There is no receipt-free
 > compatibility path.
@@ -45,7 +45,7 @@ materialize an exact result.
 >
 > **0.5.5 host plugins and display modes:** the same Skill and MCP server are packaged for Wisp, Codex, and Claude. The MCP App may request `fullscreen` or `pip` when the Host advertises those modes; there is no docked-sidebar display mode.
 >
-> **0.5.4 scientificQuestion:** optional retrieval field for the biological question a figure answers. It is not `description` or `visualProfile`, and ordinary search still returns only Local Published heads.
+> **0.5.4 scientificQuestion:** optional retrieval field for the biological question a figure answers. It is not `description` or `visualProfile`. In that release, ordinary search returned only Local Published heads; 0.6.0 keeps the field while expanding the Provider set.
 
 > **0.5.3 transport image adapter:** MCP image payloads are adapted to the
 > existing search and preview Data URL budgets before they leave the server.
@@ -64,8 +64,8 @@ no second model and does not execute plotting code.
   `template.lock.json` when a template is materialized; there are no project
   pins and no project-scoped Library.
 - Direct user-supplied image/code intake is the standard path.
-- Web Capture and `figure_capture_*` tools are not registered in the 0.5
-  standard core. The experimental 0.4.2 Capture work remains isolated from the
+- Web Capture and `figure_capture_*` tools are not registered in the standard
+  0.6 core. The experimental 0.4.2 Capture work remains isolated from the
   standard design.
 - Legacy flat `figure-library.template.v1` entries are migration input only.
   They do not appear in ordinary search until explicitly adopted.
@@ -319,7 +319,7 @@ Validation findings are intentionally separate:
   publication while open.
 - **Review Warning** — visible but not itself blocking.
 
-There is no waiver path in 0.5. Review with
+There is no waiver path in 0.6.0. Review with
 `figure_library_review_open`, `figure_library_template_history`, and
 `figure_library_diff_revisions`. Lifecycle changes use separate plan/apply
 pairs:
@@ -595,8 +595,8 @@ gates:
    in `jarxunlai/ScientificFigureLibrary-community-archives`.
 2. **Catalog PR** — permitted only after that Archive PR was manually merged.
    It reloads the ZIP from the exact merge commit, verifies every identity, and
-   proposes the Catalog entry, thumbnail, preview manifest, Catalog, and source
-   lock in `jarxunlai/ScientificFigureLibrary-community`.
+   proposes the Catalog entry, thumbnail, preview manifest, aggregate Catalog,
+   and human review record in `jarxunlai/ScientificFigureLibrary-community`.
 
 Plan is read-only and displays the expected login, repository/base, branch or
 fork, commit/PR text, complete file list, and digests. Apply rechecks login,
@@ -669,7 +669,7 @@ change the active locator. Fork creates a new `libraryId` and records
 source Library's approval; it creates a Working Revision requiring local review
 and publication.
 
-See [`docs/GLOBAL_LIBRARY_0.5.md`](docs/GLOBAL_LIBRARY_0.5.md) for the storage,
+See [`docs/GLOBAL_LIBRARY_0.6.md`](docs/GLOBAL_LIBRARY_0.6.md) for the storage,
 locator, lifecycle, migration, and portability model.
 
 ## Structured diagnostics and export
@@ -720,7 +720,7 @@ resource links, report that integration limitation. A local path is returned
 only when absolute paths were explicitly requested, and local file existence
 alone must not be described as delivery to the user.
 
-## MCP tools in the 0.5 standard core
+## MCP tools in the 0.6 standard core
 
 | Area | Tools |
 | --- | --- |
@@ -734,9 +734,12 @@ alone must not be described as delivery to the user.
 | Gate, publish, discard, restore, adoption | the lifecycle plan/apply pairs listed above |
 | Exact acquisition | `figure_library_plan_materialize`, `figure_library_apply_materialize` |
 | Portable bundles | `figure_library_plan_bundle_export`, `figure_library_apply_bundle_export`, `figure_library_plan_full_restore`, `figure_library_apply_full_restore`, `figure_library_plan_template_bundle_import`, `figure_library_apply_template_bundle_import` |
+| Provider source management | `figure_library_list_provider_sources`, `figure_library_plan_provider_source_change`, `figure_library_apply_provider_source_change` |
+| Sanitized publication export | `figure_library_plan_publication_export`, `figure_library_apply_publication_export` |
+| Staged central GitHub PRs | `figure_library_github_auth_status`, `figure_library_github_auth_instructions`, `figure_library_plan_publication_pr`, `figure_library_apply_publication_pr` |
 
 There are no `figure_capture_*`, project status/pin, direct-write import, sync,
-archive/reconcile, or one-step materialize tools in the standard 0.5 server.
+archive/reconcile, or one-step materialize tools in the standard 0.6 server.
 
 ## Distribution
 
@@ -750,14 +753,22 @@ npm run package:plugins
 
 This writes three artifacts into `release/`:
 
-- `scientific-figure-library-wisp-0.5.5.zip` — install from Wisp **Settings → Plugins**
-- `scientific-figure-library-codex-0.5.5.zip` — Codex plugin with `.codex-plugin/plugin.json`, `.codex-plugin/mcp.json`, and `skills/figure-library`
-- `scientific-figure-library-claude-0.5.5.zip` — Claude Code plugin with `.claude-plugin/plugin.json`, `.claude-plugin/mcp.json`, and auto-discovered `skills/`
+- `scientific-figure-library-wisp-0.6.0.zip` — install from Wisp **Settings → Plugins**
+- `scientific-figure-library-codex-0.6.0.zip` — Codex plugin with `.codex-plugin/plugin.json`, `.codex-plugin/mcp.json`, and `skills/figure-library`
+- `scientific-figure-library-claude-0.6.0.zip` — Claude Code plugin with `.claude-plugin/plugin.json`, `.claude-plugin/mcp.json`, and auto-discovered `skills/`
 
 Each package uses its Host's plugin-root contract. Codex resolves `cwd: "."`
 from the installed plugin root, Claude expands `${CLAUDE_PLUGIN_ROOT}`, and Wisp
 continues to expand `${WISP_PLUGIN_ROOT}`. Therefore the server entry does not
 depend on the project directory from which the Host was opened.
+
+The automated package smoke extracts each ZIP under a path containing spaces,
+starts the packaged server from an unrelated project cwd, and completes MCP
+`initialize` plus an exact `tools/list` inventory. This proves the packaged
+stdio and Host root-resolution contracts only. It does **not** prove that a
+real Codex Desktop installation has formed an exact ready client or injected
+the tools into a Desktop session; those observations remain a manual
+pre-release field acceptance from an arbitrary project directory.
 
 The MCP App may request `fullscreen` or `pip` if the Host lists those modes in
 `availableDisplayModes`. Codex has no docked-sidebar display mode.
@@ -766,7 +777,7 @@ Build a standalone npm package:
 
 ```bash
 npm run package:npm
-npm install --global ./release/scientific-figure-library-0.5.5.tgz
+npm install --global ./release/scientific-figure-library-0.6.0.tgz
 ```
 
 Use `scientific-figure-library` as the MCP command after installation.
@@ -802,7 +813,7 @@ npm run package:source-pack -- \
 
 The helper verifies selected ZIP identities and caps a transport pack at 200
 MiB. Extract the resulting
-`release/figure-library-source-pack-volcano-0.5.3.zip` before use.
+`release/figure-library-source-pack-volcano-0.6.0.zip` before use.
 
 ## Catalog development
 
@@ -817,9 +828,38 @@ git -C /path/to/FigureYa-compressed ls-tree --name-only HEAD |
     --compressed-tree /path/to/compressed-github-tree.json
 ```
 
+### Vendor the reviewed Community Catalog
+
+Ordinary startup, search, build, and packaging never refresh the Community
+Catalog over the network. After the Archive PRs and their corresponding Catalog
+PRs have both passed human review and been manually merged, explicitly sync the
+fixed final Community commit from a clean checkout:
+
+```powershell
+$communityCheckout = Resolve-Path "<checked-out-community-repo>"
+npm run community:sync -- `
+  --source $communityCheckout `
+  --commit <exact-40-hex-community-commit>
+```
+
+The sync command creates an isolated provenance repository and fetches the
+fixed central HTTPS URL rather than trusting a checkout-defined remote or Git
+configuration. The requested commit must equal the freshly fetched central
+`main`; its tracked modes/blob identities and vendored bytes must also match the
+clean local checkout. Only then does the command validate the aggregate and
+standalone Catalog entries, preview manifest, PNG identities, license mapping,
+and exact inventory before atomically replacing `assets/community`. The source
+checkout and target must be separate directory trees. Packaging has an
+additional final-release gate that requires the three reviewed 1.0.0 seed
+releases; the empty bootstrap snapshot is valid for development tests but
+cannot be packaged as the 0.6.0 release.
+
 ## License
 
 Project code is MIT licensed. FigureYa-derived catalog data, thumbnails, and
-downloaded templates remain CC BY-NC-SA 4.0. User-supplied and adapter-imported
-material keeps its recorded source license. See
+downloaded templates remain CC BY-NC-SA 4.0. Bundled Community template code is
+MIT; its synthetic data, generated previews/thumbnails, and documentation are
+CC BY 4.0 and retain per-release attribution in the Community Catalog and
+archive. User-supplied and adapter-imported material keeps its recorded source
+license. See
 [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md).

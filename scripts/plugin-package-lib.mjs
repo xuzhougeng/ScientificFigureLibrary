@@ -5,8 +5,24 @@ import path from "node:path";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { strFromU8, strToU8, unzipSync, zipSync } from "fflate";
+import {
+  assertFinalCommunitySnapshot,
+  assertExactToolInventory,
+  auditPackageContents,
+  publishArtifactsToDirectory,
+  publishReleaseArtifacts,
+} from "./package-release-lib.mjs";
 
 export const root = path.resolve(import.meta.dirname, "..");
+
+/**
+ * Host-specific package scripts are public release entrypoints too. Recheck
+ * the final bundled Community snapshot after build and before any candidate is
+ * written so an empty development bootstrap cannot be labelled as 0.6.0.
+ */
+export async function assertPluginReleaseReady() {
+  return assertFinalCommunitySnapshot({ repositoryRoot: root });
+}
 
 export async function readJson(relative) {
   return JSON.parse(await fs.readFile(path.join(root, relative), "utf8"));
@@ -27,7 +43,7 @@ export async function commonPluginFiles() {
   const files = [
     "dist/index.js",
     "dist/mcp-app.html",
-    "docs/GLOBAL_LIBRARY_0.5.md",
+    "docs/GLOBAL_LIBRARY_0.6.md",
     "skills/figure-library/SKILL.md",
     "assets/catalog.json",
     "assets/FIGUREYA_LICENSE.txt",
@@ -38,6 +54,7 @@ export async function commonPluginFiles() {
     "THIRD_PARTY_NOTICES.md",
   ];
   files.push(...(await walk(path.join(root, "assets", "thumbs"), "assets/thumbs")));
+  files.push(...(await walk(path.join(root, "assets", "community"), "assets/community")));
   return files;
 }
 
@@ -60,14 +77,21 @@ export function assertPackagedGuidance({ packagedReadme, packagedSkill, packaged
     !packagedReadme.includes("three-part validation state") ||
     !packagedReadme.includes("Structured diagnostics and export") ||
     !packagedReadme.includes("figure_library_search_page") ||
+    !packagedReadme.includes("figure_library_list_provider_sources") ||
+    !packagedReadme.includes("figure_library_plan_publication_export") ||
+    !packagedReadme.includes("figure_library_plan_publication_pr") ||
     !packagedReadme.includes("updateModelContext.text") ||
     !packagedSkill.includes(`Scientific Figure Library ${version}`) ||
     !packagedSkill.includes("materialization protocol v2") ||
+    !packagedSkill.includes("bundled Community") ||
+    !packagedSkill.includes("figure_library_plan_provider_source_change") ||
+    !packagedSkill.includes("figure_library_plan_publication_export") ||
+    !packagedSkill.includes("figure_library_plan_publication_pr") ||
     !packagedSkill.includes("figure_library_preview_working_revision") ||
     !packagedSkill.includes("选择并交给 Agent 审核") ||
     !packagedSkill.includes("figure_library_export_diagnostics")
   ) {
-    throw new Error("packaged 0.5.2 guidance is incomplete");
+    throw new Error("packaged current-version guidance is incomplete");
   }
   if (!packagedServerHasAppUri(packagedServer, version)) {
     throw new Error(`packaged server omitted ${versionedAppUri}`);
@@ -79,6 +103,10 @@ export function assertPackagedGuidance({ packagedReadme, packagedSkill, packaged
     "updateModelContextFallback",
     "figure_library_record_ui_event",
     "figure_library_export_diagnostics",
+    "figure_library_list_provider_sources",
+    "figure_library_plan_provider_source_change",
+    "figure_library_plan_publication_export",
+    "figure_library_plan_publication_pr",
     "transport-image-v1",
     "requestDisplayMode",
   ]) {
@@ -130,21 +158,49 @@ export async function writeVerifiedZip(archive, baseName) {
       throw new Error(`${baseName} byte verification failed for ${relative}`);
     }
   }
-  const release = path.join(root, "release");
-  await fs.mkdir(release, { recursive: true });
-  await fs.writeFile(path.join(release, baseName), zip);
+  auditPackageContents(unpacked, { label: baseName, repositoryRoot: root });
   const sha256 = createHash("sha256").update(zip).digest("hex");
-  const checksumPath = path.join(release, `${baseName}.sha256`);
-  await fs.writeFile(checksumPath, strToU8(`${sha256}  ${baseName}\n`));
-  const writtenZip = new Uint8Array(await fs.readFile(path.join(release, baseName)));
-  const writtenChecksum = (await fs.readFile(checksumPath, "utf8")).trim();
+  return {
+    unpacked,
+    zip,
+    sha256,
+    actualFiles,
+    baseName,
+    outputPath: path.join(root, "release", baseName),
+  };
+}
+
+export async function publishVerifiedZip(candidate) {
+  const checksumName = `${candidate.baseName}.sha256`;
+  const stagingDirectory = process.env.SFL_RELEASE_STAGING_DIR;
+  const publish = stagingDirectory
+    ? publishArtifactsToDirectory(stagingDirectory, new Map([
+        [candidate.baseName, candidate.zip],
+        [checksumName, strToU8(`${candidate.sha256}  ${candidate.baseName}\n`)],
+      ]))
+    : publishReleaseArtifacts(root, new Map([
+        [candidate.baseName, candidate.zip],
+        [checksumName, strToU8(`${candidate.sha256}  ${candidate.baseName}\n`)],
+      ]));
+  await publish;
+  const releaseDirectory = stagingDirectory
+    ? path.resolve(stagingDirectory)
+    : path.join(root, "release");
+  candidate.outputPath = path.join(releaseDirectory, candidate.baseName);
+  /* The bytes were audited before this point; now verify the filesystem
+   * transaction that will either be the final release or an all-host staging
+   * directory owned by package-plugins.mjs. */
+  const writtenZip = new Uint8Array(await fs.readFile(candidate.outputPath));
+  const writtenChecksum = (
+    await fs.readFile(path.join(releaseDirectory, checksumName), "utf8")
+  ).trim();
   if (
-    createHash("sha256").update(writtenZip).digest("hex") !== sha256 ||
-    writtenChecksum !== `${sha256}  ${baseName}`
+    createHash("sha256").update(writtenZip).digest("hex") !== candidate.sha256 ||
+    writtenChecksum !== `${candidate.sha256}  ${candidate.baseName}`
   ) {
-    throw new Error(`written ${baseName} or SHA-256 sidecar failed verification`);
+    throw new Error(`written ${candidate.baseName} or SHA-256 sidecar failed verification`);
   }
-  return { unpacked, sha256, actualFiles, outputPath: path.join(release, baseName) };
+  return candidate.outputPath;
 }
 
 export function utf8(bytes) {
@@ -216,30 +272,13 @@ function withTimeout(promise, milliseconds, label) {
   ]).finally(() => clearTimeout(timeout));
 }
 
-function assertArchiveOmitsDevelopmentPaths(unpacked) {
-  const forbidden = new Set([
-    root,
-    root.replaceAll("\\", "/"),
-    os.homedir(),
-    os.homedir().replaceAll("\\", "/"),
-  ]);
-  for (const [relative, bytes] of Object.entries(unpacked)) {
-    const source = utf8(bytes);
-    for (const absolutePath of forbidden) {
-      if (absolutePath && source.includes(absolutePath)) {
-        throw new Error(`${relative} leaked development-machine path ${absolutePath}`);
-      }
-    }
-  }
-}
-
 /**
  * Extract a built plugin to a path containing spaces, simulate the Host's
  * plugin-root contract while the task cwd is a different project, and perform
  * real MCP initialize + tools/list exchanges with the packaged stdio server.
  */
 export async function smokePackagedPlugin({ host, unpacked, version }) {
-  assertArchiveOmitsDevelopmentPaths(unpacked);
+  auditPackageContents(unpacked, { label: `${host} plugin`, repositoryRoot: root });
   const smokeDirectory = await fs.mkdtemp(
     path.join(os.tmpdir(), `scientific figure library ${host} plugin smoke-`),
   );
@@ -290,15 +329,8 @@ export async function smokePackagedPlugin({ host, unpacked, version }) {
     });
     await withTimeout(client.connect(transport), 20_000, `${host} MCP initialize`);
     const listed = await withTimeout(client.listTools(), 20_000, `${host} MCP tools/list`);
-    const names = new Set(listed.tools.map((tool) => tool.name));
-    for (const required of [
-      "figure_library_open",
-      "figure_library_search",
-      "figure_library_source_status",
-    ]) {
-      if (!names.has(required)) throw new Error(`${host} packaged server omitted ${required}`);
-    }
-    return { host, toolCount: names.size, pluginRoot, foreignProjectDirectory };
+    const names = assertExactToolInventory(listed.tools, `${host} plugin`);
+    return { host, toolCount: names.length, pluginRoot, foreignProjectDirectory };
   } catch (error) {
     const detail = stderr.trim() ? `\npackaged server stderr:\n${stderr.trim()}` : "";
     throw new Error(`${host} foreign-cwd plugin smoke failed: ${error.message}${detail}`, {
