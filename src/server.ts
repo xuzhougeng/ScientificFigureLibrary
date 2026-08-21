@@ -24,6 +24,10 @@ import { LibraryRuntime, readLibraryRootMarker } from "./library-runtime.ts";
 import { WorkspaceRuntime } from "./workspace-runtime.ts";
 import { registerLifecycleTools } from "./lifecycle-tools.ts";
 import { registerMaterializationTools } from "./materialization-tools.ts";
+import { registerPublicationExportTools } from "./publication-export-tools.ts";
+import { registerProviderSourceTools } from "./provider-source-tools.ts";
+import { ProviderSourceManager } from "./provider-sources.ts";
+import { createRuntimeProviderController } from "./provider-runtime.ts";
 import { canonicalJson } from "./canonical-json.ts";
 import {
   DiagnosticsManager,
@@ -459,12 +463,24 @@ interface SearchSessionState {
   catalogRevision: string;
   libraryBindingDigest: string;
   providerMatches: Record<string, number>;
+  providerFailures: Record<
+    string,
+    { health: "degraded" | "corrupt"; errorCode: string; safeMessage: string }
+  >;
   candidateIds: Set<string>;
 }
 
-export async function createServer(options: { registry?: ProviderRegistry } = {}) {
+export async function createServer(options: {
+  registry?: ProviderRegistry;
+  providerSourceManager?: ProviderSourceManager;
+} = {}) {
   const index = await CatalogIndex.load();
-  const registry = options.registry ?? createDefaultProviderRegistry();
+  const providerController = options.registry
+    ? undefined
+    : await createRuntimeProviderController({ manager: options.providerSourceManager });
+  const registry = options.registry ?? providerController?.registry ?? createDefaultProviderRegistry();
+  const providerSourceManager =
+    options.providerSourceManager ?? providerController?.manager ?? new ProviderSourceManager();
   const runtime = new LibraryRuntime();
   const workspaceRuntime = new WorkspaceRuntime();
   const previewConfirmations = new PreviewConfirmationStore();
@@ -588,7 +604,7 @@ export async function createServer(options: { registry?: ProviderRegistry } = {}
       visibleCandidates.length ? "search_candidates_ready" : "search_no_matches",
       visibleCandidates.length
         ? `Unified search returned page ${pageIndex} of ${options.state.candidates.length} complete ranked matches. The App has verified thumbnails; the Agent must stop and wait for user selection.`
-        : "Unified search completed without a matching Local Published or FigureYa candidate.",
+        : "Unified search completed without a matching candidate from the selected Providers.",
       visibleCandidates.length ? "ask_user" : "none",
     );
     const structuredContent = {
@@ -610,11 +626,18 @@ export async function createServer(options: { registry?: ProviderRegistry } = {}
         hasMore,
         nextCursor,
       },
-      sources: registry.list().map(({ providerId, sourceLabel }) => ({
-        providerId,
-        sourceLabel,
-        matched: options.state.providerMatches[providerId] ?? 0,
-      })),
+      sources: registry.list().map(({ providerId, sourceLabel }) => {
+        const failure = options.state.providerFailures[providerId];
+        return {
+          providerId,
+          sourceLabel,
+          matched: options.state.providerMatches[providerId] ?? 0,
+          health: failure?.health ?? "ready",
+          ...(failure
+            ? { errorCode: failure.errorCode, safeMessage: failure.safeMessage }
+            : {}),
+        };
+      }),
       candidates: visibleCandidates,
       diagnosticsDegraded: diagnostics.degraded,
     };
@@ -667,9 +690,9 @@ export async function createServer(options: { registry?: ProviderRegistry } = {}
     server,
     "figure_library_search",
     {
-      title: "Search all matching Local Published and FigureYa templates",
+      title: "Search all matching scientific figure Providers",
       description:
-        "Search the complete ranked Local Published and FigureYa match set, open the candidate App, then stop and wait for the user to choose. Working, Capture, and flat-v1 entries remain excluded.",
+        "Search the complete ranked Local Published, bundled Community, FigureYa, and opted-in personal Provider match set, open the candidate App, then stop and wait for the user to choose. Working, Capture, and flat-v1 entries remain excluded.",
       inputSchema: SearchInput.shape,
       annotations: {
         readOnlyHint: true,
@@ -692,6 +715,7 @@ export async function createServer(options: { registry?: ProviderRegistry } = {}
         invocationSource: "agent",
       });
       try {
+        const explicitlySelected = input.providerIds !== undefined;
         const parsedInput: ParsedSearchInput = {
           ...input,
           providerIds: input.providerIds ?? registry.defaultProviderIds(),
@@ -722,12 +746,36 @@ export async function createServer(options: { registry?: ProviderRegistry } = {}
           catalogRevision,
           libraryRevision: bindingDigest,
         });
-        const searched = await Promise.all(
-          parsedInput.providerIds.map(async (providerId) => ({
-            providerId,
-            candidates: await registry.get(providerId).search(providerContext, request),
-          })),
+        const searched: Array<{ providerId: string; candidates: TemplateCandidate[] }> = [];
+        const providerFailures: SearchSessionState["providerFailures"] = {};
+        await Promise.all(
+          parsedInput.providerIds.map(async (providerId) => {
+            try {
+              searched.push({
+                providerId,
+                candidates: await registry.get(providerId).search(providerContext, request),
+              });
+            } catch (error) {
+              const raw = error instanceof Error ? error.message : String(error);
+              const [possibleCode] = raw.split(":", 1);
+              providerFailures[providerId] = {
+                health: raw.includes("corrupt") ? "corrupt" : "degraded",
+                errorCode: /^[a-z0-9_]+$/u.test(possibleCode ?? "")
+                  ? possibleCode!
+                  : "provider_search_failed",
+                safeMessage: raw.replace(/[\r\n\t]+/gu, " ").slice(0, 500),
+              };
+            }
+          }),
         );
+        if (
+          explicitlySelected &&
+          parsedInput.providerIds.length === 1 &&
+          providerFailures[parsedInput.providerIds[0]!]
+        ) {
+          const failure = providerFailures[parsedInput.providerIds[0]!]!;
+          throw new Error(`${failure.errorCode}: ${failure.safeMessage}`);
+        }
         const providerMatches = Object.fromEntries(
           searched.map(({ providerId, candidates }) => [providerId, candidates.length]),
         );
@@ -763,6 +811,7 @@ export async function createServer(options: { registry?: ProviderRegistry } = {}
           catalogRevision,
           libraryBindingDigest: bindingDigest,
           providerMatches,
+          providerFailures,
           candidateIds: new Set(normalized.map((candidate) => scopedCandidateId(resultSetId, candidate))),
         };
         searchSessions.set(resultSetId, state);
@@ -1571,7 +1620,7 @@ export async function createServer(options: { registry?: ProviderRegistry } = {}
     {
       title: "Inspect global Library and Provider status",
       description:
-        "Return complete text and structured status for the global portable Library, immutable lifecycle, write lock, and FigureYa. Capture/project-pin status is intentionally absent.",
+        "Return complete text and structured status for the global portable Library, immutable lifecycle, write lock, and every registered Local, Community, FigureYa, or personal Provider. Capture/project-pin status is intentionally absent.",
       inputSchema: SourceStatusInput.shape,
       annotations: {
         readOnlyHint: true,
@@ -1630,6 +1679,7 @@ export async function createServer(options: { registry?: ProviderRegistry } = {}
           providers: {
             local: localProvider?.details,
             figureYa: figureYaProvider?.details,
+            byId: providerStatusById,
           },
           writeLock,
           workspace: {
@@ -1687,6 +1737,10 @@ export async function createServer(options: { registry?: ProviderRegistry } = {}
             `FIGUREYA_SOURCE_PACK_READY: ${figureYa.ready}`,
             `FIGUREYA_ARCHIVES_AVAILABLE: ${figureYa.availableTemplates.length}`,
             `FIGUREYA_ARCHIVES_INVALID: ${figureYa.invalidTemplates.length}`,
+            ...providerStatuses.flatMap((status, providerIndex) => [
+              `PROVIDER_${providerIndex + 1}_ID: ${status.providerId}`,
+              `PROVIDER_${providerIndex + 1}_HEALTH: ${status.health}`,
+            ]),
             `MATERIALIZATION_PROTOCOL_VERSION: ${MATERIALIZATION_PROTOCOL_VERSION}`,
             `CAPTURE_TOOLS_REGISTERED: false`,
             `PROJECT_PIN_TOOLS_REGISTERED: false`,
@@ -1720,6 +1774,47 @@ export async function createServer(options: { registry?: ProviderRegistry } = {}
     diagnostics,
   });
   registerBundleTools({ server, currentLibraries });
+  registerPublicationExportTools({ server, currentLibraries });
+  registerProviderSourceTools({
+    server,
+    manager: providerSourceManager,
+    builtInSources: async () => {
+      const descriptors = registry
+        .list()
+        .filter((descriptor) =>
+          ["local-published", "figureya"].includes(descriptor.kind) || descriptor.bundled,
+        );
+      let statuses: Awaited<ReturnType<ProviderRegistry["status"]>> = [];
+      try {
+        statuses = await registry.status(await currentProviderContext());
+      } catch {
+        // A broken global locator must not turn this provider-registry listing
+        // into a fallback Library binding. Built-in identities remain visible.
+      }
+      const byId = new Map(statuses.map((status) => [status.providerId, status]));
+      return descriptors.map((descriptor) => {
+        const status = byId.get(descriptor.providerId);
+        const details = status?.details ?? {};
+        const templateCount =
+          typeof details.templateCount === "number"
+            ? details.templateCount
+            : typeof details.catalogTemplates === "number"
+              ? details.catalogTemplates
+              : undefined;
+        return {
+          sourceKind: descriptor.kind,
+          providerId: descriptor.providerId,
+          sourceLabel: descriptor.sourceLabel,
+          enabled: descriptor.enabled !== false,
+          includeInDefaultSearch: descriptor.includeInDefaultSearch !== false,
+          health: status?.health ?? "degraded",
+          ...(templateCount !== undefined ? { templateCount } : {}),
+          ...(status ? { details: status.details } : { errorCode: "library_context_unavailable" }),
+        };
+      });
+    },
+    onApplied: providerController?.refreshPersonalProviders,
+  });
 
   return server;
 }

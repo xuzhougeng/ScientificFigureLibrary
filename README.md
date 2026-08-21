@@ -6,16 +6,31 @@ references. Version 0.5 makes one **user-selected global Library** the durable,
 cross-project source of truth. Wisp, Codex, Claude, and other MCP hosts can use
 the same Library without copying it into every project.
 
-The standard core has two retrieval providers:
+The 0.6 standard core uses one Provider registry. Its built-in retrieval
+providers are:
 
 - **Local Published** (`org.scientificfigurelibrary.local`) — immutable,
   locally reviewed Releases from the global Library.
 - **FigureYa** (`org.figureya.module`) — the bundled 319-module search catalog,
   with commit-pinned source/archive identities.
+- **SFL Community** (`io.github.jarxunlai.scientific-figure-community`) — a
+  centrally curated Catalog and preview snapshot bundled with this SFL build.
+  Complete template archives stay outside the plugin and are downloaded only
+  during an explicitly network-enabled materialization.
 
-`figure_library_search` queries both providers together by default. Results are
-provider-qualified and carry an `exactSelector`; a bare `templateId` is never
-enough to describe, preview, or materialize an exact result.
+Users may also add an independently keyed, Ed25519-signed HTTPS Provider.
+Personal Providers are excluded from default search until the user explicitly
+enables `includeInDefaultSearch`. `figure_library_search` queries the dynamic
+default Provider set. Results are provider-qualified and carry an
+`exactSelector`; a bare `templateId` is never enough to describe, preview, or
+materialize an exact result.
+
+> **0.6.0 Provider and publication boundary:** bundled Community search and
+> preview are offline. Public materialization verifies a commit-pinned archive
+> and writes `template-lock.v3` with `codeExecutedBySflClient: false`. An exact
+> Local Published Release can be exported only as a sanitized, explicitly
+> licensed submission. Export does not publish, sign, execute code, or create a
+> pull request.
 
 > **0.5.1 protocol migration (still required in 0.5.5):** `figure_library_plan_materialize`
 > requires a session-local, single-use `previewReceipt` produced only
@@ -43,7 +58,7 @@ then verifies bytes, records hashes and provenance, creates immutable
 Revisions, enforces review gates, and publishes Releases. The server contains
 no second model and does not execute plotting code.
 
-## 0.5 design boundaries
+## 0.6 design boundaries
 
 - The Library is global and cross-project. A project receives a
   `template.lock.json` when a template is materialized; there are no project
@@ -56,7 +71,7 @@ no second model and does not execute plotting code.
   They do not appear in ordinary search until explicitly adopted.
 - Working Revisions are visible only through review tools. Ordinary
   search/describe/preview/materialize operate on Published Releases or exact
-  FigureYa modules.
+  public/FigureYa selectors.
 - CiteBox is an explicit intake adapter, not a search provider. SFL never reads
   or writes CiteBox SQLite directly.
 
@@ -336,11 +351,15 @@ warnings, `publishEligible`, canonical preview decision, and validation state.
 
 ## Unified search and exact selectors
 
-`figure_library_search` searches the complete relevance-matched Local
-Published and FigureYa set unless `providerIds` explicitly narrows it. Working
-Revisions, Capture records, and unadopted flat entries are excluded. The
-retrieval score only orders candidates; it is not visual similarity,
-confidence, or approval.
+`figure_library_search` searches the complete relevance-matched dynamic
+Provider set unless `providerIds` explicitly narrows it. The default order is
+Local Published, bundled Community, FigureYa, then enabled personal Providers
+whose `includeInDefaultSearch` flag was explicitly set, ordered canonically by
+`providerId`. Working Revisions, Capture records, and unadopted flat entries
+are excluded. The retrieval score is unchanged: it only orders candidates and
+is not visual similarity, confidence, or approval. A broken personal Provider
+is reported as degraded/corrupt while healthy default Providers continue; an
+explicit request for only the broken Provider fails terminally.
 
 The first page defaults to 6 candidates (`limit` maximum 12). Responses expose
 `resultSetId`, true `total`, `pageIndex`, `hasMore`, and opaque `nextCursor` as
@@ -362,6 +381,9 @@ Each candidate includes `providerId` and `exactSelector`:
   `releaseId`.
 - FigureYa identity: `moduleId`, source commit, archive commit, archive
   integrity identity, and materialization mode when an archive exists.
+- Public Provider identity: `templateId`, semantic `releaseVersion`, public
+  content digest, Catalog digest, immutable archive repository/commit/path,
+  byte count and SHA-256, plus the preview identity.
 
 Always pass the returned provider and selector unchanged to
 `figure_library_describe`, `figure_library_preview`, and materialization.
@@ -370,6 +392,11 @@ Same-named templates from different providers do not shadow one another.
 FigureYa is upstream-published but locally `not_reviewed`; its code is
 `provided` and `not_run`. Never describe a FigureYa search result as locally
 approved, reproduced, or verified by SFL.
+
+Community and personal public templates likewise separate
+`upstreamStatus`, `publisherVerified`, `curationStatus`, `renderValidation`,
+`localReviewStatus`, and `plotExecutionByRecipient`. Central curation or a
+publisher signature never becomes the recipient's Local approval.
 
 Local Published search cards and details inherit warnings from the immutable
 Review bound by the exact Release and display separate plot-execution,
@@ -450,7 +477,7 @@ Materialization protocol v2 is preview/confirm/plan/apply only:
    `expectedProviderId`, and `expectedTarget`. Apply consumes only the plan and
    does not request the receipt again.
 
-The target is `<destination>/<templateId>` and is never overwritten. Both
+The target is `<destination>/<templateId>` and is never overwritten. All
 providers use a common envelope:
 
 ```text
@@ -463,7 +490,7 @@ providers use a common envelope:
 │   ├── code/
 │   ├── references/
 │   └── evidence/
-└── upstream/                 # FigureYa only; untouched source module
+└── upstream/                 # when supplied by the exact Provider payload
 ```
 
 Keep `assets/` and `upstream/` unchanged when exact replay matters. Write
@@ -482,6 +509,70 @@ pre-created or copied lock without the Receipt is never reported as success.
 Any materialization failure is terminal. Do not retry the same call, change
 mode/provider/downloader, fetch a full repository, or generate a substitute.
 Report the error and wait for a new user decision.
+
+## Provider source management
+
+`figure_library_list_provider_sources` is completely read-only and offline. It
+reports Local, bundled Community, FigureYa, and configured personal Providers,
+including enabled/default-search state, active sequence/digest/key, verified
+snapshot status, template count, and the last safe error.
+
+Personal Provider changes use
+`figure_library_plan_provider_source_change` followed by
+`figure_library_apply_provider_source_change`. Supported actions are `add`,
+`update`, `configure`, `remove`, and `trust_reset`. A first Add requires the
+expected `providerId`, an HTTPS manifest URL, and a separately obtained raw
+32-byte Ed25519 public key. Planning may fetch and verify a candidate but never
+writes configuration or snapshots. Show every URL, sequence/digest/key change,
+template delta, target path, default-search choice, and warning; Apply only
+after explicit confirmation.
+
+Apply fetches the exact planned manifest again, rejects stale/rollback/
+equivocation/signature/DNS/path changes, verifies all payloads in staging, then
+atomically activates an immutable snapshot. A failed update preserves the
+last-known-good snapshot. Remove unregisters the source but does not delete
+snapshots or materialized projects. `trust_reset` is exceptional recovery: it
+must display and explicitly confirm both the old and new key fingerprints.
+
+## Sanitized public submission export
+
+Public publication starts from one exact, currently reachable Local Published
+Release; it never accepts a Working Revision, an entire Library, or an
+unreachable historical Release. Use
+`figure_library_plan_publication_export` to declare every source asset as
+included or excluded and, for each included asset, its public path, role,
+source, and license. The only accepted payload classes are explicitly selected
+code, synthetic data, a preview actually generated from the selected code and
+data, and documentation. Source-reference media, screenshots, PDF/TIFF
+extracts, evidence, private lifecycle state, and machine paths are excluded.
+DOI and URL text may remain as provenance.
+
+The Plan shows source/output digests, generated-preview trace, metadata and
+license conflicts, excluded private state, and `written: false`. Parent
+`unknown` or `private_reference` status is not a public license: the publisher
+must attest rights for the selected assets and explicitly acknowledge any
+metadata conflict. After approval,
+`figure_library_apply_publication_export` revalidates the exact Release and all
+asset bytes and writes a deterministic, previously absent target containing:
+
+```text
+submission.json
+licenses.json
+render-receipt.json
+inventory.jsonl
+payload/
+  template.json
+  code/**
+  data/**
+  preview/preview.png
+  docs/**
+```
+
+Export Apply is local only: it does not access the network, sign content,
+execute plotting code, create a GitHub PR, publish the Local Library, or include
+Library IDs, locators, histories, operations, receipts, quarantine, other
+templates, or absolute paths. GitHub Archive/Catalog PR creation is a separate
+plan/apply gate and never merges a PR automatically.
 
 ## CiteBox and other intake adapters
 
