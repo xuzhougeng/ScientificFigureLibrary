@@ -21,6 +21,7 @@
 - Archives Policy PR #1、#4、#5 已完成；三个真实 Archive PR #6、#7、#8 已分别通过可信 GitHub-hosted CI 并完成合并。Archives 最终 `main` commit 为 `30d45429419f68166cb9cfa3310dc8c03b2f1e72`。
 - 三个 Catalog PR #3、#4、#5 已串行完成；Community LF policy PR #6 已完成。Community 最终 `main` commit 为 `a21d3ad5612a723621fc4581735032c95b39a949`。
 - `assets/community/**` 已从上述固定 Community commit 完成验证与 vendoring；插件正常启动、搜索和打开 App 不依赖联网刷新中央 Catalog。
+- 最终包装 Gate 还发现并修复了两处状态语义误合并：三个 frozen clean-room seed 的中央 `publisherVerified=false` 不得被误判为未完成策展；Archive 的投稿前声明与 Catalog 的发布后身份/策展/CI 状态按 submission flavor 分开验证。真实 seed 的 `true/unreviewed/publisher_attested → false/curated/ci_rendered` 与普通 publication export 的反向 publisher transition 均有 materialize 回归覆盖，最终 lock 始终记录 Catalog 状态。
 - 最近一次完整测试为 210 tests / 209 pass / 1 fail；唯一失败是本机 Windows 无创建 symlink 权限导致 portable bundle symlink 安全测试返回 EPERM，测试没有被跳过、弱化或吞掉。随后新增的 release-gate 回归定向测试 8/8 通过。`npm run test:smoke` 已通过，并确认 MCP `tools/list` 共 51 个工具。
 - `npm run package:plugins` 与 `npm run package:npm` 已完成；三个 ZIP 和 npm tarball 均通过 final Community preflight、内容审计及含空格安装路径下的 foreign-cwd MCP `initialize`/`tools/list`（51 tools）。真实 Codex Desktop 的 exact ready client 与 tools injection 仍由用户安装插件后做 field acceptance。
 
@@ -116,6 +117,7 @@
 - registry/snapshot revision 变化使旧 result set/cursor/preview receipt/materialize Plan stale。
 - 覆盖个人源 add/update/configure/remove/trust_reset、签名/错误 key/rollback/equivocation/last-known-good、SSRF/redirect/DNS/大小/ZIP 安全边界。
 - 公共 materialize 写 lock v3，继续验证旧 lock；客户端绝不执行模板代码。
+- Archive 的 pre-Catalog 状态按 `publication_export` / `frozen_clean_room_seed` 精确验证，parent 与 rights flavor 不得混搭；Catalog 发布后状态独立进入展示与 lock，不要求与 Archive 的投稿前 publisher 字段相等。
 
 ### Gate 4 — Publication/GitHub
 
@@ -144,6 +146,7 @@ npm run package:npm
 | 唯一失败 | portable bundle symlink 安全测试；本机 Windows 创建 symlink 返回 EPERM |
 | `npm run test:smoke` | PASS；MCP `tools/list` 为 51 个工具 |
 | 新增 release-gate 定向回归 | 8/8 PASS；固定 clean-room seed 的 `publisherVerified=false`，不与中央策展混同 |
+| public archive lifecycle 定向回归 | 10/10 PASS；两种合法状态转换和错误 flavor/status 均覆盖 |
 | `npm run package:plugins` | PASS；3 ZIP + 3 SHA sidecar 事务发布 |
 | `npm run package:npm` | PASS；1 tgz + 1 SHA sidecar 发布 |
 | 三个 ZIP foreign-cwd initialize/tools-list 与内容审计 | PASS；每个 Host 51 tools |
