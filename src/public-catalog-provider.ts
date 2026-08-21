@@ -33,6 +33,7 @@ import type {
   SearchRequest,
   TemplateCandidate,
 } from "./types.ts";
+import { STRICT_SEMVER } from "./semver.ts";
 import { legacyValidationStateFromExecutionStatus } from "./versioned-library.ts";
 
 export const COMMUNITY_PROVIDER_ID =
@@ -51,7 +52,6 @@ const COMMIT = /^[a-f0-9]{40}$/u;
 const PROVIDER_ID = /^[a-z0-9](?:[a-z0-9._-]{1,126}[a-z0-9])?$/u;
 const REPOSITORY = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/u;
 const TEMPLATE_ID = /^[a-z0-9](?:[a-z0-9._-]{0,126}[a-z0-9])?$/u;
-const SEMVER = /^(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)(?:-(?:(?:0|[1-9][0-9]*)|[A-Za-z-][0-9A-Za-z-]*)(?:\.(?:(?:0|[1-9][0-9]*)|[A-Za-z-][0-9A-Za-z-]*))*)?$/u;
 const RESERVED_WINDOWS_NAME = /^(?:con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\..*)?$/iu;
 const MAX_CATALOG_BYTES = 16 * 1024 * 1024;
 const MAX_PREVIEW_BYTES = 64 * 1024 * 1024;
@@ -464,7 +464,7 @@ function parsePublicTemplateEntry(
   const templateId = nonEmptyString(value.templateId, `${label}.templateId`, 128);
   if (!TEMPLATE_ID.test(templateId)) throw new Error(`${label}.templateId is invalid`);
   const releaseVersion = nonEmptyString(value.releaseVersion, `${label}.releaseVersion`, 100);
-  if (!SEMVER.test(releaseVersion)) throw new Error(`${label}.releaseVersion is not semantic`);
+  if (!STRICT_SEMVER.test(releaseVersion)) throw new Error(`${label}.releaseVersion is not semantic`);
   if (!isRecord(value.search)) throw new Error(`${label}.search is missing`);
   assertKeys(
     value.search,
@@ -946,7 +946,7 @@ export function assertPublicTemplateSelector(
     "exactSelector.identity.releaseVersion",
     100,
   );
-  if (!SEMVER.test(releaseVersion)) throw new Error("public selector releaseVersion is invalid");
+  if (!STRICT_SEMVER.test(releaseVersion)) throw new Error("public selector releaseVersion is invalid");
   assertDigest(identity.contentDigest, "exactSelector.identity.contentDigest");
   assertDigest(identity.catalogSha256, "exactSelector.identity.catalogSha256");
   if (identity.mode !== "template") throw new Error("public selector mode must be template");

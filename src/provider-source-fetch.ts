@@ -6,6 +6,7 @@ import path from "node:path";
 import { unzipSync, type UnzipFileInfo } from "fflate";
 import { PNG } from "pngjs";
 import { assertPortableFilesystemSegment, portableCaseFold } from "./library-runtime.ts";
+import { STRICT_SEMVER } from "./semver.ts";
 
 export const PROVIDER_SOURCE_MANIFEST_SCHEMA =
   "figure-library.provider-source-manifest.v1" as const;
@@ -17,7 +18,6 @@ export const PUBLIC_PROVIDER_CATALOG_SCHEMA =
 const HASH = /^[a-f0-9]{64}$/u;
 const PROVIDER_ID = /^[a-z0-9][a-z0-9._-]{1,126}[a-z0-9]$/u;
 const TEMPLATE_ID = /^[a-z0-9][a-z0-9._-]{0,126}[a-z0-9]$/u;
-const RELEASE_VERSION = /^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?$/u;
 const MAX_MANIFEST_BYTES = 256 * 1024;
 const MAX_SIGNATURE_BYTES = 16 * 1024;
 const MAX_CATALOG_BYTES = 16 * 1024 * 1024;
@@ -654,7 +654,7 @@ function parseCatalog(bytes: Uint8Array, providerId: string): PersonalCatalogObs
     const templateId = nonEmptyString(raw.templateId, "catalog templateId", 128);
     const releaseVersion = nonEmptyString(raw.releaseVersion, "catalog releaseVersion", 100);
     const contentDigest = nonEmptyString(raw.contentDigest, "catalog contentDigest", 64);
-    if (!TEMPLATE_ID.test(templateId) || !RELEASE_VERSION.test(releaseVersion) || !HASH.test(contentDigest)) {
+    if (!TEMPLATE_ID.test(templateId) || !STRICT_SEMVER.test(releaseVersion) || !HASH.test(contentDigest)) {
       throw new Error("provider source catalog entry identity is invalid");
     }
     const identity = `${templateId}@${releaseVersion}`;

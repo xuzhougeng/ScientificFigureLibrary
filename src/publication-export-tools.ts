@@ -20,10 +20,10 @@ import type {
   StoredRevisionAsset,
   TemplateContentV1,
 } from "./versioned-library.ts";
+import { STRICT_SEMVER } from "./semver.ts";
 
 const HASH = /^[a-f0-9]{64}$/u;
 const OPERATION_ID = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/u;
-const SEMVER = /^(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?$/u;
 const TEMPLATE_ID = /^[a-z0-9](?:[a-z0-9._-]{0,126}[a-z0-9])?$/u;
 const PRIVATE_PATH = /(?:\b[A-Za-z]:[\\/]|\\\\[^\\\s]+\\[^\\\s]+|\/(?:Users|home|mnt\/[a-z]|private\/var|var\/folders)\/)/u;
 const PLAN_TTL_MS = 30 * 60 * 1_000;
@@ -554,7 +554,7 @@ export async function createPublicationExportPlan(input: {
   confirmMetadataConflicts: boolean;
   rightsAttestation: PublicationExportPlan["rightsAttestation"];
 }): Promise<PublicationExportPlan> {
-  if (!SEMVER.test(input.releaseVersion)) throw new Error("releaseVersion must be semantic version syntax");
+  if (!STRICT_SEMVER.test(input.releaseVersion)) throw new Error("releaseVersion must be semantic version syntax");
   if (!path.isAbsolute(input.target)) throw new Error("publication export target must be absolute");
   if (!(await targetAbsent(path.resolve(input.target)))) throw new Error(`publication export target already exists: ${path.resolve(input.target)}`);
   const libraryContext = await requireLibraryContext(input.context);
@@ -825,7 +825,7 @@ const RightsSchema = z.object({
 const PlanInput = z.object({
   providerId: z.literal(LOCAL_LIBRARY_PROVIDER_ID),
   exactSelector: ExactSelectorSchema,
-  releaseVersion: z.string().regex(SEMVER),
+  releaseVersion: z.string().regex(STRICT_SEMVER),
   target: z.string().min(1).max(4_000),
   publicMetadata: PublicMetadataSchema,
   assetDeclarations: z.array(AssetDeclarationSchema).min(1).max(10_000),
