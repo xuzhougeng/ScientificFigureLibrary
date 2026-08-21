@@ -30,7 +30,11 @@ async function writeJson(file: string, value: unknown) {
   await fs.writeFile(file, `${JSON.stringify(value, null, 2)}\n`, "utf8");
 }
 
-async function createCommunityFixture(options: { bootstrap?: boolean; omitSeed?: boolean } = {}) {
+async function createCommunityFixture(options: {
+  bootstrap?: boolean;
+  omitSeed?: boolean;
+  publisherVerified?: boolean;
+} = {}) {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), "sfl release gate fixture-"));
   const community = path.join(root, "assets", "community");
   await fs.mkdir(path.join(community, "LICENSES"), { recursive: true });
@@ -98,7 +102,7 @@ async function createCommunityFixture(options: { bootstrap?: boolean; omitSeed?:
       preview,
       status: {
         upstreamStatus: "published",
-        publisherVerified: true,
+        publisherVerified: options.publisherVerified ?? false,
         curationStatus: "curated",
         renderValidation: "ci_rendered",
         localReviewStatus: "not_reviewed",
@@ -150,6 +154,15 @@ test("release Community preflight accepts the three exact curated 1.0.0 seeds", 
   const result = await assertFinalCommunitySnapshot({ repositoryRoot: fixture.root });
   assert.equal(result.releaseCount, 3);
   assert.deepEqual(result.requiredReleases, REQUIRED_COMMUNITY_RELEASES);
+});
+
+test("release Community preflight does not conflate clean-room curation with publisher verification", async (t) => {
+  const fixture = await createCommunityFixture({ publisherVerified: true });
+  t.after(() => fs.rm(fixture.root, { recursive: true, force: true }));
+  await assert.rejects(
+    assertFinalCommunitySnapshot({ repositoryRoot: fixture.root }),
+    /falsely claims publisher verification for a frozen clean-room seed/u,
+  );
 });
 
 test("release Community preflight rejects the bootstrap commit and a missing seed", async (t) => {

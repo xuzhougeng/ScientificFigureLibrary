@@ -191,7 +191,10 @@ export async function assertFinalCommunitySnapshot(options = {}) {
       entry.archive.path === `archives/${entry.templateId}/${entry.releaseVersion}/${entry.templateId}-${entry.releaseVersion}.zip`,
       `${identity} archive path is not canonical`,
     );
-    assert(entry.status.publisherVerified === true, `${identity} is not publisher verified`);
+    assert(
+      entry.status.publisherVerified === false,
+      `${identity} falsely claims publisher verification for a frozen clean-room seed`,
+    );
     assert(entry.status.curationStatus === "curated", `${identity} is not centrally curated`);
     assert(entry.status.renderValidation === "ci_rendered", `${identity} did not pass central CI rendering`);
     assert(entry.status.localReviewStatus === "not_reviewed", `${identity} falsely claims recipient review`);
