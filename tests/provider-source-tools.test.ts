@@ -214,6 +214,12 @@ test("provider source MCP tools expose offline list plus confirmed Add Apply and
     const tools = await state.client.listTools();
     const planTool = tools.tools.find((tool) => tool.name === "figure_library_plan_provider_source_change");
     assert.ok(planTool);
+    const applyTool = tools.tools.find((tool) => tool.name === "figure_library_apply_provider_source_change");
+    assert.ok(applyTool);
+    assert.equal(applyTool.annotations?.readOnlyHint, false);
+    assert.equal(applyTool.annotations?.destructiveHint, true);
+    assert.equal(applyTool.annotations?.idempotentHint, true);
+    assert.equal(applyTool.annotations?.openWorldHint, true);
     const inputSchemaText = JSON.stringify(planTool.inputSchema);
     assert.doesNotMatch(inputSchemaText, /sourceId|signatureUrl|"publicKey"/u);
     assert.match(inputSchemaText, /expectedProviderId/u);

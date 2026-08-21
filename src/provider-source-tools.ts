@@ -435,9 +435,11 @@ export function registerProviderSourceTools(options: {
       inputSchema: ApplyInput.shape,
       annotations: {
         readOnlyHint: false,
-        destructiveHint: false,
+        destructiveHint: true,
         idempotentHint: true,
-        openWorldHint: false,
+        // Apply deliberately re-fetches and pins the exact planned remote
+        // snapshot before switching local configuration.
+        openWorldHint: true,
       },
     },
     async (input): Promise<CallToolResult> => {

@@ -297,6 +297,42 @@ test("preview ZIP must exactly cover catalog previews and contain valid pinned P
     () => verifyFixture(fixture({ key, previewZipAdditions: { "thumbs/CON/1.0.0.png": Buffer.from("x") } }), key),
     /unsafe portable preview ZIP segment/u,
   );
+
+  const oversizedPreview = fixture({
+    key,
+    catalog: {
+      schema: "figure-library.public-provider-catalog.v1",
+      provider: { providerId: "io.example.personal.figures" },
+      entries: [{
+        providerId: "io.example.personal.figures",
+        templateId: "personal-volcano",
+        releaseVersion: "1.0.0",
+        contentDigest: "a".repeat(64),
+        preview: {
+          path: "thumbs/personal-volcano/1.0.0.png",
+          bytes: 1,
+          sha256: "b".repeat(64),
+          mediaType: "image/png",
+          width: 4096,
+          height: 4096,
+          canonicalRgbaSha256: "c".repeat(64),
+        },
+      }],
+    },
+  });
+  await assert.rejects(
+    () => verifyFixture(oversizedPreview, key),
+    /pixel decode budget/u,
+  );
+
+  const normalPng = new PNG({ width: 2, height: 1 });
+  normalPng.data.set([255, 0, 0, 255, 0, 0, 255, 255]);
+  const interlacedHeader = Buffer.from(PNG.sync.write(normalPng));
+  interlacedHeader[28] = 1;
+  await assert.rejects(
+    () => verifyFixture(fixture({ key, previewBytes: interlacedHeader }), key),
+    /interlacing is not supported/u,
+  );
 });
 
 test("provider source address policy rejects local, private, documentation, and transition ranges", () => {
@@ -312,6 +348,9 @@ test("provider source address policy rejects local, private, documentation, and 
     "fc00::1",
     "fe80::1",
     "2001:db8::1",
+    "2001:2::1",
+    "192.88.99.1",
+    "192.31.196.1",
     "2002:0808:0808::1",
     "::ffff:127.0.0.1",
   ]) {
@@ -364,6 +403,22 @@ test("secure fetch rejects unsafe URLs, mixed DNS answers, and redirect rebindin
     () => rebound.fetch("https://provider.example/data", { maxBytes: 10, mediaTypes: ["application/json"] }),
     /non-public address/u,
   );
+
+  const redirected = mockFetcher(new Map<string, RawHttpsResponse>([
+    [
+      "https://provider.example/data",
+      { statusCode: 302, headers: { location: "https://cdn.example/data" }, body: new Uint8Array() },
+    ],
+    ["https://cdn.example/data", response(Buffer.from("{}"), "application/json")],
+  ]));
+  const redirectedResponse = await redirected.fetch("https://provider.example/data", {
+    maxBytes: 10,
+    mediaTypes: ["application/json"],
+  });
+  assert.deepEqual(redirectedResponse.accessUrls, [
+    "https://provider.example/data",
+    "https://cdn.example/data",
+  ]);
 });
 
 test("secure fetch enforces redirect, timeout, size, encoding, and MIME limits", async () => {
@@ -428,9 +483,15 @@ test("secure fetch enforces redirect, timeout, size, encoding, and MIME limits",
     /unsupported MIME type/u,
   );
 
+  let requestAborted = false;
   const timedOut = mockFetcher(new Map(), {
     timeoutMs: 100,
-    request: async () => new Promise<RawHttpsResponse>(() => undefined),
+    request: async (_url, options) => new Promise<RawHttpsResponse>((_resolve, reject) => {
+      options.signal?.addEventListener("abort", () => {
+        requestAborted = true;
+        reject(new Error("mock request aborted"));
+      }, { once: true });
+    }),
   });
   await assert.rejects(
     () => timedOut.fetch("https://provider.example/data", {
@@ -439,4 +500,5 @@ test("secure fetch enforces redirect, timeout, size, encoding, and MIME limits",
     }),
     /timed out after 100ms/u,
   );
+  assert.equal(requestAborted, true, "the hard request deadline must abort the underlying transport");
 });

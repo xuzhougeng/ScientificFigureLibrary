@@ -5,6 +5,7 @@ import net from "node:net";
 import path from "node:path";
 import { unzipSync, type UnzipFileInfo } from "fflate";
 import { PNG } from "pngjs";
+import { canonicalJson } from "./canonical-json.ts";
 import { assertPortableFilesystemSegment, portableCaseFold } from "./library-runtime.ts";
 import { STRICT_SEMVER } from "./semver.ts";
 
@@ -24,6 +25,10 @@ const MAX_CATALOG_BYTES = 16 * 1024 * 1024;
 const MAX_PREVIEW_ARCHIVE_BYTES = 64 * 1024 * 1024;
 const MAX_PREVIEW_EXPANDED_BYTES = 128 * 1024 * 1024;
 const MAX_PREVIEW_FILE_BYTES = 64 * 1024 * 1024;
+// pngjs normalizes every decoded preview to RGBA and can use eight bytes per
+// pixel while handling 16-bit PNG input. Keep that allocation inside the same
+// 64 MiB single-file safety boundary used by Provider payloads.
+const MAX_PREVIEW_PIXELS = MAX_PREVIEW_FILE_BYTES / 8;
 const MAX_PREVIEW_FILES = 10_000;
 const DEFAULT_TIMEOUT_MS = 60_000;
 const DEFAULT_REDIRECTS = 3;
@@ -109,6 +114,7 @@ export interface SecureHttpsRequestOptions {
   addresses: PinnedAddress[];
   timeoutMs: number;
   maxBytes: number;
+  signal?: AbortSignal;
 }
 
 export type ProviderSourceLookup = (hostname: string) => Promise<PinnedAddress[]>;
@@ -177,7 +183,11 @@ export function isGloballyRoutableAddress(address: string) {
       ["172.16.0.0", 12],
       ["192.0.0.0", 24],
       ["192.0.2.0", 24],
+      ["192.31.196.0", 24],
+      ["192.52.193.0", 24],
+      ["192.88.99.0", 24],
       ["192.168.0.0", 16],
+      ["192.175.48.0", 24],
       ["198.18.0.0", 15],
       ["198.51.100.0", 24],
       ["203.0.113.0", 24],
@@ -194,11 +204,11 @@ export function isGloballyRoutableAddress(address: string) {
   }
   if (!ipv6InCidr(ipv6, "2000::", 3)) return false;
   return ![
-    ["2001::", 32],
-    ["2001:10::", 28],
-    ["2001:20::", 28],
+    ["2001::", 23],
     ["2001:db8::", 32],
     ["2002::", 16],
+    ["2620:4f:8000::", 48],
+    ["3fff::", 20],
   ].some(([base, prefix]) => ipv6InCidr(ipv6, String(base), Number(prefix)));
 }
 
@@ -260,9 +270,12 @@ async function defaultHttpsRequest(url: URL, options: SecureHttpsRequestOptions)
   if (!selected) throw new Error("provider source DNS resolution returned no address");
   return new Promise<RawHttpsResponse>((resolve, reject) => {
     let settled = false;
+    let responseEnded = false;
+    const abort = () => request.destroy(new Error("provider source HTTPS request was aborted"));
     const finish = (callback: () => void) => {
       if (settled) return;
       settled = true;
+      options.signal?.removeEventListener("abort", abort);
       callback();
     };
     const request = https.request(
@@ -290,14 +303,26 @@ async function defaultHttpsRequest(url: URL, options: SecureHttpsRequestOptions)
           chunks.push(Buffer.from(chunk));
         });
         response.on("end", () => {
+          responseEnded = true;
           finish(() => resolve({
             statusCode: response.statusCode ?? 0,
             headers: response.headers,
             body: new Uint8Array(Buffer.concat(chunks)),
           }));
         });
+        response.on("aborted", () => {
+          finish(() => reject(new Error("provider source HTTPS response was aborted before completion")));
+        });
+        response.on("error", (error) => finish(() => reject(error)));
+        response.on("close", () => {
+          if (!responseEnded) {
+            finish(() => reject(new Error("provider source HTTPS response closed before completion")));
+          }
+        });
       },
     );
+    options.signal?.addEventListener("abort", abort, { once: true });
+    if (options.signal?.aborted) abort();
     request.setTimeout(options.timeoutMs, () => {
       request.destroy(new Error(`provider source request timed out after ${options.timeoutMs}ms`));
     });
@@ -306,9 +331,17 @@ async function defaultHttpsRequest(url: URL, options: SecureHttpsRequestOptions)
   });
 }
 
-function promiseWithTimeout<T>(promise: Promise<T>, timeoutMs: number, label: string) {
+function promiseWithTimeout<T>(
+  promise: Promise<T>,
+  timeoutMs: number,
+  label: string,
+  onTimeout?: () => void,
+) {
   return new Promise<T>((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error(`${label} timed out after ${timeoutMs}ms`)), timeoutMs);
+    const timer = setTimeout(() => {
+      onTimeout?.();
+      reject(new Error(`${label} timed out after ${timeoutMs}ms`));
+    }, timeoutMs);
     timer.unref?.();
     promise.then(
       (value) => {
@@ -345,12 +378,14 @@ export class SecureProviderSourceFetcher {
   async fetch(
     rawUrl: string,
     options: { maxBytes: number; mediaTypes: string[] },
-  ): Promise<{ url: string; bytes: Uint8Array; mediaType: string }> {
+  ): Promise<{ url: string; bytes: Uint8Array; mediaType: string; accessUrls: string[] }> {
     const visited = new Set<string>();
+    const accessUrls: string[] = [];
     let current = assertSafeHttpsUrl(rawUrl);
     for (let redirect = 0; redirect <= this.maxRedirects; redirect += 1) {
       if (visited.has(current.href)) throw new Error("provider source redirect loop detected");
       visited.add(current.href);
+      accessUrls.push(current.href);
       const addresses = await promiseWithTimeout(
         this.lookup(current.hostname.replace(/^\[|\]$/gu, "")),
         this.timeoutMs,
@@ -362,14 +397,17 @@ export class SecureProviderSourceFetcher {
           throw new Error(`provider source resolved to a non-public address: ${address.address}`);
         }
       }
+      const abortController = new AbortController();
       const response = await promiseWithTimeout(
         this.request(current, {
           addresses: addresses.map((value) => ({ ...value })),
           timeoutMs: this.timeoutMs,
           maxBytes: options.maxBytes,
+          signal: abortController.signal,
         }),
         this.timeoutMs,
         "provider source HTTPS request",
+        () => abortController.abort(),
       );
       const contentEncoding = headerValue(response.headers, "content-encoding")?.toLowerCase();
       if (contentEncoding && contentEncoding !== "identity") {
@@ -404,7 +442,7 @@ export class SecureProviderSourceFetcher {
       if (!options.mediaTypes.includes(mediaType)) {
         throw new Error(`provider source response has unsupported MIME type: ${mediaType || "missing"}`);
       }
-      return { url: current.href, bytes: response.body, mediaType };
+      return { url: current.href, bytes: response.body, mediaType, accessUrls };
     }
     throw new Error("provider source redirect limit exceeded");
   }
@@ -481,6 +519,7 @@ export interface PersonalCatalogEntryObservation {
   templateId: string;
   releaseVersion: string;
   contentDigest: string;
+  entrySha256: string;
   identity: string;
   preview: PublicPreviewIdentityV1;
 }
@@ -622,13 +661,18 @@ function parsePreview(value: unknown, templateId: string, releaseVersion: string
   const digest = nonEmptyString(value.sha256, "catalog preview sha256", 64);
   const rgbaDigest = nonEmptyString(value.canonicalRgbaSha256, "catalog preview canonicalRgbaSha256", 64);
   if (!HASH.test(digest) || !HASH.test(rgbaDigest)) throw new Error("catalog preview digest is invalid");
+  const width = positiveInteger(value.width, "catalog preview width", 16_384);
+  const height = positiveInteger(value.height, "catalog preview height", 16_384);
+  if (width * height > MAX_PREVIEW_PIXELS) {
+    throw new Error(`catalog preview exceeds the ${MAX_PREVIEW_PIXELS}-pixel decode budget`);
+  }
   return {
     path: expectedPath,
     bytes: positiveInteger(value.bytes, "catalog preview bytes", MAX_PREVIEW_FILE_BYTES),
     sha256: digest,
     mediaType: "image/png" as const,
-    width: positiveInteger(value.width, "catalog preview width", 16_384),
-    height: positiveInteger(value.height, "catalog preview height", 16_384),
+    width,
+    height,
     canonicalRgbaSha256: rgbaDigest,
   };
 }
@@ -666,7 +710,14 @@ function parseCatalog(bytes: Uint8Array, providerId: string): PersonalCatalogObs
       throw new Error(`provider source catalog preview path collision: ${preview.path}`);
     }
     previewPaths.add(foldedPreview);
-    entries.push({ templateId, releaseVersion, contentDigest, identity, preview });
+    entries.push({
+      templateId,
+      releaseVersion,
+      contentDigest,
+      entrySha256: sha256(canonicalJson(raw)),
+      identity,
+      preview,
+    });
   }
   entries.sort((left, right) => left.identity.localeCompare(right.identity, "en"));
   return { providerId, entries };
@@ -894,6 +945,46 @@ function extractVerifiedPreviews(archiveBytes: Uint8Array, catalog: PersonalCata
     if (data.byteLength < 8 || !Buffer.from(data.subarray(0, 8)).equals(pngMagic)) {
       throw new Error(`preview ZIP file is not PNG: ${catalogPath}`);
     }
+    const pngHeader = Buffer.from(data.buffer, data.byteOffset, data.byteLength);
+    if (
+      data.byteLength < 33 ||
+      pngHeader.readUInt32BE(8) !== 13 ||
+      pngHeader.toString("ascii", 12, 16) !== "IHDR"
+    ) {
+      throw new Error(`preview ZIP PNG has no canonical IHDR header: ${catalogPath}`);
+    }
+    const headerWidth = pngHeader.readUInt32BE(16);
+    const headerHeight = pngHeader.readUInt32BE(20);
+    const bitDepth = pngHeader[24]!;
+    const colorType = pngHeader[25]!;
+    const interlace = pngHeader[28]!;
+    const channels = colorType === 0 || colorType === 3
+      ? 1
+      : colorType === 2
+        ? 3
+        : colorType === 4
+          ? 2
+          : colorType === 6
+            ? 4
+            : 0;
+    const decodedBytes = headerWidth * headerHeight * (bitDepth === 16 ? 8 : 4);
+    const inflatedRowBytes = channels
+      ? Math.ceil((headerWidth * channels * bitDepth) / 8) + 1
+      : Number.POSITIVE_INFINITY;
+    if (
+      headerWidth !== preview.width ||
+      headerHeight !== preview.height ||
+      headerWidth * headerHeight > MAX_PREVIEW_PIXELS ||
+      decodedBytes > MAX_PREVIEW_FILE_BYTES ||
+      inflatedRowBytes * headerHeight > MAX_PREVIEW_FILE_BYTES
+    ) {
+      throw new Error(`preview ZIP PNG dimensions exceed the safe decode budget: ${catalogPath}`);
+    }
+    // pngjs' synchronous interlaced path inflates without a maxLength. Reject
+    // interlacing so the non-interlaced bounded inflater is always used.
+    if (interlace !== 0) {
+      throw new Error(`preview ZIP PNG interlacing is not supported: ${catalogPath}`);
+    }
     let decoded: PNG;
     try {
       decoded = PNG.sync.read(Buffer.from(data), { checkCRC: true });
@@ -929,6 +1020,12 @@ export interface VerifiedProviderSourceSnapshot {
   previewsArchiveSha256: string;
   previewFiles: VerifiedPreviewFile[];
   authorizedNextKeys: Ed25519PublicKeyIdentity[];
+  payloadUrls: {
+    manifest: string;
+    signature: string;
+    catalog: string;
+    previews: string;
+  };
   accessUrls: string[];
 }
 
@@ -1012,6 +1109,17 @@ export async function fetchVerifiedProviderSourceSnapshot(options: {
     previewsArchiveSha256: sha256(previewsResponse.bytes),
     previewFiles,
     authorizedNextKeys,
-    accessUrls: [manifestUrl, signatureUrl, manifest.catalog.url, manifest.previews.url],
+    payloadUrls: {
+      manifest: manifestUrl,
+      signature: signatureUrl,
+      catalog: manifest.catalog.url,
+      previews: manifest.previews.url,
+    },
+    accessUrls: [
+      ...manifestResponse.accessUrls,
+      ...signatureResponse.accessUrls,
+      ...catalogResponse.accessUrls,
+      ...previewsResponse.accessUrls,
+    ],
   };
 }

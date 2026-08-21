@@ -38,6 +38,7 @@ const PROVIDER_ID = /^[a-z0-9][a-z0-9._-]{1,126}[a-z0-9]$/u;
 const PLAN_TTL_MS = 30 * 60 * 1_000;
 const PLAN_LIMIT = 64;
 const MAX_OBSERVED_REVISIONS = 10_000;
+const MAX_RELEASE_HISTORY = 100_000;
 
 /**
  * The fetch layer validates signed bytes, the compact preview inventory, and
@@ -60,6 +61,7 @@ function validateCompletePersonalCatalog(
     templateId: entry.templateId,
     releaseVersion: entry.releaseVersion,
     contentDigest: entry.contentDigest,
+    entrySha256: sha256(canonicalJson(entry)),
     identity: `${entry.templateId}@${entry.releaseVersion}`,
     preview: { ...entry.preview },
   }));
@@ -224,6 +226,7 @@ export interface ProviderSourceSnapshotRefV1 {
 export interface ProviderSourceRecordV1 {
   providerId: string;
   manifestUrl: string;
+  removed: boolean;
   enabled: boolean;
   includeInDefaultSearch: boolean;
   trustEpoch: number;
@@ -234,6 +237,10 @@ export interface ProviderSourceRecordV1 {
     trustEpoch: number;
     sequence: number;
     manifestSha256: string;
+  }>;
+  releaseHistory: Array<{
+    identity: string;
+    entrySha256: string;
   }>;
   updatedAt: string;
 }
@@ -420,15 +427,17 @@ function validateSnapshotRef(value: unknown): asserts value is ProviderSourceSna
 function validateRecord(value: unknown): asserts value is ProviderSourceRecordV1 {
   if (!isRecord(value)) throw new Error("provider source record is invalid");
   assertExactKeys(value, [
-    "providerId", "manifestUrl", "enabled", "includeInDefaultSearch", "trustEpoch", "signingKey",
-    "authorizedNextKeys", "activeSnapshot", "observedRevisions", "updatedAt",
+    "providerId", "manifestUrl", "removed", "enabled", "includeInDefaultSearch", "trustEpoch", "signingKey",
+    "authorizedNextKeys", "activeSnapshot", "observedRevisions", "releaseHistory", "updatedAt",
   ], "provider source record");
   const providerId = assertProviderId(String(value.providerId ?? ""));
   if (
     typeof value.manifestUrl !== "string" ||
     deriveProviderSourceSignatureUrl(value.manifestUrl).length < 1 ||
+    typeof value.removed !== "boolean" ||
     typeof value.enabled !== "boolean" ||
     typeof value.includeInDefaultSearch !== "boolean" ||
+    (value.removed && (value.enabled || value.includeInDefaultSearch)) ||
     (value.includeInDefaultSearch && !value.enabled) ||
     !Number.isSafeInteger(value.trustEpoch) || Number(value.trustEpoch) < 1 ||
     typeof value.updatedAt !== "string" || Number.isNaN(Date.parse(value.updatedAt))
@@ -465,6 +474,23 @@ function validateRecord(value: unknown): asserts value is ProviderSourceRecordV1
     const identity = `${revision.trustEpoch}:${revision.sequence}`;
     if (observed.has(identity)) throw new Error("provider source observed revision is duplicated");
     observed.add(identity);
+  }
+  if (!Array.isArray(value.releaseHistory) || value.releaseHistory.length > MAX_RELEASE_HISTORY) {
+    throw new Error("provider source immutable release history is invalid");
+  }
+  const releases = new Set<string>();
+  let previousRelease = "";
+  for (const release of value.releaseHistory) {
+    if (!isRecord(release) || typeof release.identity !== "string") {
+      throw new Error("provider source immutable release history entry is invalid");
+    }
+    assertExactKeys(release, ["identity", "entrySha256"], "provider source immutable release history entry");
+    assertHash(release.entrySha256, "provider source immutable release entry digest");
+    if (releases.has(release.identity) || (previousRelease && compareCanonicalStrings(previousRelease, release.identity) >= 0)) {
+      throw new Error("provider source immutable release history ordering is invalid");
+    }
+    releases.add(release.identity);
+    previousRelease = release.identity;
   }
   if (providerId !== value.providerId) throw new Error("provider source providerId is not canonical");
 }
@@ -642,7 +668,7 @@ function snapshotInventory(snapshot: VerifiedProviderSourceSnapshot) {
     {
       schema: PROVIDER_SOURCE_SNAPSHOT_INVENTORY_ENTRY_SCHEMA,
       sourcePayload: "source-manifest",
-      sourceUrl: snapshot.accessUrls[0]!,
+      sourceUrl: snapshot.payloadUrls.manifest,
       localPath: "source-manifest.json",
       bytes: snapshot.manifestBytes.byteLength,
       sha256: snapshot.manifestSha256,
@@ -651,7 +677,7 @@ function snapshotInventory(snapshot: VerifiedProviderSourceSnapshot) {
     {
       schema: PROVIDER_SOURCE_SNAPSHOT_INVENTORY_ENTRY_SCHEMA,
       sourcePayload: "signature-sidecar",
-      sourceUrl: snapshot.accessUrls[1]!,
+      sourceUrl: snapshot.payloadUrls.signature,
       localPath: "source-manifest.sig.json",
       bytes: snapshot.signatureSidecarBytes.byteLength,
       sha256: snapshot.signatureSidecarSha256,
@@ -660,7 +686,7 @@ function snapshotInventory(snapshot: VerifiedProviderSourceSnapshot) {
     {
       schema: PROVIDER_SOURCE_SNAPSHOT_INVENTORY_ENTRY_SCHEMA,
       sourcePayload: "catalog",
-      sourceUrl: snapshot.accessUrls[2]!,
+      sourceUrl: snapshot.payloadUrls.catalog,
       localPath: "catalog.json",
       bytes: snapshot.catalogBytes.byteLength,
       sha256: snapshot.catalogSha256,
@@ -669,7 +695,7 @@ function snapshotInventory(snapshot: VerifiedProviderSourceSnapshot) {
     ...snapshot.previewFiles.map((preview): ProviderSourceSnapshotInventoryEntryV1 => ({
       schema: PROVIDER_SOURCE_SNAPSHOT_INVENTORY_ENTRY_SCHEMA,
       sourcePayload: "previews-archive-entry",
-      sourceUrl: snapshot.accessUrls[3]!,
+      sourceUrl: snapshot.payloadUrls.previews,
       sourcePath: preview.path,
       localPath: preview.snapshotPath,
       bytes: preview.bytes,
@@ -795,6 +821,30 @@ function templateDiff(
   };
 }
 
+function immutableReleaseHistory(
+  source: ProviderSourceRecordV1 | undefined,
+  entries: PersonalCatalogEntryObservation[],
+) {
+  const history = new Map(
+    (source?.releaseHistory ?? []).map((item) => [item.identity, item.entrySha256]),
+  );
+  for (const entry of entries) {
+    const prior = history.get(entry.identity);
+    if (prior !== undefined && prior !== entry.entrySha256) {
+      throw new Error(
+        `provider source immutable release changed without a new releaseVersion: ${entry.identity}`,
+      );
+    }
+    history.set(entry.identity, entry.entrySha256);
+  }
+  if (history.size > MAX_RELEASE_HISTORY) {
+    throw new Error("provider source immutable release history is full; automatic history GC is forbidden");
+  }
+  return [...history]
+    .map(([identity, entrySha256]) => ({ identity, entrySha256 }))
+    .sort((left, right) => compareCanonicalStrings(left.identity, right.identity));
+}
+
 function emptyDiff(): ProviderSourceTemplateDiffV1 {
   return { added: [], updated: [], withdrawn: [], tombstones: [] };
 }
@@ -834,11 +884,12 @@ export class ProviderSourceManager {
 
   async listSources() {
     const registry = await this.readRegistry();
+    const registered = registry.sources.filter((source) => !source.removed);
     return {
       schema: registry.schema,
       configRevision: registry.configRevision,
       configPath: this.paths.registryFile,
-      sources: registry.sources.map((source) => ({
+      sources: registered.map((source) => ({
         providerId: source.providerId,
         manifestUrl: source.manifestUrl,
         enabled: source.enabled,
@@ -919,7 +970,13 @@ export class ProviderSourceManager {
     let allowSequenceReset = false;
 
     if (input.action === "add") {
-      if (existing) throw new Error(`provider source already exists: ${providerId}`);
+      if (existing) {
+        throw new Error(
+          existing.removed
+            ? `provider source trust history already exists: ${providerId}; use explicit trust_reset to re-register it`
+            : `provider source already exists: ${providerId}`,
+        );
+      }
       const key = ed25519PublicKeyIdentity(input.publicKeyBase64);
       snapshot = await this.fetchSnapshot({
         manifestUrl: input.manifestUrl,
@@ -930,7 +987,8 @@ export class ProviderSourceManager {
       const trustEpoch = 1;
       proposedSource = {
         providerId,
-        manifestUrl: snapshot.accessUrls[0]!,
+        manifestUrl: snapshot.payloadUrls.manifest,
+        removed: false,
         enabled: input.enabled ?? true,
         includeInDefaultSearch: input.includeInDefaultSearch ?? false,
         trustEpoch,
@@ -938,12 +996,22 @@ export class ProviderSourceManager {
         authorizedNextKeys: snapshot.authorizedNextKeys,
         activeSnapshot: snapshotRef(snapshot, inventory),
         observedRevisions: appendObservation({ snapshot, trustEpoch, allowSequenceReset: false }),
+        releaseHistory: immutableReleaseHistory(undefined, snapshot.catalog.entries),
         updatedAt: createdAt,
       };
     } else if (input.action === "remove") {
       if (!existing) throw new Error(`provider source not found: ${providerId}`);
+      if (existing.removed) throw new Error(`provider source not found: ${providerId}`);
+      proposedSource = {
+        ...existing,
+        removed: true,
+        enabled: false,
+        includeInDefaultSearch: false,
+        updatedAt: createdAt,
+      };
     } else if (input.action === "configure") {
       if (!existing) throw new Error(`provider source not found: ${providerId}`);
+      if (existing.removed) throw new Error(`provider source not found: ${providerId}`);
       const manifestUrl = input.manifestUrl ?? existing.manifestUrl;
       const endpointChanged = manifestUrl !== existing.manifestUrl;
       const enabled = input.enabled ?? existing.enabled;
@@ -982,7 +1050,7 @@ export class ProviderSourceManager {
           snapshot.manifestSha256 === existing.activeSnapshot.manifestSha256 &&
           enabled === existing.enabled &&
           includeInDefaultSearch === existing.includeInDefaultSearch &&
-          snapshot.accessUrls[0] === existing.manifestUrl
+          snapshot.payloadUrls.manifest === existing.manifestUrl
         ) {
           return {
             schema: PROVIDER_SOURCE_ALREADY_CURRENT_SCHEMA,
@@ -999,7 +1067,7 @@ export class ProviderSourceManager {
       }
       proposedSource = {
         ...existing,
-        manifestUrl: snapshot?.accessUrls[0] ?? manifestUrl,
+        manifestUrl: snapshot?.payloadUrls.manifest ?? manifestUrl,
         enabled,
         includeInDefaultSearch,
         ...(snapshot
@@ -1013,12 +1081,14 @@ export class ProviderSourceManager {
                 snapshot,
                 allowSequenceReset: false,
               }),
+              releaseHistory: immutableReleaseHistory(existing, snapshot.catalog.entries),
             }
           : {}),
         updatedAt: createdAt,
       };
     } else if (input.action === "update") {
       if (!existing) throw new Error(`provider source not found: ${providerId}`);
+      if (existing.removed) throw new Error(`provider source not found: ${providerId}`);
       snapshot = await this.fetchSnapshot({
         manifestUrl: existing.manifestUrl,
         expectedProviderId: providerId,
@@ -1052,6 +1122,7 @@ export class ProviderSourceManager {
           snapshot,
           allowSequenceReset: false,
         }),
+        releaseHistory: immutableReleaseHistory(existing, snapshot.catalog.entries),
         updatedAt: createdAt,
       };
     } else {
@@ -1064,10 +1135,11 @@ export class ProviderSourceManager {
         trustedKeys: [key],
       });
       if (
+        !existing.removed &&
         snapshot.signingKey.keyId === existing.signingKey.keyId &&
         snapshot.manifest.sequence === existing.activeSnapshot.sequence &&
         snapshot.manifestSha256 === existing.activeSnapshot.manifestSha256 &&
-        snapshot.accessUrls[0] === existing.manifestUrl
+        snapshot.payloadUrls.manifest === existing.manifestUrl
       ) {
         return {
           schema: PROVIDER_SOURCE_ALREADY_CURRENT_SCHEMA,
@@ -1084,7 +1156,10 @@ export class ProviderSourceManager {
       const trustEpoch = existing.trustEpoch + 1;
       proposedSource = {
         ...existing,
-        manifestUrl: snapshot.accessUrls[0]!,
+        manifestUrl: snapshot.payloadUrls.manifest,
+        removed: false,
+        enabled: existing.removed ? true : existing.enabled,
+        includeInDefaultSearch: existing.removed ? false : existing.includeInDefaultSearch,
         trustEpoch,
         signingKey: snapshot.signingKey,
         authorizedNextKeys: snapshot.authorizedNextKeys,
@@ -1095,6 +1170,7 @@ export class ProviderSourceManager {
           snapshot,
           allowSequenceReset,
         }),
+        releaseHistory: immutableReleaseHistory(existing, snapshot.catalog.entries),
         updatedAt: createdAt,
       };
     }
@@ -1102,12 +1178,10 @@ export class ProviderSourceManager {
     if (proposedSource && !proposedSource.enabled && proposedSource.includeInDefaultSearch) {
       throw new Error("a disabled provider source cannot participate in default search");
     }
-    const nextSources = input.action === "remove"
-      ? registry.sources.filter((source) => source.providerId !== providerId)
-      : sortSources([
-          ...registry.sources.filter((source) => source.providerId !== providerId),
-          proposedSource!,
-        ]);
+    const nextSources = sortSources([
+      ...registry.sources.filter((source) => source.providerId !== providerId),
+      proposedSource!,
+    ]);
     const proposedRegistry: ProviderSourceRegistryV1 = {
       schema: PROVIDER_SOURCE_REGISTRY_SCHEMA,
       configRevision: registry.configRevision + 1,
@@ -1115,7 +1189,26 @@ export class ProviderSourceManager {
       updatedAt: createdAt,
     };
     validateRegistry(proposedRegistry);
-    const previousEntries = await this.previousEntries(existing);
+    let previousEntries: PersonalCatalogEntryObservation[] = [];
+    let previousSnapshotCorrupt = false;
+    if (existing && !existing.removed) {
+      try {
+        previousEntries = await this.previousEntries(existing);
+      } catch (error) {
+        previousSnapshotCorrupt = true;
+        if (input.action !== "remove" && input.action !== "configure" && !snapshot) throw error;
+      }
+    }
+    if (
+      previousSnapshotCorrupt &&
+      input.action === "configure" &&
+      !snapshot &&
+      (input.enabled === true || input.includeInDefaultSearch === true)
+    ) {
+      throw new Error(
+        "provider source snapshot is corrupt; explicit Update, Trust Reset, disable, or Remove is required",
+      );
+    }
     const nextEntries = snapshot?.catalog.entries ?? (input.action === "remove" ? [] : previousEntries);
     const diff = templateDiff(previousEntries, nextEntries, snapshot?.manifest.tombstones ?? []);
     const warnings = [
@@ -1128,6 +1221,9 @@ export class ProviderSourceManager {
         : []),
       ...(input.action === "remove"
         ? ["Remove stops discovery but retains immutable snapshots and already materialized projects."]
+        : []),
+      ...(previousSnapshotCorrupt
+        ? ["The previous snapshot is corrupt or unavailable; removal/disable remains fail-safe but its template diff may be incomplete."]
         : []),
       ...(input.action === "trust_reset"
         ? ["Trust Reset replaces the independently trusted signing key and advances the trust epoch."]

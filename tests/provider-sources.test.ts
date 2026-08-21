@@ -42,6 +42,11 @@ interface FeedOptions {
   sequence: number;
   baseUrl?: string;
   variant?: string;
+  releaseVersion?: string;
+  contentDigest?: string;
+  title?: string;
+  archiveCommit?: string;
+  archiveSha256?: string;
   authorizedNextKeys?: TestKey[];
   catalogFault?:
     | "missing_full_schema"
@@ -77,7 +82,7 @@ class MockFeed {
     preview.data.set([255, 0, 0, 255, 0, 0, 255, 255]);
     const previewBytes = new Uint8Array(PNG.sync.write(preview));
     const templateId = "personal-volcano";
-    const releaseVersion = "1.0.0";
+    const releaseVersion = options.releaseVersion ?? `${options.sequence}.0.0`;
     const templateIds = options.catalogFault === "noncanonical_entries"
       ? [templateId, "alpha-template"]
       : [templateId];
@@ -90,10 +95,10 @@ class MockFeed {
         providerId,
         templateId: entryTemplateId,
         releaseVersion,
-        contentDigest: sha256(
+        contentDigest: options.contentDigest ?? sha256(
           `${providerId}:${entryTemplateId}:${options.sequence}:${options.variant ?? "default"}`,
         ),
-        title: `Personal ${entryTemplateId}`,
+        title: options.title ?? `Personal ${entryTemplateId}`,
         description: "A signed personal Provider test template.",
         search: {
           application: "Provider source validation",
@@ -107,10 +112,10 @@ class MockFeed {
         },
         archive: {
           repository: "example/personal-archives",
-          commit: "1".repeat(40),
+          commit: options.archiveCommit ?? "1".repeat(40),
           path: `archives/${entryTemplateId}/${releaseVersion}/${entryTemplateId}-${releaseVersion}.zip`,
           bytes: 1234,
-          sha256: sha256(`archive:${entryTemplateId}:${options.sequence}`),
+          sha256: options.archiveSha256 ?? sha256(`archive:${entryTemplateId}:${options.sequence}`),
         },
         preview: {
           path: previewPath,
@@ -500,6 +505,136 @@ test("updates reject rollback and same-sequence equivocation without changing la
   }
 });
 
+test("a later manifest cannot rewrite any field of an existing public release identity", async () => {
+  const state = await temporaryManager();
+  const key = keyPair();
+  const fixedContentDigest = sha256("immutable-content");
+  const fixedArchiveDigest = sha256("immutable-archive");
+  const endpoints = state.feed.publish({
+    key,
+    sequence: 1,
+    releaseVersion: "1.0.0",
+    contentDigest: fixedContentDigest,
+    archiveSha256: fixedArchiveDigest,
+    title: "Original immutable title",
+  });
+  try {
+    const add = await state.manager.planChange({
+      action: "add",
+      expectedProviderId: PROVIDER_ID,
+      manifestUrl: endpoints.manifestUrl,
+      publicKeyBase64: key.publicKey,
+    });
+    assertChangePlan(add);
+    await state.manager.applyChange({
+      planDigest: add.planDigest,
+      operationId: "add-before-immutable-release-rewrite",
+      expectedAction: "add",
+      expectedProviderId: PROVIDER_ID,
+    });
+    const registryBefore = await fs.readFile(state.paths.registryFile);
+    const snapshotRoot = path.join(state.paths.dataRoot, "snapshots", PROVIDER_ID);
+    const snapshotsBefore = (await fs.readdir(snapshotRoot)).sort();
+
+    // Keep contentDigest stable so this specifically proves that metadata and
+    // archive identity are immutable too, rather than only contentDigest.
+    state.feed.publish({
+      key,
+      sequence: 2,
+      releaseVersion: "1.0.0",
+      contentDigest: fixedContentDigest,
+      archiveSha256: fixedArchiveDigest,
+      archiveCommit: "2".repeat(40),
+      title: "Rewritten title at a higher manifest sequence",
+    });
+    await assert.rejects(
+      () => state.manager.planChange({ action: "update", providerId: PROVIDER_ID }),
+      /immutable release changed without a new releaseVersion.*personal-volcano@1\.0\.0/u,
+    );
+    assert.deepEqual(await fs.readFile(state.paths.registryFile), registryBefore);
+    assert.deepEqual((await fs.readdir(snapshotRoot)).sort(), snapshotsBefore);
+    assert.equal((await state.manager.loadLastKnownGood(PROVIDER_ID)).source.activeSnapshot.sequence, 1);
+  } finally {
+    await fs.rm(state.root, { recursive: true, force: true });
+  }
+});
+
+test("Remove retains trust and release history so Add cannot reset a provider identity", async () => {
+  const state = await temporaryManager();
+  const key = keyPair();
+  const endpoints = state.feed.publish({ key, sequence: 1 });
+  try {
+    const add = await state.manager.planChange({
+      action: "add",
+      expectedProviderId: PROVIDER_ID,
+      manifestUrl: endpoints.manifestUrl,
+      publicKeyBase64: key.publicKey,
+    });
+    assertChangePlan(add);
+    await state.manager.applyChange({
+      planDigest: add.planDigest,
+      operationId: "add-before-trust-history-remove",
+      expectedAction: "add",
+      expectedProviderId: PROVIDER_ID,
+    });
+    const snapshotRoot = path.join(state.paths.dataRoot, "snapshots", PROVIDER_ID);
+    const firstSnapshotDirectory = path.join(snapshotRoot, add.snapshot!.manifestSha256);
+
+    const remove = await state.manager.planChange({ action: "remove", providerId: PROVIDER_ID });
+    assertChangePlan(remove);
+    await state.manager.applyChange({
+      planDigest: remove.planDigest,
+      operationId: "remove-with-trust-history",
+      expectedAction: "remove",
+      expectedProviderId: PROVIDER_ID,
+    });
+    assert.equal((await state.manager.listSources()).sources.length, 0);
+    await fs.access(firstSnapshotDirectory);
+    const removedRegistry = JSON.parse(await fs.readFile(state.paths.registryFile, "utf8")) as {
+      sources: Array<{ providerId: string; removed: boolean; releaseHistory: unknown[] }>;
+    };
+    const retained = removedRegistry.sources.find((source) => source.providerId === PROVIDER_ID);
+    assert.equal(retained?.removed, true);
+    assert.equal(retained?.releaseHistory.length, 1);
+
+    await assert.rejects(
+      () => state.manager.planChange({
+        action: "add",
+        expectedProviderId: PROVIDER_ID,
+        manifestUrl: endpoints.manifestUrl,
+        publicKeyBase64: key.publicKey,
+      }),
+      /trust history already exists.*explicit trust_reset/u,
+    );
+
+    state.feed.publish({ key, sequence: 2 });
+    const reset = await state.manager.planChange({
+      action: "trust_reset",
+      providerId: PROVIDER_ID,
+      publicKeyBase64: key.publicKey,
+    });
+    assertChangePlan(reset);
+    assert.equal(reset.enabled, true);
+    assert.equal(reset.includeInDefaultSearch, false);
+    await state.manager.applyChange({
+      planDigest: reset.planDigest,
+      operationId: "explicit-reregister-after-remove",
+      expectedAction: "trust_reset",
+      expectedProviderId: PROVIDER_ID,
+    });
+    const listed = await state.manager.listSources();
+    assert.equal(listed.sources.length, 1);
+    assert.equal(listed.sources[0]?.trustEpoch, 2);
+    assert.equal(listed.sources[0]?.includeInDefaultSearch, false);
+    assert.deepEqual((await fs.readdir(snapshotRoot)).sort(), [
+      add.snapshot!.manifestSha256,
+      reset.snapshot!.manifestSha256,
+    ].sort());
+  } finally {
+    await fs.rm(state.root, { recursive: true, force: true });
+  }
+});
+
 test("Apply re-fetches the planned remote snapshot and rejects post-Plan drift", async () => {
   const state = await temporaryManager();
   const key = keyPair();
@@ -532,6 +667,51 @@ test("Apply re-fetches the planned remote snapshot and rejects post-Plan drift",
       plan.snapshot!.manifestSha256,
     );
     await assert.rejects(fs.access(plannedSnapshot));
+  } finally {
+    await fs.rm(state.root, { recursive: true, force: true });
+  }
+});
+
+test("Apply treats a changed redirect destination as stale even when payload bytes are identical", async () => {
+  const state = await temporaryManager();
+  const key = keyPair();
+  const endpoints = state.feed.publish({ key, sequence: 1 });
+  const manifestResponse = state.feed.routes.get(endpoints.manifestUrl)!;
+  const plannedRedirect = "https://planned-cdn.example/source-manifest.json";
+  const changedRedirect = "https://changed-cdn.example/source-manifest.json";
+  state.feed.routes.set(plannedRedirect, manifestResponse);
+  state.feed.routes.set(endpoints.manifestUrl, {
+    statusCode: 302,
+    headers: { location: plannedRedirect },
+    body: new Uint8Array(),
+  });
+  try {
+    const plan = await state.manager.planChange({
+      action: "add",
+      expectedProviderId: PROVIDER_ID,
+      manifestUrl: endpoints.manifestUrl,
+      publicKeyBase64: key.publicKey,
+    });
+    assertChangePlan(plan);
+    assert.ok(plan.accessUrls.includes(plannedRedirect));
+
+    state.feed.routes.set(changedRedirect, manifestResponse);
+    state.feed.routes.set(endpoints.manifestUrl, {
+      statusCode: 302,
+      headers: { location: changedRedirect },
+      body: new Uint8Array(),
+    });
+    await assert.rejects(
+      () => state.manager.applyChange({
+        planDigest: plan.planDigest,
+        operationId: "redirect-drift-after-plan",
+        expectedAction: "add",
+        expectedProviderId: PROVIDER_ID,
+      }),
+      /stale provider source plan.*changed after planning/u,
+    );
+    await assert.rejects(fs.access(state.paths.registryFile));
+    await assert.rejects(fs.access(path.join(state.paths.dataRoot, "snapshots")));
   } finally {
     await fs.rm(state.root, { recursive: true, force: true });
   }
@@ -851,6 +1031,84 @@ test("last-known-good loading fails closed after snapshot tampering", async () =
       () => state.manager.loadLastKnownGood(PROVIDER_ID),
       /snapshot file mismatch/u,
     );
+  } finally {
+    await fs.rm(state.root, { recursive: true, force: true });
+  }
+});
+
+test("a corrupt snapshot can be disabled or removed offline but cannot be re-enabled", async () => {
+  const state = await temporaryManager();
+  const key = keyPair();
+  const endpoints = state.feed.publish({ key, sequence: 1 });
+  try {
+    const add = await state.manager.planChange({
+      action: "add",
+      expectedProviderId: PROVIDER_ID,
+      manifestUrl: endpoints.manifestUrl,
+      publicKeyBase64: key.publicKey,
+    });
+    assertChangePlan(add);
+    await state.manager.applyChange({
+      planDigest: add.planDigest,
+      operationId: "add-before-fail-safe-disable",
+      expectedAction: "add",
+      expectedProviderId: PROVIDER_ID,
+    });
+    const snapshotDirectory = path.join(
+      state.paths.dataRoot,
+      "snapshots",
+      PROVIDER_ID,
+      add.snapshot!.manifestSha256,
+    );
+    const catalogFile = path.join(snapshotDirectory, "catalog.json");
+    await fs.chmod(catalogFile, 0o666).catch(() => undefined);
+    await fs.writeFile(catalogFile, "{\"tampered\":true}\n", "utf8");
+    await assert.rejects(
+      () => state.manager.loadLastKnownGood(PROVIDER_ID),
+      /snapshot file mismatch/u,
+    );
+
+    const requestsBeforeDisable = state.feed.requests.length;
+    const disable = await state.manager.planChange({
+      action: "configure",
+      providerId: PROVIDER_ID,
+      enabled: false,
+    });
+    assertChangePlan(disable);
+    assert.equal(disable.enabled, false);
+    assert.match(disable.warnings.join("\n"), /snapshot is corrupt or unavailable/u);
+    assert.equal(state.feed.requests.length, requestsBeforeDisable, "disable Plan must not fetch a corrupt source");
+    await state.manager.applyChange({
+      planDigest: disable.planDigest,
+      operationId: "disable-corrupt-source",
+      expectedAction: "configure",
+      expectedProviderId: PROVIDER_ID,
+    });
+    assert.equal(state.feed.requests.length, requestsBeforeDisable, "disable Apply must remain offline");
+    assert.equal((await state.manager.listSources()).sources[0]?.enabled, false);
+
+    await assert.rejects(
+      () => state.manager.planChange({
+        action: "configure",
+        providerId: PROVIDER_ID,
+        enabled: true,
+      }),
+      /snapshot is corrupt.*Update, Trust Reset, disable, or Remove/u,
+    );
+
+    const requestsBeforeRemove = state.feed.requests.length;
+    const remove = await state.manager.planChange({ action: "remove", providerId: PROVIDER_ID });
+    assertChangePlan(remove);
+    assert.match(remove.warnings.join("\n"), /snapshot is corrupt or unavailable/u);
+    await state.manager.applyChange({
+      planDigest: remove.planDigest,
+      operationId: "remove-corrupt-source",
+      expectedAction: "remove",
+      expectedProviderId: PROVIDER_ID,
+    });
+    assert.equal(state.feed.requests.length, requestsBeforeRemove, "remove Plan/Apply must remain offline");
+    assert.equal((await state.manager.listSources()).sources.length, 0);
+    await fs.access(snapshotDirectory);
   } finally {
     await fs.rm(state.root, { recursive: true, force: true });
   }
