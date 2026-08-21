@@ -8,6 +8,7 @@ import { zipSync } from "fflate";
 import { PNG } from "pngjs";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
+import { ensureLibraryRootMarker } from "../src/library-runtime.ts";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { canonicalJson } from "../src/canonical-json.ts";
 import {
@@ -18,10 +19,16 @@ import {
 } from "../src/provider-source-fetch.ts";
 import { registerProviderSourceTools } from "../src/provider-source-tools.ts";
 import { ProviderSourceManager, type ProviderSourcePaths } from "../src/provider-sources.ts";
+import { createServer } from "../src/server.ts";
 
 function record(value: unknown): Record<string, unknown> {
   assert.ok(value && typeof value === "object" && !Array.isArray(value));
   return value as Record<string, unknown>;
+}
+
+function records(value: unknown) {
+  assert.ok(Array.isArray(value));
+  return value.map(record);
 }
 
 function text(value: unknown) {
@@ -273,9 +280,146 @@ test("provider source MCP tools expose offline list plus confirmed Add Apply and
     const callsBeforeList = state.requests();
     const listed = await state.client.callTool({ name: "figure_library_list_provider_sources", arguments: {} });
     assert.equal(state.requests(), callsBeforeList);
-    assert.doesNotMatch(JSON.stringify(listed.structuredContent), new RegExp(feed.publicKey, "u"));
+    assert.equal(JSON.stringify(listed.structuredContent).includes(feed.publicKey), false);
     assert.match(text(listed), /SOURCE_1_DEFAULT_SEARCH: false/u);
+    assert.match(text(listed), /SOURCE_1_HEALTH: degraded/u);
   } finally {
+    await state.close();
+  }
+});
+
+test("production server reports healthy and corrupt personal snapshots consistently without network access", async () => {
+  const state = await harness();
+  const feed = state.publish({ sequence: 1 });
+  const libraryRoot = path.join(state.root, "library");
+  const previousLibraryDirectory = process.env.FIGURE_LIBRARY_DIR;
+  let productionServer: Awaited<ReturnType<typeof createServer>> | undefined;
+  let productionClient: Client | undefined;
+
+  const connectProduction = async () => {
+    productionServer = await createServer({ providerSourceManager: state.manager });
+    productionClient = new Client({ name: "provider-source-production-client", version: "0.6.0" });
+    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+    await productionServer.connect(serverTransport);
+    await productionClient.connect(clientTransport);
+    return productionClient;
+  };
+  const disconnectProduction = async () => {
+    await productionClient?.close();
+    await productionServer?.close();
+    productionClient = undefined;
+    productionServer = undefined;
+  };
+  const listedSources = async (client: Client) => {
+    const response = await client.callTool({
+      name: "figure_library_list_provider_sources",
+      arguments: {},
+    });
+    return records(record(record(response.structuredContent).result).sources);
+  };
+
+  try {
+    await ensureLibraryRootMarker(libraryRoot);
+    process.env.FIGURE_LIBRARY_DIR = libraryRoot;
+    const planned = await state.client.callTool({
+      name: "figure_library_plan_provider_source_change",
+      arguments: {
+        action: "add",
+        expectedProviderId: "io.example.tools.personal",
+        manifestUrl: feed.manifestUrl,
+        publicKeyBase64: feed.publicKey,
+      },
+    });
+    const plan = record(record(planned.structuredContent).plan);
+    await state.client.callTool({
+      name: "figure_library_apply_provider_source_change",
+      arguments: {
+        planDigest: String(plan.planDigest),
+        operationId: "production-list-health",
+        expectedAction: "add",
+        expectedProviderId: "io.example.tools.personal",
+      },
+    });
+
+    let client = await connectProduction();
+    const requestsBeforeHealthyList = state.requests();
+    const healthySources = await listedSources(client);
+    assert.equal(state.requests(), requestsBeforeHealthyList);
+    const healthy = healthySources.find(
+      (source) => source.providerId === "io.example.tools.personal",
+    );
+    assert.ok(healthy);
+    assert.equal(healthy.health, "ready");
+    assert.equal(record(healthy.signature).status, "verified");
+    assert.equal(record(healthy.inventory).status, "verified");
+    assert.equal(healthy.lastError, null);
+    assert.equal(healthy.errorCode, undefined);
+
+    const healthySearch = await client.callTool({
+      name: "figure_library_search",
+      arguments: {
+        query: "tools volcano",
+        providerIds: ["io.example.tools.personal"],
+      },
+    });
+    assert.equal(record(record(healthySearch.structuredContent).envelope).outcome, "ok");
+    assert.equal(records(record(healthySearch.structuredContent).candidates).length, 1);
+    await disconnectProduction();
+
+    const configured = await state.manager.listSources();
+    const personal = configured.sources.find(
+      (source) => source.providerId === "io.example.tools.personal",
+    );
+    assert.ok(personal);
+    const catalogPath = path.join(personal.snapshotPath, "catalog.json");
+    await fs.chmod(catalogPath, 0o666).catch(() => undefined);
+    await fs.writeFile(catalogPath, "{\"tampered\":true}\n", "utf8");
+
+    client = await connectProduction();
+    const requestsBeforeCorruptList = state.requests();
+    const corruptSources = await listedSources(client);
+    assert.equal(state.requests(), requestsBeforeCorruptList);
+    const corrupt = corruptSources.find(
+      (source) => source.providerId === "io.example.tools.personal",
+    );
+    assert.ok(corrupt);
+    assert.equal(corrupt.health, "corrupt");
+    assert.equal(corrupt.errorCode, "provider_snapshot_corrupt");
+    assert.equal(record(corrupt.signature).status, "unverified");
+    assert.equal(record(corrupt.inventory).status, "unverified");
+    assert.match(String(record(corrupt.lastError).message), /snapshot|catalog|inventory/u);
+
+    const corruptSearch = await client.callTool({
+      name: "figure_library_search",
+      arguments: {
+        query: "tools volcano",
+        providerIds: ["io.example.tools.personal"],
+      },
+    });
+    const corruptEnvelope = record(record(corruptSearch.structuredContent).envelope);
+    assert.equal(corruptEnvelope.outcome, "failed");
+    assert.match(String(corruptEnvelope.summary), /provider_snapshot_corrupt/u);
+
+    process.env.FIGURE_LIBRARY_DIR = path.join(state.root, "missing-library-marker");
+    const brokenLocatorSources = await listedSources(client);
+    for (const providerId of [
+      "org.scientificfigurelibrary.local",
+      "io.github.jarxunlai.scientific-figure-community",
+      "org.figureya.module",
+    ]) {
+      assert.ok(
+        brokenLocatorSources.some((source) => source.providerId === providerId),
+        `missing built-in Provider identity while the Library binding is broken: ${providerId}`,
+      );
+    }
+    const corruptWithBrokenBinding = brokenLocatorSources.find(
+      (source) => source.providerId === "io.example.tools.personal",
+    );
+    assert.equal(corruptWithBrokenBinding?.health, "corrupt");
+  } finally {
+    await disconnectProduction();
+    if (previousLibraryDirectory === undefined) delete process.env.FIGURE_LIBRARY_DIR;
+    else process.env.FIGURE_LIBRARY_DIR = previousLibraryDirectory;
     await state.close();
   }
 });

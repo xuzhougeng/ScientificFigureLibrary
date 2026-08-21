@@ -248,10 +248,19 @@ function isAlreadyCurrent(
   return "status" in value;
 }
 
+interface PersonalProviderRuntimeStatus {
+  providerId: string;
+  health: "ready" | "degraded" | "corrupt";
+  errorCode?: string;
+  safeMessage?: string;
+  details?: Record<string, unknown>;
+}
+
 export function registerProviderSourceTools(options: {
   server: McpServer;
   manager?: ProviderSourceManager;
   builtInSources?: () => Promise<Array<Record<string, unknown>>>;
+  personalSourceStatuses?: () => Promise<PersonalProviderRuntimeStatus[]>;
   onApplied?: () => Promise<void>;
 }) {
   const { server } = options;
@@ -275,10 +284,55 @@ export function registerProviderSourceTools(options: {
       try {
         const result = await manager.listSources();
         const builtInSources = options.builtInSources ? await options.builtInSources() : [];
-        const personalSources: Array<Record<string, unknown>> = result.sources.map((source) => ({
-          sourceKind: "signed-personal",
-          ...source,
-        }));
+        const runtimeStatuses = options.personalSourceStatuses
+          ? await options.personalSourceStatuses()
+          : [];
+        const runtimeStatusById = new Map(
+          runtimeStatuses.map((status) => [String(status.providerId ?? ""), status]),
+        );
+        const personalSources: Array<Record<string, unknown>> = result.sources.map((source) => {
+          const runtimeStatus = runtimeStatusById.get(source.providerId);
+          const health = runtimeStatus?.health === "ready" || runtimeStatus?.health === "degraded" ||
+              runtimeStatus?.health === "corrupt"
+            ? runtimeStatus.health
+            : "degraded";
+          const details = runtimeStatus && typeof runtimeStatus.details === "object" &&
+              runtimeStatus.details !== null && !Array.isArray(runtimeStatus.details)
+            ? runtimeStatus.details as Record<string, unknown>
+            : {};
+          const errorCode = typeof runtimeStatus?.errorCode === "string"
+            ? runtimeStatus.errorCode
+            : typeof details.errorCode === "string"
+              ? details.errorCode
+              : health === "ready"
+                ? undefined
+                : "provider_runtime_status_unavailable";
+          const safeMessage = typeof runtimeStatus?.safeMessage === "string"
+            ? runtimeStatus.safeMessage
+            : typeof details.safeMessage === "string"
+              ? details.safeMessage
+              : health === "ready"
+                ? undefined
+                : "The configured Provider is not backed by a verified runtime snapshot.";
+          // A failed aggregate LKG load does not prove that every component is
+          // corrupt. Report both component checks as unverified and retain the
+          // precise safe error at the source level instead of overclaiming.
+          const verification = health === "ready" ? "verified" : "unverified";
+          const runtimeLastError = errorCode && safeMessage
+            ? { errorCode, message: safeMessage }
+            : null;
+          return {
+            sourceKind: "signed-personal",
+            ...source,
+            health,
+            signature: { ...source.signature, status: verification },
+            inventory: { ...source.inventory, status: verification },
+            lastError: health === "ready" ? source.lastError : runtimeLastError ?? source.lastError,
+            ...(errorCode ? { errorCode } : {}),
+            ...(safeMessage ? { safeMessage } : {}),
+            ...(runtimeStatus ? { details } : {}),
+          };
+        });
         const sources: Array<Record<string, unknown>> = [...builtInSources, ...personalSources];
         const listed = { ...result, sources };
         const outcome = envelope(
@@ -296,7 +350,7 @@ export function registerProviderSourceTools(options: {
             `SOURCE_${index + 1}_ENABLED: ${String(source.enabled ?? true)}`,
             `SOURCE_${index + 1}_DEFAULT_SEARCH: ${String(source.includeInDefaultSearch ?? true)}`,
             `SOURCE_${index + 1}_TEMPLATE_COUNT: ${String(source.templateCount ?? "unknown")}`,
-            `SOURCE_${index + 1}_HEALTH: ${String(source.health ?? "ready")}`,
+            `SOURCE_${index + 1}_HEALTH: ${String(source.health ?? "degraded")}`,
           ]),
         ]);
       } catch (error) {

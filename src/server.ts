@@ -29,6 +29,9 @@ import { registerPublicationExportTools } from "./publication-export-tools.ts";
 import { registerProviderSourceTools } from "./provider-source-tools.ts";
 import { ProviderSourceManager } from "./provider-sources.ts";
 import { createRuntimeProviderController } from "./provider-runtime.ts";
+import {
+  PublicCatalogProviderAdapter,
+} from "./public-catalog-provider.ts";
 import { canonicalJson } from "./canonical-json.ts";
 import {
   DiagnosticsManager,
@@ -56,6 +59,7 @@ import { assertExactTemplateSelector } from "./providers.ts";
 import {
   createDefaultProviderRegistry,
   createProviderContext,
+  UnavailableProviderAdapter,
   type ProviderRegistry,
 } from "./provider-registry.ts";
 import type {
@@ -1814,6 +1818,29 @@ export async function createServer(options: {
           ...(status ? { details: status.details } : { errorCode: "library_context_unavailable" }),
         };
       });
+    },
+    personalSourceStatuses: async () => {
+      const descriptors = registry
+        .list()
+        .filter((descriptor) => descriptor.kind === "public-catalog" && !descriptor.bundled);
+      return Promise.all(descriptors.map(async (descriptor) => {
+        const adapter = registry.get(descriptor.providerId);
+        if (
+          !(adapter instanceof PublicCatalogProviderAdapter) &&
+          !(adapter instanceof UnavailableProviderAdapter)
+        ) {
+          return {
+            providerId: descriptor.providerId,
+            health: "degraded" as const,
+            errorCode: "provider_runtime_status_unavailable",
+            safeMessage: "The configured Provider runtime does not expose an offline snapshot status.",
+          };
+        }
+        // Both personal runtime adapter variants derive their status entirely
+        // from the immutable snapshot loaded at startup/Apply. Neither reads
+        // the global Library or performs a network request.
+        return adapter.status(undefined as never);
+      }));
     },
     onApplied: providerController?.refreshPersonalProviders,
   });
