@@ -21,6 +21,8 @@ export const CENTRAL_PUBLIC_PROVIDER_ID =
 
 const HOST = "github.com" as const;
 const BASE_BRANCH = "main" as const;
+const ARCHIVE_VALIDATION_WORKFLOW_NAME = "validate-archive-pr" as const;
+const ARCHIVE_VALIDATION_WORKFLOW_PATH = ".github/workflows/validate-archive-pr.yml" as const;
 const HASH = /^[a-f0-9]{64}$/u;
 const GIT_HASH = /^[a-f0-9]{40}$/u;
 const TEMPLATE_ID = /^[a-z0-9](?:[a-z0-9._-]{0,126}[a-z0-9])?$/u;
@@ -1504,9 +1506,11 @@ async function observeMergedArchivePr(runner: GhRunner, number: number): Promise
   const baseRepo = isRecord(base.repo) ? base.repo : {};
   const user = isRecord(pr.user) ? pr.user : {};
   const head = isRecord(pr.head) ? pr.head : {};
+  const headRepo = isRecord(head.repo) ? head.repo : {};
   if (
     pr.merged !== true || typeof pr.merged_at !== "string" || typeof pr.merge_commit_sha !== "string" || !GIT_HASH.test(pr.merge_commit_sha) ||
     baseRepo.full_name !== CENTRAL_ARCHIVE_REPOSITORY || base.ref !== BASE_BRANCH || typeof pr.html_url !== "string" ||
+    typeof base.sha !== "string" || !GIT_HASH.test(base.sha) || typeof headRepo.full_name !== "string" ||
     typeof user.login !== "string" || typeof head.sha !== "string" || !GIT_HASH.test(head.sha) || pr.changed_files !== 1
   ) throw new Error("Catalog Plan requires a merged, one-file central Archive PR into main");
   const changed = await ghJson<unknown[]>(runner, `repos/${CENTRAL_ARCHIVE_REPOSITORY}/pulls/${number}/files?per_page=100`);
@@ -1519,16 +1523,29 @@ async function observeMergedArchivePr(runner: GhRunner, number: number): Promise
   for (let page = 1; page <= 10 && !validationRun; page += 1) {
     const runs = await ghJson<Record<string, unknown>>(
       runner,
-      `repos/${CENTRAL_ARCHIVE_REPOSITORY}/actions/workflows/validate-archive-pr.yml/runs?event=pull_request_target&status=completed&per_page=100&page=${page}`,
+      `repos/${CENTRAL_ARCHIVE_REPOSITORY}/actions/workflows/${ARCHIVE_VALIDATION_WORKFLOW_NAME}.yml/runs?event=pull_request_target&status=completed&per_page=100&page=${page}`,
     );
     const values = Array.isArray(runs.workflow_runs) ? runs.workflow_runs : [];
     for (const raw of values) {
-      if (!isRecord(raw) || raw.conclusion !== "success" || typeof raw.html_url !== "string") continue;
+      if (!isRecord(raw) || raw.status !== "completed" || raw.conclusion !== "success" || raw.event !== "pull_request_target" ||
+        raw.name !== ARCHIVE_VALIDATION_WORKFLOW_NAME || raw.path !== ARCHIVE_VALIDATION_WORKFLOW_PATH ||
+        raw.head_sha !== head.sha || typeof raw.html_url !== "string") continue;
+      const runRepository = isRecord(raw.repository) ? raw.repository : {};
+      const runHeadRepository = isRecord(raw.head_repository) ? raw.head_repository : {};
+      if (runRepository.full_name !== CENTRAL_ARCHIVE_REPOSITORY || runHeadRepository.full_name !== headRepo.full_name) continue;
       const pulls = Array.isArray(raw.pull_requests) ? raw.pull_requests : [];
       const exact = pulls.some((candidate) => {
         if (!isRecord(candidate) || candidate.number !== number) return false;
         const candidateHead = isRecord(candidate.head) ? candidate.head : {};
-        return candidateHead.sha === head.sha;
+        const candidateHeadRepo = isRecord(candidateHead.repo) ? candidateHead.repo : {};
+        const candidateBase = isRecord(candidate.base) ? candidate.base : {};
+        const candidateBaseRepo = isRecord(candidateBase.repo) ? candidateBase.repo : {};
+        const expectedHeadRepoUrl = `https://api.github.com/repos/${headRepo.full_name}`;
+        const expectedBaseRepoUrl = `https://api.github.com/repos/${CENTRAL_ARCHIVE_REPOSITORY}`;
+        const headRepoMatches = candidateHeadRepo.full_name === headRepo.full_name || candidateHeadRepo.url === expectedHeadRepoUrl;
+        const baseRepoMatches = candidateBaseRepo.full_name === CENTRAL_ARCHIVE_REPOSITORY || candidateBaseRepo.url === expectedBaseRepoUrl;
+        return candidateHead.sha === head.sha && headRepoMatches && candidateBase.ref === BASE_BRANCH &&
+          candidateBase.sha === base.sha && baseRepoMatches;
       });
       if (exact) {
         validationRun = raw.html_url;
@@ -1537,7 +1554,9 @@ async function observeMergedArchivePr(runner: GhRunner, number: number): Promise
     }
     if (values.length < 100) break;
   }
-  if (!validationRun) throw new Error("merged Archive PR has no successful fixed-render CI run for its exact head commit");
+  if (!validationRun) {
+    throw new Error("merged Archive PR has no successful fixed-render CI run for its exact PR, head repository/commit, and merge-time base commit");
+  }
   return {
     number,
     url: pr.html_url,

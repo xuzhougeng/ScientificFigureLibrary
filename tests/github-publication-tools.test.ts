@@ -395,6 +395,21 @@ class MockGhRunner implements GhRunner {
   archiveTemplateId = "clean-room-bars";
   archiveReleaseVersion = "1.0.0";
   archiveAuthor = "jarxunlai";
+  archiveHeadRepository = CENTRAL_ARCHIVE_REPOSITORY as string;
+  archiveHeadSha = CREATED_COMMIT;
+  archiveBaseSha = BASE_COMMIT;
+  validationEvent = "pull_request_target";
+  validationWorkflowName = "validate-archive-pr";
+  validationWorkflowPath = ".github/workflows/validate-archive-pr.yml";
+  validationRepository = CENTRAL_ARCHIVE_REPOSITORY as string;
+  validationHeadRepository: string | null = null;
+  validationHeadSha: string | null = null;
+  validationPullNumber: number | null = null;
+  validationPullHeadRepository: string | null = null;
+  validationPullHeadSha: string | null = null;
+  validationPullBaseRef = "main";
+  validationPullBaseRepository = CENTRAL_ARCHIVE_REPOSITORY as string;
+  validationPullBaseSha: string | null = null;
   baseCommit = BASE_COMMIT;
   baseTree = BASE_TREE;
   existingRefCommit: string | null = null;
@@ -518,8 +533,8 @@ class MockGhRunner implements GhRunner {
         merge_commit_sha: this.merged ? MERGE_COMMIT : null,
         html_url: `https://github.com/${CENTRAL_ARCHIVE_REPOSITORY}/pull/17`,
         changed_files: 1,
-        base: { ref: "main", repo: { full_name: CENTRAL_ARCHIVE_REPOSITORY } },
-        head: { sha: CREATED_COMMIT },
+        base: { ref: "main", sha: this.archiveBaseSha, repo: { full_name: CENTRAL_ARCHIVE_REPOSITORY } },
+        head: { sha: this.archiveHeadSha, repo: { full_name: this.archiveHeadRepository } },
         user: { login: this.archiveAuthor },
       });
     }
@@ -528,9 +543,27 @@ class MockGhRunner implements GhRunner {
     }
     if (endpoint.startsWith(`repos/${CENTRAL_ARCHIVE_REPOSITORY}/actions/workflows/validate-archive-pr.yml/runs?`)) {
       return this.#ok({ workflow_runs: [{
+        status: "completed",
         conclusion: this.validationSuccess ? "success" : "failure",
+        event: this.validationEvent,
+        name: this.validationWorkflowName,
+        path: this.validationWorkflowPath,
+        head_sha: this.validationHeadSha ?? this.archiveHeadSha,
+        repository: { full_name: this.validationRepository },
+        head_repository: { full_name: this.validationHeadRepository ?? this.archiveHeadRepository },
         html_url: `https://github.com/${CENTRAL_ARCHIVE_REPOSITORY}/actions/runs/99`,
-        pull_requests: [{ number: this.archivePullNumber, head: { sha: CREATED_COMMIT } }],
+        pull_requests: [{
+          number: this.validationPullNumber ?? this.archivePullNumber,
+          head: {
+            sha: this.validationPullHeadSha ?? this.archiveHeadSha,
+            repo: { url: `https://api.github.com/repos/${this.validationPullHeadRepository ?? this.archiveHeadRepository}` },
+          },
+          base: {
+            ref: this.validationPullBaseRef,
+            sha: this.validationPullBaseSha ?? this.archiveBaseSha,
+            repo: { url: `https://api.github.com/repos/${this.validationPullBaseRepository}` },
+          },
+        }],
       }] });
     }
     if (/\/pulls\?state=all/u.test(endpoint)) {
@@ -928,6 +961,63 @@ test("Catalog Plan refuses an unmerged Archive PR, then verifies merge ZIP/inven
     assert.equal(catalogWrites.filter((item) => item.endpoint.endsWith("/git/blobs")).length, 5);
     assert.ok(catalogWrites.some((item) => item.endpoint === `repos/${CENTRAL_CATALOG_REPOSITORY}/pulls`));
     assert.ok(catalogWrites.every((item) => !/merge/iu.test(item.endpoint)));
+  } finally {
+    await fs.rm(root, { recursive: true, force: true });
+  }
+});
+
+test("Catalog Plan accepts only current-policy Archive CI evidence for the exact PR, head, and merge-time base", async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "sfl-archive-ci-evidence-"));
+  const directory = await writeSubmission(root);
+  const producerRunner = new MockGhRunner();
+  const producerService = new GitHubPublicationService({
+    ghRunner: producerRunner,
+    receiptDirectory: path.join(root, "producer-receipts"),
+  });
+  try {
+    const archivePlan = await producerService.plan({ action: "archive", submissionDirectory: directory });
+    await producerService.apply(archivePlan.planDigest, "ci-evidence-archive-zip");
+    const archiveZip = producerRunner.uploadedBlobs.find((item) => item.byteLength === archivePlan.files[0]!.bytes);
+    assert.ok(archiveZip);
+    const archivePath = "archives/clean-room-bars/1.0.0/clean-room-bars-1.0.0.zip";
+    const cases: Array<{
+      name: string;
+      accepted: boolean;
+      mutate(runner: MockGhRunner): void;
+    }> = [
+      { name: "exact current base", accepted: true, mutate() {} },
+      { name: "old vulnerable base success", accepted: false, mutate(runner) { runner.validationPullBaseSha = "e".repeat(40); } },
+      { name: "wrong event", accepted: false, mutate(runner) { runner.validationEvent = "pull_request"; } },
+      { name: "wrong PR number", accepted: false, mutate(runner) { runner.validationPullNumber = runner.archivePullNumber + 1; } },
+      { name: "wrong run head repository", accepted: false, mutate(runner) { runner.validationHeadRepository = "attacker/archive-fork"; } },
+      { name: "wrong run head SHA", accepted: false, mutate(runner) { runner.validationHeadSha = "e".repeat(40); } },
+      { name: "wrong PR head repository", accepted: false, mutate(runner) { runner.validationPullHeadRepository = "attacker/archive-fork"; } },
+      { name: "wrong PR head SHA", accepted: false, mutate(runner) { runner.validationPullHeadSha = "e".repeat(40); } },
+      { name: "wrong base branch", accepted: false, mutate(runner) { runner.validationPullBaseRef = "legacy"; } },
+      { name: "wrong workflow name", accepted: false, mutate(runner) { runner.validationWorkflowName = "lookalike-archive-validator"; } },
+      { name: "wrong workflow path", accepted: false, mutate(runner) { runner.validationWorkflowPath = ".github/workflows/lookalike.yml"; } },
+    ];
+
+    for (const item of cases) {
+      const runner = new MockGhRunner();
+      runner.registerFile({ repository: CENTRAL_ARCHIVE_REPOSITORY, ref: MERGE_COMMIT, path: archivePath, bytes: archiveZip });
+      registerEmptyCatalog(runner);
+      item.mutate(runner);
+      const service = new GitHubPublicationService({ ghRunner: runner, receiptDirectory: path.join(root, item.name) });
+      const request = {
+        action: "catalog" as const,
+        archivePullRequestNumber: runner.archivePullNumber,
+        expectedTemplateId: "clean-room-bars",
+        expectedReleaseVersion: "1.0.0",
+      };
+      if (item.accepted) {
+        const catalogPlan = await service.plan(request);
+        assert.equal(catalogPlan.archive?.validationRun, `https://github.com/${CENTRAL_ARCHIVE_REPOSITORY}/actions/runs/99`);
+      } else {
+        await assert.rejects(() => service.plan(request), /no successful fixed-render CI run/u, item.name);
+      }
+      assert.equal(runner.writes.length, 0, `${item.name}: CI evidence observation must remain read-only`);
+    }
   } finally {
     await fs.rm(root, { recursive: true, force: true });
   }
