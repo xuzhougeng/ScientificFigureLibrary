@@ -1,6 +1,9 @@
 import { createHash } from "node:crypto";
 import fs from "node:fs/promises";
+import os from "node:os";
 import path from "node:path";
+import { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { strFromU8, strToU8, unzipSync, zipSync } from "fflate";
 
 export const root = path.resolve(import.meta.dirname, "..");
@@ -146,4 +149,163 @@ export async function writeVerifiedZip(archive, baseName) {
 
 export function utf8(bytes) {
   return strFromU8(bytes);
+}
+
+function replacePluginRoot(value, variable, pluginRoot) {
+  return value.replaceAll(variable, pluginRoot.replaceAll("\\", "/"));
+}
+
+async function extractArchive(unpacked, pluginRoot) {
+  for (const [relative, bytes] of Object.entries(unpacked)) {
+    const target = path.join(pluginRoot, ...relative.split("/"));
+    await fs.mkdir(path.dirname(target), { recursive: true });
+    await fs.writeFile(target, bytes);
+  }
+}
+
+async function readInstalledJson(pluginRoot, relative) {
+  return JSON.parse(await fs.readFile(path.resolve(pluginRoot, relative), "utf8"));
+}
+
+async function resolveInstalledMcpServer(host, pluginRoot, foreignProjectDirectory) {
+  if (host === "codex") {
+    const manifest = await readInstalledJson(pluginRoot, ".codex-plugin/plugin.json");
+    const config = await readInstalledJson(pluginRoot, manifest.mcpServers);
+    const server = config.mcpServers?.["figure-library"];
+    return {
+      ...server,
+      cwd: path.resolve(pluginRoot, server.cwd),
+      observedTaskCwd: foreignProjectDirectory,
+    };
+  }
+  if (host === "claude") {
+    const manifest = await readInstalledJson(pluginRoot, ".claude-plugin/plugin.json");
+    const config = await readInstalledJson(pluginRoot, manifest.mcpServers);
+    const server = config["figure-library"];
+    return {
+      ...server,
+      args: server.args.map((argument) =>
+        replacePluginRoot(argument, "${CLAUDE_PLUGIN_ROOT}", pluginRoot),
+      ),
+      cwd: foreignProjectDirectory,
+      observedTaskCwd: foreignProjectDirectory,
+    };
+  }
+  if (host === "wisp") {
+    const manifest = await readInstalledJson(pluginRoot, ".wisp-plugin/plugin.json");
+    const server = manifest.mcp_servers?.find((candidate) => candidate.id === "figure-library");
+    return {
+      ...server,
+      args: server.args.map((argument) =>
+        replacePluginRoot(argument, "${WISP_PLUGIN_ROOT}", pluginRoot),
+      ),
+      cwd: foreignProjectDirectory,
+      observedTaskCwd: foreignProjectDirectory,
+    };
+  }
+  throw new Error(`unsupported plugin smoke host: ${host}`);
+}
+
+function withTimeout(promise, milliseconds, label) {
+  let timeout;
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => {
+      timeout = setTimeout(() => reject(new Error(`${label} timed out after ${milliseconds} ms`)), milliseconds);
+    }),
+  ]).finally(() => clearTimeout(timeout));
+}
+
+function assertArchiveOmitsDevelopmentPaths(unpacked) {
+  const forbidden = new Set([
+    root,
+    root.replaceAll("\\", "/"),
+    os.homedir(),
+    os.homedir().replaceAll("\\", "/"),
+  ]);
+  for (const [relative, bytes] of Object.entries(unpacked)) {
+    const source = utf8(bytes);
+    for (const absolutePath of forbidden) {
+      if (absolutePath && source.includes(absolutePath)) {
+        throw new Error(`${relative} leaked development-machine path ${absolutePath}`);
+      }
+    }
+  }
+}
+
+/**
+ * Extract a built plugin to a path containing spaces, simulate the Host's
+ * plugin-root contract while the task cwd is a different project, and perform
+ * real MCP initialize + tools/list exchanges with the packaged stdio server.
+ */
+export async function smokePackagedPlugin({ host, unpacked, version }) {
+  assertArchiveOmitsDevelopmentPaths(unpacked);
+  const smokeDirectory = await fs.mkdtemp(
+    path.join(os.tmpdir(), `scientific figure library ${host} plugin smoke-`),
+  );
+  const pluginRoot = path.join(smokeDirectory, "installed plugin with spaces");
+  const foreignProjectDirectory = path.join(smokeDirectory, "unrelated project cwd");
+  const isolatedUserState = path.join(smokeDirectory, "isolated user state");
+  await fs.mkdir(pluginRoot, { recursive: true });
+  await fs.mkdir(foreignProjectDirectory, { recursive: true });
+  await fs.mkdir(isolatedUserState, { recursive: true });
+
+  let client;
+  let stderr = "";
+  try {
+    await extractArchive(unpacked, pluginRoot);
+    const server = await resolveInstalledMcpServer(host, pluginRoot, foreignProjectDirectory);
+    if (server.command !== "node" || !Array.isArray(server.args) || !server.args.length) {
+      throw new Error(`${host} MCP server command/args are incomplete`);
+    }
+    if (server.observedTaskCwd !== foreignProjectDirectory) {
+      throw new Error(`${host} smoke did not begin from the foreign task cwd`);
+    }
+    if (host === "codex" && server.cwd !== pluginRoot) {
+      throw new Error("Codex cwd was not resolved from the installed plugin root");
+    }
+    if (host !== "codex" && !path.isAbsolute(server.args[0])) {
+      throw new Error(`${host} did not resolve its server entry to the installed plugin root`);
+    }
+
+    const environment = Object.fromEntries(
+      Object.entries(process.env).filter((entry) => typeof entry[1] === "string"),
+    );
+    delete environment.FIGURE_LIBRARY_DIR;
+    environment.APPDATA = isolatedUserState;
+    environment.LOCALAPPDATA = isolatedUserState;
+    environment.XDG_CONFIG_HOME = isolatedUserState;
+    environment.XDG_DATA_HOME = isolatedUserState;
+
+    client = new Client({ name: `sfl-${host}-foreign-cwd-smoke`, version });
+    const transport = new StdioClientTransport({
+      command: server.command,
+      args: server.args,
+      cwd: server.cwd,
+      env: environment,
+      stderr: "pipe",
+    });
+    transport.stderr?.on("data", (chunk) => {
+      if (stderr.length < 32_768) stderr += chunk.toString();
+    });
+    await withTimeout(client.connect(transport), 20_000, `${host} MCP initialize`);
+    const listed = await withTimeout(client.listTools(), 20_000, `${host} MCP tools/list`);
+    const names = new Set(listed.tools.map((tool) => tool.name));
+    for (const required of [
+      "figure_library_open",
+      "figure_library_search",
+      "figure_library_source_status",
+    ]) {
+      if (!names.has(required)) throw new Error(`${host} packaged server omitted ${required}`);
+    }
+    return { host, toolCount: names.size, pluginRoot, foreignProjectDirectory };
+  } catch (error) {
+    const detail = stderr.trim() ? `\npackaged server stderr:\n${stderr.trim()}` : "";
+    throw new Error(`${host} foreign-cwd plugin smoke failed: ${error.message}${detail}`, {
+      cause: error,
+    });
+  } finally {
+    await client?.close().catch(() => undefined);
+    await fs.rm(smokeDirectory, { recursive: true, force: true });
+  }
 }

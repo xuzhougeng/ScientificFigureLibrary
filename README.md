@@ -623,8 +623,13 @@ npm run package:plugins
 This writes three artifacts into `release/`:
 
 - `scientific-figure-library-wisp-0.5.5.zip` — install from Wisp **Settings → Plugins**
-- `scientific-figure-library-codex-0.5.5.zip` — Codex plugin with `.codex-plugin/plugin.json`, `.mcp.json`, and `skills/figure-library`
-- `scientific-figure-library-claude-0.5.5.zip` — Claude Code plugin with `.claude-plugin/plugin.json`, `.mcp.json`, and auto-discovered `skills/`
+- `scientific-figure-library-codex-0.5.5.zip` — Codex plugin with `.codex-plugin/plugin.json`, `.codex-plugin/mcp.json`, and `skills/figure-library`
+- `scientific-figure-library-claude-0.5.5.zip` — Claude Code plugin with `.claude-plugin/plugin.json`, `.claude-plugin/mcp.json`, and auto-discovered `skills/`
+
+Each package uses its Host's plugin-root contract. Codex resolves `cwd: "."`
+from the installed plugin root, Claude expands `${CLAUDE_PLUGIN_ROOT}`, and Wisp
+continues to expand `${WISP_PLUGIN_ROOT}`. Therefore the server entry does not
+depend on the project directory from which the Host was opened.
 
 The MCP App may request `fullscreen` or `pip` if the Host lists those modes in
 `availableDisplayModes`. Codex has no docked-sidebar display mode.

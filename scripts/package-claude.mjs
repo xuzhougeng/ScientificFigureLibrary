@@ -5,6 +5,7 @@ import {
   buildArchive,
   commonPluginFiles,
   readJson,
+  smokePackagedPlugin,
   utf8,
   writeVerifiedZip,
 } from "./plugin-package-lib.mjs";
@@ -17,7 +18,7 @@ if (manifest.version !== packageJson.version) {
 
 const files = [
   ".claude-plugin/plugin.json",
-  ".mcp.json",
+  ".claude-plugin/mcp.json",
   ...(await commonPluginFiles()),
 ];
 const archive = await buildArchive(files);
@@ -29,8 +30,15 @@ const packagedManifest = JSON.parse(utf8(unpacked[".claude-plugin/plugin.json"])
 if (packagedManifest.name !== "figure-library" || packagedManifest.version !== packageJson.version) {
   throw new Error("packaged Claude manifest identity/version is inconsistent");
 }
-if (!utf8(unpacked[".mcp.json"]).includes('"figure-library"')) {
-  throw new Error("packaged Claude MCP config omitted figure-library");
+const packagedMcp = JSON.parse(utf8(unpacked[".claude-plugin/mcp.json"]));
+const packagedServer = packagedMcp["figure-library"];
+if (
+  packagedManifest.mcpServers !== "./.claude-plugin/mcp.json" ||
+  packagedServer?.command !== "node" ||
+  JSON.stringify(packagedServer?.args) !==
+    JSON.stringify(["${CLAUDE_PLUGIN_ROOT}/dist/index.js"])
+) {
+  throw new Error("packaged Claude MCP config does not use CLAUDE_PLUGIN_ROOT");
 }
 assertPackagedGuidance({
   packagedReadme: utf8(unpacked["README.md"]),
@@ -39,4 +47,11 @@ assertPackagedGuidance({
   packagedApp: utf8(unpacked["dist/mcp-app.html"]),
   version: packageJson.version,
 });
-console.log(`${outputPath}\nSHA-256 ${sha256}\nVerified ${actualFiles.length} packaged files`);
+const smoke = await smokePackagedPlugin({
+  host: "claude",
+  unpacked,
+  version: packageJson.version,
+});
+console.log(
+  `${outputPath}\nSHA-256 ${sha256}\nVerified ${actualFiles.length} packaged files; foreign-cwd initialize/tools-list exposed ${smoke.toolCount} tools`,
+);

@@ -10,7 +10,6 @@
     ".wisp-plugin",
     ".codex-plugin",
     ".claude-plugin",
-    ".mcp.json",
     "assets",
     "docs",
     "dist",

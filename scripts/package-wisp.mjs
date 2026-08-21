@@ -6,6 +6,7 @@ import {
   commonPluginFiles,
   readJson,
   root,
+  smokePackagedPlugin,
   utf8,
   writeVerifiedZip,
 } from "./plugin-package-lib.mjs";
@@ -34,4 +35,11 @@ assertPackagedGuidance({
   packagedApp: utf8(unpacked["dist/mcp-app.html"]),
   version: packageJson.version,
 });
-console.log(`${outputPath}\nSHA-256 ${sha256}\nVerified ${actualFiles.length} packaged files`);
+const smoke = await smokePackagedPlugin({
+  host: "wisp",
+  unpacked,
+  version: packageJson.version,
+});
+console.log(
+  `${outputPath}\nSHA-256 ${sha256}\nVerified ${actualFiles.length} packaged files; foreign-cwd initialize/tools-list exposed ${smoke.toolCount} tools`,
+);
