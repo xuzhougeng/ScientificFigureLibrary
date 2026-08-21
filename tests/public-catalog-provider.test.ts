@@ -135,6 +135,8 @@ interface Fixture {
   entry: PublicTemplateEntryV1;
 }
 
+type FixtureSubmissionFlavor = "publication_export" | "frozen_clean_room_seed";
+
 function buildArchive(options: {
   providerId: string;
   templateId: string;
@@ -143,6 +145,11 @@ function buildArchive(options: {
   previewBytes: Uint8Array;
   rgbaSha256: string;
   seedSchema?: boolean;
+  parentFlavor?: FixtureSubmissionFlavor;
+  rightsFlavor?: FixtureSubmissionFlavor;
+  archivePublisherVerified?: boolean;
+  archiveCurationStatus?: "curated" | "unreviewed";
+  archiveRenderValidation?: "ci_rendered" | "publisher_attested" | "unverified";
   additions?: Record<string, Uint8Array>;
 }) {
   const code = Buffer.from(
@@ -157,6 +164,11 @@ function buildArchive(options: {
     preview: "CC-BY-4.0",
     documentation: "CC-BY-4.0",
   };
+  const archiveFlavor: FixtureSubmissionFlavor = options.seedSchema
+    ? "frozen_clean_room_seed"
+    : "publication_export";
+  const parentFlavor = options.parentFlavor ?? archiveFlavor;
+  const rightsFlavor = options.rightsFlavor ?? archiveFlavor;
   const render = options.seedSchema
     ? {
         schema: "figure-library.render-receipt.v1",
@@ -225,9 +237,10 @@ function buildArchive(options: {
     metadata: {
       title: "Synthetic volcano plot",
       upstreamStatus: "published",
-      publisherVerified: true,
-      curationStatus: options.seedSchema ? "unreviewed" : "curated",
-      renderValidation: options.seedSchema ? "publisher_attested" : "ci_rendered",
+      publisherVerified:
+        options.archivePublisherVerified ?? (archiveFlavor === "frozen_clean_room_seed"),
+      curationStatus: options.archiveCurationStatus ?? "unreviewed",
+      renderValidation: options.archiveRenderValidation ?? "publisher_attested",
       localReviewStatus: "not_reviewed",
       plotExecutionByRecipient: "not_run",
       ...(options.seedSchema
@@ -299,7 +312,7 @@ function buildArchive(options: {
     templateId: options.templateId,
     releaseVersion: options.releaseVersion,
     contentDigest: options.contentDigest,
-    parentLocalRelease: options.seedSchema
+    parentLocalRelease: parentFlavor === "frozen_clean_room_seed"
       ? {
           relationship: "design-and-exclusion-audit-only",
           bytesCopied: false,
@@ -325,7 +338,7 @@ function buildArchive(options: {
           ...ordinaryAssets,
         ]
       : ordinaryAssets,
-    rightsAttestation: options.seedSchema
+    rightsAttestation: rightsFlavor === "frozen_clean_room_seed"
       ? {
           codeLicense: "MIT",
           contentLicense: "CC-BY-4.0",
@@ -376,6 +389,11 @@ function buildFixture(options: {
   releaseVersion?: string;
   additions?: Record<string, Uint8Array>;
   seedSchema?: boolean;
+  parentFlavor?: FixtureSubmissionFlavor;
+  rightsFlavor?: FixtureSubmissionFlavor;
+  archivePublisherVerified?: boolean;
+  archiveCurationStatus?: "curated" | "unreviewed";
+  archiveRenderValidation?: "ci_rendered" | "publisher_attested" | "unverified";
 } = {}): Fixture {
   const providerId = options.providerId ?? COMMUNITY_PROVIDER_ID;
   const archiveRepository =
@@ -400,6 +418,11 @@ function buildFixture(options: {
     previewBytes: preview.bytes,
     rgbaSha256: preview.rgbaSha256,
     seedSchema: options.seedSchema,
+    parentFlavor: options.parentFlavor,
+    rightsFlavor: options.rightsFlavor,
+    archivePublisherVerified: options.archivePublisherVerified,
+    archiveCurationStatus: options.archiveCurationStatus,
+    archiveRenderValidation: options.archiveRenderValidation,
     additions: options.additions,
   });
   const entry: PublicTemplateEntryV1 = {
@@ -438,7 +461,7 @@ function buildFixture(options: {
     },
     status: {
       upstreamStatus: "published",
-      publisherVerified: true,
+      publisherVerified: !options.seedSchema,
       curationStatus: "curated",
       renderValidation: "ci_rendered",
       localReviewStatus: "not_reviewed",
@@ -722,6 +745,9 @@ test("public materialization is network-gated, fixed-identity, non-executing, an
     const lock = JSON.parse(lockText);
     assert.equal(lock.schema, PUBLIC_TEMPLATE_LOCK_SCHEMA);
     assert.equal(lock.codeExecutedBySflClient, false);
+    assert.equal(lock.status.publisherVerified, true);
+    assert.equal(lock.status.curationStatus, "curated");
+    assert.equal(lock.status.renderValidation, "ci_rendered");
     assert.equal(lock.status.localReviewStatus, "not_reviewed");
     assert.equal(lock.status.plotExecutionByRecipient, "not_run");
     assert.equal(lock.archive.sha256, fixture.entry.archive.sha256);
@@ -796,6 +822,9 @@ test("materialization accepts the clean-room seed submission/template/render sch
     );
     assert.equal(lock.schema, PUBLIC_TEMPLATE_LOCK_SCHEMA);
     assert.equal(lock.codeExecutedBySflClient, false);
+    assert.equal(lock.status.publisherVerified, false);
+    assert.equal(lock.status.curationStatus, "curated");
+    assert.equal(lock.status.renderValidation, "ci_rendered");
     assert.equal(lock.status.localReviewStatus, "not_reviewed");
     assert.equal(lock.status.plotExecutionByRecipient, "not_run");
   } finally {
@@ -825,8 +854,12 @@ async function rejectionForArchive(archiveBytes: Uint8Array, pattern: RegExp) {
   const catalog = parsePublicProviderCatalog(fixture.catalogBytes);
   catalog.entries[0]!.archive = { ...fixture.entry.archive };
   fixture.catalogBytes = jsonBytes(catalog);
+  await rejectionForFixture(fixture, pattern);
+}
+
+async function rejectionForFixture(fixture: Fixture, pattern: RegExp) {
   const adapter = await adapterFor(fixture, {
-    archiveFetcher: async () => archiveBytes,
+    archiveFetcher: async () => fixture.archiveBytes,
   });
   const [candidate] = await adapter.search(context(), { query: "volcano" });
   const resolved = await adapter.resolve(context(), candidate!.exactSelector, "materialize");
@@ -841,6 +874,45 @@ async function rejectionForArchive(archiveBytes: Uint8Array, pattern: RegExp) {
     await fs.rm(root, { recursive: true, force: true });
   }
 }
+
+test("public archive binds parent/rights flavor and exact pre-Catalog trust status", async () => {
+  const cases: Array<{ name: string; fixture: Fixture; error: RegExp }> = [
+    {
+      name: "publication parent with frozen-seed rights",
+      fixture: buildFixture({ rightsFlavor: "frozen_clean_room_seed" }),
+      error: /parent and rights attestation flavors do not match/u,
+    },
+    {
+      name: "frozen-seed parent with publication rights",
+      fixture: buildFixture({
+        seedSchema: true,
+        rightsFlavor: "publication_export",
+      }),
+      error: /parent and rights attestation flavors do not match/u,
+    },
+    {
+      name: "publication archive falsely claims publisher verification",
+      fixture: buildFixture({ archivePublisherVerified: true }),
+      error: /publication_export pre-Catalog trust statuses are invalid/u,
+    },
+    {
+      name: "frozen seed drops its required archive attestation",
+      fixture: buildFixture({
+        seedSchema: true,
+        archivePublisherVerified: false,
+      }),
+      error: /frozen_clean_room_seed pre-Catalog trust statuses are invalid/u,
+    },
+    {
+      name: "archive falsely claims central curation before Catalog review",
+      fixture: buildFixture({ archiveCurationStatus: "curated" }),
+      error: /pre-Catalog trust statuses are invalid/u,
+    },
+  ];
+  for (const item of cases) {
+    await rejectionForFixture(item.fixture, item.error);
+  }
+});
 
 test("public archive rejects traversal, symlink, case-fold collision, and Windows reserved names", async () => {
   const traversal = buildFixture({ additions: { "../escape.txt": Buffer.from("escape") } });

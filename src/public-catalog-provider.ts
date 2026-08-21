@@ -66,6 +66,7 @@ type PublicRenderValidation =
   | "ci_rendered"
   | "publisher_attested"
   | "unverified";
+type PublicSubmissionFlavor = "publication_export" | "frozen_clean_room_seed";
 
 export interface PublicArchiveIdentityV1 {
   repository: string;
@@ -1515,7 +1516,9 @@ function assertSafePublicPayload(name: string, bytes: Uint8Array) {
   }
 }
 
-function assertSubmissionBoundary(submission: Record<string, unknown>) {
+function assertSubmissionBoundary(
+  submission: Record<string, unknown>,
+): PublicSubmissionFlavor {
   const parent = submission.parentLocalRelease;
   if (!isRecord(parent)) throw new Error("submission.parentLocalRelease is missing");
   const sanitizedExport =
@@ -1527,25 +1530,7 @@ function assertSubmissionBoundary(submission: Record<string, unknown>) {
     parent.bytesCopied === false &&
     parent.metadataCopied === false &&
     parent.privateAssetsIncluded === false;
-  if (sanitizedExport) {
-    assertKeys(
-      parent,
-      [
-        "relationship",
-        "explicitlySelectedAssetsOnly",
-        "privateLifecycleIdentifiersIncluded",
-      ],
-      [],
-      "submission.parentLocalRelease",
-    );
-  } else if (cleanRoomSeed) {
-    assertKeys(
-      parent,
-      ["relationship", "bytesCopied", "metadataCopied", "privateAssetsIncluded"],
-      [],
-      "submission.parentLocalRelease",
-    );
-  } else {
+  if (!sanitizedExport && !cleanRoomSeed) {
     throw new Error("submission parent Local boundary is unsafe or unsupported");
   }
 
@@ -1569,7 +1554,22 @@ function assertSubmissionBoundary(submission: Record<string, unknown>) {
     rights.screenshotsIncluded === false &&
     rights.paperOrPdfContentIncluded === false &&
     rights.patientOrExperimentalDataIncluded === false;
-  if (exportRights) {
+  if (!exportRights && !seedRights) {
+    throw new Error("submission rights attestation is incomplete or unsafe");
+  }
+  let flavor: PublicSubmissionFlavor;
+  if (sanitizedExport && exportRights) {
+    flavor = "publication_export";
+    assertKeys(
+      parent,
+      [
+        "relationship",
+        "explicitlySelectedAssetsOnly",
+        "privateLifecycleIdentifiersIncluded",
+      ],
+      [],
+      "submission.parentLocalRelease",
+    );
     assertKeys(
       rights,
       [
@@ -1583,7 +1583,14 @@ function assertSubmissionBoundary(submission: Record<string, unknown>) {
       [],
       "submission.rightsAttestation",
     );
-  } else if (seedRights) {
+  } else if (cleanRoomSeed && seedRights) {
+    flavor = "frozen_clean_room_seed";
+    assertKeys(
+      parent,
+      ["relationship", "bytesCopied", "metadataCopied", "privateAssetsIncluded"],
+      [],
+      "submission.parentLocalRelease",
+    );
     assertKeys(
       rights,
       [
@@ -1601,7 +1608,7 @@ function assertSubmissionBoundary(submission: Record<string, unknown>) {
       "submission.rightsAttestation",
     );
   } else {
-    throw new Error("submission rights attestation is incomplete or unsafe");
+    throw new Error("submission parent and rights attestation flavors do not match");
   }
   const excluded = assertStringArray(
     submission.excludedPrivateState,
@@ -1612,6 +1619,23 @@ function assertSubmissionBoundary(submission: Record<string, unknown>) {
   const excludedText = excluded.join(" ").toLocaleLowerCase("en-US");
   if (!excludedText.includes("absolute") || !excludedText.includes("local")) {
     throw new Error("submission does not explicitly exclude local identity and absolute paths");
+  }
+  return flavor;
+}
+
+function assertArchivePreCatalogStatus(
+  status: NormalizedArchiveStatus,
+  flavor: PublicSubmissionFlavor,
+) {
+  const expectedPublisherVerified = flavor === "frozen_clean_room_seed";
+  if (
+    status.publisherVerified !== expectedPublisherVerified ||
+    status.curationStatus !== "unreviewed" ||
+    status.renderValidation !== "publisher_attested" ||
+    status.localReviewStatus !== "not_reviewed" ||
+    status.plotExecutionByRecipient !== "not_run"
+  ) {
+    throw new Error(`public archive ${flavor} pre-Catalog trust statuses are invalid`);
   }
 }
 
@@ -1836,7 +1860,7 @@ function validatePublicArchive(
     throw new Error("public archive submission identity differs from its Catalog entry");
   }
   assertRfc3339(submission.createdAt, "submission.createdAt");
-  assertSubmissionBoundary(submission);
+  const submissionFlavor = assertSubmissionBoundary(submission);
   if (
     !isRecord(template) ||
     template.schema !== "figure-library.public-template-archive.v1" ||
@@ -1865,9 +1889,7 @@ function validatePublicArchive(
     "template",
   );
   const templateStatus = archiveTemplateStatus(template);
-  if (templateStatus.publisherVerified !== entry.status.publisherVerified) {
-    throw new Error("public archive publisher verification differs from its Catalog entry");
-  }
+  assertArchivePreCatalogStatus(templateStatus, submissionFlavor);
   assertTemplateBoundary(template, entry);
   if (
     !isRecord(licenses) ||
