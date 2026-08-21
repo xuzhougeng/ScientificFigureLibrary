@@ -53,6 +53,57 @@ function contentDigest(value: unknown) {
   return sha256(canonicalJson(value));
 }
 
+function assertArchivePolicyZipMetadata(value: Uint8Array) {
+  const archive = Buffer.from(value);
+  const eocd = archive.lastIndexOf(Buffer.from([0x50, 0x4b, 0x05, 0x06]));
+  assert.ok(eocd >= 0 && eocd + 22 === archive.byteLength, "Archive ZIP must end at its EOCD record");
+  const entries = archive.readUInt16LE(eocd + 10);
+  const centralOffset = archive.readUInt32LE(eocd + 16);
+  assert.ok(entries > 0);
+  let central = centralOffset;
+  let expectedLocalOffset = 0;
+  const names: string[] = [];
+  for (let index = 0; index < entries; index += 1) {
+    assert.equal(archive.readUInt32LE(central), 0x02014b50);
+    const nameLength = archive.readUInt16LE(central + 28);
+    const extraLength = archive.readUInt16LE(central + 30);
+    const commentLength = archive.readUInt16LE(central + 32);
+    const compressedBytes = archive.readUInt32LE(central + 20);
+    const localOffset = archive.readUInt32LE(central + 42);
+    const name = archive.subarray(central + 46, central + 46 + nameLength);
+    names.push(name.toString("utf8"));
+    assert.equal(archive.readUInt16LE(central + 4), 20, "version made by must match fflate DOS v2.0");
+    assert.equal(archive.readUInt16LE(central + 6), 20, "version needed must be ZIP v2.0");
+    assert.equal(archive.readUInt16LE(central + 8), 0, "ASCII seed paths must have no ZIP flags");
+    assert.equal(archive.readUInt16LE(central + 10), 8, "Archive entries must use DEFLATE");
+    assert.equal(archive.readUInt16LE(central + 12), 0x4000, "central DOS time must be 08:00:00");
+    assert.equal(archive.readUInt16LE(central + 14), 0x0021, "central DOS date must be 1980-01-01");
+    assert.equal(extraLength, 0);
+    assert.equal(commentLength, 0);
+    assert.equal(archive.readUInt16LE(central + 34), 0);
+    assert.equal(archive.readUInt16LE(central + 36), 0);
+    assert.equal(archive.readUInt32LE(central + 38), 0);
+    assert.equal(localOffset, expectedLocalOffset, "local ZIP records must be contiguous and canonically ordered");
+
+    assert.equal(archive.readUInt32LE(localOffset), 0x04034b50);
+    assert.equal(archive.readUInt16LE(localOffset + 4), 20);
+    assert.equal(archive.readUInt16LE(localOffset + 6), 0);
+    assert.equal(archive.readUInt16LE(localOffset + 8), 8);
+    assert.equal(archive.readUInt16LE(localOffset + 10), 0x4000, "local DOS time must be 08:00:00");
+    assert.equal(archive.readUInt16LE(localOffset + 12), 0x0021, "local DOS date must be 1980-01-01");
+    const localNameLength = archive.readUInt16LE(localOffset + 26);
+    const localExtraLength = archive.readUInt16LE(localOffset + 28);
+    assert.equal(localNameLength, nameLength);
+    assert.equal(localExtraLength, 0);
+    assert.deepEqual(archive.subarray(localOffset + 30, localOffset + 30 + localNameLength), name);
+    expectedLocalOffset = localOffset + 30 + localNameLength + localExtraLength + compressedBytes;
+    central += 46 + nameLength + extraLength + commentLength;
+  }
+  assert.equal(expectedLocalOffset, centralOffset);
+  assert.equal(central, eocd);
+  assert.deepEqual(names, [...names].sort(), "Archive entries must use canonical UTF-16 order");
+}
+
 async function writeSubmission(
   root: string,
   templateId = "clean-room-bars",
@@ -721,6 +772,42 @@ test("all three frozen clean-room seeds produce read-only deterministic Archive 
       assert.deepEqual(await fileStatSnapshot(directory), before, "frozen seed Plan must not modify its source files");
     }
   } finally {
+    await fs.rm(root, { recursive: true, force: true });
+  }
+});
+
+test("Archive ZIP bytes and reviewed DOS metadata are identical across timezones", async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "sfl-archive-timezones-"));
+  const originalTimezone = process.env.TZ;
+  const zones = ["UTC", "Asia/Shanghai", "America/Los_Angeles"] as const;
+  const observedUtcEpochHours = new Set<number>();
+  const archives: Buffer[] = [];
+  try {
+    const directory = await writeSubmission(root);
+    for (const zone of zones) {
+      process.env.TZ = zone;
+      observedUtcEpochHours.add(new Date("1980-01-01T00:00:00.000Z").getHours());
+      const label = zone.replace(/[^A-Za-z0-9]+/gu, "-").toLowerCase();
+      const runner = new MockGhRunner();
+      const service = new GitHubPublicationService({
+        ghRunner: runner,
+        receiptDirectory: path.join(root, `receipts-${label}`),
+        now: () => new Date("2026-08-21T06:00:00.000Z"),
+      });
+      const plan = await service.plan({ action: "archive", submissionDirectory: directory });
+      await service.apply(plan.planDigest, `archive-timezone-${label}`);
+      const archiveZip = runner.uploadedBlobs.find((item) => sha256(item) === plan.files[0]!.sha256);
+      assert.ok(archiveZip, `${zone}: Archive Apply must upload the planned ZIP bytes`);
+      assertArchivePolicyZipMetadata(archiveZip);
+      archives.push(Buffer.from(archiveZip));
+    }
+    assert.ok(observedUtcEpochHours.size > 1, "the regression must exercise distinct local-time projections of the same UTC instant");
+    for (let index = 1; index < archives.length; index += 1) {
+      assert.deepEqual(archives[index], archives[0], `${zones[index]} must emit the exact UTC reference ZIP bytes`);
+    }
+  } finally {
+    if (originalTimezone === undefined) delete process.env.TZ;
+    else process.env.TZ = originalTimezone;
     await fs.rm(root, { recursive: true, force: true });
   }
 });

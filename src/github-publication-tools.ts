@@ -37,7 +37,6 @@ const MAX_SINGLE_FILE_BYTES = 64 * 1024 * 1024;
 const MAX_FILES = 10_000;
 const MAX_GH_OUTPUT_BYTES = 150 * 1024 * 1024;
 const MAX_METADATA_BYTES = 1024 * 1024;
-const ZIP_EPOCH = new Date("1980-01-01T00:00:00.000Z");
 const RECEIPT_SCHEMA = "figure-library.github-publication-pr-receipt.v1" as const;
 
 type PublicationPrAction = "archive" | "catalog";
@@ -1092,8 +1091,12 @@ function inspectSubmissionArchive(bytes: Uint8Array) {
 
 function createDeterministicZip(files: Map<string, Uint8Array>) {
   const zippable: Zippable = Object.create(null) as Zippable;
+  // fflate serializes ZIP dates with local Date getters. Construct the reviewed
+  // DOS timestamp in the active timezone so every timezone emits 1980-01-01
+  // 08:00:00 (time=0x4000, date=0x0021), matching the central Archive policy.
+  const canonicalMtime = new Date(1980, 0, 1, 8, 0, 0, 0);
   for (const [name, bytes] of [...files.entries()].sort(([left], [right]) => compareCanonicalStrings(left, right))) {
-    zippable[name] = [bytes, { mtime: ZIP_EPOCH, level: 9, os: 0 }];
+    zippable[name] = [bytes, { mtime: canonicalMtime, level: 9, os: 0 }];
   }
   const archive = zipSync(zippable, { level: 9 });
   if (archive.byteLength > MAX_ARCHIVE_BYTES) throw new Error("deterministic ZIP exceeds the 100 MiB archive limit");
