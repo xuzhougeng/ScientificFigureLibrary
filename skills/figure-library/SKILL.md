@@ -261,7 +261,7 @@ Show each exact plan and wait for approval. Apply with the returned
 it does not edit or delete the old Published Release. Restoration never moves
 the Published pointer backward directly.
 
-## 4. Search Local Published and FigureYa together
+## 4. Search the dynamic Provider set
 
 If the user only asks to open the workbench, call `figure_library_open`; do not
 invent a generic query. Otherwise inspect the request first:
@@ -272,8 +272,9 @@ invent a generic query. Otherwise inspect the request first:
 
 Call `figure_library_search` with 2–8 discriminative query terms and compact
 `dataProfile` / `visualProfile`. Do not pass raw datasets. Leave `providerIds`
-at its default so Local Published and FigureYa are searched together unless
-the user explicitly requests a source filter.
+at its default so Local Published, bundled Community, FigureYa, and only those
+personal Providers explicitly opted into default search are searched together,
+unless the user explicitly requests a source filter.
 
 Ordinary results exclude Working, Capture, and unadopted flat entries. Every
 candidate has a `providerId` and provider-qualified `exactSelector`. Preserve
@@ -426,7 +427,38 @@ or publishes the Local Library. GitHub Archive PR then Catalog PR are separate
 plan/apply operations; neither tool may merge. Do not present an exported
 submission or an open PR as a public Community release.
 
-## 9. CiteBox intake
+## 9. Create staged central GitHub PRs
+
+SFL delegates credentials to the official `gh` CLI. First call
+`figure_library_github_auth_status`; report its login, host, per-repository
+permission, `credentialStorage=managed_by_github_cli`, and the observed
+`secureStorageVerified` value. Never call `gh auth token`, read `hosts.yml`, or
+print/cache/write a token. If authentication is absent, call
+`figure_library_github_auth_instructions` and ask the user to run the displayed
+command in a terminal. SFL must not open a browser or start interactive login.
+
+For `figure_library_plan_publication_pr`, the only allowed actions are:
+
+- `archive`: consume one validated submission and propose one deterministic
+  ZIP at
+  `archives/<templateId>/<releaseVersion>/<templateId>-<releaseVersion>.zip`
+  in `jarxunlai/ScientificFigureLibrary-community-archives`.
+- `catalog`: only after the corresponding Archive PR was manually merged,
+  fetch its exact merge commit, revalidate ZIP/inventory/preview, and propose
+  only the Catalog entry, thumbnail, preview manifest, Catalog, and source lock
+  changes in `jarxunlai/ScientificFigureLibrary-community`.
+
+Show expected login, repository/base commit, head/fork, branch, commit message,
+PR title/body, every file, archive/content digests, and `written: false`.
+After explicit approval call `figure_library_apply_publication_pr` with the
+exact cached `planDigest` and stable `operationId`. Apply rechecks login,
+permissions, base, source, and all identities before Git Data API writes. It
+never uses the task cwd or git remote, never changes `.github/**`, CI or policy,
+and never merges. Stop at each created PR for the user to review and manually
+merge. An Archive PR, even when open and CI-green, is not permission to create
+a Catalog PR; a merged Catalog PR is the public-release boundary.
+
+## 10. CiteBox intake
 
 CiteBox is not an ordinary search provider. Obtain a user-selected Figure only
 through CiteBox API, MCP, or explicit export; never read or write its SQLite
@@ -439,7 +471,7 @@ metadata in `intake.sourceManifest` and provenance. Source publication or
 CiteBox state is not inherited as local SFL approval. The imported Working
 Revision must pass the same local review and publication gates.
 
-## 10. Portable backup, restore, fork, and template exchange
+## 11. Portable backup, restore, fork, and template exchange
 
 Portable operations are also plan/apply and require absolute trusted paths.
 
@@ -473,7 +505,7 @@ Full backups exclude derived `indexes/` and runtime `locks/`. Restore and fork
 verify the complete bundle inventory. After a template import, inspect review
 and follow the normal local gate/publish workflow.
 
-## 11. Export diagnostics only on request
+## 12. Export diagnostics only on request
 
 Call `figure_library_export_diagnostics` only when the user explicitly asks to
 export logs/a diagnostic bundle, supplies a correlation ID or time range, or

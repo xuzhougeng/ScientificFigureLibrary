@@ -48,6 +48,7 @@ const STANDARD_TOOLS = [
   "figure_library_apply_materialize",
   "figure_library_apply_provider_source_change",
   "figure_library_apply_publication_export",
+  "figure_library_apply_publication_pr",
   "figure_library_apply_publish_working_revision",
   "figure_library_apply_recover_write_lock",
   "figure_library_apply_restore_release",
@@ -59,6 +60,8 @@ const STANDARD_TOOLS = [
   "figure_library_describe",
   "figure_library_diff_revisions",
   "figure_library_export_diagnostics",
+  "figure_library_github_auth_instructions",
+  "figure_library_github_auth_status",
   "figure_library_list_provider_sources",
   "figure_library_open",
   "figure_library_plan_adopt_versioning",
@@ -70,6 +73,7 @@ const STANDARD_TOOLS = [
   "figure_library_plan_materialize",
   "figure_library_plan_provider_source_change",
   "figure_library_plan_publication_export",
+  "figure_library_plan_publication_pr",
   "figure_library_plan_publish_working_revision",
   "figure_library_plan_recover_write_lock",
   "figure_library_plan_restore_release",
@@ -231,6 +235,7 @@ test("standard server unifies Local Published and FigureYa while hiding Working/
       assert.ok(names.includes("figure_library_plan_materialize"));
       assert.ok(names.includes("figure_library_plan_bundle_export"));
       assert.ok(names.includes("figure_library_plan_publication_export"));
+      assert.ok(names.includes("figure_library_plan_publication_pr"));
       assert.ok(names.includes("figure_library_list_provider_sources"));
       for (const [toolName, visibility] of [
         ["figure_library_search", "model"],
@@ -876,7 +881,11 @@ test("standard server unifies Local Published and FigureYa while hiding Working/
         "figure_library_confirm_selection",
         "figure_library_confirm_selection_headless",
         "figure_library_export_diagnostics",
+        "figure_library_github_auth_instructions",
+        "figure_library_github_auth_status",
         "figure_library_open",
+        "figure_library_apply_publication_pr",
+        "figure_library_plan_publication_pr",
         "figure_library_preview",
         "figure_library_preview_exact",
         "figure_library_preview_exact_headless",

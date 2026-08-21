@@ -24,6 +24,7 @@ import { LibraryRuntime, readLibraryRootMarker } from "./library-runtime.ts";
 import { WorkspaceRuntime } from "./workspace-runtime.ts";
 import { registerLifecycleTools } from "./lifecycle-tools.ts";
 import { registerMaterializationTools } from "./materialization-tools.ts";
+import { registerGitHubPublicationTools } from "./github-publication-tools.ts";
 import { registerPublicationExportTools } from "./publication-export-tools.ts";
 import { registerProviderSourceTools } from "./provider-source-tools.ts";
 import { ProviderSourceManager } from "./provider-sources.ts";
@@ -970,7 +971,7 @@ export async function createServer(options: {
     {
       title: "Describe one provider-qualified exact template",
       description:
-        "Describe an exact Local Published release or commit-pinned FigureYa module. A bare templateId is deliberately insufficient.",
+        "Describe an exact Local Published release, bundled/personal public template, or commit-pinned FigureYa module. A bare templateId is deliberately insufficient.",
       inputSchema: ProviderSelectionInput.shape,
       annotations: {
         readOnlyHint: true,
@@ -1774,6 +1775,7 @@ export async function createServer(options: {
     diagnostics,
   });
   registerBundleTools({ server, currentLibraries });
+  registerGitHubPublicationTools({ server });
   registerPublicationExportTools({ server, currentLibraries });
   registerProviderSourceTools({
     server,

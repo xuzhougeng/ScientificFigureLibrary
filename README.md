@@ -574,6 +574,43 @@ Library IDs, locators, histories, operations, receipts, quarantine, other
 templates, or absolute paths. GitHub Archive/Catalog PR creation is a separate
 plan/apply gate and never merges a PR automatically.
 
+## Staged central GitHub publication PRs
+
+GitHub publication uses the official `gh` CLI only. SFL never calls
+`gh auth token`, reads `hosts.yml`, stores a token, starts an interactive login,
+or opens a browser. `figure_library_github_auth_status` reports the current
+login, host, central-repository permissions,
+`credentialStorage=managed_by_github_cli`, and whether secure storage was
+actually verified. If login is missing,
+`figure_library_github_auth_instructions` returns a command for the user to run
+in their own terminal.
+
+`figure_library_plan_publication_pr` and
+`figure_library_apply_publication_pr` implement two separate, manual-review
+gates:
+
+1. **Archive PR** — validate one sanitized submission, create a deterministic
+   ZIP, and propose only
+   `archives/<templateId>/<releaseVersion>/<templateId>-<releaseVersion>.zip`
+   in `jarxunlai/ScientificFigureLibrary-community-archives`.
+2. **Catalog PR** — permitted only after that Archive PR was manually merged.
+   It reloads the ZIP from the exact merge commit, verifies every identity, and
+   proposes the Catalog entry, thumbnail, preview manifest, Catalog, and source
+   lock in `jarxunlai/ScientificFigureLibrary-community`.
+
+Plan is read-only and displays the expected login, repository/base, branch or
+fork, commit/PR text, complete file list, and digests. Apply rechecks login,
+permission, base commit/tree, source, and files; it uses `gh api` and Git Data
+API rather than the current cwd or a git remote. It cannot modify `.github/**`,
+CI, policy, or an existing archive path. Operation receipts contain no secret
+and make a stable `operationId` replay the existing open/merged PR rather than
+create a duplicate.
+
+Neither SFL nor its CI merges a PR. The user must review and manually merge the
+Archive PR before a Catalog Plan can exist, and must separately review and
+manually merge the Catalog PR. An export, Archive PR, or Catalog PR that has not
+been merged is not a public Community release.
+
 ## CiteBox and other intake adapters
 
 CiteBox figures enter through an explicit export/API/MCP handoff. They are not
