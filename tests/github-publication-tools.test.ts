@@ -53,7 +53,11 @@ function contentDigest(value: unknown) {
   return sha256(canonicalJson(value));
 }
 
-async function writeSubmission(root: string, templateId = "clean-room-bars") {
+async function writeSubmission(
+  root: string,
+  templateId = "clean-room-bars",
+  releaseVersion = "1.0.0",
+) {
   const directory = path.join(root, "submission");
   const assets = new Map<string, Buffer>([
     ["payload/code/render.R", Buffer.from("args <- commandArgs(trailingOnly = TRUE)\n# clean room renderer\n", "utf8")],
@@ -76,7 +80,7 @@ async function writeSubmission(root: string, templateId = "clean-room-bars") {
     schema: "figure-library.publication-submission.v1",
     providerId: "io.github.jarxunlai.scientific-figure-community",
     templateId,
-    releaseVersion: "1.0.0",
+    releaseVersion,
     contentDigest: declaredContentDigest,
     parentLocalRelease: {
       relationship: "sanitized-export-from-local-published",
@@ -109,7 +113,7 @@ async function writeSubmission(root: string, templateId = "clean-room-bars") {
     schema: "figure-library.public-template-archive.v1",
     providerId: "io.github.jarxunlai.scientific-figure-community",
     templateId,
-    releaseVersion: "1.0.0",
+    releaseVersion,
     contentDigest: declaredContentDigest,
     metadata: {
       ...publicMetadata,
@@ -161,7 +165,7 @@ async function writeSubmission(root: string, templateId = "clean-room-bars") {
     schema: "figure-library.public-template-content-digest.v1",
     providerId: submission.providerId,
     templateId,
-    releaseVersion: "1.0.0",
+    releaseVersion,
     metadata: publicMetadata,
     licenses: { code: "MIT", content: "CC-BY-4.0", documentation: "CC-BY-4.0" },
     assets: submission.assets.map((asset) => ({
@@ -397,6 +401,11 @@ class MockGhRunner implements GhRunner {
   existingCommitParents: string[] = [BASE_COMMIT];
   existingCommitPlanDigest = "";
   existingPrState: "none" | "open" | "closed_unmerged" = "none";
+  receiptPrState: "open" | "merged" | "closed_unmerged" = "open";
+  receiptPrHeadRepository: string | null = null;
+  receiptPrBranch: string | null = null;
+  receiptPrCommit: string | null = null;
+  createdPulls = new Map<number, { targetRepository: string; headRepository: string; branch: string; commit: string }>();
 
   registerFile(value: RegisteredFile) {
     const key = `${value.repository}@${value.ref}:${value.path}`;
@@ -536,9 +545,37 @@ class MockGhRunner implements GhRunner {
         head: { sha: this.existingRefCommit ?? CREATED_COMMIT },
       }]);
     }
+    const pullGet = /^repos\/(.+?\/.+?)\/pulls\/(\d+)$/u.exec(endpoint);
+    if (pullGet && method === "GET") {
+      const number = Number(pullGet[2]);
+      const created = this.createdPulls.get(number);
+      if (!created || created.targetRepository !== pullGet[1]) return this.#notFound();
+      const merged = this.receiptPrState === "merged";
+      return this.#ok({
+        number,
+        html_url: `https://github.com/${created.targetRepository}/pull/${number}`,
+        state: this.receiptPrState === "open" ? "open" : "closed",
+        merged,
+        merged_at: merged ? "2026-08-21T06:30:00.000Z" : null,
+        base: { ref: "main", repo: { full_name: created.targetRepository } },
+        head: {
+          repo: { full_name: this.receiptPrHeadRepository ?? created.headRepository },
+          ref: this.receiptPrBranch ?? created.branch,
+          sha: this.receiptPrCommit ?? created.commit,
+        },
+      });
+    }
     if (/\/pulls$/u.test(endpoint) && method === "POST") {
       const number = this.nextPullNumber++;
       const repository = endpoint.slice("repos/".length, -"/pulls".length);
+      const [owner, branch] = String(body.head).split(":", 2);
+      const repositoryName = repository.split("/")[1]!;
+      this.createdPulls.set(number, {
+        targetRepository: repository,
+        headRepository: owner === repository.split("/")[0] ? repository : `${owner}/${repositoryName}`,
+        branch: branch!,
+        commit: this.existingRefCommit ?? CREATED_COMMIT,
+      });
       return this.#ok({ number, html_url: `https://github.com/${repository}/pull/${number}` });
     }
     return this.#notFound();
@@ -744,7 +781,70 @@ test("Archive Plan is deterministic/read-only; Apply uses Git Data API, never me
     const replay = await service.apply(first.planDigest, "archive-operation-1");
     assert.equal(replay.outcome, "replayed");
     assert.equal(runner.writes.length, writeCount, "receipt replay must not create another branch or PR");
+    assert.ok(runner.calls.some((args) => args[1] === `repos/${CENTRAL_ARCHIVE_REPOSITORY}/pulls/${applied.receipt.pullRequestNumber}`));
+    runner.receiptPrState = "merged";
+    const mergedReplay = await service.apply(first.planDigest, "archive-operation-1");
+    assert.equal(mergedReplay.outcome, "replayed", "a merged receipt-bound PR remains a valid replay");
+    assert.equal(runner.writes.length, writeCount, "merged receipt replay must remain read-only");
     await assert.rejects(() => service.apply("f".repeat(64), "archive-operation-1"), /different GitHub publication Plan/u);
+  } finally {
+    await fs.rm(root, { recursive: true, force: true });
+  }
+});
+
+for (const releaseVersion of ["1.0.0+build.9", "1.0.0-rc.1+build"] as const) {
+  test(`Archive Plan preserves strict SemVer build identity in repository paths: ${releaseVersion}`, async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), "sfl-github-semver-"));
+    try {
+      const directory = await writeSubmission(root, "clean-room-bars", releaseVersion);
+      const runner = new MockGhRunner();
+      const service = new GitHubPublicationService({
+        ghRunner: runner,
+        receiptDirectory: path.join(root, "receipts"),
+      });
+
+      const plan = await service.plan({ action: "archive", submissionDirectory: directory });
+
+      assert.equal(plan.identity.releaseVersion, releaseVersion);
+      assert.equal(
+        plan.files[0]?.path,
+        `archives/clean-room-bars/${releaseVersion}/clean-room-bars-${releaseVersion}.zip`,
+      );
+      assert.equal(runner.writes.length, 0);
+    } finally {
+      await fs.rm(root, { recursive: true, force: true });
+    }
+  });
+}
+
+test("receipt replay revalidates login, PR state, and exact head identity without GitHub writes", async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "sfl-github-receipt-revalidation-"));
+  const directory = await writeSubmission(root);
+  const cases: Array<{
+    name: string;
+    mutate: (runner: MockGhRunner) => void;
+    error: RegExp;
+  }> = [
+    { name: "closed-unmerged", mutate: (runner) => { runner.receiptPrState = "closed_unmerged"; }, error: /closed without merge/u },
+    { name: "login-change", mutate: (runner) => { runner.login = "other-user"; }, error: /login changed/u },
+    { name: "head-sha-drift", mutate: (runner) => { runner.receiptPrCommit = "f".repeat(40); }, error: /identity changed/u },
+    { name: "head-branch-drift", mutate: (runner) => { runner.receiptPrBranch = "sfl/archive/drifted"; }, error: /identity changed/u },
+    { name: "head-repository-drift", mutate: (runner) => { runner.receiptPrHeadRepository = "other-user/other-repository"; }, error: /identity changed/u },
+  ];
+  try {
+    for (const item of cases) {
+      const runner = new MockGhRunner();
+      const service = new GitHubPublicationService({
+        ghRunner: runner,
+        receiptDirectory: path.join(root, `${item.name}-receipts`),
+      });
+      const plan = await service.plan({ action: "archive", submissionDirectory: directory });
+      await service.apply(plan.planDigest, `receipt-${item.name}`);
+      runner.writes.length = 0;
+      item.mutate(runner);
+      await assert.rejects(() => service.apply(plan.planDigest, `receipt-${item.name}`), item.error);
+      assert.equal(runner.writes.length, 0, `${item.name} receipt revalidation must remain read-only`);
+    }
   } finally {
     await fs.rm(root, { recursive: true, force: true });
   }

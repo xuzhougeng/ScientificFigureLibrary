@@ -10,6 +10,7 @@ import { z } from "zod";
 import { canonicalJson, compareCanonicalStrings } from "./canonical-json.ts";
 import type { ToolOutcomeEnvelope } from "./library-binding-tools.ts";
 import { parsePublicProviderCatalog } from "./public-catalog-provider.ts";
+import { STRICT_SEMVER } from "./semver.ts";
 
 export const CENTRAL_ARCHIVE_REPOSITORY =
   "jarxunlai/ScientificFigureLibrary-community-archives" as const;
@@ -23,11 +24,6 @@ const BASE_BRANCH = "main" as const;
 const HASH = /^[a-f0-9]{64}$/u;
 const GIT_HASH = /^[a-f0-9]{40}$/u;
 const TEMPLATE_ID = /^[a-z0-9](?:[a-z0-9._-]{0,126}[a-z0-9])?$/u;
-const SEMVER_IDENTIFIER = "(?:0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*)";
-const SEMVER = new RegExp(
-  `^(?:0|[1-9][0-9]*)\\.(?:0|[1-9][0-9]*)\\.(?:0|[1-9][0-9]*)(?:-${SEMVER_IDENTIFIER}(?:\\.${SEMVER_IDENTIFIER})*)?(?:\\+[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?$`,
-  "u",
-);
 const OPERATION_ID = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/u;
 const PRIVATE_PATH = /(?:\b[A-Za-z]:[\\/]|\\\\[^\\\s]+\\[^\\\s]+|(?:^|[\s"'`(=])\/(?:Users|home|mnt\/[A-Za-z]|private|var|tmp|etc|opt|root|srv|Volumes)\/)/mu;
 const WINDOWS_RESERVED = /^(?:con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\..*)?$/iu;
@@ -395,15 +391,15 @@ function assertAllowedRepositoryFile(action: PublicationPrAction, value: string)
     throw new Error(`publication PR may not modify workflow, CI, or policy files: ${value}`);
   }
   if (action === "archive") {
-    if (!/^archives\/[a-z0-9._-]+\/[0-9A-Za-z.-]+\/[a-z0-9._-]+-[0-9A-Za-z.-]+\.zip$/u.test(value)) {
+    if (!/^archives\/[a-z0-9._-]+\/[0-9A-Za-z.+-]+\/[a-z0-9._-]+-[0-9A-Za-z.+-]+\.zip$/u.test(value)) {
       throw new Error(`archive PR path is outside the immutable archive namespace: ${value}`);
     }
     return;
   }
   if (!(
-    /^catalog\/entries\/[a-z0-9._-]+\/[0-9A-Za-z.-]+\.json$/u.test(value) ||
-    /^thumbs\/[a-z0-9._-]+\/[0-9A-Za-z.-]+\.png$/u.test(value) ||
-    /^reviews\/[a-z0-9._-]+\/[0-9A-Za-z.-]+\.md$/u.test(value) ||
+    /^catalog\/entries\/[a-z0-9._-]+\/[0-9A-Za-z.+-]+\.json$/u.test(value) ||
+    /^thumbs\/[a-z0-9._-]+\/[0-9A-Za-z.+-]+\.png$/u.test(value) ||
+    /^reviews\/[a-z0-9._-]+\/[0-9A-Za-z.+-]+\.md$/u.test(value) ||
     value === "catalog/catalog.json" || value === "catalog/preview-manifest.json"
   )) throw new Error(`catalog PR path is outside the fixed review shape: ${value}`);
 }
@@ -663,7 +659,7 @@ function validateSubmissionFiles(files: Map<string, Uint8Array>): SubmissionInsp
   const releaseVersion = submission.releaseVersion;
   const contentDigest = submission.contentDigest;
   if (typeof templateId !== "string" || !TEMPLATE_ID.test(templateId)) throw new Error("invalid public templateId");
-  if (typeof releaseVersion !== "string" || !SEMVER.test(releaseVersion)) throw new Error("invalid public releaseVersion");
+  if (typeof releaseVersion !== "string" || !STRICT_SEMVER.test(releaseVersion)) throw new Error("invalid public releaseVersion");
   if (typeof contentDigest !== "string" || !HASH.test(contentDigest)) throw new Error("invalid public contentDigest");
   if (
     template.templateId !== templateId || template.releaseVersion !== releaseVersion ||
@@ -1259,7 +1255,7 @@ function parseBaseCatalog(bytes: Uint8Array) {
     catalog.provider.archiveRepository !== CENTRAL_ARCHIVE_REPOSITORY
   ) throw new Error("central Catalog base has the wrong Provider identity");
   for (const entry of catalog.entries) {
-    if (!TEMPLATE_ID.test(entry.templateId) || !SEMVER.test(entry.releaseVersion)) {
+    if (!TEMPLATE_ID.test(entry.templateId) || !STRICT_SEMVER.test(entry.releaseVersion)) {
       throw new Error("central Catalog base contains a non-canonical template or strict SemVer identity");
     }
   }
@@ -1423,7 +1419,7 @@ function assertPlanInput(request: PlanRequest) {
   } else if (
     !Number.isSafeInteger(request.archivePullRequestNumber) || Number(request.archivePullRequestNumber) <= 0 ||
     !request.expectedTemplateId || !TEMPLATE_ID.test(request.expectedTemplateId) ||
-    !request.expectedReleaseVersion || !SEMVER.test(request.expectedReleaseVersion) || request.submissionDirectory !== undefined
+    !request.expectedReleaseVersion || !STRICT_SEMVER.test(request.expectedReleaseVersion) || request.submissionDirectory !== undefined
   ) throw new Error("catalog Plan requires archivePullRequestNumber, expectedTemplateId, and expectedReleaseVersion");
 }
 
@@ -1699,6 +1695,36 @@ async function writeReceipt(receiptDirectory: string, receipt: GithubPrReceipt) 
     if (!existing || canonicalJson(existing) !== canonicalJson(receipt)) {
       throw new Error("operationId receipt was concurrently bound to a different GitHub publication result");
     }
+  }
+}
+
+async function revalidateReceipt(runner: GhRunner, receipt: GithubPrReceipt) {
+  const account = await readAuthAccount(runner);
+  if (account.login !== receipt.login) {
+    throw new Error("GitHub login changed since the publication receipt was recorded");
+  }
+  const pr = await ghJson<Record<string, unknown>>(
+    runner,
+    `repos/${receipt.targetRepository}/pulls/${receipt.pullRequestNumber}`,
+  );
+  const base = isRecord(pr.base) ? pr.base : {};
+  const baseRepo = isRecord(base.repo) ? base.repo : {};
+  const head = isRecord(pr.head) ? pr.head : {};
+  const headRepo = isRecord(head.repo) ? head.repo : {};
+  const merged = pr.state === "closed" && pr.merged === true && typeof pr.merged_at === "string";
+  const open = pr.state === "open" && pr.merged === false && pr.merged_at === null;
+  if (!open && !merged) {
+    if (pr.state === "closed" && pr.merged !== true && pr.merged_at == null) {
+      throw new Error("the receipt-bound publication PR was closed without merge and cannot be replayed");
+    }
+    throw new Error("receipt-bound GitHub pull request state is invalid for replay");
+  }
+  if (
+    pr.number !== receipt.pullRequestNumber || pr.html_url !== receipt.pullRequestUrl ||
+    baseRepo.full_name !== receipt.targetRepository || base.ref !== BASE_BRANCH ||
+    headRepo.full_name !== receipt.headRepository || head.ref !== receipt.branch || head.sha !== receipt.commit
+  ) {
+    throw new Error("receipt-bound GitHub pull request identity changed and cannot be replayed");
   }
 }
 
@@ -1995,6 +2021,7 @@ export class GitHubPublicationService {
     const prior = await readReceipt(this.#receiptDirectory, operationId);
     if (prior) {
       if (prior.planDigest !== planDigest) throw new Error("operationId is already bound to a different GitHub publication Plan");
+      await revalidateReceipt(this.#runner, prior);
       return { outcome: "replayed" as const, receipt: prior };
     }
     this.#prune();
@@ -2055,7 +2082,7 @@ const PlanInput = z.object({
   submissionDirectory: z.string().min(1).max(4_000).optional(),
   archivePullRequestNumber: z.number().int().positive().optional(),
   expectedTemplateId: z.string().regex(TEMPLATE_ID).optional(),
-  expectedReleaseVersion: z.string().regex(SEMVER).optional(),
+  expectedReleaseVersion: z.string().regex(STRICT_SEMVER).optional(),
 });
 const ApplyInput = z.object({ planDigest: z.string().regex(HASH), operationId: z.string().regex(OPERATION_ID) });
 
