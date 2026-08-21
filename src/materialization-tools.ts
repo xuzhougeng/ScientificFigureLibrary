@@ -8,16 +8,18 @@ import type { CatalogIndex } from "./catalog.ts";
 import { canonicalJson, compareCanonicalStrings } from "./canonical-json.ts";
 import type { DiagnosticsManager } from "./diagnostics.ts";
 import { withCrossRuntimeWriteLock } from "./cross-runtime-lock.ts";
-import { materializeFigureYaTemplate } from "./materialize.ts";
 import {
   FIGUREYA_PROVIDER_ID,
   LOCAL_LIBRARY_PROVIDER_ID,
   assertExactTemplateSelector,
   assertFigureYaExactSelector,
-  assertFigureYaSelectorMatches,
-  canonicalSelectorJson,
 } from "./providers.ts";
-import type { ExactTemplateSelector, FigureYaExactSelector } from "./types.ts";
+import type { ExactTemplateSelector } from "./types.ts";
+import {
+  createDefaultProviderRegistry,
+  createProviderContext,
+  type ProviderRegistry,
+} from "./provider-registry.ts";
 import type { CurrentLibraryContext, ToolOutcomeEnvelope } from "./library-binding-tools.ts";
 import {
   PreviewConfirmationStore,
@@ -26,7 +28,6 @@ import {
 import {
   libraryBindingDigest,
   loadProviderPreview,
-  searchCatalogRevision,
 } from "./preview-service.ts";
 import {
   assertLibraryOperationContext,
@@ -227,15 +228,6 @@ function failure(error: unknown): CallToolResult {
   );
 }
 
-function selectorTemplateId(providerId: string, selector: ExactTemplateSelector) {
-  if (selector.providerId !== providerId) throw new Error("providerId does not match exactSelector.providerId");
-  const templateId = selector.identity.templateId ?? selector.identity.moduleId;
-  if (typeof templateId !== "string" || !templateId) {
-    throw new Error("exactSelector has no provider-owned template identity");
-  }
-  return templateId;
-}
-
 function localIdentity(selector: ExactTemplateSelector) {
   if (selector.providerId !== LOCAL_LIBRARY_PROVIDER_ID || selector.kind !== "local-published.v1") {
     throw new Error("exactSelector is not a Local Published selector");
@@ -413,6 +405,7 @@ function currentOperationContext(
 function validateIntentValue(
   value: unknown,
   libraryId: string,
+  registry: ProviderRegistry = createDefaultProviderRegistry(),
 ): PublicMaterializationIntentV1 {
   if (!isRecord(value) || value.schema !== PUBLIC_MATERIALIZATION_INTENT_SCHEMA) {
     throw new Error("invalid authoritative materialization intent schema");
@@ -429,7 +422,7 @@ function validateIntentValue(
     !OPERATION_ID.test(value.operationId) ||
     typeof value.planDigest !== "string" ||
     !HASH.test(value.planDigest) ||
-    (value.providerId !== LOCAL_LIBRARY_PROVIDER_ID && value.providerId !== FIGUREYA_PROVIDER_ID) ||
+    typeof value.providerId !== "string" ||
     typeof value.exactSelectorDigest !== "string" ||
     !HASH.test(value.exactSelectorDigest) ||
     typeof value.targetPathDigest !== "string" ||
@@ -447,11 +440,7 @@ function validateIntentValue(
   ) {
     throw new Error("authoritative materialization intent selector binding is invalid");
   }
-  if (value.providerId === LOCAL_LIBRARY_PROVIDER_ID) {
-    localIdentity(value.exactSelector);
-  } else {
-    assertFigureYaExactSelector(value.exactSelector);
-  }
+  registry.get(value.providerId).assertSelector(value.exactSelector, "materialize");
   return value as unknown as PublicMaterializationIntentV1;
 }
 
@@ -460,6 +449,7 @@ async function readAuthoritativeIntent(
   providerId: string,
   operationId: string,
   libraryId: string,
+  registry: ProviderRegistry = createDefaultProviderRegistry(),
 ) {
   const file = intentFile(context, providerId, operationId);
   try {
@@ -467,7 +457,11 @@ async function readAuthoritativeIntent(
     if (stat.isSymbolicLink() || !stat.isFile()) {
       throw new Error("authoritative materialization intent is not a regular file");
     }
-    return validateIntentValue(JSON.parse(await fs.readFile(file, "utf8")) as unknown, libraryId);
+    return validateIntentValue(
+      JSON.parse(await fs.readFile(file, "utf8")) as unknown,
+      libraryId,
+      registry,
+    );
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === "ENOENT") return undefined;
     throw new Error(
@@ -521,7 +515,11 @@ function assertIntentReceiptBinding(
   }
 }
 
-function validateReceiptValue(value: unknown, libraryId: string): PublicMaterializationReceiptV1 {
+function validateReceiptValue(
+  value: unknown,
+  libraryId: string,
+  registry: ProviderRegistry = createDefaultProviderRegistry(),
+): PublicMaterializationReceiptV1 {
   if (!isRecord(value) || value.schema !== PUBLIC_MATERIALIZATION_RECEIPT_SCHEMA) {
     throw new Error("invalid authoritative materialization receipt schema");
   }
@@ -533,7 +531,7 @@ function validateReceiptValue(value: unknown, libraryId: string): PublicMaterial
     !OPERATION_ID.test(value.operationId) ||
     typeof value.planDigest !== "string" ||
     !HASH.test(value.planDigest) ||
-    (value.providerId !== LOCAL_LIBRARY_PROVIDER_ID && value.providerId !== FIGUREYA_PROVIDER_ID) ||
+    typeof value.providerId !== "string" ||
     typeof value.targetPathDigest !== "string" ||
     !HASH.test(value.targetPathDigest) ||
     typeof value.fileInventoryDigest !== "string" ||
@@ -561,6 +559,8 @@ function validateReceiptValue(value: unknown, libraryId: string): PublicMaterial
   ) {
     throw new Error("authoritative materialization receipt selector binding is invalid");
   }
+  registry.get(value.providerId).assertSelector(value.plannedSelector, "replay");
+  registry.get(value.providerId).assertSelector(value.exactSelector, "replay");
   if (value.providerId === LOCAL_LIBRARY_PROVIDER_ID) {
     localIdentity(value.plannedSelector);
     localIdentity(value.exactSelector);
@@ -596,6 +596,7 @@ async function readAuthoritativeReceipt(
   providerId: string,
   operationId: string,
   libraryId: string,
+  registry: ProviderRegistry = createDefaultProviderRegistry(),
 ) {
   const file = receiptFile(context, providerId, operationId);
   try {
@@ -603,7 +604,11 @@ async function readAuthoritativeReceipt(
     if (stat.isSymbolicLink() || !stat.isFile()) {
       throw new Error("authoritative materialization receipt is not a regular file");
     }
-    return validateReceiptValue(JSON.parse(await fs.readFile(file, "utf8")) as unknown, libraryId);
+    return validateReceiptValue(
+      JSON.parse(await fs.readFile(file, "utf8")) as unknown,
+      libraryId,
+      registry,
+    );
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === "ENOENT") return undefined;
     throw new Error(
@@ -618,6 +623,7 @@ async function ensureAuthoritativeIntent(input: {
   context: CurrentLibraryContext;
   plan: MaterializationPlan;
   operationId: string;
+  registry: ProviderRegistry;
 }) {
   const marker = await requireLibraryAuthority(input.context);
   const actualLibraryContext = currentOperationContext(input.context, marker.libraryId);
@@ -635,6 +641,7 @@ async function ensureAuthoritativeIntent(input: {
         input.plan.providerId,
         input.operationId,
         marker.libraryId,
+        input.registry,
       );
       if (prior) {
         assertIntentBinding({
@@ -661,7 +668,7 @@ async function ensureAuthoritativeIntent(input: {
         expectedTargetState: "missing",
         createdAt: new Date().toISOString(),
       };
-      validateIntentValue(intent, marker.libraryId);
+      validateIntentValue(intent, marker.libraryId, input.registry);
       const file = intentFile(input.context, input.plan.providerId, input.operationId);
       await fs.mkdir(path.dirname(file), { recursive: true });
       await fs.writeFile(file, `${JSON.stringify(intent, null, 2)}\n`, { flag: "wx" });
@@ -676,6 +683,7 @@ async function inspectTargetBinding(input: {
   providerId: string;
   operationId: string;
   planDigest: string;
+  registry?: ProviderRegistry;
 }) {
   try {
     const inventory = await inspectMaterializedTarget(input.target);
@@ -686,6 +694,7 @@ async function inspectTargetBinding(input: {
     if (!isRecord(lock) || lock.providerId !== input.providerId) {
       throw new Error("materialization lock provider is invalid");
     }
+    const registry = input.registry ?? createDefaultProviderRegistry();
     let exactSelector: ExactTemplateSelector;
     let plannedSelector: ExactTemplateSelector;
     let lockOperationId: unknown;
@@ -706,7 +715,7 @@ async function inspectTargetBinding(input: {
           releaseId: lock.selector.releaseId,
         },
       };
-      localIdentity(exactSelector);
+      registry.get(input.providerId).assertSelector(exactSelector, "replay");
       plannedSelector = exactSelector;
       lockOperationId = lock.operationId;
       lockPlanDigest = lock.planDigest;
@@ -717,8 +726,9 @@ async function inspectTargetBinding(input: {
       if (!isRecord(lock.operation)) throw new Error("FigureYa operation binding is missing");
       exactSelector = lock.exactSelector as ExactTemplateSelector;
       plannedSelector = lock.plannedSelector as ExactTemplateSelector;
+      registry.get(input.providerId).assertSelector(exactSelector, "replay");
+      registry.get(input.providerId).assertSelector(plannedSelector, "replay");
       assertFigureYaExactSelector(exactSelector);
-      assertFigureYaExactSelector(plannedSelector);
       if (
         exactSelector.identity.archive.algorithm !== "sha256" ||
         lock.archiveSha256 !== exactSelector.identity.archive.digest ||
@@ -749,33 +759,10 @@ async function inspectTargetBinding(input: {
   }
 }
 
-function assertResolvedFigureYaSelector(
-  planned: FigureYaExactSelector,
-  exact: FigureYaExactSelector,
-) {
-  const left = planned.identity;
-  const right = exact.identity;
-  if (
-    left.moduleId !== right.moduleId ||
-    left.sourceCommit !== right.sourceCommit ||
-    left.archiveCommit !== right.archiveCommit ||
-    left.mode !== right.mode ||
-    left.archive.bytes !== right.archive.bytes
-  ) {
-    throw new Error("stale FigureYa resolved selector does not match its planned selector");
-  }
-  if (left.archive.algorithm === "sha256") {
-    if (canonicalSelectorJson(planned) !== canonicalSelectorJson(exact)) {
-      throw new Error("stale FigureYa SHA-256 selector changed during materialization");
-    }
-  } else if (right.archive.algorithm !== "sha256") {
-    throw new Error("stale legacy FigureYa selector was not resolved to SHA-256");
-  }
-}
-
 async function validateCurrentSelection(input: {
   context: CurrentLibraryContext;
   index: CatalogIndex;
+  registry: ProviderRegistry;
   providerId: string;
   plannedSelector: ExactTemplateSelector;
   exactSelector: ExactTemplateSelector;
@@ -784,54 +771,21 @@ async function validateCurrentSelection(input: {
   planDigest: string;
   inventory: MaterializedFileInventoryEntry[];
 }) {
-  if (input.providerId === LOCAL_LIBRARY_PROVIDER_ID) {
-    const identity = localIdentity(input.plannedSelector);
-    if (canonicalJson(input.plannedSelector) !== canonicalJson(input.exactSelector)) {
-      throw new Error("stale Local Published exact selector changed during materialization");
-    }
-    if (!sameNativePath(input.target, path.join(path.dirname(input.target), identity.templateId))) {
-      throw new Error("stale Local Published materialization target name");
-    }
-    const currentPlan = await input.context.versionedLibrary.planMaterializeRevision({
-      templateId: identity.templateId,
-      revisionId: identity.revisionId,
-      contentDigest: identity.contentDigest,
-      releaseId: identity.releaseId,
-      destination: path.dirname(input.target),
-      operationId: input.operationId,
-      planDigest: input.planDigest,
-    });
-    const expectedInventory = currentPlan.fileInventory.map(({ relativePath, ...entry }) => ({
-      file: relativePath,
-      ...entry,
-    }));
-    if (canonicalJson(expectedInventory) !== canonicalJson(input.inventory)) {
-      throw new Error("target already exists but no longer matches its reachable Local Published Release");
-    }
-    return;
-  }
-  if (input.providerId !== FIGUREYA_PROVIDER_ID) {
-    throw new Error(`unsupported acquisition provider: ${input.providerId}`);
-  }
-  assertFigureYaExactSelector(input.plannedSelector);
-  assertFigureYaExactSelector(input.exactSelector);
-  const module = input.index.get(input.plannedSelector.identity.moduleId);
-  if (!module) throw new Error(`stale or unknown FigureYa module: ${input.plannedSelector.identity.moduleId}`);
-  assertFigureYaSelectorMatches(
-    input.plannedSelector,
-    input.index.catalog,
-    module,
-    input.plannedSelector.identity.mode,
-  );
-  assertResolvedFigureYaSelector(input.plannedSelector, input.exactSelector);
-  if (!sameNativePath(input.target, path.join(path.dirname(input.target), module.moduleId))) {
-    throw new Error("stale FigureYa materialization target name");
-  }
+  const providerContext = createProviderContext(input.context, input.index);
+  await input.registry.get(input.providerId).verifyMaterialized(providerContext, {
+    plannedSelector: input.plannedSelector,
+    exactSelector: input.exactSelector,
+    target: input.target,
+    operationId: input.operationId,
+    planDigest: input.planDigest,
+    inventory: input.inventory,
+  });
 }
 
 async function verifyReceiptAndTarget(input: {
   context: CurrentLibraryContext;
   index: CatalogIndex;
+  registry: ProviderRegistry;
   receipt: PublicMaterializationReceiptV1;
   target: string;
   expectedProviderId: string;
@@ -855,6 +809,7 @@ async function verifyReceiptAndTarget(input: {
     providerId: input.expectedProviderId,
     operationId: input.operationId,
     planDigest: input.planDigest,
+    registry: input.registry,
   });
   if (
     canonicalJson(binding.plannedSelector) !== canonicalJson(receipt.plannedSelector) ||
@@ -866,6 +821,7 @@ async function verifyReceiptAndTarget(input: {
   await validateCurrentSelection({
     context: input.context,
     index: input.index,
+    registry: input.registry,
     providerId: receipt.providerId,
     plannedSelector: receipt.plannedSelector,
     exactSelector: receipt.exactSelector,
@@ -890,6 +846,7 @@ async function verifyReceiptAndTarget(input: {
 async function durableReplay(input: {
   context: CurrentLibraryContext;
   index: CatalogIndex;
+  registry: ProviderRegistry;
   target: string;
   expectedProviderId: string;
   operationId: string;
@@ -904,12 +861,14 @@ async function durableReplay(input: {
       input.expectedProviderId,
       input.operationId,
       marker.libraryId,
+      input.registry,
     ),
     readAuthoritativeIntent(
       input.context,
       input.expectedProviderId,
       input.operationId,
       marker.libraryId,
+      input.registry,
     ),
   ]);
   if (intent) {
@@ -950,12 +909,14 @@ async function durableReplay(input: {
         input.expectedProviderId,
         input.operationId,
         marker.libraryId,
+        input.registry,
       );
       const currentIntent = await readAuthoritativeIntent(
         input.context,
         input.expectedProviderId,
         input.operationId,
         marker.libraryId,
+        input.registry,
       );
       if (!currentIntent) {
         throw new Error("authoritative materialization intent disappeared during recovery");
@@ -964,7 +925,7 @@ async function durableReplay(input: {
         intent: currentIntent,
         providerId: input.expectedProviderId,
         operationId: input.operationId,
-        planDigest: input.planDigest,
+      planDigest: input.planDigest,
         target: input.target,
         ...(input.cachedPlan ? { exactSelector: input.cachedPlan.exactSelector } : {}),
         libraryContext: actualLibraryContext,
@@ -978,6 +939,7 @@ async function durableReplay(input: {
         providerId: input.expectedProviderId,
         operationId: input.operationId,
         planDigest: input.planDigest,
+        registry: input.registry,
       });
       if (canonicalJson(binding.plannedSelector) !== canonicalJson(currentIntent.exactSelector)) {
         throw new Error(
@@ -993,6 +955,7 @@ async function durableReplay(input: {
         target: input.target,
         operationId: input.operationId,
         planDigest: input.planDigest,
+        registry: input.registry,
         inventory: binding.inventory,
       });
       let archiveSha256: string | undefined;
@@ -1013,6 +976,7 @@ async function durableReplay(input: {
             ? "versioned-library"
             : "intent-recovery",
         ...(archiveSha256 ? { archiveSha256 } : {}),
+        registry: input.registry,
       });
       return {
         operationId: input.operationId,
@@ -1040,6 +1004,7 @@ async function writeAuthoritativeReceipt(input: {
   inventory: MaterializedFileInventoryEntry[];
   materializationSource: string;
   archiveSha256?: string;
+  registry: ProviderRegistry;
 }) {
   const receipt: PublicMaterializationReceiptV1 = {
     schema: PUBLIC_MATERIALIZATION_RECEIPT_SCHEMA,
@@ -1059,7 +1024,7 @@ async function writeAuthoritativeReceipt(input: {
     ...(input.archiveSha256 ? { archiveSha256: input.archiveSha256 } : {}),
     appliedAt: new Date().toISOString(),
   };
-  validateReceiptValue(receipt, input.libraryId);
+  validateReceiptValue(receipt, input.libraryId, input.registry);
   assertIntentReceiptBinding(input.intent, receipt);
   const file = receiptFile(
     input.context,
@@ -1078,6 +1043,7 @@ async function persistAuthoritativeReceipt(input: {
   plan: MaterializationPlan;
   result: MaterializationResult;
   operationId: string;
+  registry: ProviderRegistry;
 }) {
   const marker = await requireLibraryAuthority(input.context);
   return withCrossRuntimeWriteLock(
@@ -1093,6 +1059,7 @@ async function persistAuthoritativeReceipt(input: {
         input.plan.providerId,
         input.operationId,
         marker.libraryId,
+        input.registry,
       );
       if (!intent) {
         throw new Error("authoritative materialization intent is missing before receipt finalization");
@@ -1111,6 +1078,7 @@ async function persistAuthoritativeReceipt(input: {
         input.plan.providerId,
         input.operationId,
         marker.libraryId,
+        input.registry,
       );
       if (prior) {
         assertIntentReceiptBinding(intent, prior);
@@ -1122,6 +1090,7 @@ async function persistAuthoritativeReceipt(input: {
           expectedProviderId: input.plan.providerId,
           operationId: input.operationId,
           planDigest: input.plan.planDigest,
+          registry: input.registry,
         });
         return prior;
       }
@@ -1133,6 +1102,7 @@ async function persistAuthoritativeReceipt(input: {
         providerId: input.plan.providerId,
         operationId: input.operationId,
         planDigest: input.plan.planDigest,
+        registry: input.registry,
       });
       if (
         canonicalJson(binding.plannedSelector) !== canonicalJson(input.plan.exactSelector) ||
@@ -1143,6 +1113,7 @@ async function persistAuthoritativeReceipt(input: {
       await validateCurrentSelection({
         context: input.context,
         index: input.index,
+        registry: input.registry,
         providerId: input.plan.providerId,
         plannedSelector: binding.plannedSelector,
         exactSelector: binding.exactSelector,
@@ -1159,6 +1130,7 @@ async function persistAuthoritativeReceipt(input: {
         inventory: binding.inventory,
         materializationSource: input.result.materializationSource,
         ...(input.result.archiveSha256 ? { archiveSha256: input.result.archiveSha256 } : {}),
+        registry: input.registry,
       });
     },
   );
@@ -1187,6 +1159,7 @@ const ApplyInput = z.object({
 export function registerMaterializationTools(options: {
   server: McpServer;
   index: CatalogIndex;
+  registry?: ProviderRegistry;
   currentLibraries: () => Promise<CurrentLibraryContext>;
   previewConfirmations: PreviewConfirmationStore;
   diagnostics?: DiagnosticsManager;
@@ -1195,7 +1168,15 @@ export function registerMaterializationTools(options: {
     operation: { operationId: string; planDigest: string; providerId: string },
   ) => Promise<void> | void;
 }) {
-  const { server, index, currentLibraries, previewConfirmations, diagnostics, faultInjector } = options;
+  const {
+    server,
+    index,
+    currentLibraries,
+    previewConfirmations,
+    diagnostics,
+    faultInjector,
+  } = options;
+  const registry = options.registry ?? createDefaultProviderRegistry();
   const plans = new Map<string, CachedPlan>();
 
   function prune() {
@@ -1265,8 +1246,11 @@ export function registerMaterializationTools(options: {
         }
         const exactSelector = input.exactSelector as unknown as ExactTemplateSelector;
         assertExactTemplateSelector(exactSelector);
-        const templateId = selectorTemplateId(input.providerId, exactSelector);
         const context = await currentLibraries();
+        const providerContext = createProviderContext(context, index);
+        const adapter = registry.get(input.providerId);
+        const resolved = await adapter.resolve(providerContext, exactSelector, "materialize");
+        const templateId = resolved.templateId;
         const marker = await requireLibraryAuthority(context);
         const libraryContext: LibraryOperationContext = {
           libraryId: marker.libraryId,
@@ -1274,16 +1258,16 @@ export function registerMaterializationTools(options: {
         };
         const pendingReceipt = previewConfirmations.getReceipt(input.previewReceipt);
         const resultSet = previewConfirmations.getResultSet(pendingReceipt.resultSetId);
-        const catalogRevision = await searchCatalogRevision(
-          context,
-          index,
+        const catalogRevision = await registry.catalogRevision(
           resultSet.providerIds,
+          providerContext,
         );
         const currentPreview = await loadProviderPreview({
           context,
           index,
           providerId: input.providerId,
           exactSelector,
+          registry,
         });
         const confirmedPreview = previewConfirmations.requireReceipt({
           previewReceipt: input.previewReceipt,
@@ -1293,37 +1277,6 @@ export function registerMaterializationTools(options: {
           catalogRevision,
           libraryBindingDigest: libraryBindingDigest(context),
         });
-        if (input.providerId === LOCAL_LIBRARY_PROVIDER_ID) {
-          const identity = localIdentity(exactSelector);
-          const [content, release] = await Promise.all([
-            context.versionedLibrary.getContent(
-              identity.templateId,
-              identity.revisionId,
-              identity.contentDigest,
-            ),
-            context.versionedLibrary.getRelease(identity.templateId, identity.releaseId),
-          ]);
-          if (
-            !content ||
-            !release ||
-            release.revisionId !== identity.revisionId ||
-            release.contentDigest !== identity.contentDigest
-          ) {
-            throw new Error("stale or unknown Local Published selector");
-          }
-        } else if (input.providerId === FIGUREYA_PROVIDER_ID) {
-          assertFigureYaExactSelector(exactSelector);
-          const module = index.get(templateId);
-          if (!module) throw new Error(`unknown FigureYa module: ${templateId}`);
-          assertFigureYaSelectorMatches(
-            exactSelector,
-            index.catalog,
-            module,
-            (exactSelector as FigureYaExactSelector).identity.mode,
-          );
-        } else {
-          throw new Error(`unsupported acquisition provider: ${input.providerId}`);
-        }
         const destination = path.resolve(input.destination);
         const target = path.join(destination, templateId);
         if (!(await targetMissing(target))) throw new Error(`target already exists: ${target}`);
@@ -1420,12 +1373,7 @@ export function registerMaterializationTools(options: {
     },
     async (input): Promise<CallToolResult> => {
       try {
-        if (
-          input.expectedProviderId !== LOCAL_LIBRARY_PROVIDER_ID &&
-          input.expectedProviderId !== FIGUREYA_PROVIDER_ID
-        ) {
-          throw new Error(`unsupported acquisition provider: ${input.expectedProviderId}`);
-        }
+        registry.get(input.expectedProviderId);
         const expectedTarget = path.resolve(input.expectedTarget);
         const context = await currentLibraries();
         const marker = await requireLibraryAuthority(context);
@@ -1448,6 +1396,7 @@ export function registerMaterializationTools(options: {
           expectedProviderId: input.expectedProviderId,
           operationId: input.operationId,
           planDigest: input.planDigest,
+          registry,
           ...(cached ? { cachedPlan: cached.plan } : {}),
         });
         if (replay) {
@@ -1485,6 +1434,7 @@ export function registerMaterializationTools(options: {
           context,
           plan,
           operationId: input.operationId,
+          registry,
         });
         await faultInjector?.("after_public_intent", {
           operationId: input.operationId,
@@ -1494,57 +1444,36 @@ export function registerMaterializationTools(options: {
         if (!(await targetMissing(plan.target))) {
           throw new Error(`target already exists after intent creation: ${plan.target}`);
         }
-        let result: MaterializationResult;
-        if (plan.providerId === FIGUREYA_PROVIDER_ID) {
-          const selector = plan.exactSelector as FigureYaExactSelector;
-          const module = index.get(selector.identity.moduleId);
-          if (!module) throw new Error(`unknown FigureYa module: ${selector.identity.moduleId}`);
-          const applied = await materializeFigureYaTemplate({
-            catalog: index.catalog,
-            module,
-            destination: plan.destination,
-            mode: selector.identity.mode,
-            exactSelector: selector,
-            sourcePackDir: plan.sourcePackDir,
-            allowNetwork: plan.allowNetwork,
+        const providerContext = createProviderContext(context, index, {
+          materialization: {
             operationId: input.operationId,
             planDigest: plan.planDigest,
-          });
-          result = {
-            operationId: input.operationId,
-            planDigest: plan.planDigest,
-            providerId: plan.providerId,
-            exactSelector: applied.exactSelector,
-            target: applied.target,
-            files: applied.files,
-            materializationSource: applied.archiveSource,
-            archiveSha256: applied.sha256,
-            replayed: false,
-          };
-        } else if (plan.providerId === LOCAL_LIBRARY_PROVIDER_ID) {
-          const identity = localIdentity(plan.exactSelector);
-          const applied = await context.versionedLibrary.materializeRevision({
-            templateId: identity.templateId,
-            revisionId: identity.revisionId,
-            contentDigest: identity.contentDigest,
-            releaseId: identity.releaseId,
-            destination: plan.destination,
-            operationId: input.operationId,
-            planDigest: plan.planDigest,
-          });
-          result = {
-            operationId: input.operationId,
-            planDigest: plan.planDigest,
-            providerId: plan.providerId,
-            exactSelector: plan.exactSelector,
-            target: applied.target,
-            files: applied.files,
-            materializationSource: applied.materializationSource,
-            replayed: false,
-          };
-        } else {
-          throw new Error(`unsupported acquisition provider: ${plan.providerId}`);
-        }
+            ...(plan.sourcePackDir ? { sourcePackDir: plan.sourcePackDir } : {}),
+          },
+        });
+        const adapter = registry.get(plan.providerId);
+        const resolved = await adapter.resolve(
+          providerContext,
+          plan.exactSelector,
+          "materialize",
+        );
+        const applied = await adapter.stageMaterialization(
+          providerContext,
+          resolved,
+          plan.destination,
+          plan.allowNetwork,
+        );
+        let result: MaterializationResult = {
+          operationId: input.operationId,
+          planDigest: plan.planDigest,
+          providerId: plan.providerId,
+          exactSelector: applied.exactSelector,
+          target: applied.target,
+          files: applied.files,
+          materializationSource: applied.materializationSource,
+          ...(applied.archiveSha256 ? { archiveSha256: applied.archiveSha256 } : {}),
+          replayed: false,
+        };
         await faultInjector?.("before_public_receipt", {
           operationId: input.operationId,
           planDigest: plan.planDigest,
@@ -1556,6 +1485,7 @@ export function registerMaterializationTools(options: {
           plan,
           result,
           operationId: input.operationId,
+          registry,
         });
         result = {
           ...result,

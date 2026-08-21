@@ -286,6 +286,35 @@ test("standard server unifies Local Published and FigureYa while hiding Working/
           (item) => record(item.exactSelector).providerId === item.providerId,
         ),
       );
+      const localOnlySearch = await client.callTool({
+        name: "figure_library_search",
+        arguments: {
+          query: "crossprovideruniquemarker volcano differential expression",
+          providerIds: [LOCAL_LIBRARY_PROVIDER_ID],
+          limit: 6,
+        },
+      });
+      const localOnlyStructured = record(localOnlySearch.structuredContent);
+      const localOnlyCandidates = records(localOnlyStructured.candidates);
+      assert.ok(localOnlyCandidates.length > 0);
+      assert.ok(
+        localOnlyCandidates.every(
+          (item) => item.providerId === LOCAL_LIBRARY_PROVIDER_ID,
+        ),
+      );
+      assert.deepEqual(
+        records(localOnlyStructured.sources).map((item) => ({
+          providerId: item.providerId,
+          matched: item.matched,
+        })),
+        [
+          {
+            providerId: LOCAL_LIBRARY_PROVIDER_ID,
+            matched: localOnlyStructured.total,
+          },
+          { providerId: FIGUREYA_PROVIDER_ID, matched: 0 },
+        ],
+      );
       const localThumbnail = candidates.find(
         (item) => item.templateId === "local-published-volcano",
       );
@@ -599,6 +628,9 @@ test("standard server unifies Local Published and FigureYa while hiding Working/
       });
       const statusStructured = record(status.structuredContent);
       assert.equal(statusStructured.serverVersion, VERSION);
+      const providerStatus = record(statusStructured.providers);
+      assert.ok(record(providerStatus.local));
+      assert.ok(record(providerStatus.figureYa));
       const libraryStatus = record(statusStructured.library);
       const marker = await readLibraryRootMarker(libraryRoot);
       assert.ok(marker);

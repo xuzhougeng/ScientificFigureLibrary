@@ -12,8 +12,6 @@ import { z } from "zod";
 import {
   buildSearchIntent,
   CatalogIndex,
-  normalizeSearchText,
-  scoreSearchableTemplate,
 } from "./catalog.ts";
 import { registerBundleTools } from "./bundle-tools.ts";
 import { inspectLibraryWriteLock } from "./cross-runtime-lock.ts";
@@ -25,7 +23,6 @@ import {
 import { LibraryRuntime, readLibraryRootMarker } from "./library-runtime.ts";
 import { WorkspaceRuntime } from "./workspace-runtime.ts";
 import { registerLifecycleTools } from "./lifecycle-tools.ts";
-import { inspectFigureYaSourcePack } from "./materialize.ts";
 import { registerMaterializationTools } from "./materialization-tools.ts";
 import { canonicalJson } from "./canonical-json.ts";
 import {
@@ -40,7 +37,6 @@ import {
 import {
   libraryBindingDigest,
   loadProviderPreview,
-  searchCatalogRevision,
   sha256,
 } from "./preview-service.ts";
 import {
@@ -51,29 +47,19 @@ import {
   searchPerImageBudget,
   singlePreviewBudget,
 } from "./transport-image.ts";
+import { assertExactTemplateSelector } from "./providers.ts";
 import {
-  FIGUREYA_PROVIDER_ID,
-  LOCAL_LIBRARY_PROVIDER_ID,
-  assertExactTemplateSelector,
-  assertFigureYaExactSelector,
-  assertFigureYaSelectorMatches,
-  assertFigureYaSourceSelectorMatches,
-} from "./providers.ts";
+  createDefaultProviderRegistry,
+  createProviderContext,
+  type ProviderRegistry,
+} from "./provider-registry.ts";
 import type {
   ExactTemplateSelector,
-  FigureYaExactSelector,
   SearchRequest,
   TemplateCandidate,
   ValidationStateSummaryV1,
 } from "./types.ts";
-import {
-  effectiveValidationState,
-  legacyValidationStateFromExecutionStatus,
-  VersionedTemplateLibrary,
-  type PublishedVersionedTemplateCandidate,
-  type TemplateContentV1,
-  type TemplateReleaseV1,
-} from "./versioned-library.ts";
+import { legacyValidationStateFromExecutionStatus, VersionedTemplateLibrary } from "./versioned-library.ts";
 import { VERSION } from "./version.ts";
 
 export { VERSION };
@@ -100,8 +86,7 @@ const SearchInput = z.object({
     .array(z.string().min(1).max(200))
     .min(1)
     .max(16)
-    .optional()
-    .default([LOCAL_LIBRARY_PROVIDER_ID, FIGUREYA_PROVIDER_ID]),
+    .optional(),
   limit: z.number().int().min(1).max(12).optional().default(6),
 });
 const SearchPageInput = z.object({
@@ -226,222 +211,6 @@ function validationStateText(state: ValidationStateSummaryV1) {
   ];
 }
 
-function localSelector(item: PublishedVersionedTemplateCandidate): ExactTemplateSelector {
-  return {
-    schema: "figure-library.provider-selector.v1",
-    providerId: LOCAL_LIBRARY_PROVIDER_ID,
-    kind: "local-published.v1",
-    identity: {
-      templateId: item.templateId,
-      revisionId: item.revisionId,
-      contentDigest: item.contentDigest,
-      releaseId: item.releaseId,
-    },
-  };
-}
-
-function localSelectorIdentity(selector: ExactTemplateSelector) {
-  assertExactTemplateSelector(selector);
-  if (selector.providerId !== LOCAL_LIBRARY_PROVIDER_ID || selector.kind !== "local-published.v1") {
-    throw new Error("exact selector is not a Local Published selector");
-  }
-  const { templateId, revisionId, contentDigest, releaseId } = selector.identity;
-  if (
-    typeof templateId !== "string" ||
-    typeof revisionId !== "string" ||
-    typeof releaseId !== "string" ||
-    typeof contentDigest !== "string" ||
-    !HASH.test(contentDigest)
-  ) {
-    throw new Error("invalid Local Published exact selector");
-  }
-  return { templateId, revisionId, contentDigest, releaseId };
-}
-
-async function releaseBoundReview(
-  context: CurrentLibraryContext,
-  release: TemplateReleaseV1,
-) {
-  const review = await context.versionedLibrary.getReview(
-    release.templateId,
-    release.reviewId,
-  );
-  if (
-    !review ||
-    review.revisionId !== release.revisionId ||
-    review.reviewDigest !== release.reviewDigest
-  ) {
-    throw new Error(
-      `Published release does not match its immutable Review: ${release.templateId}/${release.releaseId}`,
-    );
-  }
-  return review;
-}
-
-async function resolveLocalPublished(
-  context: CurrentLibraryContext,
-  selector: ExactTemplateSelector,
-) {
-  const identity = localSelectorIdentity(selector);
-  const [content, release, history] = await Promise.all([
-    context.versionedLibrary.getContent(
-      identity.templateId,
-      identity.revisionId,
-      identity.contentDigest,
-    ),
-    context.versionedLibrary.getRelease(identity.templateId, identity.releaseId),
-    context.versionedLibrary.history(identity.templateId),
-  ]);
-  if (
-    !content ||
-    !release ||
-    release.revisionId !== identity.revisionId ||
-    release.contentDigest !== identity.contentDigest ||
-    !history.releases.some(
-      (item) =>
-        item.releaseId === identity.releaseId &&
-        item.revisionId === identity.revisionId &&
-        item.contentDigest === identity.contentDigest,
-    )
-  ) {
-    throw new Error("stale or unreachable Local Published exact selector");
-  }
-  const review = await releaseBoundReview(context, release);
-  return { identity, content, release, review };
-}
-
-function matchesLocalFilters(
-  item: PublishedVersionedTemplateCandidate,
-  request: SearchRequest,
-) {
-  if (request.assetKind && item.assetKind !== request.assetKind) return false;
-  if (request.reviewStatus && request.reviewStatus !== "approved") return false;
-  if (request.codeStatus && item.codeStatus !== request.codeStatus) return false;
-  if (
-    request.language &&
-    normalizeSearchText(request.language) !== normalizeSearchText(item.language)
-  ) {
-    return false;
-  }
-  if (request.plotFamily) {
-    const desired = buildSearchIntent({ query: request.plotFamily }).families;
-    const actual = buildSearchIntent({ query: item.plotFamily }).families;
-    if (desired.length ? !desired.some((value) => actual.includes(value)) : !normalizeSearchText(item.plotFamily).includes(normalizeSearchText(request.plotFamily))) {
-      return false;
-    }
-  }
-  return true;
-}
-
-async function localCandidates(
-  context: CurrentLibraryContext,
-  request: SearchRequest,
-): Promise<TemplateCandidate[]> {
-  const intent = buildSearchIntent(request);
-  const scored = (await context.versionedLibrary.listPublishedCandidates())
-    .filter((item) => matchesLocalFilters(item, request))
-    .map((item) => ({
-      item,
-      evidence: scoreSearchableTemplate(
-        {
-          templateId: item.templateId,
-          title: item.title,
-          description: item.description,
-          scientificQuestion: item.scientificQuestion,
-          application: item.visualProfile,
-          dataProfile: item.dataProfile,
-          inputFiles: [],
-          codeFiles: [],
-          packages: item.packages,
-          tags: item.tags,
-        },
-        intent,
-      ),
-    }))
-    .filter(({ evidence }) => evidence.score > 0)
-    .sort(
-      (left, right) =>
-        right.evidence.score - left.evidence.score ||
-        left.item.templateId.localeCompare(right.item.templateId),
-    );
-
-  return Promise.all(
-    scored.map(async ({ item, evidence }) => {
-      const [content, release] = await Promise.all([
-        context.versionedLibrary.getContent(
-          item.templateId,
-          item.revisionId,
-          item.contentDigest,
-        ),
-        context.versionedLibrary.getRelease(item.templateId, item.releaseId),
-      ]);
-      if (
-        !content ||
-        !release ||
-        release.revisionId !== item.revisionId ||
-        release.contentDigest !== item.contentDigest
-      ) {
-        throw new Error(`Published content or Release disappeared: ${item.templateId}`);
-      }
-      const review = await releaseBoundReview(context, release);
-      const selector = localSelector(item);
-      const validationState = effectiveValidationState(content);
-      return {
-        templateId: item.templateId,
-        providerId: LOCAL_LIBRARY_PROVIDER_ID,
-        exactSelector: selector,
-        sourceLabel: "Local Published",
-        title: item.title,
-        retrievalScore: evidence.score,
-        matchedTerms: evidence.matchedTerms.slice(0, 12),
-        reasons: evidence.reasons,
-        warnings: [...new Set(review.warnings.map((warning) => warning.message))],
-        excerpt: item.description.slice(0, 420),
-        description: item.description,
-        ...(item.scientificQuestion ? { scientificQuestion: item.scientificQuestion } : {}),
-        application: item.visualProfile,
-        dataProfile: item.dataProfile,
-        inputFiles: content.assets
-          .filter((asset) => asset.role === "reference")
-          .map((asset) => asset.logicalPath),
-        codeFiles: content.assets
-          .filter((asset) => asset.role === "code")
-          .map((asset) => asset.logicalPath),
-        packages: item.packages,
-        materializable: true,
-        previewAvailable: item.previewAvailable,
-        ...(item.previewAvailable
-          ? {
-              previewRef: {
-                schema: "figure-library.provider-preview-ref.v1" as const,
-                providerId: LOCAL_LIBRARY_PROVIDER_ID,
-                exactSelector: selector,
-              },
-            }
-          : {}),
-        assetKind: item.assetKind,
-        language: item.language,
-        plotFamily: item.plotFamily,
-        reviewStatus: "approved" as const,
-        codeStatus: item.codeStatus,
-        executionStatus: item.executionStatus,
-        validationState,
-        ...(content.canonicalPreviewDecision
-          ? { canonicalPreviewDecision: content.canonicalPreviewDecision }
-          : {}),
-        upstreamStatus: "published" as const,
-        license: item.license,
-        management: {
-          templateId: item.templateId,
-          canArchive: false,
-          canUpdate: true,
-          updateVia: "plan-apply" as const,
-        },
-      };
-    }),
-  );
-}
-
 function candidateText(candidates: TemplateCandidate[]) {
   if (!candidates.length) {
     return "No matching Local Published or FigureYa templates were found. No tool retry is needed unless the user changes the search intent.";
@@ -472,7 +241,11 @@ function candidateText(candidates: TemplateCandidate[]) {
   ].join("\n");
 }
 
-function searchQueryDigest(input: z.infer<typeof SearchInput>) {
+type ParsedSearchInput = Omit<z.infer<typeof SearchInput>, "providerIds"> & {
+  providerIds: string[];
+};
+
+function searchQueryDigest(input: ParsedSearchInput) {
   return sha256(
     canonicalJson({
       schema: "figure-library.search-query.v1",
@@ -507,6 +280,7 @@ async function hydrateCandidatePreviews(options: {
   candidates: TemplateCandidate[];
   context: CurrentLibraryContext;
   index: CatalogIndex;
+  registry: ProviderRegistry;
 }) {
   const needed = options.candidates.filter((candidate) => candidate.previewAvailable).length;
   let perImageBudget = searchPerImageBudget(needed);
@@ -521,6 +295,7 @@ async function hydrateCandidatePreviews(options: {
           index: options.index,
           providerId: candidate.providerId,
           exactSelector: candidate.exactSelector,
+          registry: options.registry,
         });
         const transport = await prepareTransportImage({
           sourceBytes: preview.bytes,
@@ -677,19 +452,19 @@ async function countLegacyFlat(root: string) {
 }
 
 interface SearchSessionState {
-  input: z.infer<typeof SearchInput>;
+  input: ParsedSearchInput;
   request: SearchRequest;
   candidates: TemplateCandidate[];
   queryDigest: string;
   catalogRevision: string;
   libraryBindingDigest: string;
-  localMatches: number;
-  figureYaMatches: number;
+  providerMatches: Record<string, number>;
   candidateIds: Set<string>;
 }
 
-export async function createServer() {
+export async function createServer(options: { registry?: ProviderRegistry } = {}) {
   const index = await CatalogIndex.load();
+  const registry = options.registry ?? createDefaultProviderRegistry();
   const runtime = new LibraryRuntime();
   const workspaceRuntime = new WorkspaceRuntime();
   const previewConfirmations = new PreviewConfirmationStore();
@@ -709,6 +484,10 @@ export async function createServer() {
     if (contexts.size > 8) contexts.delete(contexts.keys().next().value as string);
     return context;
   };
+  const currentProviderContext = async (sourcePackDir?: string) =>
+    createProviderContext(await currentLibraries(), index, {
+      ...(sourcePackDir ? { sourcePackDir } : {}),
+    });
 
   const server = new McpServer({ name: "Scientific Figure Library", version: VERSION });
 
@@ -743,10 +522,11 @@ export async function createServer() {
         materializationProtocolVersion: MATERIALIZATION_PROTOCOL_VERSION,
         resultSetId: null,
         pagination: { total: 0, pageIndex: 0, pageSize: 6, hasMore: false, nextCursor: null },
-        sources: [
-          { providerId: LOCAL_LIBRARY_PROVIDER_ID, sourceLabel: "Local Published", matched: 0 },
-          { providerId: FIGUREYA_PROVIDER_ID, sourceLabel: "FigureYa", matched: 0 },
-        ],
+        sources: registry.list().map(({ providerId, sourceLabel }) => ({
+          providerId,
+          sourceLabel,
+          matched: 0,
+        })),
         candidates: [],
         diagnosticsDegraded: diagnostics.degraded,
       });
@@ -764,10 +544,9 @@ export async function createServer() {
     operationStartedAt: number;
   }): Promise<CallToolResult> => {
     const context = await currentLibraries();
-    const currentCatalogRevision = await searchCatalogRevision(
-      context,
-      index,
+    const currentCatalogRevision = await registry.catalogRevision(
       options.state.input.providerIds,
+      createProviderContext(context, index),
     );
     const currentBindingDigest = libraryBindingDigest(context);
     previewConfirmations.requireResultSet({
@@ -780,7 +559,12 @@ export async function createServer() {
       options.offset,
       options.offset + options.limit,
     );
-    const hydrated = await hydrateCandidatePreviews({ candidates: rawPage, context, index });
+    const hydrated = await hydrateCandidatePreviews({
+      candidates: rawPage,
+      context,
+      index,
+      registry,
+    });
     const { visibleCandidates, candidatePreviews } = splitCandidatePage(
       options.resultSetId,
       hydrated,
@@ -826,18 +610,11 @@ export async function createServer() {
         hasMore,
         nextCursor,
       },
-      sources: [
-        {
-          providerId: LOCAL_LIBRARY_PROVIDER_ID,
-          sourceLabel: "Local Published",
-          matched: options.state.localMatches,
-        },
-        {
-          providerId: FIGUREYA_PROVIDER_ID,
-          sourceLabel: "FigureYa",
-          matched: options.state.figureYaMatches,
-        },
-      ],
+      sources: registry.list().map(({ providerId, sourceLabel }) => ({
+        providerId,
+        sourceLabel,
+        matched: options.state.providerMatches[providerId] ?? 0,
+      })),
       candidates: visibleCandidates,
       diagnosticsDegraded: diagnostics.degraded,
     };
@@ -915,19 +692,27 @@ export async function createServer() {
         invocationSource: "agent",
       });
       try {
+        const parsedInput: ParsedSearchInput = {
+          ...input,
+          providerIds: input.providerIds ?? registry.defaultProviderIds(),
+        };
         const request: SearchRequest = {
-          query: input.query,
-          dataProfile: input.dataProfile,
-          visualProfile: input.visualProfile,
-          assetKind: input.assetKind,
-          language: input.language,
-          plotFamily: input.plotFamily,
-          reviewStatus: input.reviewStatus,
-          codeStatus: input.codeStatus,
+          query: parsedInput.query,
+          dataProfile: parsedInput.dataProfile,
+          visualProfile: parsedInput.visualProfile,
+          assetKind: parsedInput.assetKind,
+          language: parsedInput.language,
+          plotFamily: parsedInput.plotFamily,
+          reviewStatus: parsedInput.reviewStatus,
+          codeStatus: parsedInput.codeStatus,
         };
         const context = await currentLibraries();
-        const queryDigest = searchQueryDigest(input);
-        const catalogRevision = await searchCatalogRevision(context, index, input.providerIds);
+        const providerContext = createProviderContext(context, index);
+        const queryDigest = searchQueryDigest(parsedInput);
+        const catalogRevision = await registry.catalogRevision(
+          parsedInput.providerIds,
+          providerContext,
+        );
         const bindingDigest = libraryBindingDigest(context);
         await diagnostics.record({
           event: "search.catalog_loaded",
@@ -937,24 +722,24 @@ export async function createServer() {
           catalogRevision,
           libraryRevision: bindingDigest,
         });
-        const [local, figureYa] = await Promise.all([
-          input.providerIds.includes(LOCAL_LIBRARY_PROVIDER_ID)
-            ? localCandidates(context, request)
-            : [],
-          input.providerIds.includes(FIGUREYA_PROVIDER_ID)
-            ? index.searchAll(request).then((candidates) =>
-                candidates.map((candidate) => ({
-                  ...candidate,
-                  validationState: legacyValidationStateFromExecutionStatus("not_run"),
-                })),
-              )
-            : [],
-        ]);
-        const ranked = [...local, ...figureYa].sort((left, right) => {
+        const searched = await Promise.all(
+          parsedInput.providerIds.map(async (providerId) => ({
+            providerId,
+            candidates: await registry.get(providerId).search(providerContext, request),
+          })),
+        );
+        const providerMatches = Object.fromEntries(
+          searched.map(({ providerId, candidates }) => [providerId, candidates.length]),
+        );
+        const order = new Map(
+          registry.list().map(({ providerId }, index) => [providerId, index]),
+        );
+        const ranked = searched.flatMap(({ candidates }) => candidates).sort((left, right) => {
           const score = right.retrievalScore - left.retrievalScore;
           if (score) return score;
           if (left.providerId !== right.providerId) {
-            return left.providerId === LOCAL_LIBRARY_PROVIDER_ID ? -1 : 1;
+            return (order.get(left.providerId) ?? Number.MAX_SAFE_INTEGER) -
+              (order.get(right.providerId) ?? Number.MAX_SAFE_INTEGER);
           }
           return left.templateId.localeCompare(right.templateId);
         });
@@ -967,18 +752,17 @@ export async function createServer() {
           queryDigest,
           catalogRevision,
           libraryBindingDigest: bindingDigest,
-          providerIds: input.providerIds,
+          providerIds: parsedInput.providerIds,
           candidates: normalized,
         });
         const state: SearchSessionState = {
-          input,
+          input: parsedInput,
           request,
           candidates: normalized,
           queryDigest,
           catalogRevision,
           libraryBindingDigest: bindingDigest,
-          localMatches: local.length,
-          figureYaMatches: figureYa.length,
+          providerMatches,
           candidateIds: new Set(normalized.map((candidate) => scopedCandidateId(resultSetId, candidate))),
         };
         searchSessions.set(resultSetId, state);
@@ -1001,7 +785,7 @@ export async function createServer() {
           resultSetId,
           state,
           offset: 0,
-          limit: input.limit,
+          limit: parsedInput.limit,
           correlationId,
           invocationSource: "agent",
           toolName: "figure_library_search",
@@ -1153,98 +937,16 @@ export async function createServer() {
         if (exactSelector.providerId !== providerId) {
           throw new Error("providerId does not match exactSelector.providerId");
         }
-        if (providerId === LOCAL_LIBRARY_PROVIDER_ID) {
-          const resolved = await resolveLocalPublished(await currentLibraries(), exactSelector);
-          const { content, release, review } = resolved;
-          const validationState = effectiveValidationState(content);
-          return terminal(
-            outcome("ok", "local_published_described", `Loaded exact Local Published release ${release.releaseId}.`),
-            {
-              providerId,
-              exactSelector,
-              content,
-              release,
-              review,
-              validationState,
-              ...(content.canonicalPreviewDecision
-                ? { canonicalPreviewDecision: content.canonicalPreviewDecision }
-                : {}),
-              materializationProtocolVersion: MATERIALIZATION_PROTOCOL_VERSION,
-              previewConfirmationCapabilities,
-              diagnosticsExportCapabilities,
-            },
-            [
-              `PROVIDER_ID: ${providerId}`,
-              `EXACT_SELECTOR: ${JSON.stringify(exactSelector)}`,
-              `TITLE: ${content.title}`,
-              `ASSET_KIND: ${content.assetKind}`,
-              `LANGUAGE: ${content.language}`,
-              `CODE_STATUS: ${content.codeStatus}`,
-              `PLOT_EXECUTION_STATUS: ${validationState.plotExecution.status}`,
-              `PLOT_EXECUTION_SCOPE: ${validationState.plotExecution.scope}`,
-              `UPSTREAM_WORKFLOW_STATUS: ${validationState.upstreamWorkflow.status}`,
-              `UPSTREAM_WORKFLOW_SCOPE: ${validationState.upstreamWorkflow.scope ?? "unspecified"}`,
-              `SCIENTIFIC_VALIDATION_STATUS: ${validationState.scientificValidation.status}`,
-              `SCIENTIFIC_VALIDATION_SOURCE: ${validationState.scientificValidation.decisionSource ?? "unspecified"}`,
-              `CANONICAL_PREVIEW_DECISION: ${
-                content.canonicalPreviewDecision
-                  ? JSON.stringify(content.canonicalPreviewDecision)
-                  : "legacy_unspecified"
-              }`,
-              `REVIEW_WARNINGS: ${
-                review.warnings.map((warning) => warning.message).join("; ") || "none"
-              }`,
-              `ASSETS: ${content.assets.map((asset) => `${asset.logicalPath}:${asset.sha256}`).join(", ")}`,
-            ],
-          );
-        }
-        if (providerId !== FIGUREYA_PROVIDER_ID) {
-          throw new Error(`unsupported search provider: ${providerId}`);
-        }
-        const moduleId = exactSelector.identity.moduleId;
-        const sourceCommit = exactSelector.identity.sourceCommit;
-        if (typeof moduleId !== "string" || sourceCommit !== index.catalog.figureya.commit) {
-          throw new Error("stale or invalid FigureYa source selector");
-        }
-        const module = index.get(moduleId);
-        if (!module) throw new Error(`unknown FigureYa module: ${moduleId}`);
-        if (exactSelector.kind === "figureya-module.v1") {
-          assertFigureYaExactSelector(exactSelector);
-          assertFigureYaSelectorMatches(
-            exactSelector,
-            index.catalog,
-            module,
-            (exactSelector as FigureYaExactSelector).identity.mode,
-          );
-        } else if (exactSelector.kind === "figureya-source-module.v1") {
-          assertFigureYaSourceSelectorMatches(exactSelector, index.catalog, module);
-        } else {
-          throw new Error(`unsupported FigureYa selector kind: ${exactSelector.kind}`);
-        }
-        const validationState = legacyValidationStateFromExecutionStatus("not_run");
+        const providerContext = await currentProviderContext();
+        const adapter = registry.get(providerId);
+        const resolved = await adapter.resolve(providerContext, exactSelector, "describe");
+        const description = await adapter.describe(providerContext, resolved);
         return terminal(
-          outcome("ok", "figureya_module_described", `Loaded commit-pinned FigureYa metadata for ${moduleId}.`),
+          outcome("ok", description.code, description.summary),
           {
             providerId,
             exactSelector,
-            templateId: module.moduleId,
-            title: module.title,
-            description: module.requirement,
-            application: module.application,
-            dataProfile: module.inputSummary,
-            inputFiles: module.inputFiles,
-            codeFiles: module.codeFiles,
-            packages: module.packages,
-            materializable: module.archiveAvailable,
-            previewAvailable: await index.previewAvailable(module),
-            reviewStatus: "not_reviewed",
-            codeStatus: module.codeFiles.length ? "provided" : "none",
-            executionStatus: "not_run",
-            validationState,
-            upstreamStatus: "published",
-            sourceUrl: module.sourceUrl,
-            reportUrl: module.reportUrl,
-            citation: index.catalog.citation,
+            ...description.detail,
             materializationProtocolVersion: MATERIALIZATION_PROTOCOL_VERSION,
             previewConfirmationCapabilities,
             diagnosticsExportCapabilities,
@@ -1252,17 +954,7 @@ export async function createServer() {
           [
             `PROVIDER_ID: ${providerId}`,
             `EXACT_SELECTOR: ${JSON.stringify(exactSelector)}`,
-            `TITLE: ${module.title}`,
-            "LOCAL_REVIEW_STATUS: not_reviewed",
-            `CODE_STATUS: ${module.codeFiles.length ? "provided" : "none"}`,
-            `PLOT_EXECUTION_STATUS: ${validationState.plotExecution.status}`,
-            `PLOT_EXECUTION_SCOPE: ${validationState.plotExecution.scope}`,
-            `UPSTREAM_WORKFLOW_STATUS: ${validationState.upstreamWorkflow.status}`,
-            `UPSTREAM_WORKFLOW_SCOPE: ${validationState.upstreamWorkflow.scope ?? "unspecified"}`,
-            `SCIENTIFIC_VALIDATION_STATUS: ${validationState.scientificValidation.status}`,
-            `SCIENTIFIC_VALIDATION_SOURCE: ${validationState.scientificValidation.decisionSource ?? "unspecified"}`,
-            `INPUT_FILES: ${module.inputFiles.join(", ") || "none identified"}`,
-            `CODE_FILES: ${module.codeFiles.join(", ") || "none identified"}`,
+            ...description.lines,
           ],
         );
       } catch (error) {
@@ -1290,41 +982,22 @@ export async function createServer() {
         const exactSelector = raw as unknown as ExactTemplateSelector;
         assertExactTemplateSelector(exactSelector);
         if (exactSelector.providerId !== providerId) throw new Error("providerId does not match exactSelector.providerId");
-        let preview:
-          | { bytes: Uint8Array; mimeType: string; extension: string; templateId: string }
-          | undefined;
-        if (providerId === LOCAL_LIBRARY_PROVIDER_ID) {
-          const resolved = await resolveLocalPublished(await currentLibraries(), exactSelector);
-          const loaded = await (await currentLibraries()).versionedLibrary.getPreview(
-            resolved.identity.templateId,
-            {
-              revisionId: resolved.identity.revisionId,
-              contentDigest: resolved.identity.contentDigest,
-            },
-          );
-          if (loaded) preview = { ...loaded, templateId: resolved.identity.templateId };
-        } else if (providerId === FIGUREYA_PROVIDER_ID) {
-          const moduleId = exactSelector.identity.moduleId;
-          if (
-            typeof moduleId !== "string" ||
-            exactSelector.identity.sourceCommit !== index.catalog.figureya.commit
-          ) {
-            throw new Error("stale or invalid FigureYa selector");
-          }
-          const loaded = await index.preview(exactSelector);
-          if (loaded) preview = { ...loaded, templateId: moduleId };
-        } else {
-          throw new Error(`unsupported preview provider: ${providerId}`);
-        }
-        if (!preview) throw new Error("no preview is available for the exact selection");
-        const sha256 = createHash("sha256").update(preview.bytes).digest("hex");
+        const context = await currentLibraries();
+        const preview = await loadProviderPreview({
+          context,
+          index,
+          providerId,
+          exactSelector,
+          registry,
+        });
+        const sha256 = preview.sha256;
         const transport = await prepareTransportImage({
           sourceBytes: preview.bytes,
           sourceMime: preview.mimeType,
           sourceSha256: sha256,
           purpose: "CompatibilityPreview",
           maxDataUrlBytes: singlePreviewBudget(),
-          libraryRoot: (await currentLibraries()).snapshot.root,
+          libraryRoot: context.snapshot.root,
         });
         if (!transport.ok) {
           throw new Error(`preview_unavailable: transport adaptation failed (${transport.reason})`);
@@ -1413,7 +1086,10 @@ export async function createServer() {
     try {
       const context = await currentLibraries();
       const resultSet = previewConfirmations.getResultSet(options.resultSetId);
-      const catalogRevision = await searchCatalogRevision(context, index, resultSet.providerIds);
+      const catalogRevision = await registry.catalogRevision(
+        resultSet.providerIds,
+        createProviderContext(context, index),
+      );
       const bindingDigest = libraryBindingDigest(context);
       previewConfirmations.requireResultSet({
         resultSetId: options.resultSetId,
@@ -1425,6 +1101,7 @@ export async function createServer() {
         index,
         providerId: options.providerId,
         exactSelector: options.exactSelector,
+        registry,
       });
       const transport = await prepareTransportImage({
         sourceBytes: preview.bytes,
@@ -1907,13 +1584,35 @@ export async function createServer() {
       try {
         const context = await currentLibraries();
         const workspace = await workspaceRuntime.current();
-        const [library, marker, legacyFlat, figureYa, writeLock] = await Promise.all([
+        const [library, marker, legacyFlat, providerStatuses, writeLock] = await Promise.all([
           context.versionedLibrary.status(),
           readLibraryRootMarker(context.snapshot.root),
           countLegacyFlat(context.snapshot.root),
-          inspectFigureYaSourcePack(index.catalog, sourcePackDir),
+          registry.status(
+            createProviderContext(context, index, {
+              ...(sourcePackDir ? { sourcePackDir } : {}),
+            }),
+          ),
           inspectLibraryWriteLock(path.join(context.snapshot.root, "locks", "write")),
         ]);
+        const providerStatusById = Object.fromEntries(
+          providerStatuses.map((status) => [status.providerId, status]),
+        );
+        const localStatus = registry.list().find((item) => item.kind === "local-published");
+        const figureYaStatus = registry.list().find((item) => item.kind === "figureya");
+        if (!localStatus || !figureYaStatus) {
+          throw new Error("default provider registry is missing Local Published or FigureYa");
+        }
+        const localProvider = providerStatusById[localStatus.providerId];
+        const figureYaProvider = providerStatusById[figureYaStatus.providerId];
+        const figureYa = figureYaProvider?.details.sourcePack as {
+          configured: boolean;
+          directory: string;
+          manifestValid: boolean;
+          ready: boolean;
+          availableTemplates: string[];
+          invalidTemplates: string[];
+        };
         const structured = {
           serverVersion: VERSION,
           library: {
@@ -1929,19 +1628,8 @@ export async function createServer() {
             legacyFlatCount: legacyFlat,
           },
           providers: {
-            local: {
-              providerId: LOCAL_LIBRARY_PROVIDER_ID,
-              publishedCount: library.publishedCount,
-              workingCount: library.workingCount,
-              ordinarySearchScope: "Published only",
-            },
-            figureYa: {
-              providerId: FIGUREYA_PROVIDER_ID,
-              catalogTemplates: index.catalog.modules.length,
-              sourceCommit: index.catalog.figureya.commit,
-              archiveCommit: index.catalog.compressed.commit,
-              sourcePack: figureYa,
-            },
+            local: localProvider?.details,
+            figureYa: figureYaProvider?.details,
           },
           writeLock,
           workspace: {
@@ -2026,6 +1714,7 @@ export async function createServer() {
   registerMaterializationTools({
     server,
     index,
+    registry,
     currentLibraries,
     previewConfirmations,
     diagnostics,
