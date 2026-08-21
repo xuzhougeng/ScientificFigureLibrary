@@ -1550,18 +1550,18 @@ async function observeMergedArchivePr(runner: GhRunner, number: number): Promise
   if (
     !Number.isSafeInteger(workflow.id) || Number(workflow.id) <= 0 ||
     workflow.name !== ARCHIVE_VALIDATION_WORKFLOW_NAME ||
-    workflow.path !== ARCHIVE_VALIDATION_WORKFLOW_PATH || workflow.state !== "active"
+    workflow.path !== ARCHIVE_VALIDATION_WORKFLOW_PATH
   ) {
-    throw new Error("central Archive validation workflow metadata does not match the exact active trusted policy workflow");
+    throw new Error("central Archive validation workflow metadata does not match the exact trusted policy workflow identity");
   }
   const workflowId = Number(workflow.id);
   let validationRun = "";
   for (let page = 1; page <= 10 && !validationRun; page += 1) {
-    const runs = await ghJson<Record<string, unknown>>(
+    const runs: Record<string, unknown> = await ghJson<Record<string, unknown>>(
       runner,
-      `repos/${CENTRAL_ARCHIVE_REPOSITORY}/actions/workflows/${ARCHIVE_VALIDATION_WORKFLOW_NAME}.yml/runs?event=pull_request_target&status=completed&per_page=100&page=${page}`,
+      `repos/${CENTRAL_ARCHIVE_REPOSITORY}/actions/workflows/${workflowId}/runs?event=pull_request_target&status=completed&head_sha=${head.sha}&per_page=100&page=${page}`,
     );
-    const values = Array.isArray(runs.workflow_runs) ? runs.workflow_runs : [];
+    const values: unknown[] = Array.isArray(runs.workflow_runs) ? runs.workflow_runs : [];
     for (const raw of values) {
       if (!isRecord(raw) || raw.status !== "completed" || raw.conclusion !== "success" || raw.event !== "pull_request_target" ||
         raw.workflow_id !== workflowId || raw.path !== ARCHIVE_VALIDATION_WORKFLOW_PATH ||

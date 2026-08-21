@@ -610,7 +610,14 @@ class MockGhRunner implements GhRunner {
         state: this.validationWorkflowMetadataState,
       });
     }
-    if (endpoint.startsWith(`repos/${CENTRAL_ARCHIVE_REPOSITORY}/actions/workflows/validate-archive-pr.yml/runs?`)) {
+    const workflowRuns = new RegExp(
+      `^repos/${CENTRAL_ARCHIVE_REPOSITORY}/actions/workflows/[^/]+/runs\\?`,
+      "u",
+    ).exec(endpoint);
+    if (workflowRuns) {
+      const matchingPage = Array.from({ length: 10 }, (_, index) => index + 1).find((page) => endpoint ===
+        `repos/${CENTRAL_ARCHIVE_REPOSITORY}/actions/workflows/${String(this.validationWorkflowMetadataId)}/runs?event=pull_request_target&status=completed&head_sha=${this.archiveHeadSha}&per_page=100&page=${page}`);
+      if (matchingPage === undefined) return this.#ok({ workflow_runs: [] });
       const displayTitle = this.validationDisplayTitle === undefined
         ? `sfl-archive-validation-v2 base=${this.archiveBaseSha} head=${this.archiveHeadSha}`
         : this.validationDisplayTitle;
@@ -1113,7 +1120,7 @@ test("Catalog Plan accepts only current-policy Archive CI evidence for the exact
       { name: "invalid workflow metadata ID", accepted: false, mutate(runner) { runner.validationWorkflowMetadataId = 0; }, error: /workflow metadata/u },
       { name: "wrong workflow metadata name", accepted: false, mutate(runner) { runner.validationWorkflowMetadataName = "lookalike-validator"; }, error: /workflow metadata/u },
       { name: "wrong workflow metadata path", accepted: false, mutate(runner) { runner.validationWorkflowMetadataPath = ".github/workflows/lookalike.yml"; }, error: /workflow metadata/u },
-      { name: "inactive workflow metadata", accepted: false, mutate(runner) { runner.validationWorkflowMetadataState = "disabled_manually"; }, error: /workflow metadata/u },
+      { name: "mutable workflow availability state", accepted: true, mutate(runner) { runner.validationWorkflowMetadataState = "disabled_manually"; } },
       { name: "wrong run workflow path", accepted: false, mutate(runner) { runner.validationWorkflowPath = ".github/workflows/lookalike.yml"; } },
       { name: "wrong run head branch", accepted: false, mutate(runner) { runner.validationHeadBranch = "sfl/archive/lookalike"; } },
       { name: "wrong run repository", accepted: false, mutate(runner) { runner.validationRepository = "attacker/archive-fork"; } },
@@ -1151,6 +1158,12 @@ test("Catalog Plan accepts only current-policy Archive CI evidence for the exact
       if (item.accepted) {
         const catalogPlan = await service.plan(request);
         assert.equal(catalogPlan.archive?.validationRun, `https://github.com/${CENTRAL_ARCHIVE_REPOSITORY}/actions/runs/99`);
+        const expectedRunsEndpoint =
+          `repos/${CENTRAL_ARCHIVE_REPOSITORY}/actions/workflows/${String(runner.validationWorkflowMetadataId)}/runs?event=pull_request_target&status=completed&head_sha=${runner.archiveHeadSha}&per_page=100&page=1`;
+        const observedRunsEndpoints = runner.calls
+          .map((args) => args[1])
+          .filter((endpoint) => typeof endpoint === "string" && endpoint.includes("/actions/workflows/") && endpoint.includes("/runs?"));
+        assert.deepEqual(observedRunsEndpoints, [expectedRunsEndpoint], `${item.name}: runs query must use numeric workflow ID and exact head_sha`);
       } else {
         await assert.rejects(() => service.plan(request), item.error ?? /no successful fixed-render CI run/u, item.name);
       }
