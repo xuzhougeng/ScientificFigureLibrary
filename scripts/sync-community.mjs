@@ -385,14 +385,25 @@ async function readTrackedBytes(source, commit, inventory, relative, maximum, la
   const stat = await fs.lstat(absolute);
   assert(stat.isFile() && !stat.isSymbolicLink(), `${label} must be a regular file`);
   assert(stat.size > 0 && stat.size <= maximum, `${label} has an invalid byte length`);
-  const worktreeBytes = new Uint8Array(await fs.readFile(absolute));
-  const committedBytes = await gitBytes(source, ["show", `${commit}:${safe}`], maximum, runner);
+  // A clean checkout may legitimately contain CRLF worktree bytes while the
+  // committed blob contains LF bytes (for example with core.autocrlf=true).
+  // Ask Git to apply the path's clean/EOL filters, then bind that normalized
+  // identity to the exact tree entry instead of comparing raw worktree bytes.
+  const normalizedObjectId = (await git(
+    source,
+    ["hash-object", `--path=${safe}`, "--", absolute],
+    runner,
+  )).trim().toLocaleLowerCase("en-US");
   assert(
-    worktreeBytes.byteLength === committedBytes.byteLength &&
-      Buffer.from(worktreeBytes).equals(Buffer.from(committedBytes)),
-    `${label} bytes differ from the exact Community commit: ${safe}`,
+    normalizedObjectId === tracked.objectId,
+    `${label} normalized Git identity differs from the exact Community commit: ${safe}`,
   );
-  return worktreeBytes;
+
+  // Parse and vendor the immutable committed bytes. Never let checkout EOL or
+  // other smudge conversions change the bundled Community snapshot.
+  const committedBytes = await gitBytes(source, ["show", `${commit}:${safe}`], maximum, runner);
+  assert(committedBytes.byteLength > 0, `${label} has an invalid committed byte length`);
+  return committedBytes;
 }
 
 async function readTrackedJson(source, commit, inventory, relative, maximum, label, runner) {

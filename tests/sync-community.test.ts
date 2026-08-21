@@ -405,7 +405,7 @@ test("syncCommunitySnapshot rejects dirty tracked vendored input without replaci
   await assertTargetUnchanged(target);
 });
 
-test("syncCommunitySnapshot compares worktree bytes with the exact commit even when Git status is suppressed", async (t) => {
+test("syncCommunitySnapshot compares normalized worktree identity with the exact commit even when Git status is suppressed", async (t) => {
   const temporary = await fs.mkdtemp(path.join(os.tmpdir(), "sfl-community-sync-hidden-dirty-"));
   t.after(() => fs.rm(temporary, { recursive: true, force: true }));
   const fixture = await createCommunityFixture(temporary);
@@ -416,9 +416,53 @@ test("syncCommunitySnapshot compares worktree bytes with the exact commit even w
 
   await assert.rejects(
     syncCommunitySnapshot(syncFixtureOptions(fixture, { target })),
-    /Community catalog bytes differ from the exact Community commit/u,
+    /Community catalog normalized Git identity differs from the exact Community commit/u,
   );
   await assertTargetUnchanged(target);
+});
+
+test("syncCommunitySnapshot accepts a clean core.autocrlf CRLF checkout and vendors committed LF bytes", async (t) => {
+  const temporary = await fs.mkdtemp(path.join(os.tmpdir(), "sfl-community-sync-autocrlf-"));
+  t.after(() => fs.rm(temporary, { recursive: true, force: true }));
+  const fixture = await createCommunityFixture(temporary);
+  const target = path.join(temporary, "output", "community");
+  const relative = "catalog/catalog.json";
+  const absolute = path.join(fixture.repository, ...relative.split("/"));
+  const { stdout: committedOutput } = await execFile(
+    "git",
+    ["-C", fixture.repository, "show", `${fixture.commit}:${relative}`],
+    { encoding: null, windowsHide: true, timeout: 30_000 },
+  );
+  const committedBytes = Buffer.isBuffer(committedOutput)
+    ? committedOutput
+    : Buffer.from(committedOutput);
+  assert.equal(committedBytes.includes(Buffer.from("\r\n")), false);
+
+  await git(fixture.repository, "config", "core.autocrlf", "true");
+  // Re-check out the committed tree so Git writes the CRLF representation and
+  // refreshes its index stat data exactly as it does for a normal clean clone.
+  await fs.rm(absolute);
+  await git(fixture.repository, "reset", "--hard", fixture.commit);
+  const crlfBytes = await fs.readFile(absolute);
+  assert.equal(crlfBytes.includes(Buffer.from("\r\n")), true);
+  assert.notDeepEqual(crlfBytes, committedBytes);
+  assert.equal(
+    await git(
+      fixture.repository,
+      "status",
+      "--porcelain=v1",
+      "--",
+      relative,
+    ),
+    "",
+    "the CRLF worktree representation must remain clean under core.autocrlf=true",
+  );
+
+  await syncCommunitySnapshot(syncFixtureOptions(fixture, { target }));
+
+  const vendoredBytes = await fs.readFile(path.join(target, "catalog.json"));
+  assert.deepEqual(vendoredBytes, committedBytes);
+  assert.notDeepEqual(vendoredBytes, crlfBytes);
 });
 
 test("syncCommunitySnapshot rejects an exact commit mismatch without replacing target", async (t) => {
