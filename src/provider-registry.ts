@@ -45,6 +45,8 @@ export interface ProviderDescriptor {
   kind: "local-published" | "figureya" | "public-catalog";
   defaultSearchOrder: number;
   bundled: boolean;
+  enabled?: boolean;
+  includeInDefaultSearch?: boolean;
 }
 
 export interface ProviderContext {
@@ -69,11 +71,19 @@ export interface ResolvedProviderTemplate {
         release: TemplateReleaseV1;
         review: ReviewSnapshotV1;
       }
-    | { kind: "figureya"; module: FigureYaModule };
+    | { kind: "figureya"; module: FigureYaModule }
+    | {
+      kind: "public-catalog";
+        entry: unknown;
+        catalogSha256: string;
+      };
 }
 
 export interface ProviderDescription {
-  code: "local_published_described" | "figureya_module_described";
+  code:
+    | "local_published_described"
+    | "figureya_module_described"
+    | "public_template_described";
   summary: string;
   detail: Record<string, unknown>;
   lines: string[];
@@ -112,7 +122,7 @@ export interface ProviderMaterializedBinding {
 export interface ProviderStatus {
   providerId: string;
   sourceLabel: string;
-  health: "ready" | "degraded";
+  health: "ready" | "degraded" | "corrupt";
   details: Record<string, unknown>;
 }
 
@@ -156,6 +166,10 @@ export interface ProviderRegistry {
   defaultProviderIds(): string[];
   catalogRevision(providerIds: string[], context: ProviderContext): Promise<string>;
   status(context: ProviderContext): Promise<ProviderStatus[]>;
+}
+
+export interface MutableProviderRegistry extends ProviderRegistry {
+  replaceProviders(providerIdsToRemove: Iterable<string>, adapters: ProviderAdapter[]): void;
 }
 
 const DISPLAY_MIME_TYPES = new Set(["image/png", "image/jpeg", "image/webp"]);
@@ -526,7 +540,7 @@ export class FigureYaProviderAdapter implements ProviderAdapter {
     providerId: FIGUREYA_PROVIDER_ID,
     sourceLabel: "FigureYa",
     kind: "figureya",
-    defaultSearchOrder: 1,
+    defaultSearchOrder: 20,
     bundled: true,
   };
 
@@ -754,11 +768,129 @@ async function completePreview(
   };
 }
 
+/**
+ * Keeps a configured Provider addressable when its immutable local snapshot is
+ * corrupt. Default multi-provider search can report and skip this adapter,
+ * while an explicit request for only this Provider fails instead of looking
+ * like an honest zero-result search.
+ */
+export class UnavailableProviderAdapter implements ProviderAdapter {
+  readonly descriptor: ProviderDescriptor;
+  readonly errorCode: string;
+  readonly safeMessage: string;
+
+  constructor(options: {
+    providerId: string;
+    sourceLabel: string;
+    enabled: boolean;
+    includeInDefaultSearch: boolean;
+    errorCode?: string;
+    safeMessage: string;
+  }) {
+    this.descriptor = {
+      providerId: options.providerId,
+      sourceLabel: options.sourceLabel,
+      kind: "public-catalog",
+      defaultSearchOrder: 100,
+      bundled: false,
+      enabled: options.enabled,
+      includeInDefaultSearch: options.includeInDefaultSearch,
+    };
+    this.errorCode = options.errorCode ?? "provider_snapshot_corrupt";
+    this.safeMessage = options.safeMessage;
+  }
+
+  #failure(): never {
+    throw new Error(`${this.errorCode}: ${this.safeMessage}`);
+  }
+
+  assertSelector(selector: ExactTemplateSelector) {
+    assertExactTemplateSelector(selector);
+    if (selector.providerId !== this.descriptor.providerId) {
+      throw new Error("selector providerId differs from the unavailable Provider");
+    }
+  }
+
+  async revision(_context: ProviderContext) {
+    return {
+      providerId: this.descriptor.providerId,
+      unavailable: true,
+      errorCode: this.errorCode,
+    };
+  }
+
+  async search(_context: ProviderContext, _request: SearchRequest): Promise<TemplateCandidate[]> {
+    return this.#failure();
+  }
+
+  async resolve(
+    _context: ProviderContext,
+    _selector: ExactTemplateSelector,
+    _purpose: "describe" | "preview" | "materialize" | "replay",
+  ): Promise<ResolvedProviderTemplate> {
+    return this.#failure();
+  }
+
+  async describe(
+    _context: ProviderContext,
+    _resolved: ResolvedProviderTemplate,
+  ): Promise<ProviderDescription> {
+    return this.#failure();
+  }
+
+  async loadPreview(
+    _context: ProviderContext,
+    _resolved: ResolvedProviderTemplate,
+  ): Promise<LoadedProviderPreview> {
+    return this.#failure();
+  }
+
+  async stageMaterialization(
+    _context: ProviderContext,
+    _resolved: ResolvedProviderTemplate,
+    _stagingDirectory: string,
+    _allowNetwork: boolean,
+  ): Promise<VerifiedProviderPayload> {
+    return this.#failure();
+  }
+
+  async verifyMaterialized(
+    _context: ProviderContext,
+    _binding: ProviderMaterializedBinding,
+  ): Promise<void> {
+    return this.#failure();
+  }
+
+  async status(_context: ProviderContext): Promise<ProviderStatus> {
+    return {
+      providerId: this.descriptor.providerId,
+      sourceLabel: this.descriptor.sourceLabel,
+      health: "corrupt",
+      details: {
+        providerId: this.descriptor.providerId,
+        errorCode: this.errorCode,
+        safeMessage: this.safeMessage,
+        startupNetworkAccess: false,
+        searchNetworkAccess: false,
+      },
+    };
+  }
+}
+
 export class DefaultProviderRegistry implements ProviderRegistry {
   readonly #adapters: Map<string, ProviderAdapter>;
 
   constructor(adapters: ProviderAdapter[]) {
     this.#adapters = new Map();
+    for (const adapter of adapters) {
+      const { providerId } = adapter.descriptor;
+      if (this.#adapters.has(providerId)) throw new Error(`duplicate providerId: ${providerId}`);
+      this.#adapters.set(providerId, adapter);
+    }
+  }
+
+  replaceProviders(providerIdsToRemove: Iterable<string>, adapters: ProviderAdapter[]) {
+    for (const providerId of providerIdsToRemove) this.#adapters.delete(providerId);
     for (const adapter of adapters) {
       const { providerId } = adapter.descriptor;
       if (this.#adapters.has(providerId)) throw new Error(`duplicate providerId: ${providerId}`);
@@ -783,25 +915,28 @@ export class DefaultProviderRegistry implements ProviderRegistry {
   }
 
   defaultProviderIds() {
-    return this.list().map((descriptor) => descriptor.providerId);
+    return this.list()
+      .filter(
+        (descriptor) =>
+          descriptor.enabled !== false && descriptor.includeInDefaultSearch !== false,
+      )
+      .map((descriptor) => descriptor.providerId);
   }
 
   async catalogRevision(providerIds: string[], context: ProviderContext) {
     const unique = [...new Set(providerIds)].sort();
-    unique.forEach((providerId) => this.get(providerId));
-    const local = unique.includes(LOCAL_LIBRARY_PROVIDER_ID)
-      ? await this.get(LOCAL_LIBRARY_PROVIDER_ID).revision(context)
-      : [];
-    const figureYa = unique.includes(FIGUREYA_PROVIDER_ID)
-      ? await this.get(FIGUREYA_PROVIDER_ID).revision(context)
-      : null;
+    const revisions = await Promise.all(
+      unique.map(async (providerId) => ({
+        providerId,
+        revision: await this.get(providerId).revision(context),
+      })),
+    );
     return providerSha256(
       canonicalJson({
         schema: "figure-library.search-catalog-revision.v1",
         providers: unique,
         libraryBinding: providerLibraryBindingDigest(context.library),
-        local,
-        figureYa,
+        revisions,
       }),
     );
   }

@@ -20,6 +20,10 @@ import {
   createProviderContext,
   type ProviderRegistry,
 } from "./provider-registry.ts";
+import {
+  PUBLIC_TEMPLATE_LOCK_SCHEMA,
+  assertPublicTemplateSelector,
+} from "./public-catalog-provider.ts";
 import type { CurrentLibraryContext, ToolOutcomeEnvelope } from "./library-binding-tools.ts";
 import {
   PreviewConfirmationStore,
@@ -567,7 +571,7 @@ function validateReceiptValue(
     if (value.archiveSha256 !== undefined) {
       throw new Error("Local Published receipt must not contain a FigureYa archive digest");
     }
-  } else {
+  } else if (value.providerId === FIGUREYA_PROVIDER_ID) {
     assertFigureYaExactSelector(value.plannedSelector);
     assertFigureYaExactSelector(value.exactSelector);
     if (
@@ -575,6 +579,12 @@ function validateReceiptValue(
       value.archiveSha256 !== value.exactSelector.identity.archive.digest
     ) {
       throw new Error("FigureYa receipt archive digest does not match its resolved selector");
+    }
+  } else {
+    assertPublicTemplateSelector(value.plannedSelector);
+    assertPublicTemplateSelector(value.exactSelector);
+    if (value.archiveSha256 !== value.exactSelector.identity.archive.sha256) {
+      throw new Error("public Provider receipt archive digest does not match its exact selector");
     }
   }
   const fileInventory = validateInventory(
@@ -735,6 +745,25 @@ async function inspectTargetBinding(input: {
         lock.archiveBytes !== exactSelector.identity.archive.bytes
       ) {
         throw new Error("FigureYa lock archive identity does not match its resolved selector");
+      }
+      lockOperationId = lock.operation.operationId;
+      lockPlanDigest = lock.operation.planDigest;
+    } else if (lock.schema === PUBLIC_TEMPLATE_LOCK_SCHEMA) {
+      if (!isRecord(lock.operation)) throw new Error("public Provider operation binding is missing");
+      exactSelector = lock.exactSelector as ExactTemplateSelector;
+      plannedSelector = lock.plannedSelector as ExactTemplateSelector;
+      registry.get(input.providerId).assertSelector(exactSelector, "replay");
+      registry.get(input.providerId).assertSelector(plannedSelector, "replay");
+      assertPublicTemplateSelector(exactSelector);
+      assertPublicTemplateSelector(plannedSelector);
+      if (
+        exactSelector.providerId !== input.providerId ||
+        plannedSelector.providerId !== input.providerId ||
+        !isRecord(lock.archive) ||
+        lock.archive.sha256 !== exactSelector.identity.archive.sha256 ||
+        lock.archive.bytes !== exactSelector.identity.archive.bytes
+      ) {
+        throw new Error("public Provider lock archive identity does not match its exact selector");
       }
       lockOperationId = lock.operation.operationId;
       lockPlanDigest = lock.operation.planDigest;
@@ -964,6 +993,9 @@ async function durableReplay(input: {
         if (binding.exactSelector.identity.archive.algorithm === "sha256") {
           archiveSha256 = binding.exactSelector.identity.archive.digest;
         }
+      } else if (input.expectedProviderId !== LOCAL_LIBRARY_PROVIDER_ID) {
+        assertPublicTemplateSelector(binding.exactSelector);
+        archiveSha256 = binding.exactSelector.identity.archive.sha256;
       }
       const recoveredReceipt = await writeAuthoritativeReceipt({
         context: input.context,

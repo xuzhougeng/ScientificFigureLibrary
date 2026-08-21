@@ -1,0 +1,11 @@
+{
+  "schema": "figure-library.public-provider-catalog.v1",
+  "provider": {
+    "providerId": "io.github.jarxunlai.scientific-figure-community",
+    "displayName": "Scientific Figure Library Community",
+    "catalogRepository": "jarxunlai/ScientificFigureLibrary-community",
+    "archiveRepository": "jarxunlai/ScientificFigureLibrary-community-archives"
+  },
+  "generatedAt": "2026-08-21T00:00:00.000Z",
+  "entries": []
+}
