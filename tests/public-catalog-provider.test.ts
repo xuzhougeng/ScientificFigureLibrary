@@ -516,12 +516,56 @@ function context(operation = false) {
   } as ProviderContext;
 }
 
-test("bundled bootstrap Community snapshot is offline, pinned, and empty", async () => {
+test("bundled final Community snapshot is pinned and serves search/preview offline", async () => {
   const snapshot = await loadBundledCommunitySnapshot();
   assert.equal(snapshot.catalog.provider.providerId, COMMUNITY_PROVIDER_ID);
   assert.equal(snapshot.trust, "bundled");
-  assert.equal(snapshot.revision, "be1080c4c637dbf0f3580abbbd145fd03e2491c4");
-  assert.equal(snapshot.catalog.entries.length, 0);
+  assert.equal(snapshot.revision, "a21d3ad5612a723621fc4581735032c95b39a949");
+  const expectedReleases = [
+    {
+      templateId: "ggsankeyfier-layout-color-combo",
+      releaseVersion: "1.0.0",
+      archiveCommit: "0d535e42c5abb1114f90ad10439d0d505138eb39",
+    },
+    {
+      templateId: "single-cell-enrichment-bar-pathway-genes",
+      releaseVersion: "1.0.0",
+      archiveCommit: "acdb41904a13425ae3c638f3658c1955b7998032",
+    },
+    {
+      templateId: "umap-unchull-main-type-circles",
+      releaseVersion: "1.0.0",
+      archiveCommit: "30d45429419f68166cb9cfa3310dc8c03b2f1e72",
+    },
+  ];
+  assert.deepEqual(
+    snapshot.catalog.entries.map((entry) => ({
+      templateId: entry.templateId,
+      releaseVersion: entry.releaseVersion,
+      archiveCommit: entry.archive.commit,
+    })),
+    expectedReleases,
+  );
+
+  let networkCalls = 0;
+  const adapter = new PublicCatalogProviderAdapter({
+    snapshot,
+    archiveFetcher: async () => {
+      networkCalls += 1;
+      throw new Error("network was unexpectedly used");
+    },
+  });
+  for (const expected of expectedReleases) {
+    const candidates = await adapter.search(context(), { query: expected.templateId });
+    const candidate = candidates.find((item) => item.templateId === expected.templateId);
+    assert.ok(candidate, `${expected.templateId} was not returned by bundled search`);
+    const resolved = await adapter.resolve(context(), candidate.exactSelector, "preview");
+    const preview = await adapter.loadPreview(context(), resolved);
+    assert.equal(preview.templateId, expected.templateId);
+    assert.ok(preview.byteLength > 0);
+    assert.equal(preview.mimeType, "image/png");
+  }
+  assert.equal(networkCalls, 0);
 });
 
 test("one PublicCatalogProviderAdapter class serves bundled and signed snapshots without search network", async () => {
