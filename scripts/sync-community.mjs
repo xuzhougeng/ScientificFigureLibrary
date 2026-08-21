@@ -3,6 +3,7 @@
 import { execFile as execFileCallback } from "node:child_process";
 import { createHash, randomUUID } from "node:crypto";
 import fs from "node:fs/promises";
+import os from "node:os";
 import path from "node:path";
 import process from "node:process";
 import { promisify } from "node:util";
@@ -15,6 +16,7 @@ const execFile = promisify(execFileCallback);
 const root = path.resolve(import.meta.dirname, "..");
 const PROVIDER_ID = "io.github.jarxunlai.scientific-figure-community";
 const CATALOG_REPOSITORY = "jarxunlai/ScientificFigureLibrary-community";
+const CATALOG_REPOSITORY_HTTPS = "https://github.com/jarxunlai/ScientificFigureLibrary-community.git";
 const ARCHIVE_REPOSITORY = "jarxunlai/ScientificFigureLibrary-community-archives";
 const HASH = /^[a-f0-9]{64}$/u;
 const COMMIT = /^[a-f0-9]{40}$/u;
@@ -119,6 +121,12 @@ function assertPortableRelativePath(value, label) {
   return value;
 }
 
+function licenseTextPath(value, label) {
+  const identifier = nonEmptyString(value, label, 100);
+  assert(!identifier.includes("/"), `${label} must be one portable license identifier`);
+  return assertPortableRelativePath(`LICENSES/${identifier}.txt`, `${label} license text path`);
+}
+
 function parseJsonBytes(bytes, maximum, label) {
   assert(bytes.byteLength > 0 && bytes.byteLength <= maximum, `${label} has an invalid byte length`);
   assert(!(bytes[0] === 0xef && bytes[1] === 0xbb && bytes[2] === 0xbf), `${label} must not have a UTF-8 BOM`);
@@ -166,6 +174,161 @@ async function gitBytes(source, args, maximum, runner = execFile) {
   const bytes = Buffer.isBuffer(stdout) ? stdout : Buffer.from(stdout);
   assert(bytes.byteLength <= maximum, `git returned more than ${maximum} bytes`);
   return new Uint8Array(bytes);
+}
+
+function isolatedGitEnvironment() {
+  const environment = { ...process.env };
+  // The provenance fetch must not inherit URL rewrites, alternate object stores,
+  // repository discovery, or credential-interactive behavior from the caller.
+  for (const key of Object.keys(environment)) {
+    if (key.startsWith("GIT_")) delete environment[key];
+  }
+  environment.GIT_CONFIG_NOSYSTEM = "1";
+  environment.GIT_CONFIG_GLOBAL = process.platform === "win32" ? "NUL" : "/dev/null";
+  environment.GIT_TERMINAL_PROMPT = "0";
+  return environment;
+}
+
+async function runIsolatedGit(repository, args, runner, encoding = "utf8", maximum = MAX_GIT_TEXT_BYTES) {
+  const { stdout } = await runner(
+    "git",
+    [
+      "-c",
+      "protocol.allow=never",
+      "-c",
+      "protocol.https.allow=always",
+      "-C",
+      repository,
+      ...args,
+    ],
+    {
+      encoding,
+      windowsHide: true,
+      timeout: 60_000,
+      maxBuffer: maximum + (encoding === null ? 1024 : 0),
+      env: isolatedGitEnvironment(),
+    },
+  );
+  return stdout;
+}
+
+async function fetchCentralMainSnapshot(expectedCommit, runner) {
+  const temporary = await fs.mkdtemp(path.join(os.tmpdir(), "sfl-community-origin-"));
+  let primaryError;
+  try {
+    await runner("git", ["init", "--bare", temporary], {
+      encoding: "utf8",
+      windowsHide: true,
+      timeout: 30_000,
+      maxBuffer: MAX_GIT_TEXT_BYTES,
+      env: isolatedGitEnvironment(),
+    });
+    const fetchedRef = "refs/sfl-community-sync/fresh-main";
+    await runIsolatedGit(
+      temporary,
+      [
+        "fetch",
+        "--no-tags",
+        "--force",
+        "--depth=1",
+        CATALOG_REPOSITORY_HTTPS,
+        `refs/heads/main:${fetchedRef}`,
+      ],
+      runner,
+    );
+    const fetched = (await runIsolatedGit(
+      temporary,
+      ["rev-parse", "--verify", `${fetchedRef}^{commit}`],
+      runner,
+    )).trim().toLocaleLowerCase("en-US");
+    assert(COMMIT.test(fetched), "freshly fetched central main did not resolve to an exact commit");
+    assert(
+      fetched === expectedCommit,
+      `Community sync commit ${expectedCommit} is not the freshly fetched central main ${fetched}`,
+    );
+    const inventoryOutput = await runIsolatedGit(
+      temporary,
+      ["ls-tree", "-r", "-z", "--full-tree", fetched, "--", "catalog", "thumbs", "LICENSES"],
+      runner,
+    );
+    const inventory = new Map();
+    for (const record of inventoryOutput.split("\0")) {
+      if (!record) continue;
+      const match = /^([0-9]{6}) ([^ ]+) ([a-f0-9]+)\t([\s\S]+)$/u.exec(record);
+      assert(match, "freshly fetched central main returned malformed tracked inventory");
+      const [, mode, type, objectId, rawPath] = match;
+      const relative = assertPortableRelativePath(rawPath, "freshly fetched Community tracked path");
+      assert(type === "blob" && (mode === "100644" || mode === "100755"), `freshly fetched central main contains a non-regular input: ${relative}`);
+      assert(!inventory.has(relative), `freshly fetched central main contains a duplicate path: ${relative}`);
+      inventory.set(relative, { objectId, mode });
+    }
+    async function read(relative, maximum) {
+      const tracked = inventory.get(relative);
+      assert(tracked, `freshly fetched central main does not track ${relative}`);
+      const stdout = await runIsolatedGit(
+        temporary,
+        ["show", `${fetched}:${relative}`],
+        runner,
+        null,
+        maximum,
+      );
+      const bytes = Buffer.isBuffer(stdout) ? stdout : Buffer.from(stdout);
+      assert(bytes.byteLength <= maximum, `freshly fetched ${relative} exceeds ${maximum} bytes`);
+      return new Uint8Array(bytes);
+    }
+    const criticalBytes = new Map();
+    for (const relative of ["catalog/catalog.json", "catalog/preview-manifest.json"]) {
+      criticalBytes.set(relative, await read(relative, MAX_CATALOG_BYTES));
+    }
+    return { commit: fetched, inventory, criticalBytes };
+  } catch (error) {
+    primaryError = error;
+    throw error;
+  } finally {
+    try {
+      await fs.rm(temporary, { recursive: true, force: true });
+    } catch (cleanupError) {
+      if (primaryError) {
+        throw new AggregateError(
+          [primaryError, cleanupError],
+          `central provenance fetch failed and its temporary repository could not be removed: ${temporary}`,
+          { cause: primaryError },
+        );
+      }
+      throw cleanupError;
+    }
+  }
+}
+
+async function assertCommitMatchesFetchedCentral(source, commit, localInventory, runner) {
+  const fetched = await fetchCentralMainSnapshot(commit, runner);
+  const localPaths = [...localInventory.keys()].sort();
+  const fetchedPaths = [...fetched.inventory.keys()].sort();
+  assert(
+    canonical(localPaths) === canonical(fetchedPaths),
+    "Community checkout inventory differs from the freshly fetched central main",
+  );
+  for (const relative of localPaths) {
+    const local = localInventory.get(relative);
+    const remote = fetched.inventory.get(relative);
+    assert(
+      local.mode === remote.mode && local.objectId === remote.objectId,
+      `Community checkout object differs from the freshly fetched central main: ${relative}`,
+    );
+  }
+  // Bind the most security-sensitive aggregate metadata bytes independently of
+  // Git object identifiers, so a malicious local object database cannot assert
+  // a chosen hash without also matching the bytes obtained from central HTTPS.
+  for (const relative of ["catalog/catalog.json", "catalog/preview-manifest.json"]) {
+    const maximum = MAX_CATALOG_BYTES;
+    const centralBytes = fetched.criticalBytes.get(relative);
+    assert(centralBytes, `freshly fetched central main did not retain ${relative}`);
+    const localBytes = await gitBytes(source, ["show", `${commit}:${relative}`], maximum, runner);
+    assert(
+      Buffer.from(localBytes).equals(Buffer.from(centralBytes)),
+      `Community checkout bytes differ from the freshly fetched central main: ${relative}`,
+    );
+  }
 }
 
 async function loadCommitInventory(source, commit, runner) {
@@ -284,6 +447,10 @@ export async function syncCommunitySnapshot(options) {
   const expectedCommit = options.commit.toLocaleLowerCase("en-US");
   const target = path.resolve(options.target ?? path.join(root, "assets", "community"));
   const runner = options.execFile ?? execFile;
+  const fileOperations = {
+    rename: options.fileOperations?.rename ?? fs.rename,
+    remove: options.fileOperations?.remove ?? fs.rm,
+  };
   assert(COMMIT.test(expectedCommit), "Community sync commit must be an exact 40-hex commit");
   assert(path.dirname(target) !== target, "Community sync target must not be a filesystem root");
   assert(!pathsOverlap(source, target) && !pathsOverlap(target, source), "Community source and target must be separate directory trees");
@@ -298,6 +465,7 @@ export async function syncCommunitySnapshot(options) {
   );
   await assertVendoredInputsClean(source, runner);
   const inventory = await loadCommitInventory(source, expectedCommit, runner);
+  await assertCommitMatchesFetchedCentral(source, expectedCommit, inventory, runner);
   await assertWorktreeInventoryMatches(source, inventory);
   const usedTrackedPaths = new Set(["catalog/catalog.json", "catalog/preview-manifest.json"]);
   const { bytes: catalogBytes, value: catalog } = await readTrackedJson(
@@ -342,6 +510,10 @@ export async function syncCommunitySnapshot(options) {
 
   const expectedPreviews = [];
   const previewFiles = [];
+  const requiredLicensePaths = new Set([
+    "LICENSES/CC-BY-4.0.txt",
+    "LICENSES/MIT.txt",
+  ]);
   let priorIdentity = "";
   let previewPackBytes = 0;
   for (const [index, entry] of catalog.entries.entries()) {
@@ -419,9 +591,9 @@ export async function syncCommunitySnapshot(options) {
     assert(entry.status.plotExecutionByRecipient === "not_run", `${identity} cannot claim recipient execution`);
 
     assertExactKeys(entry.licenses, ["code", "content", "documentation"], [], `${identity}.licenses`);
-    nonEmptyString(entry.licenses.code, `${entryLabel}.licenses.code`, 100);
-    nonEmptyString(entry.licenses.content, `${entryLabel}.licenses.content`, 100);
-    nonEmptyString(entry.licenses.documentation, `${entryLabel}.licenses.documentation`, 100);
+    requiredLicensePaths.add(licenseTextPath(entry.licenses.code, `${entryLabel}.licenses.code`));
+    requiredLicensePaths.add(licenseTextPath(entry.licenses.content, `${entryLabel}.licenses.content`));
+    requiredLicensePaths.add(licenseTextPath(entry.licenses.documentation, `${entryLabel}.licenses.documentation`));
 
     const standalonePath = `catalog/entries/${entry.templateId}/${entry.releaseVersion}.json`;
     usedTrackedPaths.add(standalonePath);
@@ -468,7 +640,11 @@ export async function syncCommunitySnapshot(options) {
   );
 
   const licensePaths = [...inventory.keys()].filter((relative) => relative.startsWith("LICENSES/")).sort();
-  assert(licensePaths.length > 0, "Community snapshot contains no license texts");
+  const missingLicensePaths = [...requiredLicensePaths].filter((relative) => !inventory.has(relative)).sort();
+  assert(
+    missingLicensePaths.length === 0,
+    `Community snapshot is missing required tracked license texts: ${missingLicensePaths.join(", ")}`,
+  );
   const licenseFiles = [];
   for (const relative of licensePaths) {
     licenseFiles.push({
@@ -507,28 +683,69 @@ export async function syncCommunitySnapshot(options) {
     await write("source.lock.json", Buffer.from(`${JSON.stringify(sourceLock, null, 2)}\n`, "utf8"));
 
     let movedOld = false;
+    const warnings = [];
     try {
-      await fs.rename(target, backup);
+      await fileOperations.rename(target, backup);
       movedOld = true;
     } catch (error) {
       if (error?.code !== "ENOENT") throw error;
     }
     try {
-      await fs.rename(staging, target);
-    } catch (error) {
-      if (movedOld) await fs.rename(backup, target).catch(() => undefined);
-      throw error;
+      await fileOperations.rename(staging, target);
+    } catch (switchError) {
+      if (movedOld) {
+        try {
+          await fileOperations.rename(backup, target);
+          movedOld = false;
+        } catch (restoreError) {
+          const compound = new AggregateError(
+            [switchError, restoreError],
+            `Community snapshot activation failed and rollback also failed; ` +
+              `the prior snapshot remains at ${backup} and the candidate remains at ${staging}`,
+            { cause: switchError },
+          );
+          compound.code = "community_sync_restore_failed";
+          compound.target = target;
+          compound.backup = backup;
+          compound.staging = staging;
+          throw compound;
+        }
+      }
+      throw switchError;
     }
-    if (movedOld) await fs.rm(backup, { recursive: true, force: true }).catch(() => undefined);
+    if (movedOld) {
+      try {
+        await fileOperations.remove(backup, { recursive: true, force: true });
+      } catch (cleanupError) {
+        warnings.push({
+          code: "community_sync_backup_cleanup_failed",
+          path: backup,
+          message: cleanupError instanceof Error ? cleanupError.message : String(cleanupError),
+        });
+      }
+    }
     return {
       target,
       releases: catalog.entries.length,
       commit: expectedCommit,
       catalogSha256: sha256(catalogBytes),
       previewManifestSha256: sha256(previewManifestBytes),
+      warnings,
     };
   } catch (error) {
-    await fs.rm(staging, { recursive: true, force: true }).catch(() => undefined);
+    if (error?.code === "community_sync_restore_failed") throw error;
+    try {
+      await fileOperations.remove(staging, { recursive: true, force: true });
+    } catch (cleanupError) {
+      const compound = new AggregateError(
+        [error, cleanupError],
+        `Community sync failed and staging cleanup also failed; recoverable staging remains at ${staging}`,
+        { cause: error },
+      );
+      compound.code = "community_sync_staging_cleanup_failed";
+      compound.staging = staging;
+      throw compound;
+    }
     throw error;
   }
 }
@@ -551,6 +768,9 @@ export async function main(argv = process.argv.slice(2)) {
     `synced ${result.releases} Community releases from ${CATALOG_REPOSITORY}@${result.commit}\n` +
       `catalog sha256 ${result.catalogSha256}\npreview manifest sha256 ${result.previewManifestSha256}\n`,
   );
+  for (const warning of result.warnings) {
+    process.stderr.write(`warning ${warning.code}: ${warning.message}; retained at ${warning.path}\n`);
+  }
 }
 
 const invokedPath = process.argv[1] ? path.resolve(process.argv[1]) : undefined;

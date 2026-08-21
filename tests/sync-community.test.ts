@@ -16,12 +16,20 @@ const execFile = promisify(execFileCallback);
 const CENTRAL_ORIGIN = "https://github.com/jarxunlai/ScientificFigureLibrary-community.git";
 const PROVIDER_ID = "io.github.jarxunlai.scientific-figure-community";
 
+type ExecFileRunner = (
+  executable: string,
+  args: readonly string[],
+  options: Record<string, unknown>,
+) => Promise<{ stdout: string | Buffer; stderr?: string | Buffer }>;
+
 type FixtureOptions = {
   entry?: boolean;
   badPreviewDigest?: boolean;
   badPreviewInventory?: boolean;
   malformedSearch?: boolean;
   malformedProvenance?: boolean;
+  missingMitLicense?: boolean;
+  contentLicense?: string;
   releaseVersion?: string;
 };
 
@@ -125,7 +133,7 @@ async function createCommunityFixture(root: string, options: FixtureOptions = {}
       },
       licenses: {
         code: "MIT",
-        content: "CC-BY-4.0",
+        content: options.contentLicense ?? "CC-BY-4.0",
         documentation: "CC-BY-4.0",
       },
       ...(options.malformedProvenance ? { provenance: ["not-an-object"] } : {}),
@@ -150,9 +158,62 @@ async function createCommunityFixture(root: string, options: FixtureOptions = {}
   await fs.writeFile(path.join(repository, "thumbs", ".gitkeep"), "", "utf8");
   await fs.mkdir(path.join(repository, "LICENSES"), { recursive: true });
   await fs.writeFile(path.join(repository, "LICENSES", "CC-BY-4.0.txt"), "CC BY 4.0 fixture\n", "utf8");
+  if (!options.missingMitLicense) {
+    await fs.writeFile(path.join(repository, "LICENSES", "MIT.txt"), "MIT fixture\n", "utf8");
+  }
   await git(repository, "add", "--all");
   await git(repository, "commit", "-m", "test: add Community fixture");
   return { repository, commit: await git(repository, "rev-parse", "HEAD") };
+}
+
+function freshCentralMainRunner(
+  expectedCommit: string,
+  source: string,
+  calls: string[][] = [],
+): ExecFileRunner {
+  return async (executable, args, options) => {
+    calls.push([...args]);
+    const fetchIndex = args.indexOf("fetch");
+    if (fetchIndex !== -1) {
+      assert.equal(executable, "git");
+      assert.deepEqual(args.slice(fetchIndex, fetchIndex + 7), [
+        "fetch",
+        "--no-tags",
+        "--force",
+        "--depth=1",
+        CENTRAL_ORIGIN,
+        "refs/heads/main:refs/sfl-community-sync/fresh-main",
+      ]);
+      return { stdout: options.encoding === null ? Buffer.alloc(0) : "" };
+    }
+    if (args.includes("refs/sfl-community-sync/fresh-main^{commit}")) {
+      return { stdout: `${expectedCommit}\n` };
+    }
+    const repositoryIndex = args.indexOf("-C");
+    const repository = repositoryIndex === -1 ? undefined : args[repositoryIndex + 1];
+    if (
+      repository !== source &&
+      (args.includes("ls-tree") || args.includes("show")) &&
+      args.some((argument) => argument === expectedCommit || argument.startsWith(`${expectedCommit}:`))
+    ) {
+      const rewritten = [...args];
+      rewritten[repositoryIndex + 1] = source;
+      return execFile(executable, rewritten, options as never) as never;
+    }
+    return execFile(executable, args as string[], options as never) as never;
+  };
+}
+
+function syncFixtureOptions<T extends { repository: string; commit: string }>(
+  fixture: T,
+  extra: Record<string, unknown> = {},
+) {
+  return {
+    source: fixture.repository,
+    commit: fixture.commit,
+    execFile: freshCentralMainRunner(fixture.commit, fixture.repository),
+    ...extra,
+  };
 }
 
 async function seedTarget(target: string) {
@@ -178,7 +239,7 @@ test("syncCommunitySnapshot vendors an empty exact-commit Catalog into an isolat
   const fixture = await createCommunityFixture(temporary);
   const target = path.join(temporary, "isolated output", "community");
 
-  const result = await syncCommunitySnapshot({ ...fixture, source: fixture.repository, target });
+  const result = await syncCommunitySnapshot(syncFixtureOptions(fixture, { target }));
 
   assert.equal(result.releases, 0);
   assert.equal(result.commit, fixture.commit);
@@ -193,6 +254,105 @@ test("syncCommunitySnapshot vendors an empty exact-commit Catalog into an isolat
   assert.equal(sourceLock.catalogCommit, fixture.commit);
   assert.equal(sourceLock.catalog.sha256, result.catalogSha256);
   assert.equal(sourceLock.previewManifest.sha256, result.previewManifestSha256);
+  assert.deepEqual(result.warnings, []);
+});
+
+test("syncCommunitySnapshot restores the prior target when candidate activation fails", async (t) => {
+  const temporary = await fs.mkdtemp(path.join(os.tmpdir(), "sfl-community-sync-switch-fail-"));
+  t.after(() => fs.rm(temporary, { recursive: true, force: true }));
+  const fixture = await createCommunityFixture(temporary);
+  const target = path.join(temporary, "output", "community");
+  await seedTarget(target);
+  let renameCall = 0;
+
+  await assert.rejects(
+    syncCommunitySnapshot(syncFixtureOptions(fixture, {
+      target,
+      fileOperations: {
+        rename: async (from: string, to: string) => {
+          renameCall += 1;
+          if (renameCall === 2) throw Object.assign(new Error("injected candidate activation failure"), { code: "EIO" });
+          await fs.rename(from, to);
+        },
+      },
+    })),
+    /injected candidate activation failure/u,
+  );
+  assert.equal(renameCall, 3, "the third rename must restore backup to target");
+  await assertTargetUnchanged(target);
+});
+
+test("syncCommunitySnapshot preserves backup and staging and reports both errors when rollback fails", async (t) => {
+  const temporary = await fs.mkdtemp(path.join(os.tmpdir(), "sfl-community-sync-restore-fail-"));
+  t.after(() => fs.rm(temporary, { recursive: true, force: true }));
+  const fixture = await createCommunityFixture(temporary);
+  const target = path.join(temporary, "output", "community");
+  await seedTarget(target);
+  let renameCall = 0;
+  let failure: unknown;
+
+  try {
+    await syncCommunitySnapshot(syncFixtureOptions(fixture, {
+      target,
+      fileOperations: {
+        rename: async (from: string, to: string) => {
+          renameCall += 1;
+          if (renameCall === 2) throw Object.assign(new Error("injected candidate activation failure"), { code: "EIO" });
+          if (renameCall === 3) throw Object.assign(new Error("injected backup restoration failure"), { code: "EACCES" });
+          await fs.rename(from, to);
+        },
+      },
+    }));
+  } catch (error) {
+    failure = error;
+  }
+
+  assert.ok(failure instanceof AggregateError);
+  const detail = failure as AggregateError & {
+    code: string;
+    target: string;
+    backup: string;
+    staging: string;
+    errors: Error[];
+  };
+  assert.equal(detail.code, "community_sync_restore_failed");
+  assert.equal(detail.target, target);
+  assert.match(detail.message, /prior snapshot remains at .*backup.*candidate remains at .*sync/u);
+  assert.deepEqual(detail.errors.map((error) => error.message), [
+    "injected candidate activation failure",
+    "injected backup restoration failure",
+  ]);
+  assert.equal(await fs.readFile(path.join(detail.backup, "sentinel.txt"), "utf8"), "original target\n");
+  assert.equal(await fs.stat(path.join(detail.staging, "catalog.json")).then((stat) => stat.isFile()), true);
+  await assert.rejects(fs.access(target), { code: "ENOENT" });
+});
+
+test("syncCommunitySnapshot returns an explicit warning and retains backup when post-switch cleanup fails", async (t) => {
+  const temporary = await fs.mkdtemp(path.join(os.tmpdir(), "sfl-community-sync-cleanup-warn-"));
+  t.after(() => fs.rm(temporary, { recursive: true, force: true }));
+  const fixture = await createCommunityFixture(temporary);
+  const target = path.join(temporary, "output", "community");
+  await seedTarget(target);
+
+  const result = await syncCommunitySnapshot(syncFixtureOptions(fixture, {
+    target,
+    fileOperations: {
+      remove: async (candidate: string, options: { recursive: boolean; force: boolean }) => {
+        if (path.basename(candidate).startsWith(".community-backup-")) {
+          throw Object.assign(new Error("injected backup cleanup failure"), { code: "EACCES" });
+        }
+        await fs.rm(candidate, options);
+      },
+    },
+  }));
+
+  assert.equal(result.warnings.length, 1);
+  assert.equal(result.warnings[0]?.code, "community_sync_backup_cleanup_failed");
+  assert.match(result.warnings[0]?.message ?? "", /injected backup cleanup failure/u);
+  const retainedBackup = result.warnings[0]?.path;
+  assert.equal(typeof retainedBackup, "string");
+  assert.equal(await fs.readFile(path.join(retainedBackup, "sentinel.txt"), "utf8"), "original target\n");
+  assert.equal(await fs.stat(path.join(target, "catalog.json")).then((stat) => stat.isFile()), true);
 });
 
 for (const releaseVersion of ["1.0.0+build.9", "1.0.0-rc.1+build"] as const) {
@@ -202,7 +362,7 @@ for (const releaseVersion of ["1.0.0+build.9", "1.0.0-rc.1+build"] as const) {
     const fixture = await createCommunityFixture(temporary, { entry: true, releaseVersion });
     const target = path.join(temporary, "output", "community");
 
-    const result = await syncCommunitySnapshot({ source: fixture.repository, commit: fixture.commit, target });
+    const result = await syncCommunitySnapshot(syncFixtureOptions(fixture, { target }));
 
     assert.equal(result.releases, 1);
     const vendoredCatalog = new Uint8Array(await fs.readFile(path.join(target, "catalog.json")));
@@ -223,7 +383,7 @@ for (const releaseVersion of ["1.0.0-01", "1.0.0-alpha..1"] as const) {
     await seedTarget(target);
 
     await assert.rejects(
-      syncCommunitySnapshot({ source: fixture.repository, commit: fixture.commit, target }),
+      syncCommunitySnapshot(syncFixtureOptions(fixture, { target })),
       /releaseVersion is not semantic/u,
     );
     await assertTargetUnchanged(target);
@@ -239,7 +399,7 @@ test("syncCommunitySnapshot rejects dirty tracked vendored input without replaci
   await fs.appendFile(path.join(fixture.repository, "catalog", "catalog.json"), " \n", "utf8");
 
   await assert.rejects(
-    syncCommunitySnapshot({ source: fixture.repository, commit: fixture.commit, target }),
+    syncCommunitySnapshot(syncFixtureOptions(fixture, { target })),
     /dirty vendored input: catalog\/catalog\.json/u,
   );
   await assertTargetUnchanged(target);
@@ -255,7 +415,7 @@ test("syncCommunitySnapshot compares worktree bytes with the exact commit even w
   await fs.appendFile(path.join(fixture.repository, "catalog", "catalog.json"), " \n", "utf8");
 
   await assert.rejects(
-    syncCommunitySnapshot({ source: fixture.repository, commit: fixture.commit, target }),
+    syncCommunitySnapshot(syncFixtureOptions(fixture, { target })),
     /Community catalog bytes differ from the exact Community commit/u,
   );
   await assertTargetUnchanged(target);
@@ -269,7 +429,10 @@ test("syncCommunitySnapshot rejects an exact commit mismatch without replacing t
   await seedTarget(target);
 
   await assert.rejects(
-    syncCommunitySnapshot({ source: fixture.repository, commit: "0".repeat(40), target }),
+    syncCommunitySnapshot(syncFixtureOptions(
+      { ...fixture, commit: "0".repeat(40) },
+      { target, execFile: freshCentralMainRunner(fixture.commit, fixture.repository) },
+    )),
     /differs from --commit/u,
   );
   await assertTargetUnchanged(target);
@@ -284,10 +447,55 @@ test("syncCommunitySnapshot rejects a non-central origin without replacing targe
   await git(fixture.repository, "remote", "set-url", "origin", "https://github.com/example/not-central.git");
 
   await assert.rejects(
-    syncCommunitySnapshot({ source: fixture.repository, commit: fixture.commit, target }),
+    syncCommunitySnapshot(syncFixtureOptions(fixture, { target })),
     /origin is not the fixed central Catalog repository/u,
   );
   await assertTargetUnchanged(target);
+});
+
+test("syncCommunitySnapshot requires the requested commit to be freshly fetched central main", async (t) => {
+  const temporary = await fs.mkdtemp(path.join(os.tmpdir(), "sfl-community-sync-fresh-main-"));
+  t.after(() => fs.rm(temporary, { recursive: true, force: true }));
+  const fixture = await createCommunityFixture(temporary);
+  const target = path.join(temporary, "output", "community");
+  await seedTarget(target);
+  const catalogPath = path.join(fixture.repository, "catalog", "catalog.json");
+  const forgedCatalog = JSON.parse(await fs.readFile(catalogPath, "utf8"));
+  forgedCatalog.generatedAt = "2026-08-21T00:00:01.000Z";
+  await writeJson(catalogPath, forgedCatalog);
+  await git(fixture.repository, "add", "catalog/catalog.json");
+  await git(fixture.repository, "commit", "-m", "test: locally forge a plausible central commit");
+  const forgedCommit = await git(fixture.repository, "rev-parse", "HEAD");
+  const centralMain = fixture.commit;
+  const calls: string[][] = [];
+
+  await assert.rejects(
+    syncCommunitySnapshot(syncFixtureOptions({ ...fixture, commit: forgedCommit }, {
+      target,
+      execFile: freshCentralMainRunner(centralMain, fixture.repository, calls),
+    })),
+    new RegExp(`is not the freshly fetched central main ${centralMain}`, "u"),
+  );
+  assert.equal(calls.some((args) => args.includes("fetch") && args.includes(CENTRAL_ORIGIN)), true);
+  await assertTargetUnchanged(target);
+});
+
+test("syncCommunitySnapshot fetches the fixed HTTPS origin despite a matching local origin label", async (t) => {
+  const temporary = await fs.mkdtemp(path.join(os.tmpdir(), "sfl-community-sync-fixed-fetch-"));
+  t.after(() => fs.rm(temporary, { recursive: true, force: true }));
+  const fixture = await createCommunityFixture(temporary);
+  const target = path.join(temporary, "output", "community");
+  const calls: string[][] = [];
+
+  await syncCommunitySnapshot(syncFixtureOptions(fixture, {
+    target,
+    execFile: freshCentralMainRunner(fixture.commit, fixture.repository, calls),
+  }));
+
+  const fetch = calls.find((args) => args.includes("fetch"));
+  assert.ok(fetch);
+  assert.equal(fetch.includes(CENTRAL_ORIGIN), true);
+  assert.equal(fetch.includes("origin"), false);
 });
 
 test("syncCommunitySnapshot rejects a committed preview digest mismatch without replacing target", async (t) => {
@@ -298,7 +506,7 @@ test("syncCommunitySnapshot rejects a committed preview digest mismatch without 
   await seedTarget(target);
 
   await assert.rejects(
-    syncCommunitySnapshot({ source: fixture.repository, commit: fixture.commit, target }),
+    syncCommunitySnapshot(syncFixtureOptions(fixture, { target })),
     /preview byte identity mismatch/u,
   );
   await assertTargetUnchanged(target);
@@ -312,7 +520,7 @@ test("syncCommunitySnapshot rejects inconsistent preview inventory without repla
   await seedTarget(target);
 
   await assert.rejects(
-    syncCommunitySnapshot({ source: fixture.repository, commit: fixture.commit, target }),
+    syncCommunitySnapshot(syncFixtureOptions(fixture, { target })),
     /preview manifest does not exactly match Catalog previews/u,
   );
   await assertTargetUnchanged(target);
@@ -327,7 +535,7 @@ test("syncCommunitySnapshot rejects an ignored license extra without replacing t
   await fs.writeFile(path.join(fixture.repository, "LICENSES", "ignored-extra.txt"), "ignored bytes\n", "utf8");
 
   await assert.rejects(
-    syncCommunitySnapshot({ source: fixture.repository, commit: fixture.commit, target }),
+    syncCommunitySnapshot(syncFixtureOptions(fixture, { target })),
     /ignored or untracked vendored input: LICENSES\/ignored-extra\.txt/u,
   );
   await assertTargetUnchanged(target);
@@ -342,7 +550,7 @@ test("syncCommunitySnapshot rejects an ignored preview extra without replacing t
   await fs.writeFile(path.join(fixture.repository, "thumbs", "ignored-preview.png"), "not a tracked preview\n", "utf8");
 
   await assert.rejects(
-    syncCommunitySnapshot({ source: fixture.repository, commit: fixture.commit, target }),
+    syncCommunitySnapshot(syncFixtureOptions(fixture, { target })),
     /ignored or untracked vendored input: thumbs\/ignored-preview\.png/u,
   );
   await assertTargetUnchanged(target);
@@ -360,7 +568,7 @@ test("syncCommunitySnapshot rejects a committed orphan thumbnail without replaci
   const commit = await git(fixture.repository, "rev-parse", "HEAD");
 
   await assert.rejects(
-    syncCommunitySnapshot({ source: fixture.repository, commit, target }),
+    syncCommunitySnapshot(syncFixtureOptions({ ...fixture, commit }, { target })),
     /orphan Catalog\/thumbnail assets: thumbs\/orphan\.png/u,
   );
   await assertTargetUnchanged(target);
@@ -378,9 +586,57 @@ for (const malformed of ["search", "provenance"] as const) {
     await seedTarget(target);
 
     await assert.rejects(
-      syncCommunitySnapshot({ source: fixture.repository, commit: fixture.commit, target }),
+      syncCommunitySnapshot(syncFixtureOptions(fixture, { target })),
       malformed === "search" ? /search\.unsupportedSearchField is not supported/u : /provenance must be an array/u,
     );
     await assertTargetUnchanged(target);
   });
 }
+
+test("syncCommunitySnapshot requires the bootstrap MIT and CC-BY-4.0 license texts", async (t) => {
+  const temporary = await fs.mkdtemp(path.join(os.tmpdir(), "sfl-community-sync-bootstrap-license-"));
+  t.after(() => fs.rm(temporary, { recursive: true, force: true }));
+  const fixture = await createCommunityFixture(temporary, { missingMitLicense: true });
+  const target = path.join(temporary, "output", "community");
+  await seedTarget(target);
+
+  await assert.rejects(
+    syncCommunitySnapshot(syncFixtureOptions(fixture, { target })),
+    /missing required tracked license texts: LICENSES\/MIT\.txt/u,
+  );
+  await assertTargetUnchanged(target);
+});
+
+test("syncCommunitySnapshot requires each Catalog license identifier to map to a tracked text", async (t) => {
+  const temporary = await fs.mkdtemp(path.join(os.tmpdir(), "sfl-community-sync-entry-license-"));
+  t.after(() => fs.rm(temporary, { recursive: true, force: true }));
+  const fixture = await createCommunityFixture(temporary, {
+    entry: true,
+    contentLicense: "Apache-2.0",
+  });
+  const target = path.join(temporary, "output", "community");
+  await seedTarget(target);
+
+  await assert.rejects(
+    syncCommunitySnapshot(syncFixtureOptions(fixture, { target })),
+    /missing required tracked license texts: LICENSES\/Apache-2\.0\.txt/u,
+  );
+  await assertTargetUnchanged(target);
+});
+
+test("syncCommunitySnapshot rejects non-segment license identifiers", async (t) => {
+  const temporary = await fs.mkdtemp(path.join(os.tmpdir(), "sfl-community-sync-license-path-"));
+  t.after(() => fs.rm(temporary, { recursive: true, force: true }));
+  const fixture = await createCommunityFixture(temporary, {
+    entry: true,
+    contentLicense: "../MIT",
+  });
+  const target = path.join(temporary, "output", "community");
+  await seedTarget(target);
+
+  await assert.rejects(
+    syncCommunitySnapshot(syncFixtureOptions(fixture, { target })),
+    /must be one portable license identifier/u,
+  );
+  await assertTargetUnchanged(target);
+});
