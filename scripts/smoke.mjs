@@ -11,7 +11,7 @@ const VERSION = JSON.parse(await fs.readFile(path.join(root, "package.json"), "u
 const externalMaterializeDestination = process.argv[2];
 const serverEntry =
   process.env.FIGURE_LIBRARY_SMOKE_SERVER ?? path.join(root, "dist", "index.js");
-const smokeRoot = await fs.mkdtemp(path.join(os.tmpdir(), "figure-library-0.5-smoke-"));
+const smokeRoot = await fs.mkdtemp(path.join(os.tmpdir(), "figure-library-0.6-smoke-"));
 const libraryDirectory = path.join(smokeRoot, "global-library");
 const intakeDirectory = path.join(smokeRoot, "direct-intake");
 await fs.mkdir(libraryDirectory, { recursive: true });
@@ -37,7 +37,7 @@ const childEnvironment = Object.fromEntries(
 );
 childEnvironment.FIGURE_LIBRARY_DIR = libraryDirectory;
 
-const client = new Client({ name: "scientific-figure-library-smoke", version: "0.5.3" });
+const client = new Client({ name: "scientific-figure-library-smoke", version: VERSION });
 const transport = new StdioClientTransport({
   command: process.execPath,
   args: [serverEntry],
@@ -127,12 +127,22 @@ try {
     "figure_library_apply_full_restore",
     "figure_library_plan_template_bundle_import",
     "figure_library_apply_template_bundle_import",
+    "figure_library_list_provider_sources",
+    "figure_library_plan_provider_source_change",
+    "figure_library_apply_provider_source_change",
+    "figure_library_plan_publication_export",
+    "figure_library_apply_publication_export",
+    "figure_library_github_auth_status",
+    "figure_library_github_auth_instructions",
+    "figure_library_plan_publication_pr",
+    "figure_library_apply_publication_pr",
   ].sort();
-  for (const name of required) {
-    if (!names.includes(name)) throw new Error(`missing 0.5.3 tool ${name}`);
-  }
-  if (names.length !== 42 || names.length !== required.length) {
-    throw new Error(`expected exactly 42 standard tools, received ${names.length}`);
+  if (JSON.stringify(names) !== JSON.stringify(required)) {
+    const missing = required.filter((name) => !names.includes(name));
+    const unexpected = names.filter((name) => !required.includes(name));
+    throw new Error(
+      `standard tool inventory differs: missing=${JSON.stringify(missing)} unexpected=${JSON.stringify(unexpected)}`,
+    );
   }
   for (const [toolName, visibility] of [
     ["figure_library_search", "model"],
@@ -148,7 +158,7 @@ try {
     }
   }
   if (names.some((name) => name.startsWith("figure_capture_"))) {
-    throw new Error("standard 0.5.3 server registered an experimental Capture tool");
+    throw new Error("standard server registered an experimental Capture tool");
   }
   for (const forbidden of [
     "figure_library_project_status",
@@ -274,7 +284,7 @@ try {
       mode: "create",
       templateId: "smoke-direct-volcano",
       title: "smoke-direct-unique volcano reference",
-      description: "A user-confirmed image/code Figure Unit for the 0.5.3 stdio smoke.",
+      description: `A user-confirmed image/code Figure Unit for the ${VERSION} stdio smoke.`,
       tags: ["smoke-direct-unique", "volcano"],
       visualProfile: "volcano scatter x log2FC y negative log10 adjusted p value",
       dataProfile: "gene log2FC pvalue padj",
@@ -391,7 +401,7 @@ try {
     workingPreviewSelector?.contentDigest !== workingPlan.content?.contentDigest
   ) {
     throw new Error(
-      `direct intake planning omitted the v0.5.3 review summary or selector: ${JSON.stringify(
+      `direct intake planning omitted the current review summary or selector: ${JSON.stringify(
         workingStructured,
       )}`,
     );
@@ -908,7 +918,7 @@ try {
   }
 
   console.log(
-    `OK 0.5.3: ${names.length} standard tools; model/app visibility split; compact search thumbnails; no Capture/project pins; unified providers; direct intake; immutable Publish; preview-confirmed protocol-v2 materialization/replay; sanitized diagnostics resource; portable template bundle/import; terminal anti-loop outcomes${externalMaterializeDestination ? `; materialized ${structured(materialized).result.target}` : ""}`,
+    `OK ${VERSION}: ${names.length} standard tools; model/app visibility split; compact search thumbnails; no Capture/project pins; unified providers; direct intake; immutable Publish; preview-confirmed protocol-v2 materialization/replay; sanitized diagnostics resource; portable template bundle/import; terminal anti-loop outcomes${externalMaterializeDestination ? `; materialized ${structured(materialized).result.target}` : ""}`,
   );
 } catch (error) {
   console.error(`SMOKE_STEP_FAILED: ${smokeStep}`);

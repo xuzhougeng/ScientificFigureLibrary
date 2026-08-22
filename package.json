@@ -1,6 +1,6 @@
 {
   "name": "scientific-figure-library",
-  "version": "0.5.4",
+  "version": "0.6.0",
   "description": "A portable MCP server and MCP App for searching, importing, and materializing scientific figure templates.",
   "type": "module",
   "bin": {
@@ -8,8 +8,10 @@
   },
   "files": [
     ".wisp-plugin",
+    ".codex-plugin",
+    ".claude-plugin",
     "assets",
-    "docs",
+    "docs/GLOBAL_LIBRARY_0.6.md",
     "dist",
     "skills",
     "LICENSE",
@@ -20,14 +22,18 @@
     "build": "tsc --noEmit && vite build && node scripts/esbuild-server.mjs",
     "catalog": "node scripts/build-catalog.mjs",
     "package:source-pack": "node scripts/package-source-pack.mjs",
-    "package:npm": "npm run build && node -e \"require('node:fs').mkdirSync('release',{recursive:true})\" && npm pack --pack-destination release",
-    "package:wisp": "npm run build && node scripts/package-wisp.mjs",
+    "package:npm": "node scripts/release-preflight.mjs && npm run build && node scripts/package-npm.mjs",
+    "package:wisp": "node scripts/release-preflight.mjs && npm run build && node scripts/package-wisp.mjs",
     "start": "node dist/index.js",
     "version:check": "node scripts/check-version-sync.mjs",
     "version:set": "node scripts/version-set.mjs",
     "test": "node scripts/check-version-sync.mjs && node --test tests/*.test.ts",
     "test:smoke": "npm run build && node scripts/smoke.mjs",
-    "check": "npm run test && npm run test:smoke"
+    "check": "npm run test && npm run test:smoke",
+    "package:codex": "node scripts/release-preflight.mjs && npm run build && node scripts/package-codex.mjs",
+    "package:claude": "node scripts/release-preflight.mjs && npm run build && node scripts/package-claude.mjs",
+    "package:plugins": "node scripts/package-plugins.mjs",
+    "community:sync": "node scripts/sync-community.mjs"
   },
   "devDependencies": {
     "@modelcontextprotocol/ext-apps": "^1.7.0",

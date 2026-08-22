@@ -17,6 +17,24 @@ import {
 } from "../src/library-runtime.ts";
 import { VersionedTemplateLibrary } from "../src/versioned-library.ts";
 
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&");
+}
+
+function isolateConfigHome(rootDir: string) {
+  const priorXdg = process.env.XDG_CONFIG_HOME;
+  const priorAppData = process.env.APPDATA;
+  const configHome = path.join(rootDir, "config");
+  if (process.platform === "win32") process.env.APPDATA = configHome;
+  else process.env.XDG_CONFIG_HOME = configHome;
+  return () => {
+    if (priorXdg === undefined) delete process.env.XDG_CONFIG_HOME;
+    else process.env.XDG_CONFIG_HOME = priorXdg;
+    if (priorAppData === undefined) delete process.env.APPDATA;
+    else process.env.APPDATA = priorAppData;
+  };
+}
+
 function record(value: unknown): Record<string, unknown> {
   assert.ok(value && typeof value === "object" && !Array.isArray(value));
   return value as Record<string, unknown>;
@@ -36,9 +54,8 @@ function text(value: unknown) {
 
 test("text-only hosts can bind the global Library using cached planDigest", async () => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), "sfl-binding-tools-"));
-  const priorConfig = process.env.XDG_CONFIG_HOME;
+  const restoreConfigHome = isolateConfigHome(root);
   const priorOverride = process.env.FIGURE_LIBRARY_DIR;
-  process.env.XDG_CONFIG_HOME = path.join(root, "config");
   delete process.env.FIGURE_LIBRARY_DIR;
   const libraryDirectory = path.join(root, "portable-library");
   const runtime = new LibraryRuntime();
@@ -83,7 +100,7 @@ test("text-only hosts can bind the global Library using cached planDigest", asyn
     const planDigest = String(plan.planDigest);
     assert.equal(envelope.outcome, "needs_user_confirmation");
     assert.match(text(planned), new RegExp(`PLAN_DIGEST: ${planDigest}`, "u"));
-    assert.match(text(planned), new RegExp(`LIBRARY_DIRECTORY: ${libraryDirectory}`, "u"));
+    assert.match(text(planned), new RegExp(`LIBRARY_DIRECTORY: ${escapeRegExp(libraryDirectory)}`, "u"));
     assert.match(
       text(planned),
       new RegExp(`LOCATOR_PATH: ${String(plan.locatorPath).replace(/[.*+?^${}()|[\]\\]/gu, "\\$&")}`, "u"),
@@ -103,7 +120,7 @@ test("text-only hosts can bind the global Library using cached planDigest", asyn
     assert.equal(marker?.value.libraryId, plan.libraryId);
     assert.equal(
       defaultLibraryLocatorPath(),
-      path.join(root, "config", "scientific-figure-library", "locator.json"),
+      plan.locatorPath,
     );
 
     const replayed = await client.callTool({
@@ -114,8 +131,83 @@ test("text-only hosts can bind the global Library using cached planDigest", asyn
   } finally {
     await client.close();
     await server.close();
-    if (priorConfig === undefined) delete process.env.XDG_CONFIG_HOME;
-    else process.env.XDG_CONFIG_HOME = priorConfig;
+    restoreConfigHome();
+    if (priorOverride === undefined) delete process.env.FIGURE_LIBRARY_DIR;
+    else process.env.FIGURE_LIBRARY_DIR = priorOverride;
+    await fs.rm(root, { recursive: true, force: true });
+  }
+});
+
+test("text-only hosts can explicitly recover a malformed locator without implicit fallback", async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "sfl-binding-broken-locator-"));
+  const restoreConfigHome = isolateConfigHome(root);
+  const priorOverride = process.env.FIGURE_LIBRARY_DIR;
+  delete process.env.FIGURE_LIBRARY_DIR;
+  const locatorPath = defaultLibraryLocatorPath();
+  const libraryDirectory = path.join(root, "selected-library");
+  const overrideDirectory = path.join(root, "environment-override");
+  await fs.mkdir(path.dirname(locatorPath), { recursive: true });
+  await fs.writeFile(locatorPath, "{broken-locator\n");
+  const runtime = new LibraryRuntime();
+  const currentLibraries = async () => {
+    const snapshot = await runtime.current();
+    return { snapshot, versionedLibrary: new VersionedTemplateLibrary(snapshot) };
+  };
+  const server = new McpServer({ name: "Broken locator binding test", version: "0.6.0" });
+  registerLibraryBindingTools({ server, runtime, currentLibraries });
+  const client = new Client({ name: "broken-locator-binding-test", version: "0.6.0" });
+  const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+  await server.connect(serverTransport);
+  await client.connect(clientTransport);
+  try {
+    await assert.rejects(runtime.current());
+
+    const planned = await client.callTool({
+      name: "figure_library_plan_bind_global",
+      arguments: { libraryDirectory, migrationMode: "none" },
+    });
+    const structured = record(planned.structuredContent);
+    const plan = record(structured.plan);
+    assert.equal(record(structured.envelope).outcome, "needs_user_confirmation");
+    assert.equal(plan.expectedLocatorStatus, "malformed_json");
+    assert.match(String(plan.expectedLocatorRawDigest), /^[a-f0-9]{64}$/u);
+    assert.equal(plan.expectedConfigRevision, null);
+    assert.equal(plan.configRevision, 1);
+    assert.match(text(planned), /LOCATOR_STATUS: malformed_json/u);
+    assert.equal(await fs.readFile(locatorPath, "utf8"), "{broken-locator\n");
+
+    process.env.FIGURE_LIBRARY_DIR = overrideDirectory;
+    const blocked = await client.callTool({
+      name: "figure_library_apply_bind_global",
+      arguments: {
+        planDigest: String(plan.planDigest),
+        operationId: "blocked-by-new-environment-override",
+      },
+    });
+    assert.equal(record(record(blocked.structuredContent).envelope).outcome, "blocked");
+    assert.equal(await fs.readFile(locatorPath, "utf8"), "{broken-locator\n");
+
+    delete process.env.FIGURE_LIBRARY_DIR;
+    const applyArguments = {
+      planDigest: String(plan.planDigest),
+      operationId: "recover-malformed-locator",
+    };
+    const applied = await client.callTool({
+      name: "figure_library_apply_bind_global",
+      arguments: applyArguments,
+    });
+    assert.equal(record(record(applied.structuredContent).envelope).outcome, "applied");
+    assert.equal((await runtime.current()).root, path.resolve(libraryDirectory));
+
+    const replayed = await client.callTool({
+      name: "figure_library_apply_bind_global",
+      arguments: applyArguments,
+    });
+    assert.equal(record(record(replayed.structuredContent).envelope).outcome, "replayed");
+  } finally {
+    await client.close();
+    await server.close();
+    restoreConfigHome();
     if (priorOverride === undefined) delete process.env.FIGURE_LIBRARY_DIR;
     else process.env.FIGURE_LIBRARY_DIR = priorOverride;
     await fs.rm(root, { recursive: true, force: true });
@@ -125,9 +217,8 @@ test("text-only hosts can bind the global Library using cached planDigest", asyn
 
 test("text-only hosts can bind a Local workspace using cached planDigest", async () => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), "sfl-workspace-bind-tools-"));
-  const priorConfig = process.env.XDG_CONFIG_HOME;
+  const restoreConfigHome = isolateConfigHome(root);
   const priorOverride = process.env.FIGURE_WORKSPACE_DIR;
-  process.env.XDG_CONFIG_HOME = path.join(root, "config");
   delete process.env.FIGURE_WORKSPACE_DIR;
   const workspaceDirectory = path.join(root, "local-workspace");
   const runtime = new LibraryRuntime();
@@ -178,8 +269,7 @@ test("text-only hosts can bind a Local workspace using cached planDigest", async
   } finally {
     await client.close();
     await server.close();
-    if (priorConfig === undefined) delete process.env.XDG_CONFIG_HOME;
-    else process.env.XDG_CONFIG_HOME = priorConfig;
+    restoreConfigHome();
     if (priorOverride === undefined) delete process.env.FIGURE_WORKSPACE_DIR;
     else process.env.FIGURE_WORKSPACE_DIR = priorOverride;
   }

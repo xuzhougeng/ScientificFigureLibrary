@@ -1,5 +1,11 @@
 # Global Library architecture (0.5)
 
+> **Historical reference.** This document describes the 0.5 Local/FigureYa
+> storage model. Scientific Figure Library 0.6 adds bundled Community and
+> signed personal Providers, public selector/lock v3, and staged publication.
+> Use [`GLOBAL_LIBRARY_0.6.md`](GLOBAL_LIBRARY_0.6.md) for the current
+> architecture.
+
 This document defines the ScientificFigureLibrary 0.5 storage and identity
 model. The standard core is a global, portable, immutable Library plus two
 retrieval providers. It is not a project database and it is not a web-capture

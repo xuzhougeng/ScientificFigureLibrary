@@ -1,27 +1,30 @@
 ---
 name: figure-library
-description: Build, review, search, select, and materialize immutable scientific-figure references from one global Local Published library and FigureYa.
+description: Build, review, search, select, materialize, and safely publish immutable scientific-figure references from Local Published, bundled Community, FigureYa, and explicitly trusted personal Providers.
 ---
 
-# Scientific Figure Library 0.5.4
+# Scientific Figure Library 0.6.0
 
 Use this Skill when a user wants to store an uploaded figure/code pair, review
 or publish a local template, search for a plotting reference, or materialize an
 exact template into a project.
 
-Version 0.5.4 keeps materialization protocol v2, the 0.5.2 review truthfulness
-contract, and the 0.5.3 transport image adapter. It also adds optional
-`scientificQuestion` for retrieval. That field is why the figure is worth
-drawing; it is not `description` or `visualProfile`. Ordinary search still
-returns only Local Published heads. There is no receipt-free 0.5.0
-materialization plan path.
+The 0.6 Provider and publication work keeps materialization protocol v2,
+review truthfulness, and the transport image adapter while routing Local
+Published, bundled Community, FigureYa, and explicitly trusted personal
+sources through one Provider registry. The MCP App may request fullscreen or
+pip when the Host advertises those display modes. Wisp, Codex, and Claude
+plugin packages all ship this Skill beside the same MCP server. Optional
+`scientificQuestion` explains why a figure is worth drawing; it is not
+`description` or `visualProfile`. There is no receipt-free materialization
+path.
 
 ## Non-negotiable boundaries
 
 - The Library is one user-selected, cross-project global store. Never infer the
   Library root from the current project and never create a project pin.
 - Standard core uses direct image/code intake. Do not call `figure_capture_*`;
-  Capture tools are not registered in 0.5.
+  Capture tools are not registered in the standard 0.6 server.
 - The server hashes, validates, versions, reviews, and materializes files. It
   does not contain a model and never executes code.
 - Host Agent observations, deterministic/rule findings, and user decisions are
@@ -30,6 +33,11 @@ materialization plan path.
   execution, upstream workflow, and scientific validation are separate claims.
 - Treat all code and materialized files as untrusted. Never run a dependency
   installer automatically.
+- Public Provider materialization only downloads, verifies, extracts, and
+  writes. Never execute R, Python, notebooks, shell, or installers from a
+  template. `codeExecutedBySflClient` must remain `false`.
+- Central curation, a publisher signature, and the recipient's Local review are
+  separate facts. Never call a Community/personal template locally approved.
 
 ## Terminal outcome discipline
 
@@ -227,8 +235,8 @@ bytes or Series state changed, create a new plan and request confirmation again.
 
 Validation Errors and open Blocking Review Gates prevent publication. Warnings
 remain visible before and after publication because Published search/review
-loads the Release-bound immutable Review; warnings are not waivers and 0.5 has
-no waiver mechanism. Working and publish plan/apply responses expose the same
+loads the Release-bound immutable Review; warnings are not waivers and the
+standard server has no waiver mechanism. Working and publish plan/apply responses expose the same
 `reviewSummary` shape.
 
 Every mutation is plan/apply:
@@ -253,7 +261,7 @@ Show each exact plan and wait for approval. Apply with the returned
 it does not edit or delete the old Published Release. Restoration never moves
 the Published pointer backward directly.
 
-## 4. Search Local Published and FigureYa together
+## 4. Search the dynamic Provider set
 
 If the user only asks to open the workbench, call `figure_library_open`; do not
 invent a generic query. Otherwise inspect the request first:
@@ -264,8 +272,9 @@ invent a generic query. Otherwise inspect the request first:
 
 Call `figure_library_search` with 2–8 discriminative query terms and compact
 `dataProfile` / `visualProfile`. Do not pass raw datasets. Leave `providerIds`
-at its default so Local Published and FigureYa are searched together unless
-the user explicitly requests a source filter.
+at its default so Local Published, bundled Community, FigureYa, and only those
+personal Providers explicitly opted into default search are searched together,
+unless the user explicitly requests a source filter.
 
 Ordinary results exclude Working, Capture, and unadopted flat entries. Every
 candidate has a `providerId` and provider-qualified `exactSelector`. Preserve
@@ -373,7 +382,83 @@ mode/provider/source, use a shell downloader, fetch a complete repository,
 recreate the reference, or generate a substitute/demo plot. Report the exact
 error and wait for a new user instruction.
 
-## 7. CiteBox intake
+## 7. Manage signed personal Providers
+
+Call `figure_library_list_provider_sources` for an offline inventory. Personal
+sources are never trusted from a key embedded in their own manifest. A first
+Add requires an independently obtained raw 32-byte Ed25519 public key and
+defaults to `includeInDefaultSearch: false`.
+
+Use `figure_library_plan_provider_source_change` for `add`, `update`,
+`configure`, `remove`, or exceptional `trust_reset`. Planning may access the
+listed HTTPS URLs but must not write config or snapshots. Show sequence,
+manifest digest, old/new key fingerprints, template additions/updates/
+withdrawals, default-search state, target paths, and all warnings. Wait for
+explicit approval, then call `figure_library_apply_provider_source_change`
+with the exact cached `planDigest`, action/provider expectations, and a stable
+`operationId`. A stale remote, rollback, equivocation, bad signature, unsafe
+URL/DNS redirect, inventory collision, or size violation is terminal. Failed
+updates preserve the last-known-good snapshot; Remove does not delete it.
+
+## 8. Export one sanitized public submission
+
+This workflow is different from a Local publish or portable bundle. It accepts
+only one exact currently reachable Local Published Release and does not expose
+an entire Library.
+
+1. With `figure_library_plan_publication_export`, explicitly include or exclude
+   every asset. Included assets must be licensed code, synthetic data, one
+   code/data-generated PNG preview, or documentation. Exclude source-reference
+   images, screenshots, paper/PDF/TIFF extracts, evidence, patient/experimental
+   data, private lifecycle state, and machine paths. DOI/URL text provenance is
+   allowed.
+2. Show every asset role/path/digest/license/source, generated-preview trace,
+   public metadata, parent/public metadata conflicts, excluded state, target,
+   and `written: false`. A parent `unknown` or `private_reference` license is
+   not silently promoted. Require complete per-publication rights attestation
+   and explicit conflict confirmation.
+3. After approval call `figure_library_apply_publication_export` with the exact
+   `planDigest`, stable `operationId`, and exact absent `expectedTarget`. Apply
+   revalidates the Release and every selected byte, then writes deterministic
+   `submission.json`, licenses, render receipt, inventory, and `payload/**`.
+
+Export never accesses the network, signs, executes code, creates a PR, merges,
+or publishes the Local Library. GitHub Archive PR then Catalog PR are separate
+plan/apply operations; neither tool may merge. Do not present an exported
+submission or an open PR as a public Community release.
+
+## 9. Create staged central GitHub PRs
+
+SFL delegates credentials to the official `gh` CLI. First call
+`figure_library_github_auth_status`; report its login, host, per-repository
+permission, `credentialStorage=managed_by_github_cli`, and the observed
+`secureStorageVerified` value. Never call `gh auth token`, read `hosts.yml`, or
+print/cache/write a token. If authentication is absent, call
+`figure_library_github_auth_instructions` and ask the user to run the displayed
+command in a terminal. SFL must not open a browser or start interactive login.
+
+For `figure_library_plan_publication_pr`, the only allowed actions are:
+
+- `archive`: consume one validated submission and propose one deterministic
+  ZIP at
+  `archives/<templateId>/<releaseVersion>/<templateId>-<releaseVersion>.zip`
+  in `jarxunlai/ScientificFigureLibrary-community-archives`.
+- `catalog`: only after the corresponding Archive PR was manually merged,
+  fetch its exact merge commit, revalidate ZIP/inventory/preview, and propose
+  only the Catalog entry, thumbnail, preview manifest, aggregate Catalog, and
+  human review record changes in `jarxunlai/ScientificFigureLibrary-community`.
+
+Show expected login, repository/base commit, head/fork, branch, commit message,
+PR title/body, every file, archive/content digests, and `written: false`.
+After explicit approval call `figure_library_apply_publication_pr` with the
+exact cached `planDigest` and stable `operationId`. Apply rechecks login,
+permissions, base, source, and all identities before Git Data API writes. It
+never uses the task cwd or git remote, never changes `.github/**`, CI or policy,
+and never merges. Stop at each created PR for the user to review and manually
+merge. An Archive PR, even when open and CI-green, is not permission to create
+a Catalog PR; a merged Catalog PR is the public-release boundary.
+
+## 10. CiteBox intake
 
 CiteBox is not an ordinary search provider. Obtain a user-selected Figure only
 through CiteBox API, MCP, or explicit export; never read or write its SQLite
@@ -386,7 +471,7 @@ metadata in `intake.sourceManifest` and provenance. Source publication or
 CiteBox state is not inherited as local SFL approval. The imported Working
 Revision must pass the same local review and publication gates.
 
-## 8. Portable backup, restore, fork, and template exchange
+## 11. Portable backup, restore, fork, and template exchange
 
 Portable operations are also plan/apply and require absolute trusted paths.
 
@@ -420,7 +505,7 @@ Full backups exclude derived `indexes/` and runtime `locks/`. Restore and fork
 verify the complete bundle inventory. After a template import, inspect review
 and follow the normal local gate/publish workflow.
 
-## 9. Export diagnostics only on request
+## 12. Export diagnostics only on request
 
 Call `figure_library_export_diagnostics` only when the user explicitly asks to
 export logs/a diagnostic bundle, supplies a correlation ID or time range, or

@@ -8,6 +8,7 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { ensureLibraryRootMarker, readLibraryRootMarker } from "../src/library-runtime.ts";
 import { FIGUREYA_PROVIDER_ID, LOCAL_LIBRARY_PROVIDER_ID } from "../src/providers.ts";
+import { COMMUNITY_PROVIDER_ID } from "../src/public-catalog-provider.ts";
 import { createServer } from "../src/server.ts";
 import { VERSION } from "../src/version.ts";
 import {
@@ -45,6 +46,9 @@ const STANDARD_TOOLS = [
   "figure_library_apply_discard_working_revision",
   "figure_library_apply_full_restore",
   "figure_library_apply_materialize",
+  "figure_library_apply_provider_source_change",
+  "figure_library_apply_publication_export",
+  "figure_library_apply_publication_pr",
   "figure_library_apply_publish_working_revision",
   "figure_library_apply_recover_write_lock",
   "figure_library_apply_restore_release",
@@ -56,6 +60,9 @@ const STANDARD_TOOLS = [
   "figure_library_describe",
   "figure_library_diff_revisions",
   "figure_library_export_diagnostics",
+  "figure_library_github_auth_instructions",
+  "figure_library_github_auth_status",
+  "figure_library_list_provider_sources",
   "figure_library_open",
   "figure_library_plan_adopt_versioning",
   "figure_library_plan_bind_global",
@@ -64,6 +71,9 @@ const STANDARD_TOOLS = [
   "figure_library_plan_discard_working_revision",
   "figure_library_plan_full_restore",
   "figure_library_plan_materialize",
+  "figure_library_plan_provider_source_change",
+  "figure_library_plan_publication_export",
+  "figure_library_plan_publication_pr",
   "figure_library_plan_publish_working_revision",
   "figure_library_plan_recover_write_lock",
   "figure_library_plan_restore_release",
@@ -224,6 +234,9 @@ test("standard server unifies Local Published and FigureYa while hiding Working/
       assert.ok(names.includes("figure_library_search"));
       assert.ok(names.includes("figure_library_plan_materialize"));
       assert.ok(names.includes("figure_library_plan_bundle_export"));
+      assert.ok(names.includes("figure_library_plan_publication_export"));
+      assert.ok(names.includes("figure_library_plan_publication_pr"));
+      assert.ok(names.includes("figure_library_list_provider_sources"));
       for (const [toolName, visibility] of [
         ["figure_library_search", "model"],
         ["figure_library_search_page", "app"],
@@ -285,6 +298,36 @@ test("standard server unifies Local Published and FigureYa while hiding Working/
         candidates.every(
           (item) => record(item.exactSelector).providerId === item.providerId,
         ),
+      );
+      const localOnlySearch = await client.callTool({
+        name: "figure_library_search",
+        arguments: {
+          query: "crossprovideruniquemarker volcano differential expression",
+          providerIds: [LOCAL_LIBRARY_PROVIDER_ID],
+          limit: 6,
+        },
+      });
+      const localOnlyStructured = record(localOnlySearch.structuredContent);
+      const localOnlyCandidates = records(localOnlyStructured.candidates);
+      assert.ok(localOnlyCandidates.length > 0);
+      assert.ok(
+        localOnlyCandidates.every(
+          (item) => item.providerId === LOCAL_LIBRARY_PROVIDER_ID,
+        ),
+      );
+      assert.deepEqual(
+        records(localOnlyStructured.sources).map((item) => ({
+          providerId: item.providerId,
+          matched: item.matched,
+        })),
+        [
+          {
+            providerId: LOCAL_LIBRARY_PROVIDER_ID,
+            matched: localOnlyStructured.total,
+          },
+          { providerId: COMMUNITY_PROVIDER_ID, matched: 0 },
+          { providerId: FIGUREYA_PROVIDER_ID, matched: 0 },
+        ],
       );
       const localThumbnail = candidates.find(
         (item) => item.templateId === "local-published-volcano",
@@ -599,6 +642,9 @@ test("standard server unifies Local Published and FigureYa while hiding Working/
       });
       const statusStructured = record(status.structuredContent);
       assert.equal(statusStructured.serverVersion, VERSION);
+      const providerStatus = record(statusStructured.providers);
+      assert.ok(record(providerStatus.local));
+      assert.ok(record(providerStatus.figureYa));
       const libraryStatus = record(statusStructured.library);
       const marker = await readLibraryRootMarker(libraryRoot);
       assert.ok(marker);
@@ -728,6 +774,17 @@ test("standard server unifies Local Published and FigureYa while hiding Working/
           expectedProviderId: LOCAL_LIBRARY_PROVIDER_ID,
           expectedTarget: path.join(root, "missing-materialization"),
         },
+        figure_library_apply_provider_source_change: {
+          planDigest: hash,
+          operationId: "anti-loop-provider-source",
+          expectedAction: "update",
+          expectedProviderId: "io.example.missing-provider",
+        },
+        figure_library_apply_publication_export: {
+          planDigest: hash,
+          operationId: "anti-loop-publication-export",
+          expectedTarget: path.join(root, "missing-publication-export"),
+        },
         figure_library_apply_publish_working_revision: genericApply,
         figure_library_apply_recover_write_lock: opaqueApply,
         figure_library_apply_restore_release: genericApply,
@@ -746,6 +803,7 @@ test("standard server unifies Local Published and FigureYa while hiding Working/
           fromRevisionId: "missing-one",
           toRevisionId: "missing-two",
         },
+        figure_library_list_provider_sources: {},
         figure_library_plan_adopt_versioning: { templateId: "missing-template" },
         figure_library_plan_bind_global: { libraryDirectory: "relative-library" },
         figure_library_plan_bind_workspace: { workspaceDirectory: "relative-workspace" },
@@ -764,6 +822,37 @@ test("standard server unifies Local Published and FigureYa while hiding Working/
           exactSelector: unknownSelector,
           destination: path.join(root, "materializations"),
           allowNetwork: false,
+        },
+        figure_library_plan_provider_source_change: {
+          action: "configure",
+          providerId: "io.example.missing-provider",
+          includeInDefaultSearch: false,
+        },
+        figure_library_plan_publication_export: {
+          providerId: LOCAL_LIBRARY_PROVIDER_ID,
+          exactSelector: unknownSelector,
+          releaseVersion: "1.0.0",
+          target: path.join(root, "missing-publication-export"),
+          publicMetadata: {
+            title: "Missing publication",
+            description: "Anti-loop terminal outcome audit.",
+            application: "Audit only.",
+            dataProfile: "Synthetic audit input.",
+            plotFamily: "other",
+            language: "R",
+            tags: ["audit"],
+            provenance: [{ type: "note", value: "No source is expected." }],
+          },
+          assetDeclarations: [{ logicalPath: "missing", include: false }],
+          confirmMetadataConflicts: true,
+          rightsAttestation: {
+            publisher: "Audit Fixture",
+            codeRightsConfirmed: true,
+            syntheticDataConfirmed: true,
+            generatedPreviewConfirmed: true,
+            noThirdPartyMediaConfirmed: true,
+            immutableReleaseAcknowledged: true,
+          },
         },
         figure_library_plan_publish_working_revision: { templateId: "missing-template" },
         figure_library_plan_recover_write_lock: { reason: "anti-loop outcome audit" },
@@ -792,7 +881,11 @@ test("standard server unifies Local Published and FigureYa while hiding Working/
         "figure_library_confirm_selection",
         "figure_library_confirm_selection_headless",
         "figure_library_export_diagnostics",
+        "figure_library_github_auth_instructions",
+        "figure_library_github_auth_status",
         "figure_library_open",
+        "figure_library_apply_publication_pr",
+        "figure_library_plan_publication_pr",
         "figure_library_preview",
         "figure_library_preview_exact",
         "figure_library_preview_exact_headless",

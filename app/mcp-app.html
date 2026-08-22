@@ -13,8 +13,16 @@
           <h1>选择科学绘图模板</h1>
           <p id="query" class="query">正在等待候选结果…</p>
         </div>
-        <p class="hint">先在这里浏览详情并选择；Agent 会等待你的决定</p>
+        <div class="header-side">
+          <p class="hint">先在这里浏览详情并选择；Agent 会等待你的决定</p>
+          <div id="display-controls" class="display-controls" hidden>
+            <button type="button" id="expand-browse">展开浏览</button>
+            <button type="button" id="keep-visible">保持可见</button>
+            <button type="button" id="reexpand">重新展开</button>
+          </div>
+        </div>
       </header>
+      <p id="pip-summary" class="pip-summary" hidden></p>
 
       <section id="empty" class="empty" aria-live="polite">
         请在对话中上传图片或数据，也可以直接描述想画的图。

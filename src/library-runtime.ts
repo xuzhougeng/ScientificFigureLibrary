@@ -8,7 +8,7 @@ import { withCrossRuntimeWriteLock } from "./cross-runtime-lock.ts";
 
 export const LIBRARY_ROOT_MARKER_SCHEMA = "figure-library.root.v1" as const;
 export const LIBRARY_LOCATOR_SCHEMA = "figure-library.locator.v2" as const;
-export const LIBRARY_BINDING_PLAN_SCHEMA = "figure-library.binding-plan.v1" as const;
+export const LIBRARY_BINDING_PLAN_SCHEMA = "figure-library.binding-plan.v2" as const;
 export const LIBRARY_BINDING_RECEIPT_SCHEMA =
   "figure-library.binding-receipt.v1" as const;
 export const LEGACY_LIBRARY_COPY_RECEIPT_SCHEMA =
@@ -74,6 +74,15 @@ function resolveForPlatform(value: string, platform: NodeJS.Platform) {
 
 function isAbsoluteForPlatform(value: string, platform: NodeJS.Platform) {
   return pathImplementation(platform).isAbsolute(value);
+}
+
+function samePathForPlatform(left: string, right: string, platform: NodeJS.Platform) {
+  const implementation = pathImplementation(platform);
+  const normalize = (value: string) => {
+    const resolved = implementation.resolve(value);
+    return platform === "win32" ? resolved.toLocaleLowerCase("en-US") : resolved;
+  };
+  return normalize(left) === normalize(right);
 }
 
 export function portableCaseFold(value: string) {
@@ -178,6 +187,26 @@ export interface LibraryRuntimeOptions {
   homedir?: string;
 }
 
+export type GlobalLibraryLocatorStatus =
+  | "missing"
+  | "valid_v2"
+  | "malformed_json"
+  | "unsupported_or_v1_schema"
+  | "dangling_target"
+  | "target_missing_root_marker"
+  | "library_id_mismatch";
+
+export interface GlobalLibraryLocatorObservation {
+  status: GlobalLibraryLocatorStatus;
+  rawDigest: string | null;
+  configRevision: number | null;
+}
+
+export interface LibraryBindingRuntimeContext {
+  locatorPath: string;
+  environmentOverrideRoot?: string;
+}
+
 export function defaultLibraryLocatorPath(options: {
   platform?: NodeJS.Platform;
   env?: Environment;
@@ -201,6 +230,25 @@ export function legacyDefaultLibraryRoot(options: {
 } = {}) {
   const platform = options.platform ?? process.platform;
   return pathImplementation(platform).join(options.homedir ?? os.homedir(), ".figure-library");
+}
+
+export function libraryBindingRuntimeContext(
+  options: LibraryRuntimeOptions = {},
+): LibraryBindingRuntimeContext {
+  const platform = options.platform ?? process.platform;
+  const environment = options.env ?? process.env;
+  const home = options.homedir ?? os.homedir();
+  const locatorPath = resolveForPlatform(
+    options.locatorPath ?? defaultLibraryLocatorPath({ platform, env: environment, homedir: home }),
+    platform,
+  );
+  const environmentRoot = environment.FIGURE_LIBRARY_DIR?.trim();
+  return {
+    locatorPath,
+    ...(environmentRoot
+      ? { environmentOverrideRoot: resolveForPlatform(environmentRoot, platform) }
+      : {}),
+  };
 }
 
 function validateRootMarker(value: unknown): LibraryRootMarkerV1 {
@@ -372,6 +420,103 @@ async function readLocator(locatorPath: string, platform: NodeJS.Platform) {
   }
 }
 
+interface ObservedGlobalLibraryLocator extends GlobalLibraryLocatorObservation {
+  value?: LibraryLocatorV1;
+}
+
+async function observeGlobalLibraryLocator(
+  locatorPath: string,
+  platform: NodeJS.Platform,
+): Promise<ObservedGlobalLibraryLocator> {
+  let bytes: Uint8Array;
+  try {
+    await assertRegularJsonFile(locatorPath, "ScientificFigureLibrary locator");
+    bytes = new Uint8Array(await fs.readFile(locatorPath));
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+      return { status: "missing", rawDigest: null, configRevision: null };
+    }
+    throw error;
+  }
+
+  const rawDigest = sha256(bytes);
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(new TextDecoder().decode(bytes)) as unknown;
+  } catch {
+    return { status: "malformed_json", rawDigest, configRevision: null };
+  }
+  const observedRevision =
+    isRecord(parsed) &&
+    Number.isSafeInteger(parsed.configRevision) &&
+    Number(parsed.configRevision) >= 1
+      ? Number(parsed.configRevision)
+      : null;
+
+  let value: LibraryLocatorV1;
+  try {
+    value = validateLocator(parsed, platform);
+  } catch {
+    return {
+      status: "unsupported_or_v1_schema",
+      rawDigest,
+      configRevision: observedRevision,
+    };
+  }
+
+  const root = resolveForPlatform(value.libraryDirectory, platform);
+  try {
+    const stat = await fs.lstat(root);
+    if (stat.isSymbolicLink() || !stat.isDirectory()) {
+      return {
+        status: "dangling_target",
+        rawDigest,
+        configRevision: value.configRevision,
+        value,
+      };
+    }
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+      return {
+        status: "dangling_target",
+        rawDigest,
+        configRevision: value.configRevision,
+        value,
+      };
+    }
+    throw error;
+  }
+
+  let marker: Awaited<ReturnType<typeof readLibraryRootMarker>>;
+  try {
+    marker = await readLibraryRootMarker(root);
+  } catch {
+    marker = undefined;
+  }
+  if (!marker) {
+    return {
+      status: "target_missing_root_marker",
+      rawDigest,
+      configRevision: value.configRevision,
+      value,
+    };
+  }
+  if (marker.value.libraryId !== value.libraryId) {
+    return {
+      status: "library_id_mismatch",
+      rawDigest,
+      configRevision: value.configRevision,
+      value,
+    };
+  }
+  return {
+    status: "valid_v2",
+    rawDigest,
+    configRevision: value.configRevision,
+    value,
+  };
+}
+
 function readLocatorSync(locatorPath: string, platform: NodeJS.Platform) {
   try {
     assertRegularJsonFileSync(locatorPath, "ScientificFigureLibrary locator");
@@ -534,6 +679,10 @@ export class LibraryRuntime {
     return this.current();
   }
 
+  bindingContext() {
+    return libraryBindingRuntimeContext(this.options);
+  }
+
   cached() {
     return this.lastSnapshot;
   }
@@ -565,7 +714,8 @@ export interface GlobalLibraryBindingPlanV1 {
   libraryDirectory: string;
   libraryId: string;
   configRevision: number;
-  expectedLocatorDigest: string | null;
+  expectedLocatorStatus: GlobalLibraryLocatorStatus;
+  expectedLocatorRawDigest: string | null;
   expectedConfigRevision: number | null;
   expectedTargetMarkerDigest: string | null;
   expectedTargetInventory: LibraryFileInventoryEntry[];
@@ -875,11 +1025,20 @@ async function copyLegacyInventory(
 export async function planGlobalLibraryBinding(options: {
   libraryDirectory: string;
   locatorPath?: string;
+  environmentOverrideRoot?: string;
   migrationMode?: "none" | "copy_legacy";
   legacySourceDirectory?: string;
 }): Promise<GlobalLibraryBindingPlanV1> {
   const locatorPath = path.resolve(options.locatorPath ?? defaultLibraryLocatorPath());
   const libraryDirectory = path.resolve(options.libraryDirectory);
+  if (
+    options.environmentOverrideRoot &&
+    !samePathForPlatform(options.environmentOverrideRoot, libraryDirectory, process.platform)
+  ) {
+    throw new Error(
+      "binding blocked by FIGURE_LIBRARY_DIR environment override: the explicit target differs",
+    );
+  }
   let directoryExists = false;
   try {
     const stat = await fs.lstat(libraryDirectory);
@@ -890,7 +1049,7 @@ export async function planGlobalLibraryBinding(options: {
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
   }
-  const current = await readLocator(locatorPath, process.platform);
+  const current = await observeGlobalLibraryLocator(locatorPath, process.platform);
   const marker = directoryExists ? await readLibraryRootMarker(libraryDirectory) : undefined;
   const targetInventory = directoryExists ? await targetBindingInventory(libraryDirectory) : [];
   let targetHasUnmarkedEntries = false;
@@ -940,15 +1099,20 @@ export async function planGlobalLibraryBinding(options: {
     };
   }
   const libraryId = marker?.value.libraryId ?? randomUUID();
+  const configRevision = (current.configRevision ?? 0) + 1;
+  if (!Number.isSafeInteger(configRevision)) {
+    throw new Error("ScientificFigureLibrary locator configRevision cannot be incremented safely");
+  }
   const withoutPlanDigest: Omit<GlobalLibraryBindingPlanV1, "planDigest"> = {
     schema: LIBRARY_BINDING_PLAN_SCHEMA,
     bindingId: `library-binding-${randomUUID()}`,
     locatorPath,
     libraryDirectory,
     libraryId,
-    configRevision: (current?.value.configRevision ?? 0) + 1,
-    expectedLocatorDigest: current?.digest ?? null,
-    expectedConfigRevision: current?.value.configRevision ?? null,
+    configRevision,
+    expectedLocatorStatus: current.status,
+    expectedLocatorRawDigest: current.rawDigest,
+    expectedConfigRevision: current.configRevision,
     expectedTargetMarkerDigest: marker?.digest ?? null,
     expectedTargetInventory: targetInventory,
     expectedTargetStateDigest: inventoryDigest(targetInventory),
@@ -1029,14 +1193,33 @@ function validateBindingPlan(plan: GlobalLibraryBindingPlanV1) {
     throw new Error("invalid global library migration mode");
   }
   const expectedConfigRevision = plan.expectedConfigRevision;
+  const locatorStatuses = new Set<GlobalLibraryLocatorStatus>([
+    "missing",
+    "valid_v2",
+    "malformed_json",
+    "unsupported_or_v1_schema",
+    "dangling_target",
+    "target_missing_root_marker",
+    "library_id_mismatch",
+  ]);
   if (
     expectedConfigRevision !== null &&
     (!Number.isSafeInteger(expectedConfigRevision) || expectedConfigRevision < 1)
   ) {
     throw new Error("invalid binding expectedConfigRevision");
   }
+  const locatorStatusRequiresRevision = ([
+    "valid_v2",
+    "dangling_target",
+    "target_missing_root_marker",
+    "library_id_mismatch",
+  ] as GlobalLibraryLocatorStatus[]).includes(plan.expectedLocatorStatus);
   if (
-    (expectedConfigRevision === null) !== (plan.expectedLocatorDigest === null) ||
+    !locatorStatuses.has(plan.expectedLocatorStatus) ||
+    (plan.expectedLocatorStatus === "missing") !==
+      (plan.expectedLocatorRawDigest === null) ||
+    (plan.expectedLocatorStatus === "missing" && expectedConfigRevision !== null) ||
+    (locatorStatusRequiresRevision && expectedConfigRevision === null) ||
     plan.configRevision !== (expectedConfigRevision ?? 0) + 1
   ) {
     throw new Error("invalid binding locator revision transition");
@@ -1050,7 +1233,7 @@ function validateBindingPlan(plan: GlobalLibraryBindingPlanV1) {
     !path.isAbsolute(plan.libraryDirectory) ||
     typeof plan.createdAt !== "string" ||
     Number.isNaN(Date.parse(plan.createdAt)) ||
-    (plan.expectedLocatorDigest !== null && !HASH.test(plan.expectedLocatorDigest)) ||
+    (plan.expectedLocatorRawDigest !== null && !HASH.test(plan.expectedLocatorRawDigest)) ||
     (plan.expectedTargetMarkerDigest !== null && !HASH.test(plan.expectedTargetMarkerDigest)) ||
     !HASH.test(plan.expectedTargetStateDigest) ||
     !HASH.test(planDigest) ||
@@ -1100,22 +1283,19 @@ export async function applyGlobalLibraryBinding(
       const completed = await readReceipt();
       if (completed) return { ...completed, idempotentReplay: true };
 
-      const current = await readLocator(plan.locatorPath, process.platform);
+      const current = await observeGlobalLibraryLocator(plan.locatorPath, process.platform);
       const desiredAlreadyWritten =
-        current?.value.libraryId === plan.libraryId &&
+        current.status === "valid_v2" &&
+        current.value?.libraryId === plan.libraryId &&
         path.resolve(current.value.libraryDirectory) === plan.libraryDirectory &&
         current.value.configRevision === plan.configRevision;
       if (
         !desiredAlreadyWritten &&
-        (current?.digest ?? null) !== plan.expectedLocatorDigest
+        (current.status !== plan.expectedLocatorStatus ||
+          current.rawDigest !== plan.expectedLocatorRawDigest ||
+          current.configRevision !== plan.expectedConfigRevision)
       ) {
         throw new Error("stale global library binding plan: locator changed after planning");
-      }
-      if (
-        !desiredAlreadyWritten &&
-        (current?.value.configRevision ?? null) !== plan.expectedConfigRevision
-      ) {
-        throw new Error("stale global library binding plan: configRevision changed after planning");
       }
 
       return withCrossRuntimeWriteLock(

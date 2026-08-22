@@ -2,10 +2,10 @@
   "schema": "wisp.plugin.v1",
   "id": "figure-library",
   "display_name": "Scientific Figure Library",
-  "version": "0.5.4",
-  "description": "Search Local Published and FigureYa, then govern direct image/code intake as immutable reviewed templates.",
+  "version": "0.6.0",
+  "description": "Search Local Published, bundled Community, FigureYa, and explicitly trusted personal Providers, then govern immutable figure references and staged publication.",
   "author": "xuzhougeng and contributors",
-  "license": "MIT (code); CC BY-NC-SA 4.0 (FigureYa assets)",
+  "license": "MIT (SFL and Community code); CC BY 4.0 (Community synthetic content); CC BY-NC-SA 4.0 (FigureYa assets)",
   "source_format": "wisp-plugin",
   "skills": [
     "skills/figure-library"

@@ -11,15 +11,31 @@ function fail(message) {
 }
 
 const packageJson = JSON.parse(await fs.readFile(path.join(root, "package.json"), "utf8"));
-const pluginJson = JSON.parse(
-  await fs.readFile(path.join(root, ".wisp-plugin", "plugin.json"), "utf8"),
-);
 const version = packageJson.version;
 if (typeof version !== "string" || !/^\d+\.\d+\.\d+$/.test(version)) {
   fail(`package.json version is not a product version: ${version}`);
 }
-if (pluginJson.version !== version) {
-  fail(`plugin.json version ${pluginJson.version} !== package.json version ${version}`);
+
+const packageLock = JSON.parse(await fs.readFile(path.join(root, "package-lock.json"), "utf8"));
+if (packageLock.version !== version) {
+  fail(`package-lock.json top-level version ${packageLock.version} !== package.json version ${version}`);
+}
+if (packageLock.packages?.[""]?.version !== version) {
+  fail(
+    `package-lock.json packages[\"\"].version ${packageLock.packages?.[""]?.version} !== package.json version ${version}`,
+  );
+}
+
+const pluginFiles = [
+  [".wisp-plugin/plugin.json", "Wisp"],
+  [".codex-plugin/plugin.json", "Codex"],
+  [".claude-plugin/plugin.json", "Claude"],
+];
+for (const [relative, label] of pluginFiles) {
+  const pluginJson = JSON.parse(await fs.readFile(path.join(root, relative), "utf8"));
+  if (pluginJson.version !== version) {
+    fail(`${label} plugin.json version ${pluginJson.version} !== package.json version ${version}`);
+  }
 }
 
 const skill = await fs.readFile(path.join(root, "skills", "figure-library", "SKILL.md"), "utf8");
@@ -28,8 +44,17 @@ if (!skill.split(/\r?\n/).includes(`# Scientific Figure Library ${version}`)) {
 }
 
 const readme = await fs.readFile(path.join(root, "README.md"), "utf8");
-if (!readme.includes(`scientific-figure-library-wisp-${version}.zip`)) {
-  fail(`README does not mention the current Wisp zip scientific-figure-library-wisp-${version}.zip`);
+for (const host of ["wisp", "codex", "claude"]) {
+  const zip = `scientific-figure-library-${host}-${version}.zip`;
+  if (!readme.includes(zip)) fail(`README does not mention the current ${host} zip ${zip}`);
+}
+const npmTarball = `scientific-figure-library-${version}.tgz`;
+if (!readme.includes(npmTarball)) {
+  fail(`README does not mention the current npm tarball ${npmTarball}`);
+}
+const sourcePack = `figure-library-source-pack-volcano-${version}.zip`;
+if (!readme.includes(sourcePack)) {
+  fail(`README does not mention the current FigureYa Source Pack example ${sourcePack}`);
 }
 
 const runtimeFiles = [
