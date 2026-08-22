@@ -73,6 +73,7 @@ export interface PreparedTemplate {
   tags: string[];
   visualProfile: string;
   dataProfile: string;
+  scientificQuestion?: string;
   packages: string[];
   license: string;
   assetKind: AssetKind;
@@ -94,6 +95,7 @@ interface PreparedMetadata {
   tags: string[];
   visualProfile: string;
   dataProfile: string;
+  scientificQuestion?: string;
   packages: string[];
   license: string;
   assetKind: AssetKind;

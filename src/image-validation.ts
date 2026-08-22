@@ -319,3 +319,108 @@ export function assertMcpImageBytes(options: {
     throw new Error(`preview bytes do not have a valid ${options.mimeType} signature and structure`);
   }
 }
+
+export const MAX_SAFE_IMAGE_WIDTH = 100_000;
+export const MAX_SAFE_IMAGE_HEIGHT = 100_000;
+export const MAX_SAFE_IMAGE_PIXELS = 268_435_456;
+
+export interface ImageHeader {
+  mimeType: "image/png" | "image/jpeg" | "image/gif" | "image/webp";
+  width: number;
+  height: number;
+  pixelsSafe: boolean;
+}
+
+function pngHeader(bytes: Uint8Array): ImageHeader | undefined {
+  if (
+    bytes.length < 24 ||
+    ![0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a].every((value, index) => bytes[index] === value)
+  ) {
+    return undefined;
+  }
+  const width = u32be(bytes, 16);
+  const height = u32be(bytes, 20);
+  return {
+    mimeType: "image/png",
+    width,
+    height,
+    pixelsSafe: saneDimensions(width, height),
+  };
+}
+
+function jpegHeader(bytes: Uint8Array): ImageHeader | undefined {
+  if (bytes.length < 4 || bytes[0] !== 0xff || bytes[1] !== 0xd8) return undefined;
+  let offset = 2;
+  while (offset + 9 <= bytes.length) {
+    if (bytes[offset] !== 0xff) return undefined;
+    while (offset < bytes.length && bytes[offset] === 0xff) offset += 1;
+    if (offset >= bytes.length) return undefined;
+    const marker = bytes[offset++]!;
+    if (marker === 0xd9 || marker === 0xda) return undefined;
+    if (marker === 0xd8 || marker === 0x00 || marker === 0x01 || (marker >= 0xd0 && marker <= 0xd7)) {
+      continue;
+    }
+    if (offset + 2 > bytes.length) return undefined;
+    const length = u16be(bytes, offset);
+    if (length < 2 || offset + length > bytes.length) return undefined;
+    if (JPEG_START_OF_FRAME.has(marker) && length >= 8) {
+      const height = u16be(bytes, offset + 3);
+      const width = u16be(bytes, offset + 5);
+      return {
+        mimeType: "image/jpeg",
+        width,
+        height,
+        pixelsSafe: saneDimensions(width, height),
+      };
+    }
+    offset += length;
+  }
+  return undefined;
+}
+
+function gifHeader(bytes: Uint8Array): ImageHeader | undefined {
+  if (bytes.length < 10 || !["GIF87a", "GIF89a"].includes(ascii(bytes, 0, 6))) return undefined;
+  const width = u16le(bytes, 6);
+  const height = u16le(bytes, 8);
+  return {
+    mimeType: "image/gif",
+    width,
+    height,
+    pixelsSafe: saneDimensions(width, height),
+  };
+}
+
+function webpHeader(bytes: Uint8Array): ImageHeader | undefined {
+  if (bytes.length < 30 || ascii(bytes, 0, 4) !== "RIFF" || ascii(bytes, 8, 4) !== "WEBP") {
+    return undefined;
+  }
+  let offset = 12;
+  while (offset + 8 <= bytes.length) {
+    const type = ascii(bytes, offset, 4);
+    const length = u32le(bytes, offset + 4);
+    const data = offset + 8;
+    if (length > bytes.length - data) return undefined;
+    if (type === "VP8X" && length >= 10) {
+      const width = u24le(bytes, data + 4) + 1;
+      const height = u24le(bytes, data + 7) + 1;
+      return { mimeType: "image/webp", width, height, pixelsSafe: saneDimensions(width, height) };
+    }
+    if (type === "VP8 " && length > 10) {
+      const width = u16le(bytes, data + 6) & 0x3fff;
+      const height = u16le(bytes, data + 8) & 0x3fff;
+      return { mimeType: "image/webp", width, height, pixelsSafe: saneDimensions(width, height) };
+    }
+    if (type === "VP8L" && length > 5) {
+      const bits = u32le(bytes, data + 1);
+      const width = (bits & 0x3fff) + 1;
+      const height = ((bits >>> 14) & 0x3fff) + 1;
+      return { mimeType: "image/webp", width, height, pixelsSafe: saneDimensions(width, height) };
+    }
+    offset = data + length + (length & 1);
+  }
+  return undefined;
+}
+
+export function inspectImageHeader(bytes: Uint8Array): ImageHeader | undefined {
+  return pngHeader(bytes) ?? jpegHeader(bytes) ?? gifHeader(bytes) ?? webpHeader(bytes);
+}

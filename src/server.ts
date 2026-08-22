@@ -23,6 +23,7 @@ import {
   type ToolOutcomeEnvelope,
 } from "./library-binding-tools.ts";
 import { LibraryRuntime, readLibraryRootMarker } from "./library-runtime.ts";
+import { WorkspaceRuntime } from "./workspace-runtime.ts";
 import { registerLifecycleTools } from "./lifecycle-tools.ts";
 import { inspectFigureYaSourcePack } from "./materialize.ts";
 import { registerMaterializationTools } from "./materialization-tools.ts";
@@ -42,6 +43,14 @@ import {
   searchCatalogRevision,
   sha256,
 } from "./preview-service.ts";
+import {
+  SEARCH_CONCURRENCY,
+  SEARCH_MAX_PAGE_DATA_URL_BYTES,
+  mapPool,
+  prepareTransportImage,
+  searchPerImageBudget,
+  singlePreviewBudget,
+} from "./transport-image.ts";
 import {
   FIGUREYA_PROVIDER_ID,
   LOCAL_LIBRARY_PROVIDER_ID,
@@ -65,10 +74,11 @@ import {
   type TemplateContentV1,
   type TemplateReleaseV1,
 } from "./versioned-library.ts";
+import { VERSION } from "./version.ts";
 
-export const VERSION = "0.3.0";
+export { VERSION };
 export const MATERIALIZATION_PROTOCOL_VERSION = 2;
-const RESOURCE_URI = "ui://figure-library/candidates-v0.3.0.html";
+const RESOURCE_URI = `ui://figure-library/candidates-v${VERSION}.html`;
 const APP_HTML = path.resolve(import.meta.dirname, "mcp-app.html");
 const HASH = /^[a-f0-9]{64}$/u;
 
@@ -337,6 +347,7 @@ async function localCandidates(
           templateId: item.templateId,
           title: item.title,
           description: item.description,
+          scientificQuestion: item.scientificQuestion,
           application: item.visualProfile,
           dataProfile: item.dataProfile,
           inputFiles: [],
@@ -387,6 +398,7 @@ async function localCandidates(
         warnings: [...new Set(review.warnings.map((warning) => warning.message))],
         excerpt: item.description.slice(0, 420),
         description: item.description,
+        ...(item.scientificQuestion ? { scientificQuestion: item.scientificQuestion } : {}),
         application: item.visualProfile,
         dataProfile: item.dataProfile,
         inputFiles: content.assets
@@ -456,12 +468,9 @@ function candidateText(candidates: TemplateCandidate[]) {
         ? [`   WARNINGS: ${candidate.warnings.join("; ")}`]
         : []),
     ]),
-    "NEXT_STEP: wait for App updateModelContext. If it reports handoffMode=headless_exact_review, review only that one user-selected candidate; otherwise do not call an exact-preview tool unless the user explicitly delegates headless visual review.",
+    "NEXT_STEP: wait for App updateModelContext. If it reports handoffMode=agent_plot_set, plot every selected candidate in the current project. If it reports handoffMode=headless_exact_review, review only that one candidate. Otherwise do not call an exact-preview tool unless the user explicitly delegates headless visual review.",
   ].join("\n");
 }
-
-const MAX_THUMBNAIL_BYTES = 256 * 1024;
-const MAX_PAGE_THUMBNAIL_BYTES = 3 * 1024 * 1024;
 
 function searchQueryDigest(input: z.infer<typeof SearchInput>) {
   return sha256(
@@ -481,60 +490,101 @@ function searchQueryDigest(input: z.infer<typeof SearchInput>) {
   );
 }
 
+function transportPreviewStatus(reason: string): TemplateCandidate["previewStatus"] {
+  if (reason === "unsupported") return "unsupported";
+  if (reason === "too_large" || reason === "unsafe_pixels") return "too_large";
+  return "unreadable";
+}
+
+function searchPageInlineBytes(candidates: TemplateCandidate[]) {
+  return candidates.reduce(
+    (sum, candidate) => sum + (candidate.previewDataUrl ? candidate.previewDataUrl.length : 0),
+    0,
+  );
+}
+
 async function hydrateCandidatePreviews(options: {
   candidates: TemplateCandidate[];
   context: CurrentLibraryContext;
   index: CatalogIndex;
 }) {
-  let pageBytes = 0;
-  const output: TemplateCandidate[] = [];
-  for (const candidate of options.candidates) {
-    if (!candidate.previewAvailable) {
-      output.push({ ...candidate, previewStatus: "missing", previewRef: undefined });
-      continue;
-    }
-    try {
-      const preview = await loadProviderPreview({
-        context: options.context,
-        index: options.index,
-        providerId: candidate.providerId,
-        exactSelector: candidate.exactSelector,
-      });
-      if (preview.byteLength > MAX_THUMBNAIL_BYTES) {
-        output.push({
+  const needed = options.candidates.filter((candidate) => candidate.previewAvailable).length;
+  let perImageBudget = searchPerImageBudget(needed);
+  const hydrateOnce = (budget: number): Promise<TemplateCandidate[]> =>
+    mapPool(options.candidates, SEARCH_CONCURRENCY, async (candidate): Promise<TemplateCandidate> => {
+      if (!candidate.previewAvailable) {
+        return { ...candidate, previewStatus: "missing" as const, previewRef: undefined };
+      }
+      try {
+        const preview = await loadProviderPreview({
+          context: options.context,
+          index: options.index,
+          providerId: candidate.providerId,
+          exactSelector: candidate.exactSelector,
+        });
+        const transport = await prepareTransportImage({
+          sourceBytes: preview.bytes,
+          sourceMime: preview.mimeType,
+          sourceSha256: preview.sha256,
+          purpose: "SearchCard",
+          maxDataUrlBytes: budget,
+          libraryRoot: options.context.snapshot.root,
+        });
+        if (!transport.ok) {
+          return {
+            ...candidate,
+            previewAvailable: false,
+            previewRef: undefined,
+            previewStatus: transportPreviewStatus(transport.reason),
+          };
+        }
+        return {
+          ...candidate,
+          previewStatus: "ready" as const,
+          previewDataUrl: transport.dataUrl,
+          previewMimeType: preview.mimeType,
+          previewByteLength: preview.byteLength,
+          previewSha256: preview.sha256,
+        };
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        const previewStatus: NonNullable<TemplateCandidate["previewStatus"]> = message.includes(
+          "unsupported",
+        )
+          ? "unsupported"
+          : message.includes("no preview")
+            ? "missing"
+            : "unreadable";
+        return {
           ...candidate,
           previewAvailable: false,
           previewRef: undefined,
-          previewStatus: "too_large",
-        });
-        continue;
+          previewStatus,
+        };
       }
-      if (pageBytes + preview.byteLength > MAX_PAGE_THUMBNAIL_BYTES) {
-        output.push({
-          ...candidate,
-          previewAvailable: false,
-          previewRef: undefined,
-          previewStatus: "too_large",
-        });
-        continue;
-      }
-      pageBytes += preview.byteLength;
-      output.push({
-        ...candidate,
-        previewStatus: "ready",
-        previewDataUrl: `data:${preview.mimeType};base64,${Buffer.from(preview.bytes).toString("base64")}`,
-        previewMimeType: preview.mimeType,
-        previewByteLength: preview.byteLength,
-        previewSha256: preview.sha256,
-      });
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      output.push({
+    });
+
+  let output = await hydrateOnce(perImageBudget);
+  while (
+    searchPageInlineBytes(output) > SEARCH_MAX_PAGE_DATA_URL_BYTES &&
+    perImageBudget > 32 * 1024
+  ) {
+    perImageBudget = Math.max(32 * 1024, Math.floor(perImageBudget / 2));
+    output = await hydrateOnce(perImageBudget);
+  }
+  if (searchPageInlineBytes(output) > SEARCH_MAX_PAGE_DATA_URL_BYTES) {
+    let remaining = searchPageInlineBytes(output);
+    for (let index = output.length - 1; index >= 0 && remaining > SEARCH_MAX_PAGE_DATA_URL_BYTES; index -= 1) {
+      const candidate = output[index];
+      if (!candidate?.previewDataUrl) continue;
+      remaining -= candidate.previewDataUrl.length;
+      output[index] = {
         ...candidate,
         previewAvailable: false,
         previewRef: undefined,
-        previewStatus: message.includes("unsupported") ? "unsupported" : message.includes("no preview") ? "missing" : "unreadable",
-      });
+        previewStatus: "too_large" as const,
+        previewDataUrl: undefined,
+      };
     }
   }
   return output;
@@ -641,6 +691,7 @@ interface SearchSessionState {
 export async function createServer() {
   const index = await CatalogIndex.load();
   const runtime = new LibraryRuntime();
+  const workspaceRuntime = new WorkspaceRuntime();
   const previewConfirmations = new PreviewConfirmationStore();
   const diagnostics = new DiagnosticsManager();
   await diagnostics.start();
@@ -681,7 +732,7 @@ export async function createServer() {
       const responseEnvelope = outcome(
         "ok",
         "library_ready",
-        "Scientific Figure Library 0.3.0 is ready. Standard core uses direct user-confirmed image/code intake; Web Capture and project pins are not registered. Ask for a plotting goal before searching.",
+        `Scientific Figure Library ${VERSION} is ready. Standard core uses direct user-confirmed image/code intake; Web Capture and project pins are not registered. Ask for a plotting goal before searching.`,
         "ask_user",
       );
       return terminal(responseEnvelope, {
@@ -1267,6 +1318,17 @@ export async function createServer() {
         }
         if (!preview) throw new Error("no preview is available for the exact selection");
         const sha256 = createHash("sha256").update(preview.bytes).digest("hex");
+        const transport = await prepareTransportImage({
+          sourceBytes: preview.bytes,
+          sourceMime: preview.mimeType,
+          sourceSha256: sha256,
+          purpose: "CompatibilityPreview",
+          maxDataUrlBytes: singlePreviewBudget(),
+          libraryRoot: (await currentLibraries()).snapshot.root,
+        });
+        if (!transport.ok) {
+          throw new Error(`preview_unavailable: transport adaptation failed (${transport.reason})`);
+        }
         let outputPath: string | undefined;
         if (destination) {
           if (!path.isAbsolute(destination)) throw new Error("preview destination must be absolute");
@@ -1310,8 +1372,8 @@ export async function createServer() {
             },
             {
               type: "image",
-              data: Buffer.from(preview.bytes).toString("base64"),
-              mimeType: preview.mimeType,
+              data: Buffer.from(transport.transportBytes).toString("base64"),
+              mimeType: transport.transportMime,
             },
           ],
           structuredContent: {
@@ -1364,6 +1426,17 @@ export async function createServer() {
         providerId: options.providerId,
         exactSelector: options.exactSelector,
       });
+      const transport = await prepareTransportImage({
+        sourceBytes: preview.bytes,
+        sourceMime: preview.mimeType,
+        sourceSha256: preview.sha256,
+        purpose: "ExactPreview",
+        maxDataUrlBytes: singlePreviewBudget(),
+        libraryRoot: context.snapshot.root,
+      });
+      if (!transport.ok) {
+        throw new Error(`preview_unavailable: transport adaptation failed (${transport.reason})`);
+      }
       const previewChallenge = previewConfirmations.issueChallenge({
         resultSetId: options.resultSetId,
         providerId: options.providerId,
@@ -1372,6 +1445,8 @@ export async function createServer() {
         previewSha256: preview.sha256,
         catalogRevision,
         libraryBindingDigest: bindingDigest,
+        transportRenditionSha256: transport.transportSha256,
+        encoderPolicyVersion: "transport-image-v1",
       });
       const responseEnvelope = outcome(
         "needs_user_confirmation",
@@ -1416,7 +1491,7 @@ export async function createServer() {
               structuredContent,
               _meta: {
                 exactPreview: {
-                  previewDataUrl: `data:${preview.mimeType};base64,${Buffer.from(preview.bytes).toString("base64")}`,
+                  previewDataUrl: transport.dataUrl,
                   previewChallenge,
                 },
               },
@@ -1426,8 +1501,8 @@ export async function createServer() {
                 text,
                 {
                   type: "image",
-                  data: Buffer.from(preview.bytes).toString("base64"),
-                  mimeType: preview.mimeType,
+                  data: Buffer.from(transport.transportBytes).toString("base64"),
+                  mimeType: transport.transportMime,
                 },
               ],
               structuredContent,
@@ -1831,6 +1906,7 @@ export async function createServer() {
     async ({ sourcePackDir }): Promise<CallToolResult> => {
       try {
         const context = await currentLibraries();
+        const workspace = await workspaceRuntime.current();
         const [library, marker, legacyFlat, figureYa, writeLock] = await Promise.all([
           context.versionedLibrary.status(),
           readLibraryRootMarker(context.snapshot.root),
@@ -1868,6 +1944,14 @@ export async function createServer() {
             },
           },
           writeLock,
+          workspace: {
+            root: workspace.directory ?? null,
+            directorySource: workspace.directorySource,
+            locatorPath: workspace.locatorPath,
+            confirmed: workspace.confirmed,
+            kind: workspace.inspection?.kind ?? (workspace.confirmed ? "unknown" : "unbound"),
+            exists: workspace.inspection?.exists ?? false,
+          },
           standardCore: {
             directIntake: true,
             materializationProtocolVersion: MATERIALIZATION_PROTOCOL_VERSION,
@@ -1921,6 +2005,11 @@ export async function createServer() {
             `DIAGNOSTICS_DEGRADED: ${diagnostics.degraded}`,
             `DIAGNOSTICS_MAX_FILE_BYTES: ${diagnostics.maxFileBytes}`,
             `DIAGNOSTICS_MAX_TOTAL_BYTES: ${diagnostics.maxTotalBytes}`,
+            `WORKSPACE_ROOT: ${workspace.directory ?? "unbound"}`,
+            `WORKSPACE_SOURCE: ${workspace.directorySource}`,
+            `WORKSPACE_CONFIRMED: ${workspace.confirmed}`,
+            `WORKSPACE_KIND: ${workspace.inspection?.kind ?? "unbound"}`,
+            `WORKSPACE_LOCATOR_PATH: ${workspace.locatorPath}`,
           ],
         );
       } catch (error) {
@@ -1929,7 +2018,7 @@ export async function createServer() {
     },
   );
 
-  registerLibraryBindingTools({ server, runtime, currentLibraries });
+  registerLibraryBindingTools({ server, runtime, workspaceRuntime, currentLibraries });
   registerLifecycleTools({
     server,
     currentLibrary: async () => (await currentLibraries()).versionedLibrary,

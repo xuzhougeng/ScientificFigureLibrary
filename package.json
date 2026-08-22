@@ -1,6 +1,6 @@
 {
   "name": "scientific-figure-library",
-  "version": "0.3.0",
+  "version": "0.5.4",
   "description": "A portable MCP server and MCP App for searching, importing, and materializing scientific figure templates.",
   "type": "module",
   "bin": {
@@ -17,13 +17,15 @@
     "THIRD_PARTY_NOTICES.md"
   ],
   "scripts": {
-    "build": "tsc --noEmit && vite build && esbuild src/index.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/index.js --banner:js='#!/usr/bin/env node\nimport { createRequire as __nodeCreateRequire } from \"node:module\"; const require = __nodeCreateRequire(import.meta.url);'",
+    "build": "tsc --noEmit && vite build && node scripts/esbuild-server.mjs",
     "catalog": "node scripts/build-catalog.mjs",
     "package:source-pack": "node scripts/package-source-pack.mjs",
     "package:npm": "npm run build && node -e \"require('node:fs').mkdirSync('release',{recursive:true})\" && npm pack --pack-destination release",
     "package:wisp": "npm run build && node scripts/package-wisp.mjs",
     "start": "node dist/index.js",
-    "test": "node --test tests/*.test.ts",
+    "version:check": "node scripts/check-version-sync.mjs",
+    "version:set": "node scripts/version-set.mjs",
+    "test": "node scripts/check-version-sync.mjs && node --test tests/*.test.ts",
     "test:smoke": "npm run build && node scripts/smoke.mjs",
     "check": "npm run test && npm run test:smoke"
   },
@@ -31,6 +33,7 @@
     "@modelcontextprotocol/ext-apps": "^1.7.0",
     "@modelcontextprotocol/sdk": "^1.29.0",
     "@types/node": "^22.19.5",
+    "@types/pngjs": "^6.0.5",
     "esbuild": "^0.25.0",
     "fflate": "^0.8.2",
     "happy-dom": "^18.0.1",
@@ -48,6 +51,8 @@
     "url": "https://github.com/xuzhougeng/ScientificFigureLibrary"
   },
   "dependencies": {
+    "jpeg-js": "^0.4.4",
+    "pngjs": "^7.0.0",
     "yaml": "^2.9.0"
   }
 }

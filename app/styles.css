@@ -475,3 +475,32 @@ footer {
     grid-template-columns: 1fr;
   }
 }
+
+.candidate-select {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 8px;
+  font-size: 0.8rem;
+  color: var(--color-text-secondary, #58645d);
+}
+
+.candidate-select-input {
+  width: 16px;
+  height: 16px;
+}
+
+.plot-set-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin: 12px 0 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--color-background-tertiary, #eef0ed);
+}
+
+.plot-set-bar button:disabled {
+  opacity: 0.55;
+}

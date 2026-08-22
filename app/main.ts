@@ -5,16 +5,21 @@ import {
   applyHostStyleVariables,
 } from "@modelcontextprotocol/ext-apps";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
-import { updateModelContextForHeadlessReview } from "./handoff.ts";
+import {
+  updateModelContextForHeadlessReview,
+  updateModelContextForPlotSet,
+} from "./handoff.ts";
 import {
   openCandidateDetail,
   parseSearchResult,
   renderCandidateCards,
+  renderPlotSetBar,
   mountExactPreviewImage,
   type Candidate,
   type DetailViewElements,
   type SearchResult,
 } from "./view.ts";
+import { VERSION } from "../src/version.ts";
 import "./styles.css";
 
 const root = document.getElementById("app")!;
@@ -25,13 +30,31 @@ const status = document.getElementById("status")!;
 const previous = document.getElementById("previous-page") as HTMLButtonElement;
 const next = document.getElementById("next-page") as HTMLButtonElement;
 const pageStatus = document.getElementById("page-status")!;
-const app = new App({ name: "Scientific Figure Library", version: "0.3.0" });
+const plotSetBar = document.getElementById("plot-set-bar")!;
+const plotSetCount = document.getElementById("plot-set-count")!;
+const plotSetSubmit = document.getElementById("plot-set-submit") as HTMLButtonElement;
+const app = new App({ name: "Scientific Figure Library", version: VERSION });
 
 let activeResult: SearchResult | undefined;
 let activeResultSetId: string | undefined;
 let activeDetail: DetailViewElements | undefined;
 const pageCache = new Map<number, SearchResult>();
 const reportedCapabilities = new Set<string>();
+const selectedCandidates = new Map<string, Candidate>();
+
+function selectedIds() {
+  return new Set(selectedCandidates.keys());
+}
+
+function refreshPlotSetBar() {
+  renderPlotSetBar({
+    bar: plotSetBar,
+    submit: plotSetSubmit,
+    countLabel: plotSetCount,
+    selectedCount: selectedCandidates.size,
+    canSubmit: Boolean(activeResult) && updateModelContextAvailable(),
+  });
+}
 
 function record(value: unknown) {
   return value && typeof value === "object" && !Array.isArray(value)
@@ -107,6 +130,7 @@ function render(result: SearchResult) {
   if (activeDetail?.dialog.open) activeDetail.dialog.close();
   if (activeResultSetId !== result.resultSetId) {
     pageCache.clear();
+    selectedCandidates.clear();
     activeResultSetId = result.resultSetId;
   }
   activeResult = result;
@@ -118,6 +142,12 @@ function render(result: SearchResult) {
     cards,
     empty,
     result,
+    selectedIds: selectedIds(),
+    onToggleSelect: (candidate, selected) => {
+      if (selected) selectedCandidates.set(candidate.candidateId, candidate);
+      else selectedCandidates.delete(candidate.candidateId);
+      refreshPlotSetBar();
+    },
     onDetail: (candidate, elements, opener) => {
       if (opener === elements.previewButton) {
         void recordUiEvent("candidate.thumbnail_clicked", candidate);
@@ -141,15 +171,43 @@ function render(result: SearchResult) {
   status.textContent = serverToolsAvailable()
     ? "请先在 App 内浏览候选详情；只有你请求精确预览并确认后，才会把选择交给 Agent。"
     : updateModelContextAvailable()
-      ? "当前 Host 未提供 serverTools；可浏览当前页基础详情并选择一个候选交给 Agent 审核，但不能在 App 内翻页或加载精确预览。"
+      ? "当前 Host 未提供 serverTools；可勾选 1 到 8 个模板交给 Agent 绘制，或打开详情做单张审核。"
       : "当前 Host 既未提供 serverTools，也未提供 updateModelContext；只能浏览当前页基础详情。";
   if (result.diagnosticsDegraded) {
     status.textContent += " 诊断日志处于降级状态。";
   }
   const first = result.candidates[0];
+  refreshPlotSetBar();
   if (first && !reportedCapabilities.has(result.resultSetId) && serverToolsAvailable()) {
     reportedCapabilities.add(result.resultSetId);
     void recordUiEvent("host.capabilities_detected", first);
+  }
+}
+
+async function submitPlotSet() {
+  if (!activeResult || !updateModelContextAvailable()) {
+    status.textContent = "当前 Host 无法通过 updateModelContext 交接多选结果。";
+    return;
+  }
+  const chosen = [...selectedCandidates.values()];
+  if (chosen.length < 1 || chosen.length > 8) {
+    status.textContent = "请选择 1 到 8 个模板后再交给 Agent 绘制。";
+    return;
+  }
+  plotSetSubmit.disabled = true;
+  plotSetSubmit.textContent = "正在交给 Agent…";
+  try {
+    await updateModelContextForPlotSet({
+      resultSetId: activeResult.resultSetId,
+      candidates: chosen,
+      updateModelContext: (input) => app.updateModelContext(input),
+    });
+    status.textContent = `已把 ${chosen.length} 个模板交给 Agent 绘制；请在当前课题项目中逐张出图。`;
+    plotSetSubmit.textContent = `已交给 Agent（${chosen.length}）`;
+  } catch (error) {
+    console.error(error);
+    status.textContent = "多选交接失败；请重试或在对话中列出要画的模板。";
+    refreshPlotSetBar();
   }
 }
 
@@ -382,6 +440,7 @@ function applyHostContext(context: NonNullable<ReturnType<App["getHostContext"]>
 
 previous.addEventListener("click", loadPreviousPage);
 next.addEventListener("click", () => void loadNextPage());
+plotSetSubmit.addEventListener("click", () => void submitPlotSet());
 
 app.ontoolinput = (input) => {
   const request = input.arguments as Record<string, unknown>;

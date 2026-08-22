@@ -7,6 +7,7 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 
 const root = path.resolve(import.meta.dirname, "..");
+const VERSION = JSON.parse(await fs.readFile(path.join(root, "package.json"), "utf8")).version;
 const externalMaterializeDestination = process.argv[2];
 const serverEntry =
   process.env.FIGURE_LIBRARY_SMOKE_SERVER ?? path.join(root, "dist", "index.js");
@@ -36,7 +37,7 @@ const childEnvironment = Object.fromEntries(
 );
 childEnvironment.FIGURE_LIBRARY_DIR = libraryDirectory;
 
-const client = new Client({ name: "scientific-figure-library-smoke", version: "0.3.0" });
+const client = new Client({ name: "scientific-figure-library-smoke", version: "0.5.3" });
 const transport = new StdioClientTransport({
   command: process.execPath,
   args: [serverEntry],
@@ -98,6 +99,8 @@ try {
     "figure_library_source_status",
     "figure_library_plan_bind_global",
     "figure_library_apply_bind_global",
+    "figure_library_plan_bind_workspace",
+    "figure_library_apply_bind_workspace",
     "figure_library_plan_recover_write_lock",
     "figure_library_apply_recover_write_lock",
     "figure_library_review_open",
@@ -126,10 +129,10 @@ try {
     "figure_library_apply_template_bundle_import",
   ].sort();
   for (const name of required) {
-    if (!names.includes(name)) throw new Error(`missing 0.3.0 tool ${name}`);
+    if (!names.includes(name)) throw new Error(`missing 0.5.3 tool ${name}`);
   }
-  if (names.length !== 40 || names.length !== required.length) {
-    throw new Error(`expected exactly 40 standard tools, received ${names.length}`);
+  if (names.length !== 42 || names.length !== required.length) {
+    throw new Error(`expected exactly 42 standard tools, received ${names.length}`);
   }
   for (const [toolName, visibility] of [
     ["figure_library_search", "model"],
@@ -145,7 +148,7 @@ try {
     }
   }
   if (names.some((name) => name.startsWith("figure_capture_"))) {
-    throw new Error("standard 0.3.0 server registered an experimental Capture tool");
+    throw new Error("standard 0.5.3 server registered an experimental Capture tool");
   }
   for (const forbidden of [
     "figure_library_project_status",
@@ -161,9 +164,9 @@ try {
     opened.isError ||
     outcome(opened).outcome !== "ok" ||
     outcome(opened).nextAction !== "ask_user" ||
-    structured(opened).libraryVersion !== "0.3.0"
+    structured(opened).libraryVersion !== VERSION
   ) {
-    throw new Error("open did not report the 0.3.0 direct-intake workbench");
+    throw new Error(`open did not report the ${VERSION} direct-intake workbench`);
   }
 
   smokeStep = "initial-status";
@@ -174,7 +177,7 @@ try {
   if (
     initialStatus.isError ||
     outcome(initialStatus).outcome !== "ok" ||
-    structured(initialStatus).serverVersion !== "0.3.0" ||
+    structured(initialStatus).serverVersion !== VERSION ||
     structured(initialStatus).standardCore?.captureToolsRegistered !== false ||
     structured(initialStatus).standardCore?.projectPinToolsRegistered !== false
   ) {
@@ -183,7 +186,7 @@ try {
   assertTextFields(
     initialStatus,
     [
-      "SERVER_VERSION: 0.3.0",
+      `SERVER_VERSION: ${VERSION}`,
       `LIBRARY_ROOT: ${libraryDirectory}`,
       "LIBRARY_SOURCE: FIGURE_LIBRARY_DIR",
       "CAPTURE_TOOLS_REGISTERED: false",
@@ -271,7 +274,7 @@ try {
       mode: "create",
       templateId: "smoke-direct-volcano",
       title: "smoke-direct-unique volcano reference",
-      description: "A user-confirmed image/code Figure Unit for the 0.3.0 stdio smoke.",
+      description: "A user-confirmed image/code Figure Unit for the 0.5.3 stdio smoke.",
       tags: ["smoke-direct-unique", "volcano"],
       visualProfile: "volcano scatter x log2FC y negative log10 adjusted p value",
       dataProfile: "gene log2FC pvalue padj",
@@ -388,7 +391,7 @@ try {
     workingPreviewSelector?.contentDigest !== workingPlan.content?.contentDigest
   ) {
     throw new Error(
-      `direct intake planning omitted the v0.3.0 review summary or selector: ${JSON.stringify(
+      `direct intake planning omitted the v0.5.3 review summary or selector: ${JSON.stringify(
         workingStructured,
       )}`,
     );
@@ -899,13 +902,13 @@ try {
     throw new Error("diagnostic resource link did not return the generated ZIP bytes");
   }
 
-  const resource = await client.readResource({ uri: "ui://figure-library/candidates-v0.3.0.html" });
+  const resource = await client.readResource({ uri: `ui://figure-library/candidates-v${VERSION}.html` });
   if (!resource.contents[0]?.mimeType?.startsWith("text/html")) {
     throw new Error("MCP App resource was not returned as HTML");
   }
 
   console.log(
-    `OK 0.3.0: ${names.length} standard tools; model/app visibility split; compact search thumbnails; no Capture/project pins; unified providers; direct intake; immutable Publish; preview-confirmed protocol-v2 materialization/replay; sanitized diagnostics resource; portable template bundle/import; terminal anti-loop outcomes${externalMaterializeDestination ? `; materialized ${structured(materialized).result.target}` : ""}`,
+    `OK 0.5.3: ${names.length} standard tools; model/app visibility split; compact search thumbnails; no Capture/project pins; unified providers; direct intake; immutable Publish; preview-confirmed protocol-v2 materialization/replay; sanitized diagnostics resource; portable template bundle/import; terminal anti-loop outcomes${externalMaterializeDestination ? `; materialized ${structured(materialized).result.target}` : ""}`,
   );
 } catch (error) {
   console.error(`SMOKE_STEP_FAILED: ${smokeStep}`);

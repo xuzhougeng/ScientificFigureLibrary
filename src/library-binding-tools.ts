@@ -15,6 +15,12 @@ import {
   type LibraryRuntimeSnapshot,
 } from "./library-runtime.ts";
 import type { VersionedTemplateLibrary } from "./versioned-library.ts";
+import {
+  WorkspaceRuntime,
+  applyGlobalWorkspaceBinding,
+  planGlobalWorkspaceBinding,
+  type WorkspaceBindingPlanV1,
+} from "./workspace-runtime.ts";
 
 const HASH = /^[a-f0-9]{64}$/u;
 const OPERATION_ID = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/u;
@@ -46,7 +52,8 @@ export type ToolNextAction =
   | "inspect_review"
   | "preview_selected_candidate"
   | "stop_other_writers"
-  | "rebind_library";
+  | "rebind_library"
+  | "rebind_workspace";
 
 export interface ToolOutcomeEnvelope {
   schema: "figure-library.tool-outcome.v1";
@@ -169,9 +176,11 @@ const RecoveryPlanInput = z.object({ reason: z.string().min(1).max(2_000) });
 export function registerLibraryBindingTools(options: {
   server: McpServer;
   runtime: LibraryRuntime;
+  workspaceRuntime?: WorkspaceRuntime;
   currentLibraries: () => Promise<CurrentLibraryContext>;
 }) {
   const { server, runtime, currentLibraries } = options;
+  const workspaceRuntime = options.workspaceRuntime;
   const bindingPlans = new Map<
     string,
     { plan: GlobalLibraryBindingPlanV1; expiresAt: number }
@@ -373,6 +382,126 @@ export function registerLibraryBindingTools(options: {
         ]);
       } catch (error) {
         return failure("Global Library binding Apply failed", error);
+      }
+    },
+  );
+
+  const workspacePlans = new Map<string, { plan: WorkspaceBindingPlanV1; expiresAt: number }>();
+  const WorkspacePlanInput = z.object({
+    workspaceDirectory: z
+      .string()
+      .min(1)
+      .max(4_000)
+      .describe("Absolute native path for the machine-local draft knowledge base (inbox/drafts/gallery)."),
+  });
+
+  server.registerTool(
+    "figure_library_plan_bind_workspace",
+    {
+      title: "Plan Local workspace binding",
+      description:
+        "Validate the user-selected Local workspace directory. First-time machine confirmation only; later starts reuse the saved locator. Never infers the current project folder.",
+      inputSchema: WorkspacePlanInput.shape,
+      annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: false,
+      },
+    },
+    async (input): Promise<CallToolResult> => {
+      try {
+        if (!path.isAbsolute(input.workspaceDirectory)) {
+          return response(
+            outcomeEnvelope(
+              "needs_user_input",
+              "absolute_workspace_directory_required",
+              "The user must choose an absolute native directory for the Local workspace.",
+              "ask_user",
+              ["workspaceDirectory"],
+            ),
+          );
+        }
+        if (process.env.FIGURE_WORKSPACE_DIR?.trim()) {
+          return response(
+            outcomeEnvelope(
+              "blocked",
+              "binding_blocked_by_environment_override",
+              "FIGURE_WORKSPACE_DIR takes precedence over the workspace locator.",
+              "rebind_workspace",
+            ),
+          );
+        }
+        const plan = await planGlobalWorkspaceBinding({
+          workspaceDirectory: input.workspaceDirectory,
+          locatorPath: workspaceRuntime ? (await workspaceRuntime.current()).locatorPath : undefined,
+        });
+        remember(workspacePlans, plan.planDigest, plan);
+        return response(
+          outcomeEnvelope(
+            "needs_user_confirmation",
+            "workspace_binding_plan_ready",
+            `No files were written. Review the Local workspace path ${plan.workspaceDirectory}. Skeleton creation: ${plan.willCreateSkeleton}.`,
+            "apply_confirmed_plan",
+          ),
+          { plan },
+          [
+            `PLAN_DIGEST: ${plan.planDigest}`,
+            `WORKSPACE_DIRECTORY: ${plan.workspaceDirectory}`,
+            `LOCATOR_PATH: ${plan.locatorPath}`,
+            `WORKSPACE_KIND: ${plan.workspaceKind}`,
+            `WILL_CREATE_SKELETON: ${plan.willCreateSkeleton}`,
+            `CONFIG_REVISION: ${plan.configRevision}`,
+          ],
+        );
+      } catch (error) {
+        return failure("Local workspace binding plan failed", error);
+      }
+    },
+  );
+
+  server.registerTool(
+    "figure_library_apply_bind_workspace",
+    {
+      title: "Apply confirmed Local workspace binding",
+      description:
+        "Apply the exact reviewed workspace binding plan. After this first confirmation, later MCP starts reuse the same directory across projects.",
+      inputSchema: ApplyPlanInput.shape,
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: false,
+      },
+    },
+    async ({ planDigest, operationId }): Promise<CallToolResult> => {
+      try {
+        const plan = recalled(workspacePlans, planDigest);
+        if (!plan) return missingPlan("Local workspace binding");
+        if (process.env.FIGURE_WORKSPACE_DIR?.trim()) {
+          throw new Error("binding blocked by FIGURE_WORKSPACE_DIR environment override");
+        }
+        const result = await applyGlobalWorkspaceBinding(plan, operationId);
+        const runtimeForRefresh = workspaceRuntime ?? new WorkspaceRuntime({ locatorPath: plan.locatorPath });
+        const effective = await runtimeForRefresh.refresh();
+        return response(
+          outcomeEnvelope(
+            result.idempotentReplay ? "replayed" : "applied",
+            result.idempotentReplay ? "workspace_binding_replayed" : "workspace_binding_applied",
+            `${result.idempotentReplay ? "Replayed" : "Applied"} Local workspace binding; later starts will reuse ${result.workspaceDirectory}.`,
+            "none",
+          ),
+          { planDigest, result, effective },
+          [
+            `PLAN_DIGEST: ${planDigest}`,
+            `WORKSPACE_DIRECTORY: ${result.workspaceDirectory}`,
+            `WORKSPACE_CONFIRMED: ${effective.confirmed}`,
+            `CREATED_SKELETON: ${result.createdSkeleton}`,
+            `CONFIG_REVISION: ${result.configRevision}`,
+          ],
+        );
+      } catch (error) {
+        return failure("Local workspace binding Apply failed", error);
       }
     },
   );

@@ -3,16 +3,18 @@ name: figure-library
 description: Build, review, search, select, and materialize immutable scientific-figure references from one global Local Published library and FigureYa.
 ---
 
-# Scientific Figure Library 0.3.0
+# Scientific Figure Library 0.5.4
 
 Use this Skill when a user wants to store an uploaded figure/code pair, review
 or publish a local template, search for a plotting reference, or materialize an
 exact template into a project.
 
-Version 0.3.0 retains materialization protocol v2 and adds truthful Working
-preview, Working/Published review separation, Release-bound warnings, canonical
-preview decisions, and a three-part validation state. There is no receipt-free
-0.5.0 materialization plan path.
+Version 0.5.4 keeps materialization protocol v2, the 0.5.2 review truthfulness
+contract, and the 0.5.3 transport image adapter. It also adds optional
+`scientificQuestion` for retrieval. That field is why the figure is worth
+drawing; it is not `description` or `visualProfile`. Ordinary search still
+returns only Local Published heads. There is no receipt-free 0.5.0
+materialization plan path.
 
 ## Non-negotiable boundaries
 
@@ -72,7 +74,22 @@ for user-visible App preview.
 
 Call `figure_library_source_status` when the effective Library is unknown. It
 reports the global root/source, locator, `libraryId`, write status, lifecycle
-counts, write lock, Local Published provider, and FigureYa provider.
+counts, write lock, Local Published provider, FigureYa provider, and Local
+workspace confirmation.
+
+This machine has two roots. They are cross-project and are not inferred from
+the current Wisp cwd:
+
+- Published Library: immutable search/publish store
+- Local workspace: pre-publish inbox/drafts/gallery knowledge base
+
+If `WORKSPACE_CONFIRMED` is false, this machine has never bound a Local
+workspace. Ask once for an absolute directory (do not use the current project
+folder unless the user names it). Call `figure_library_plan_bind_workspace`,
+show the plan, then `figure_library_apply_bind_workspace` after approval.
+Later MCP starts reuse that locator silently. Rebind only when the user asks
+or the bound directory is missing/invalid.
+
 
 If writing is disabled or the user wants another Library:
 
@@ -150,7 +167,7 @@ Canonical preview rules:
   `primaryPreviewOverride: { confirmedBy: "user", reason }`, otherwise stop on
   `canonical_preview_override_required`.
 
-The Server validates only assets the Host declares. Version 0.3.0 deliberately
+The Server validates only assets the Host declares. Version 0.5.3 deliberately
 has no separate upload digest declaration, so it cannot detect that a Host
 omitted an uploaded original entirely. This is a Host contract, not evidence
 that omission detection passed.
@@ -311,6 +328,12 @@ anything during preview.
   candidate. Both headless routes cannot prove that the user actually saw an
   App image; say so in any acceptance report.
 
+If App `updateModelContext` reports `handoffMode=agent_plot_set`, the user
+selected 1..N templates to draw. Plot every `selectedCandidates` item in the
+current science project. Keep each `providerId` and `exactSelector`
+unchanged. Do not plot only the first item, do not inspect unselected
+candidates, and do not publish. Materialize or load each template separately.
+
 Both paths return a session-local, opaque, single-use `previewReceipt` bound to
 the exact result set, provider, selector digest, preview hash, catalog/Library
 revision, and Library root. A challenge is destroyed on confirmation. A
@@ -411,7 +434,7 @@ Defaults are `scope: "current_session"`, `detail: "sanitized_bundle"`,
 with the requested ISO timestamps. `full_local`, user text, or absolute paths
 require an explicit user request; secrets, image bytes/Data URLs,
 preview challenges/receipts, plan tokens, selectors, and source assets remain
-excluded. In 0.3.0, `includeUserText` is forward-compatible input only: the
+excluded. In 0.5.3, `includeUserText` is forward-compatible input only: the
 recorder does not collect conversation/free text, even when it is true.
 
 Return the tool's bundle name, byte length, SHA-256, redaction state, compact

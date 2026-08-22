@@ -9,6 +9,7 @@ import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { ensureLibraryRootMarker, readLibraryRootMarker } from "../src/library-runtime.ts";
 import { FIGUREYA_PROVIDER_ID, LOCAL_LIBRARY_PROVIDER_ID } from "../src/providers.ts";
 import { createServer } from "../src/server.ts";
+import { VERSION } from "../src/version.ts";
 import {
   VersionedTemplateLibrary,
   type VersionedTemplateCandidate,
@@ -39,6 +40,7 @@ function toolText(value: unknown) {
 const STANDARD_TOOLS = [
   "figure_library_apply_adopt_versioning",
   "figure_library_apply_bind_global",
+  "figure_library_apply_bind_workspace",
   "figure_library_apply_bundle_export",
   "figure_library_apply_discard_working_revision",
   "figure_library_apply_full_restore",
@@ -57,6 +59,7 @@ const STANDARD_TOOLS = [
   "figure_library_open",
   "figure_library_plan_adopt_versioning",
   "figure_library_plan_bind_global",
+  "figure_library_plan_bind_workspace",
   "figure_library_plan_bundle_export",
   "figure_library_plan_discard_working_revision",
   "figure_library_plan_full_restore",
@@ -201,7 +204,7 @@ test("standard server unifies Local Published and FigureYa while hiding Working/
     // still omit serverTools, so updateModelContext must be able to hand the
     // selected candidate to the model-visible headless preview/confirm tools.
     const client = new Client(
-      { name: "server-integration-test", version: "0.3.0" },
+      { name: "server-integration-test", version: "0.5.3" },
       {
         capabilities: {
           extensions: {
@@ -595,7 +598,7 @@ test("standard server unifies Local Published and FigureYa while hiding Working/
         arguments: {},
       });
       const statusStructured = record(status.structuredContent);
-      assert.equal(statusStructured.serverVersion, "0.3.0");
+      assert.equal(statusStructured.serverVersion, VERSION);
       const libraryStatus = record(statusStructured.library);
       const marker = await readLibraryRootMarker(libraryRoot);
       assert.ok(marker);
@@ -612,7 +615,7 @@ test("standard server unifies Local Published and FigureYa while hiding Working/
       assert.equal(standardCore.flatEntriesInOrdinarySearch, false);
       const text = toolText(status);
       for (const field of [
-        "SERVER_VERSION: 0.3.0",
+        `SERVER_VERSION: ${VERSION}`,
         `LIBRARY_ROOT: ${libraryRoot}`,
         `LIBRARY_ID: ${marker.value.libraryId}`,
         "PUBLISHED: 5",
@@ -660,7 +663,7 @@ test("standard server unifies Local Published and FigureYa while hiding Working/
       await fs.writeFile(blockedDiagnosticsPath, "fixture");
       process.env.SFL_DIAGNOSTICS_DIR = blockedDiagnosticsPath;
       const otherServer = await createServer();
-      const otherClient = new Client({ name: "server-isolation-test", version: "0.3.0" });
+      const otherClient = new Client({ name: "server-isolation-test", version: "0.5.3" });
       const [otherClientTransport, otherServerTransport] =
         InMemoryTransport.createLinkedPair();
       await otherServer.connect(otherServerTransport);
@@ -712,6 +715,7 @@ test("standard server unifies Local Published and FigureYa while hiding Working/
       const auditArguments: Record<string, Record<string, unknown>> = {
         figure_library_apply_adopt_versioning: genericApply,
         figure_library_apply_bind_global: opaqueApply,
+        figure_library_apply_bind_workspace: opaqueApply,
         figure_library_apply_bundle_export: {
           ...opaqueApply,
           expectedTarget: path.join(root, "missing-bundle-export"),
@@ -744,6 +748,7 @@ test("standard server unifies Local Published and FigureYa while hiding Working/
         },
         figure_library_plan_adopt_versioning: { templateId: "missing-template" },
         figure_library_plan_bind_global: { libraryDirectory: "relative-library" },
+        figure_library_plan_bind_workspace: { workspaceDirectory: "relative-workspace" },
         figure_library_plan_bundle_export: {
           kind: "full_library",
           destination: path.join(root, "bundle-exports"),
