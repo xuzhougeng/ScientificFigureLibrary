@@ -3,7 +3,7 @@
   "id": "figure-library",
   "display_name": "Scientific Figure Library",
   "version": "0.6.0",
-  "description": "Search Local Published, bundled Community, FigureYa, and explicitly trusted personal Providers, then govern immutable figure references and staged publication.",
+  "description": "Local-first scientific figure library: import, review, and publish templates on disk, then search and materialize them in Wisp Science.",
   "author": "xuzhougeng and contributors",
   "license": "MIT (SFL and Community code); CC BY 4.0 (Community synthetic content); CC BY-NC-SA 4.0 (FigureYa assets)",
   "source_format": "wisp-plugin",

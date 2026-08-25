@@ -1,7 +1,21 @@
 {
   "name": "scientific-figure-library",
   "version": "0.6.0",
-  "description": "A portable MCP server and MCP App for searching, importing, and materializing scientific figure templates.",
+  "description": "Local-first MCP server and MCP App for your scientific figures: import, review, and publish a global library on disk, then reuse exact templates in Claude Science and Wisp Science.",
+  "keywords": [
+    "scientific-figures",
+    "figure-library",
+    "local-first",
+    "figure-templates",
+    "mcp",
+    "mcp-app",
+    "claude-science",
+    "wisp-science",
+    "visualization",
+    "publication-figures",
+    "reproducible-research"
+  ],
+  "homepage": "https://github.com/xuzhougeng/ScientificFigureLibrary",
   "type": "module",
   "bin": {
     "scientific-figure-library": "dist/index.js"
