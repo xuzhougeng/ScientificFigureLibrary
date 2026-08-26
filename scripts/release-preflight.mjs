@@ -12,7 +12,8 @@ export async function main(options = {}) {
   if (!options.quiet) {
     console.log(
       `Release Community preflight OK: ${result.releaseCount} releases; ` +
-        `required=${result.requiredReleases.join(",")}; catalogCommit=${result.catalogCommit}`,
+        `catalogCommit=${result.catalogCommit}; catalogSha256=${result.catalogSha256}; ` +
+        `previewManifestSha256=${result.previewManifestSha256}`,
     );
   }
   return result;

@@ -539,56 +539,29 @@ function context(operation = false) {
   } as ProviderContext;
 }
 
-test("bundled final Community snapshot is pinned and serves search/preview offline", async () => {
+test("the exact reviewed zero-entry bundled Community snapshot stays healthy and search-offline", async () => {
   const snapshot = await loadBundledCommunitySnapshot();
   assert.equal(snapshot.catalog.provider.providerId, COMMUNITY_PROVIDER_ID);
   assert.equal(snapshot.trust, "bundled");
-  assert.equal(snapshot.revision, "a21d3ad5612a723621fc4581735032c95b39a949");
-  const expectedReleases = [
-    {
-      templateId: "ggsankeyfier-layout-color-combo",
-      releaseVersion: "1.0.0",
-      archiveCommit: "0d535e42c5abb1114f90ad10439d0d505138eb39",
-    },
-    {
-      templateId: "single-cell-enrichment-bar-pathway-genes",
-      releaseVersion: "1.0.0",
-      archiveCommit: "acdb41904a13425ae3c638f3658c1955b7998032",
-    },
-    {
-      templateId: "umap-unchull-main-type-circles",
-      releaseVersion: "1.0.0",
-      archiveCommit: "30d45429419f68166cb9cfa3310dc8c03b2f1e72",
-    },
-  ];
-  assert.deepEqual(
-    snapshot.catalog.entries.map((entry) => ({
-      templateId: entry.templateId,
-      releaseVersion: entry.releaseVersion,
-      archiveCommit: entry.archive.commit,
-    })),
-    expectedReleases,
-  );
+  assert.equal(snapshot.revision, "a7de6f13bd3e597984333f28c6f1bcf777d464f1");
+  assert.deepEqual(snapshot.catalog.entries, []);
 
-  let networkCalls = 0;
+  let archiveNetworkCalls = 0;
   const adapter = new PublicCatalogProviderAdapter({
     snapshot,
     archiveFetcher: async () => {
-      networkCalls += 1;
+      archiveNetworkCalls += 1;
       throw new Error("network was unexpectedly used");
     },
   });
-  for (const expected of expectedReleases) {
-    const candidates = await adapter.search(context(), { query: expected.templateId });
-    const candidate = candidates.find((item) => item.templateId === expected.templateId);
-    assert.ok(candidate, `${expected.templateId} was not returned by bundled search`);
-    const resolved = await adapter.resolve(context(), candidate.exactSelector, "preview");
-    const preview = await adapter.loadPreview(context(), resolved);
-    assert.equal(preview.templateId, expected.templateId);
-    assert.ok(preview.byteLength > 0);
-    assert.equal(preview.mimeType, "image/png");
-  }
-  assert.equal(networkCalls, 0);
+  assert.deepEqual(await adapter.search(context(), { query: "any public template" }), []);
+  const status = await adapter.status(context());
+  assert.equal(status.health, "ready");
+  assert.equal(status.details.templateCount, 0);
+  assert.equal(status.details.trust, "bundled");
+  assert.equal(status.details.startupNetworkAccess, false);
+  assert.equal(status.details.searchNetworkAccess, false);
+  assert.equal(archiveNetworkCalls, 0);
 });
 
 test("one PublicCatalogProviderAdapter class serves bundled and signed snapshots without search network", async () => {
@@ -806,7 +779,7 @@ test("public materialization is network-gated, fixed-identity, non-executing, an
 test("materialization accepts the clean-room seed submission/template/render schema", async () => {
   const fixture = buildFixture({
     seedSchema: true,
-    templateId: "single-cell-enrichment-bar-pathway-genes",
+    templateId: "synthetic-clean-room-schema-fixture",
   });
   const adapter = await adapterFor(fixture, {
     archiveFetcher: async () => fixture.archiveBytes,

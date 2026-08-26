@@ -14,6 +14,24 @@
 | SFL 上游交付 | 本地 commits；不 push，不创建上游 PR |
 | 发布产物目录 | 本 worktree 的 `release/`；不覆盖 0.5.5，不复制到 Desktop |
 
+## 2026-08-24 exact-three Community redaction reconciliation
+
+- 用户已明确授权从当前中央 Catalog 物理移除最初的三个错误测试 seed；这是
+  pre-0.7 的 exact-three redaction 维护操作，不是普通 withdrawn 生命周期，也
+  不放宽普通 Archive/Catalog 投稿的不可变 release 约束。
+- redaction 后的 bundled Community Catalog 可以是经过精确 source lock、digest、
+  schema、Provider identity、license 和 inventory 验证的 0-entry snapshot。
+  该状态仍为健康 Provider；默认检索继续返回 Local、FigureYa 和健康的个人源。
+- 从当前 Catalog/当前仓库树 redaction 不等于擦除 Git 历史、旧 commit-pinned
+  archive URL 或接收者已经 materialize 的副本，文档与交付报告不得声称物理
+  删除这些历史事实。
+- 今后的 Community release 必须来自一个 exact reachable Local Published
+  Release，依次经过 publication export、Archive PR 人工合并、Catalog PR 人工
+  合并；`seed-staging` 不再作为投稿或绕过生命周期的入口。
+- SFL 必须等待 redaction 后的最终 Community `main` commit，再通过
+  `community:sync` vendoring；在此之前不得覆盖现有 0.6.0 候选包。redaction 完成后
+  旧候选 ZIP/TGZ 与其 SHA 全部作废并重新包装。
+
 ## 2026-08-22 最终交付状态快照
 
 - SFL 功能实现、真实中央投稿闭环、vendoring 与发布前测试已经完成；SFL 改动仍只存在于本地 `codex/sfl-0.6.0-community-providers`，未 push、未创建 SFL 上游 PR。

@@ -276,6 +276,13 @@ at its default so Local Published, bundled Community, FigureYa, and only those
 personal Providers explicitly opted into default search are searched together,
 unless the user explicitly requests a source filter.
 
+A bundled Community snapshot may be healthy and contain zero current releases
+after an authorized Catalog redaction. Do not report that state as degraded,
+retry redacted selectors from an older plugin, or turn zero Community candidates
+into a terminal failure when other selected Providers are healthy. This pre-0.7
+redaction is not the normal withdrawn lifecycle of a later protocol and does not
+erase Git history or an already materialized, commit-pinned recipient copy.
+
 Ordinary results exclude Working, Capture, and unadopted flat entries. Every
 candidate has a `providerId` and provider-qualified `exactSelector`. Preserve
 both unchanged. Never resolve by bare `templateId` or let a same-named provider
@@ -426,6 +433,11 @@ Export never accesses the network, signs, executes code, creates a PR, merges,
 or publishes the Local Library. GitHub Archive PR then Catalog PR are separate
 plan/apply operations; neither tool may merge. Do not present an exported
 submission or an open PR as a public Community release.
+
+Every future Community proposal must originate from an exact reachable Local
+Published Release through this export flow. Never treat an ad-hoc
+`seed-staging` directory, an Archive retained for a Catalog-redacted release,
+or a bare filesystem bundle as an alternate public intake path.
 
 ## 9. Create staged central GitHub PRs
 
