@@ -4,6 +4,7 @@
 
 # Scientific Figure Library
 
+[Website](https://xuzhougeng.github.io/ScientificFigureLibrary/) ·
 [简体中文](README.zh-CN.md) ·
 [Quickstart](docs/QUICKSTART.md) ·
 [Protocol](docs/PROTOCOL.md) ·

@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="本机优先的科学图 MCP App：导入、审阅、发布到你磁盘上的全局 Library，再在 Claude Science 与 Wisp Science 里跨项目复用。" />
+  <title>Scientific Figure Library | 本机科学图库</title>
+  <link rel="icon" href="assets/logo.svg" type="image/svg+xml" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Noto+Sans+SC:wght@400;600&family=Noto+Serif+SC:wght@600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="assets/pages.css" />
+  <script>
+    (function () {
+      var lang = "zh";
+      try {
+        var q = new URLSearchParams(location.search).get("lang");
+        if (q === "en" || q === "zh") lang = q;
+        else {
+          var s = localStorage.getItem("sfl-pages-lang");
+          if (s === "en" || s === "zh") lang = s;
+        }
+      } catch (e) {}
+      document.documentElement.lang = lang === "en" ? "en" : "zh-CN";
+      document.documentElement.dataset.lang = lang;
+    })();
+  </script>
+</head>
+<body>
+  <header class="site-nav">
+    <div class="container">
+      <a class="brand" href="#top"><img src="assets/logo.svg" alt="" width="28" height="28" /><span>Scientific Figure Library</span></a>
+      <nav class="nav-links">
+        <a href="#features" data-i18n="nav.features">功能</a>
+        <a href="#install" data-i18n="nav.install">安装</a>
+        <a href="https://github.com/xuzhougeng/ScientificFigureLibrary/blob/main/docs/PROTOCOL.md" data-i18n="nav.docs">协议</a>
+      </nav>
+      <div class="nav-cta">
+        <div class="lang-switch" role="group" aria-label="语言">
+          <button type="button" data-lang="zh" aria-pressed="true">中文</button>
+          <button type="button" data-lang="en" aria-pressed="false">EN</button>
+        </div>
+        <a class="btn btn-secondary" href="https://github.com/xuzhougeng/ScientificFigureLibrary" data-i18n="nav.github">GitHub</a>
+        <a class="btn btn-primary" href="https://github.com/xuzhougeng/ScientificFigureLibrary/releases/latest" data-i18n="nav.release">Releases</a>
+      </div>
+    </div>
+  </header>
+
+  <main id="top">
+    <section class="hero">
+      <div class="container">
+        <p class="eyebrow" data-i18n="hero.eyebrow">Local first · MCP App · Claude Science · Wisp Science</p>
+        <h1 data-i18n-html="hero.title">你的科学图<br>留在本机一份库里</h1>
+        <p class="lead" data-i18n="hero.lead">导入图和代码，审阅后发布成不可变 Release。一份全局 Library 跨项目复用。服务器不执行绘图脚本。可选外部目录只是补充，权威始终是 Local Published。</p>
+        <div class="hero-actions">
+          <a class="btn btn-primary" href="https://github.com/xuzhougeng/ScientificFigureLibrary/releases/latest" data-i18n="hero.cta">查看 Releases</a>
+          <a class="btn btn-secondary" href="https://github.com/xuzhougeng/ScientificFigureLibrary" data-i18n="hero.source">源码</a>
+        </div>
+        <figure class="shot">
+          <img src="assets/sfl-gallery.png" alt="Local published scientific figure templates in the MCP App" />
+        </figure>
+        <p class="lead" style="margin-top:12px;font-size:0.95rem" data-i18n="shot.caption">在 MCP App 里浏览本机已发布模板，确认后再物化到项目。</p>
+      </div>
+    </section>
+
+    <section class="section" id="features">
+      <div class="container">
+        <p class="kicker" data-i18n="feat.kicker">Features</p>
+        <h2 data-i18n="feat.heading">本机优先的图库</h2>
+        <div class="grid">
+          <article class="card">
+            <h3 data-i18n="feat.local.title">本机全局 Library</h3>
+            <p data-i18n="feat.local.body">目录由你指定。不会悄悄写进当前项目。备份这份磁盘目录即可带走全部 Release。</p>
+          </article>
+          <article class="card">
+            <h3 data-i18n="feat.review.title">审阅再发布</h3>
+            <p data-i18n="feat.review.body">图与代码分开记录。作图是否跑过、上游流程、科学判断是三件独立的事。</p>
+          </article>
+          <article class="card">
+            <h3 data-i18n="feat.reuse.title">精确物化</h3>
+            <p data-i18n="feat.reuse.body">预览、确认、plan、apply。只有你点过的那一张会进项目，不会整库下载。</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="install">
+      <div class="container">
+        <p class="kicker" data-i18n="install.kicker">Install</p>
+        <h2 data-i18n="install.heading">接到 MCP 宿主</h2>
+        <div class="steps">
+          <div class="step"><div data-i18n="install.s1">Node.js 22+。clone 后 npm ci && npm run check。</div></div>
+          <div class="step"><div data-i18n="install.s2">stdio MCP 名称 figure-library，入口 dist/index.js。</div></div>
+          <div class="step"><div data-i18n="install.s3">Wisp Science：npm run package:wisp，安装 release/ 里的 ZIP。</div></div>
+          <div class="step"><div data-i18n="install.s4">先绑定一个本机全局 Library 目录，再导入或检索 Local Published。</div></div>
+        </div>
+        <h2 style="margin-top:40px" data-i18n="tools.heading">主要工具</h2>
+        <table>
+          <thead><tr><th>Tool</th><th></th></tr></thead>
+          <tbody>
+            <tr><td><code>figure_library_plan_bind_global</code></td><td data-i18n="tools.bind">选择本机 Library 目录</td></tr>
+            <tr><td><code>figure_library_open</code></td><td data-i18n="tools.open">打开 MCP App</td></tr>
+            <tr><td><code>figure_library_search</code></td><td data-i18n="tools.search">检索 Local Published</td></tr>
+            <tr><td><code>figure_library_plan_publish_working_revision</code></td><td data-i18n="tools.publish">发布 Release</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <span data-i18n="footer.note">代码 MIT。用户导入的图保留导入时记录的许可证。</span>
+      <span>
+        <a href="https://github.com/xuzhougeng/ScientificFigureLibrary">GitHub</a>
+        ·
+        <a href="https://github.com/xuzhougeng/wisp-science">Wisp Science</a>
+      </span>
+    </div>
+  </footer>
+  <script src="assets/pages.js"></script>
+</body>
+</html>
