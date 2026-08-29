@@ -25,6 +25,10 @@ hashes, versions, gates, and publishes them.
 Optional extra catalogs can be enabled later. They are supplements. The source
 of truth is always **Local Published**.
 
+A bundled extra catalog may currently contain zero releases after an authorized
+redaction; that is a healthy empty source, not a failure, and default search
+continues across other providers.
+
 <p align="center">
   <img src="docs/assets/sfl-gallery.png" alt="Scientific Figure Library MCP App: browse locally published scientific figure templates, then confirm one exact Release before materializing it." width="100%" />
 </p>

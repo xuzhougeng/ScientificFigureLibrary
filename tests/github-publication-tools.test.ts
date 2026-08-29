@@ -1,6 +1,5 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
-import { existsSync } from "node:fs";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
@@ -28,15 +27,6 @@ const PNG = Buffer.from(
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=",
   "base64",
 );
-const REAL_SEED_ROOT = path.resolve(
-  process.env.SFL_COMMUNITY_SEED_ROOT ?? path.join(import.meta.dirname, "..", "..", "ScientificFigureLibrary-community", "seed-staging"),
-);
-const REAL_SEED_IDENTITIES = [
-  ["ggsankeyfier-layout-color-combo", "0c1acb2c62e54c82963332f52e7934c90781c59b85778f20924f7affcc54cdec"],
-  ["single-cell-enrichment-bar-pathway-genes", "462f2060f13e7a2564b2eb74ad62a71a4b05ae33c87d848ee3f44f864450e793"],
-  ["umap-unchull-main-type-circles", "9a574ded8aa993fbf99352acf9e654a84572c3262cf2935415dbb621f3669239"],
-] as const;
-
 function sha256(value: Uint8Array | string) {
   return createHash("sha256").update(value).digest("hex");
 }
@@ -371,24 +361,6 @@ async function writeFrozenSeedSubmission(root: string, templateId = "seed-clean-
     await fs.writeFile(target, content);
   }
   return directory;
-}
-
-async function fileStatSnapshot(root: string) {
-  const snapshot: Array<{ path: string; bytes: number; modified: number }> = [];
-  const walk = async (directory: string, relativeDirectory = ""): Promise<void> => {
-    const entries = await fs.readdir(directory, { withFileTypes: true });
-    for (const entry of entries) {
-      const relative = relativeDirectory ? `${relativeDirectory}/${entry.name}` : entry.name;
-      const absolute = path.join(directory, entry.name);
-      if (entry.isDirectory()) await walk(absolute, relative);
-      else if (entry.isFile()) {
-        const stat = await fs.stat(absolute);
-        snapshot.push({ path: relative, bytes: stat.size, modified: stat.mtimeMs });
-      }
-    }
-  };
-  await walk(root);
-  return snapshot.sort((left, right) => left.path < right.path ? -1 : left.path > right.path ? 1 : 0);
 }
 
 async function rebuildInventory(directory: string) {
@@ -770,28 +742,6 @@ test("GitHub auth status distinguishes no login, invalid credentials, scope deni
       assert.equal(status.status, expected);
       assert.doesNotMatch(JSON.stringify(status), /SECRET_MUST_NOT_ECHO/u);
       assert.equal(status.login, ["insufficient_scope", "github_unreachable"].includes(expected) ? "jarxunlai" : null);
-    }
-  } finally {
-    await fs.rm(root, { recursive: true, force: true });
-  }
-});
-
-test("all three frozen clean-room seeds produce read-only deterministic Archive Plans", { skip: !existsSync(REAL_SEED_ROOT) }, async () => {
-  const root = await fs.mkdtemp(path.join(os.tmpdir(), "sfl-real-seed-plan-"));
-  try {
-    for (const [templateId, contentDigest] of REAL_SEED_IDENTITIES) {
-      const directory = path.join(REAL_SEED_ROOT, templateId);
-      const before = await fileStatSnapshot(directory);
-      const runner = new MockGhRunner();
-      const service = new GitHubPublicationService({ ghRunner: runner, receiptDirectory: path.join(root, templateId) });
-      const first = await service.plan({ action: "archive", submissionDirectory: directory });
-      assert.equal(first.written, false);
-      assert.match(first.planDigest, /^[a-f0-9]{64}$/u);
-      assert.deepEqual(first.identity, { templateId, releaseVersion: "1.0.0", contentDigest });
-      assert.equal(first.files.length, 1);
-      assert.equal(first.files[0]!.path, `archives/${templateId}/1.0.0/${templateId}-1.0.0.zip`);
-      assert.equal(runner.writes.length, 0, "frozen seed Plan must not write GitHub");
-      assert.deepEqual(await fileStatSnapshot(directory), before, "frozen seed Plan must not modify its source files");
     }
   } finally {
     await fs.rm(root, { recursive: true, force: true });

@@ -13,7 +13,6 @@ const releaseLibrary = await import("../scripts/package-release-lib.mjs");
 const releasePreflight = await import("../scripts/release-preflight.mjs");
 const {
   BOOTSTRAP_COMMUNITY_COMMIT,
-  REQUIRED_COMMUNITY_RELEASES,
   STANDARD_TOOL_NAMES,
   assertExactInventory,
   assertFinalCommunitySnapshot,
@@ -32,8 +31,10 @@ async function writeJson(file: string, value: unknown) {
 
 async function createCommunityFixture(options: {
   bootstrap?: boolean;
-  omitSeed?: boolean;
+  codeLicense?: string;
+  releaseCount?: number;
   publisherVerified?: boolean;
+  writeCodeLicenseText?: boolean;
 } = {}) {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), "sfl release gate fixture-"));
   const community = path.join(root, "assets", "community");
@@ -56,11 +57,9 @@ async function createCommunityFixture(options: {
     providerId: "io.github.jarxunlai.scientific-figure-community",
     entries: [] as Record<string, unknown>[],
   };
-  const identities = options.omitSeed
-    ? REQUIRED_COMMUNITY_RELEASES.slice(0, -1)
-    : REQUIRED_COMMUNITY_RELEASES;
-  for (const [index, identity] of identities.entries()) {
-    const [templateId, releaseVersion] = identity.split("@");
+  for (let index = 0; index < (options.releaseCount ?? 0); index += 1) {
+    const templateId = `synthetic-public-template-${index + 1}`;
+    const releaseVersion = "1.0.0";
     const image = new PNG({ width: 1, height: 1 });
     const rgba = Buffer.from([20 + index, 40 + index, 60 + index, 255]);
     image.data.set(rgba);
@@ -108,7 +107,11 @@ async function createCommunityFixture(options: {
         localReviewStatus: "not_reviewed",
         plotExecutionByRecipient: "not_run",
       },
-      licenses: { code: "MIT", content: "CC-BY-4.0", documentation: "CC-BY-4.0" },
+      licenses: {
+        code: options.codeLicense ?? "MIT",
+        content: "CC-BY-4.0",
+        documentation: "CC-BY-4.0",
+      },
     };
     catalog.entries.push(entry);
     previewManifest.entries.push({ templateId, releaseVersion, ...preview });
@@ -132,6 +135,13 @@ async function createCommunityFixture(options: {
   const previewManifestBytes = Buffer.from(`${JSON.stringify(previewManifest, null, 2)}\n`, "utf8");
   await fs.writeFile(path.join(community, "catalog.json"), catalogBytes);
   await fs.writeFile(path.join(community, "preview-manifest.json"), previewManifestBytes);
+  if (options.codeLicense && options.writeCodeLicenseText) {
+    await fs.writeFile(
+      path.join(community, "LICENSES", `${options.codeLicense}.txt`),
+      `${options.codeLicense} fixture\n`,
+      "utf8",
+    );
+  }
   await writeJson(path.join(community, "source.lock.json"), {
     schema: "figure-library.community-source-lock.v1",
     providerId: catalog.provider.providerId,
@@ -148,47 +158,61 @@ async function createCommunityFixture(options: {
   return { root, community };
 }
 
-test("release Community preflight accepts the three exact curated 1.0.0 seeds", async (t) => {
+test("release Community preflight accepts an exact non-bootstrap empty Catalog", async (t) => {
   const fixture = await createCommunityFixture();
   t.after(() => fs.rm(fixture.root, { recursive: true, force: true }));
   const result = await assertFinalCommunitySnapshot({ repositoryRoot: fixture.root });
-  assert.equal(result.releaseCount, 3);
-  assert.deepEqual(result.requiredReleases, REQUIRED_COMMUNITY_RELEASES);
+  assert.equal(result.releaseCount, 0);
+  assert.deepEqual(result.inventory, [
+    "LICENSES/CC-BY-4.0.txt",
+    "LICENSES/MIT.txt",
+    "catalog.json",
+    "preview-manifest.json",
+    "source.lock.json",
+  ]);
 });
 
-test("release Community preflight does not conflate clean-room curation with publisher verification", async (t) => {
-  const fixture = await createCommunityFixture({ publisherVerified: true });
+test("release Community preflight accepts a generic v1 curated entry with explicit publisher state", async (t) => {
+  const fixture = await createCommunityFixture({
+    releaseCount: 1,
+    publisherVerified: true,
+  });
   t.after(() => fs.rm(fixture.root, { recursive: true, force: true }));
-  await assert.rejects(
-    assertFinalCommunitySnapshot({ repositoryRoot: fixture.root }),
-    /falsely claims publisher verification for a frozen clean-room seed/u,
-  );
+  const result = await assertFinalCommunitySnapshot({ repositoryRoot: fixture.root });
+  assert.equal(result.releaseCount, 1);
 });
 
-test("release Community preflight rejects the bootstrap commit and a missing seed", async (t) => {
+test("release Community preflight rejects the bootstrap commit even when its Catalog is empty", async (t) => {
   const bootstrap = await createCommunityFixture({ bootstrap: true });
-  const missing = await createCommunityFixture({ omitSeed: true });
-  t.after(() => Promise.all([
-    fs.rm(bootstrap.root, { recursive: true, force: true }),
-    fs.rm(missing.root, { recursive: true, force: true }),
-  ]));
+  t.after(() => fs.rm(bootstrap.root, { recursive: true, force: true }));
   await assert.rejects(
     releasePreflight.main({ repositoryRoot: bootstrap.root, quiet: true }),
     /empty bootstrap commit be1080c/u,
   );
-  await assert.rejects(
-    assertFinalCommunitySnapshot({ repositoryRoot: missing.root }),
-    /fewer than the three required seed releases|omitted required seed/u,
-  );
   await assert.rejects(fs.stat(path.join(bootstrap.root, "release")), { code: "ENOENT" });
-  await assert.rejects(fs.stat(path.join(missing.root, "release")), { code: "ENOENT" });
 });
 
 test("release Community preflight verifies source lock, previews, archive identity, and exact inventory", async (t) => {
-  const previewFixture = await createCommunityFixture();
-  const archiveFixture = await createCommunityFixture();
+  const previewFixture = await createCommunityFixture({ releaseCount: 1 });
+  const archiveFixture = await createCommunityFixture({ releaseCount: 1 });
   const inventoryFixture = await createCommunityFixture();
-  t.after(() => Promise.all([previewFixture, archiveFixture, inventoryFixture].map((fixture) =>
+  const lockFixture = await createCommunityFixture();
+  const licenseFixture = await createCommunityFixture();
+  const entryLicenseFixture = await createCommunityFixture({
+    codeLicense: "Synthetic-Public-License",
+    releaseCount: 1,
+    writeCodeLicenseText: true,
+  });
+  const orphanFixture = await createCommunityFixture();
+  t.after(() => Promise.all([
+    previewFixture,
+    archiveFixture,
+    inventoryFixture,
+    lockFixture,
+    licenseFixture,
+    entryLicenseFixture,
+    orphanFixture,
+  ].map((fixture) =>
     fs.rm(fixture.root, { recursive: true, force: true }))));
 
   const catalog = JSON.parse(await fs.readFile(path.join(archiveFixture.community, "catalog.json"), "utf8"));
@@ -217,6 +241,35 @@ test("release Community preflight verifies source lock, previews, archive identi
   await assert.rejects(
     assertFinalCommunitySnapshot({ repositoryRoot: inventoryFixture.root }),
     /unexpected inventory/u,
+  );
+
+  const sourceLock = JSON.parse(
+    await fs.readFile(path.join(lockFixture.community, "source.lock.json"), "utf8"),
+  );
+  sourceLock.catalog.bytes += 1;
+  await writeJson(path.join(lockFixture.community, "source.lock.json"), sourceLock);
+  await assert.rejects(
+    assertFinalCommunitySnapshot({ repositoryRoot: lockFixture.root }),
+    /byte length differs/u,
+  );
+
+  await fs.rm(path.join(licenseFixture.community, "LICENSES", "MIT.txt"));
+  await assert.rejects(
+    assertFinalCommunitySnapshot({ repositoryRoot: licenseFixture.root }),
+    /omitted required license text LICENSES\/MIT\.txt/u,
+  );
+
+  await assert.rejects(
+    assertFinalCommunitySnapshot({ repositoryRoot: entryLicenseFixture.root }),
+    /code license is not the v1 MIT contract/u,
+  );
+
+  const orphan = path.join(orphanFixture.community, "thumbs", "retired-template", "1.0.0.png");
+  await fs.mkdir(path.dirname(orphan), { recursive: true });
+  await fs.writeFile(orphan, Buffer.from("orphan preview"));
+  await assert.rejects(
+    assertFinalCommunitySnapshot({ repositoryRoot: orphanFixture.root }),
+    /unexpected inventory.*thumbs\/retired-template\/1\.0\.0\.png/u,
   );
 });
 

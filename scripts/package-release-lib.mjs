@@ -20,11 +20,6 @@ export const CENTRAL_ARCHIVE_REPOSITORY =
   "jarxunlai/ScientificFigureLibrary-community-archives";
 export const BOOTSTRAP_COMMUNITY_COMMIT =
   "be1080c4c637dbf0f3580abbbd145fd03e2491c4";
-export const REQUIRED_COMMUNITY_RELEASES = Object.freeze([
-  "ggsankeyfier-layout-color-combo@1.0.0",
-  "single-cell-enrichment-bar-pathway-genes@1.0.0",
-  "umap-unchull-main-type-circles@1.0.0",
-]);
 
 export const STANDARD_TOOL_NAMES = Object.freeze([
   "figure_library_apply_adopt_versioning",
@@ -146,9 +141,10 @@ function parseJson(bytes, label) {
 }
 
 /**
- * Release-only Community gate. Development smoke tests intentionally do not
- * call this function, so the checked-in empty bootstrap snapshot remains a
- * valid development fixture until the three reviewed Catalog PRs are merged.
+ * Release-only Community gate. A reviewed non-bootstrap Catalog may contain
+ * zero current releases after an authorized Catalog redaction. The trust
+ * boundary is the exact source lock, its payload digests, and the bundled
+ * inventory; release count is not a trust signal.
  */
 export async function assertFinalCommunitySnapshot(options = {}) {
   const repositoryRoot = path.resolve(options.repositoryRoot ?? path.resolve(import.meta.dirname, ".."));
@@ -176,14 +172,12 @@ export async function assertFinalCommunitySnapshot(options = {}) {
   assert(catalog.provider.providerId === COMMUNITY_PROVIDER_ID, "release Community Catalog providerId is invalid");
   assert(catalog.provider.catalogRepository === CENTRAL_CATALOG_REPOSITORY, "release Community Catalog repository is invalid");
   assert(catalog.provider.archiveRepository === CENTRAL_ARCHIVE_REPOSITORY, "release Community archive repository is invalid");
-  assert(catalog.entries.length >= REQUIRED_COMMUNITY_RELEASES.length, "release Community Catalog has fewer than the three required seed releases");
-
-  const identities = new Map(
-    catalog.entries.map((entry) => [`${entry.templateId}@${entry.releaseVersion}`, entry]),
-  );
-  for (const identity of REQUIRED_COMMUNITY_RELEASES) {
-    const entry = identities.get(identity);
-    assert(entry, `release Community Catalog omitted required seed ${identity}`);
+  const requiredLicensePaths = new Set([
+    "LICENSES/MIT.txt",
+    "LICENSES/CC-BY-4.0.txt",
+  ]);
+  for (const entry of catalog.entries) {
+    const identity = `${entry.templateId}@${entry.releaseVersion}`;
     assert(entry.archive.repository === CENTRAL_ARCHIVE_REPOSITORY, `${identity} archive repository is invalid`);
     assert(COMMIT.test(entry.archive.commit) && !/^0+$/u.test(entry.archive.commit), `${identity} archive commit is not immutable`);
     assert(SHA256.test(entry.archive.sha256) && !/^0+$/u.test(entry.archive.sha256), `${identity} archive SHA-256 is invalid`);
@@ -191,17 +185,17 @@ export async function assertFinalCommunitySnapshot(options = {}) {
       entry.archive.path === `archives/${entry.templateId}/${entry.releaseVersion}/${entry.templateId}-${entry.releaseVersion}.zip`,
       `${identity} archive path is not canonical`,
     );
-    assert(
-      entry.status.publisherVerified === false,
-      `${identity} falsely claims publisher verification for a frozen clean-room seed`,
-    );
     assert(entry.status.curationStatus === "curated", `${identity} is not centrally curated`);
     assert(entry.status.renderValidation === "ci_rendered", `${identity} did not pass central CI rendering`);
     assert(entry.status.localReviewStatus === "not_reviewed", `${identity} falsely claims recipient review`);
     assert(entry.status.plotExecutionByRecipient === "not_run", `${identity} falsely claims recipient execution`);
-    assert(entry.licenses.code === "MIT", `${identity} code license is not the approved MIT seed license`);
-    assert(entry.licenses.content === "CC-BY-4.0", `${identity} content license is not the approved CC-BY-4.0 seed license`);
-    assert(entry.licenses.documentation === "CC-BY-4.0", `${identity} documentation license is not the approved CC-BY-4.0 seed license`);
+    assert(typeof entry.status.publisherVerified === "boolean", `${identity} publisher verification is invalid`);
+    assert(entry.licenses.code === "MIT", `${identity} code license is not the v1 MIT contract`);
+    assert(entry.licenses.content === "CC-BY-4.0", `${identity} content license is not the v1 CC-BY-4.0 contract`);
+    assert(
+      entry.licenses.documentation === "CC-BY-4.0",
+      `${identity} documentation license is not the v1 CC-BY-4.0 contract`,
+    );
   }
 
   const observed = await walkRegularFiles(communityRoot);
@@ -215,7 +209,7 @@ export async function assertFinalCommunitySnapshot(options = {}) {
       expected.add(file.relative);
     }
   }
-  for (const license of ["LICENSES/MIT.txt", "LICENSES/CC-BY-4.0.txt"]) {
+  for (const license of requiredLicensePaths) {
     assert(observedPaths.has(license), `release Community snapshot omitted required license text ${license}`);
   }
   const missing = [...expected].filter((relative) => !observedPaths.has(relative)).sort();
@@ -228,7 +222,6 @@ export async function assertFinalCommunitySnapshot(options = {}) {
     catalogSha256: snapshot.catalogSha256,
     previewManifestSha256: snapshot.previewManifestSha256,
     releaseCount: catalog.entries.length,
-    requiredReleases: [...REQUIRED_COMMUNITY_RELEASES],
     inventory: [...expected].sort(),
   };
 }
