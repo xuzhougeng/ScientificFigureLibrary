@@ -47,6 +47,7 @@ if (
 }
 assertPackagedGuidance({
   packagedReadme: utf8(unpacked["README.md"]),
+  packagedProtocol: utf8(unpacked["docs/PROTOCOL.md"]),
   packagedSkill: utf8(unpacked["skills/figure-library/SKILL.md"]),
   packagedServer: utf8(unpacked["dist/index.js"]),
   packagedApp: utf8(unpacked["dist/mcp-app.html"]),

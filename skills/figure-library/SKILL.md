@@ -3,16 +3,16 @@ name: figure-library
 description: Build, review, search, select, materialize, and safely publish immutable scientific-figure references from Local Published, bundled Community, FigureYa, and explicitly trusted personal Providers.
 ---
 
-# Scientific Figure Library 0.6.0
+# Scientific Figure Library 0.4.0
 
 Use this Skill when a user wants to store an uploaded figure/code pair, review
 or publish a local template, search for a plotting reference, or materialize an
 exact template into a project.
 
-The 0.6 Provider and publication work keeps materialization protocol v2,
-review truthfulness, and the transport image adapter while routing Local
-Published, bundled Community, FigureYa, and explicitly trusted personal
-sources through one Provider registry. The MCP App may request fullscreen or
+Version 0.4.0 ships the 0.6 Provider and publication work. It keeps
+materialization protocol v2, review truthfulness, and the transport image
+adapter while routing Local Published, bundled Community, FigureYa, and
+explicitly trusted personal sources through one Provider registry. The MCP App may request fullscreen or
 pip when the Host advertises those display modes. Wisp, Codex, and Claude
 plugin packages all ship this Skill beside the same MCP server. Optional
 `scientificQuestion` explains why a figure is worth drawing; it is not

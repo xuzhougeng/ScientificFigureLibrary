@@ -20,6 +20,42 @@ const pluginPaths = [
 ];
 const skillPath = path.join(root, "skills", "figure-library", "SKILL.md");
 const readmePath = path.join(root, "README.md");
+const protocolPath = path.join(root, "docs", "PROTOCOL.md");
+
+function replaceVersionedArtifacts(text, { required, label }) {
+  let next = text;
+  for (const host of ["wisp", "codex", "claude"]) {
+    const currentZip = new RegExp(
+      `scientific-figure-library-${host}-\\d+\\.\\d+\\.\\d+\\.zip`,
+      "gu",
+    );
+    const nextZip = `scientific-figure-library-${host}-${version}.zip`;
+    if (!currentZip.test(next)) {
+      if (required) throw new Error(`${label} does not contain a versioned ${host} plugin ZIP`);
+    } else {
+      currentZip.lastIndex = 0;
+      next = next.replace(currentZip, nextZip);
+    }
+  }
+  const currentTarball = /scientific-figure-library-\d+\.\d+\.\d+\.tgz/gu;
+  if (!currentTarball.test(next)) {
+    if (required) throw new Error(`${label} does not contain a versioned npm tarball`);
+  } else {
+    currentTarball.lastIndex = 0;
+    next = next.replace(currentTarball, `scientific-figure-library-${version}.tgz`);
+  }
+  const currentSourcePack = /figure-library-source-pack-([a-z0-9-]+)-\d+\.\d+\.\d+\.zip/gu;
+  if (!currentSourcePack.test(next)) {
+    if (required) throw new Error(`${label} does not contain a versioned FigureYa Source Pack example`);
+  } else {
+    currentSourcePack.lastIndex = 0;
+    next = next.replace(
+      currentSourcePack,
+      (_match, name) => `figure-library-source-pack-${name}-${version}.zip`,
+    );
+  }
+  return next;
+}
 
 const packageJson = JSON.parse(await fs.readFile(packagePath, "utf8"));
 const previous = packageJson.version;
@@ -55,33 +91,17 @@ const nextSkill = skill.replace(
   `# Scientific Figure Library ${version}`,
 );
 
-let readme = await fs.readFile(readmePath, "utf8");
-for (const host of ["wisp", "codex", "claude"]) {
-  const currentZip = new RegExp(
-    `scientific-figure-library-${host}-\\d+\\.\\d+\\.\\d+\\.zip`,
-    "gu",
-  );
-  const nextZip = `scientific-figure-library-${host}-${version}.zip`;
-  if (!currentZip.test(readme)) {
-    throw new Error(`README does not contain a versioned ${host} plugin ZIP`);
-  }
-  currentZip.lastIndex = 0;
-  readme = readme.replace(currentZip, nextZip);
-}
-const currentTarball = /scientific-figure-library-\d+\.\d+\.\d+\.tgz/gu;
-if (!currentTarball.test(readme)) {
-  throw new Error("README does not contain a versioned npm tarball");
-}
-currentTarball.lastIndex = 0;
-readme = readme.replace(currentTarball, `scientific-figure-library-${version}.tgz`);
-const currentSourcePack = /figure-library-source-pack-([a-z0-9-]+)-\d+\.\d+\.\d+\.zip/gu;
-if (!currentSourcePack.test(readme)) {
-  throw new Error("README does not contain a versioned FigureYa Source Pack example");
-}
-currentSourcePack.lastIndex = 0;
-readme = readme.replace(
-  currentSourcePack,
-  (_match, name) => `figure-library-source-pack-${name}-${version}.zip`,
+let readme = replaceVersionedArtifacts(await fs.readFile(readmePath, "utf8"), {
+  required: false,
+  label: "README",
+});
+let protocol = replaceVersionedArtifacts(await fs.readFile(protocolPath, "utf8"), {
+  required: true,
+  label: "docs/PROTOCOL.md",
+});
+protocol = protocol.replace(
+  /cannot be packaged as the \d+\.\d+\.\d+ release/gu,
+  `cannot be packaged as the ${version} release`,
 );
 
 // Validate every target before the first write so a malformed manifest,
@@ -98,5 +118,6 @@ for (const { pluginPath, pluginJson } of pluginJsons) {
 }
 await fs.writeFile(skillPath, nextSkill);
 await fs.writeFile(readmePath, readme);
+await fs.writeFile(protocolPath, protocol);
 
 process.stdout.write(`set product version ${previous} -> ${version}\n`);

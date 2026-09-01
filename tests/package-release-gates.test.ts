@@ -279,7 +279,7 @@ test("unified content audit rejects local state, machine paths, private keys, an
     auditPackageContents(
       new Map([
         ["dist/index.js", Buffer.from('const url = "https://example.org/C:/portable"; const relative = "dist/index.js";')],
-        ["docs/guide.md", Buffer.from("Use %APPDATA%/ScientificFigureLibrary/locator.json; the runtime writes receipt.json.")],
+        ["docs/guide.md", Buffer.from("Use %APPDATA%\\ScientificFigureLibrary\\locator.json; the runtime writes receipt.json.")],
       ]),
       { repositoryRoot, label: "fixture" },
     ));

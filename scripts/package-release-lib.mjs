@@ -248,7 +248,7 @@ function currentMachinePaths(repositoryRoot) {
   // sibling project path either. This is intentionally value-based rather than
   // a broad drive-letter regex, which would misclassify URL schemes and code
   // that merely implements portable path handling.
-  if (path.win32.isAbsolute(repositoryRoot)) {
+  if (/^[A-Za-z]:[\\/]/.test(repositoryRoot)) {
     values.add(path.win32.join(path.win32.parse(repositoryRoot).root, "plot"));
     values.add(path.win32.join(path.win32.parse(repositoryRoot).root, "ScientificFigureLibrary"));
   }

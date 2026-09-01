@@ -18,6 +18,7 @@ const trackedTargets = [
   ".claude-plugin/plugin.json",
   "skills/figure-library/SKILL.md",
   "README.md",
+  "docs/PROTOCOL.md",
 ];
 
 async function write(root: string, relative: string, value: string) {
@@ -50,17 +51,18 @@ async function createFixture(options: { malformedLock?: boolean } = {}) {
     await write(root, relative, `${JSON.stringify({ name: relative, version: oldVersion }, null, 2)}\n`);
   }
   await write(root, "skills/figure-library/SKILL.md", `# Scientific Figure Library ${oldVersion}\n`);
+  const artifacts = [
+    `scientific-figure-library-wisp-${oldVersion}.zip`,
+    `scientific-figure-library-codex-${oldVersion}.zip`,
+    `scientific-figure-library-claude-${oldVersion}.zip`,
+    `scientific-figure-library-${oldVersion}.tgz`,
+    `figure-library-source-pack-volcano-${oldVersion}.zip`,
+  ];
+  await write(root, "README.md", `${artifacts.join("\n")}\n`);
   await write(
     root,
-    "README.md",
-    [
-      `scientific-figure-library-wisp-${oldVersion}.zip`,
-      `scientific-figure-library-codex-${oldVersion}.zip`,
-      `scientific-figure-library-claude-${oldVersion}.zip`,
-      `scientific-figure-library-${oldVersion}.tgz`,
-      `figure-library-source-pack-volcano-${oldVersion}.zip`,
-      "",
-    ].join("\n"),
+    "docs/PROTOCOL.md",
+    `${artifacts.join("\n")}\ncannot be packaged as the ${oldVersion} release.\n`,
   );
   return root;
 }
@@ -100,17 +102,22 @@ test("version:set synchronizes every release-facing product version from an arbi
     await fs.readFile(path.join(root, "skills/figure-library/SKILL.md"), "utf8"),
     /^# Scientific Figure Library 8\.0\.4$/mu,
   );
-  const readme = await fs.readFile(path.join(root, "README.md"), "utf8");
-  for (const artifact of [
+  const expectedArtifacts = [
     `scientific-figure-library-wisp-${targetVersion}.zip`,
     `scientific-figure-library-codex-${targetVersion}.zip`,
     `scientific-figure-library-claude-${targetVersion}.zip`,
     `scientific-figure-library-${targetVersion}.tgz`,
     `figure-library-source-pack-volcano-${targetVersion}.zip`,
-  ]) {
+  ];
+  const readme = await fs.readFile(path.join(root, "README.md"), "utf8");
+  const protocol = await fs.readFile(path.join(root, "docs/PROTOCOL.md"), "utf8");
+  for (const artifact of expectedArtifacts) {
     assert.ok(readme.includes(artifact), `README omitted ${artifact}`);
+    assert.ok(protocol.includes(artifact), `PROTOCOL.md omitted ${artifact}`);
   }
+  assert.match(protocol, /cannot be packaged as the 8\.0\.4 release/u);
   assert.doesNotMatch(readme, /7\.8\.9/u);
+  assert.doesNotMatch(protocol, /7\.8\.9/u);
 });
 
 test("version:set rejects malformed input before writing any target", async (t) => {

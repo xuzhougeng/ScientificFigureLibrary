@@ -43,18 +43,18 @@ if (!skill.split(/\r?\n/).includes(`# Scientific Figure Library ${version}`)) {
   fail(`Skill title is not # Scientific Figure Library ${version}`);
 }
 
-const readme = await fs.readFile(path.join(root, "README.md"), "utf8");
+const protocol = await fs.readFile(path.join(root, "docs", "PROTOCOL.md"), "utf8");
 for (const host of ["wisp", "codex", "claude"]) {
   const zip = `scientific-figure-library-${host}-${version}.zip`;
-  if (!readme.includes(zip)) fail(`README does not mention the current ${host} zip ${zip}`);
+  if (!protocol.includes(zip)) fail(`PROTOCOL.md does not mention the current ${host} zip ${zip}`);
 }
 const npmTarball = `scientific-figure-library-${version}.tgz`;
-if (!readme.includes(npmTarball)) {
-  fail(`README does not mention the current npm tarball ${npmTarball}`);
+if (!protocol.includes(npmTarball)) {
+  fail(`PROTOCOL.md does not mention the current npm tarball ${npmTarball}`);
 }
 const sourcePack = `figure-library-source-pack-volcano-${version}.zip`;
-if (!readme.includes(sourcePack)) {
-  fail(`README does not mention the current FigureYa Source Pack example ${sourcePack}`);
+if (!protocol.includes(sourcePack)) {
+  fail(`PROTOCOL.md does not mention the current FigureYa Source Pack example ${sourcePack}`);
 }
 
 const runtimeFiles = [

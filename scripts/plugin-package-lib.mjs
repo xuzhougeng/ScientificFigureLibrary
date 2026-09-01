@@ -18,7 +18,7 @@ export const root = path.resolve(import.meta.dirname, "..");
 /**
  * Host-specific package scripts are public release entrypoints too. Recheck
  * the final bundled Community snapshot after build and before any candidate is
- * written so an empty development bootstrap cannot be labelled as 0.6.0.
+ * written so an empty development bootstrap cannot be labelled as the current product version.
  */
 export async function assertPluginReleaseReady() {
   return assertFinalCommunitySnapshot({ repositoryRoot: root });
@@ -44,6 +44,7 @@ export async function commonPluginFiles() {
     "dist/index.js",
     "dist/mcp-app.html",
     "docs/GLOBAL_LIBRARY_0.6.md",
+    "docs/PROTOCOL.md",
     "skills/figure-library/SKILL.md",
     "assets/catalog.json",
     "assets/FIGUREYA_LICENSE.txt",
@@ -67,20 +68,22 @@ export function packagedServerHasAppUri(source, version) {
   return source.includes(derivedTemplate) && hasVersion;
 }
 
-export function assertPackagedGuidance({ packagedReadme, packagedSkill, packagedServer, packagedApp, version }) {
+export function assertPackagedGuidance({ packagedReadme, packagedProtocol, packagedSkill, packagedServer, packagedApp, version }) {
   const versionedAppUri = `ui://figure-library/candidates-v${version}.html`;
   if (
-    !packagedReadme.includes("0.5.2 review truthfulness") ||
-    !packagedReadme.includes("0.5.3 transport image adapter") ||
-    !packagedReadme.includes("figure_library_preview_working_revision") ||
-    !packagedReadme.includes("canonical_preview_override_required") ||
-    !packagedReadme.includes("three-part validation state") ||
-    !packagedReadme.includes("Structured diagnostics and export") ||
-    !packagedReadme.includes("figure_library_search_page") ||
-    !packagedReadme.includes("figure_library_list_provider_sources") ||
-    !packagedReadme.includes("figure_library_plan_publication_export") ||
-    !packagedReadme.includes("figure_library_plan_publication_pr") ||
-    !packagedReadme.includes("updateModelContext.text") ||
+    !packagedReadme.includes("local-first") ||
+    !packagedReadme.includes("docs/QUICKSTART.md") ||
+    !packagedProtocol.includes("0.5.2 review truthfulness") ||
+    !packagedProtocol.includes("0.5.3 transport image adapter") ||
+    !packagedProtocol.includes("figure_library_preview_working_revision") ||
+    !packagedProtocol.includes("canonical_preview_override_required") ||
+    !packagedProtocol.includes("three-part validation state") ||
+    !packagedProtocol.includes("Structured diagnostics and export") ||
+    !packagedProtocol.includes("figure_library_search_page") ||
+    !packagedProtocol.includes("figure_library_list_provider_sources") ||
+    !packagedProtocol.includes("figure_library_plan_publication_export") ||
+    !packagedProtocol.includes("figure_library_plan_publication_pr") ||
+    !packagedProtocol.includes("updateModelContext.text") ||
     !packagedSkill.includes(`Scientific Figure Library ${version}`) ||
     !packagedSkill.includes("materialization protocol v2") ||
     !packagedSkill.includes("bundled Community") ||

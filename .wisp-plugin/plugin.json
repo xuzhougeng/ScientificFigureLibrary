@@ -2,7 +2,7 @@
   "schema": "wisp.plugin.v1",
   "id": "figure-library",
   "display_name": "Scientific Figure Library",
-  "version": "0.6.0",
+  "version": "0.4.0",
   "description": "Local-first scientific figure library: import, review, and publish templates on disk, then search and materialize them in Wisp Science.",
   "author": "xuzhougeng and contributors",
   "license": "MIT (SFL and Community code); CC BY 4.0 (Community synthetic content); CC BY-NC-SA 4.0 (FigureYa assets)",
