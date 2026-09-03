@@ -1,6 +1,6 @@
 :root {
   color-scheme: light dark;
-  --sfl-brand-color: #246c4e;
+  --sfl-brand-color: #246C4E;
   --sfl-brand-color-strong: #18583e;
   --sfl-focus-ring: #0b7ad1;
   --sfl-icon-size: 1rem;
@@ -131,6 +131,7 @@ footer {
   background: rgb(13 35 55 / 82%);
   color: white;
   opacity: 0;
+  pointer-events: none;
   transition: opacity 160ms ease;
 }
 
@@ -175,6 +176,10 @@ footer {
   align-items: start;
   justify-content: space-between;
   gap: 8px;
+}
+
+.topline > div {
+  min-width: 0;
 }
 
 .module {
