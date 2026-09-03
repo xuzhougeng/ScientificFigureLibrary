@@ -480,6 +480,7 @@ footer {
 .detail-panel {
   position: relative;
   display: grid;
+  min-width: 0;
   gap: 16px;
   padding: 22px;
 }
@@ -503,7 +504,8 @@ footer {
 }
 
 .detail-title {
-  max-width: calc(100% - 120px);
+  max-width: 100%;
+  overflow-wrap: anywhere;
   margin: 0;
   font-size: clamp(1.25rem, 4vw, 1.8rem);
   line-height: 1.2;
@@ -511,9 +513,15 @@ footer {
 
 .detail-identity {
   display: flex;
+  min-width: 0;
   flex-wrap: wrap;
   align-items: center;
   gap: 8px;
+}
+
+.detail-identity > * {
+  max-width: 100%;
+  overflow-wrap: anywhere;
 }
 
 .provider-id {
@@ -524,6 +532,8 @@ footer {
 
 .detail-preview {
   display: grid;
+  width: 100%;
+  min-width: 0;
   min-height: 260px;
   max-height: min(58vh, 640px);
   place-items: center;
@@ -541,6 +551,7 @@ footer {
 }
 
 .detail-description {
+  min-width: 0;
   overflow: visible;
   color: var(--color-text-primary, #27342d);
   font-size: 0.92rem;
@@ -550,11 +561,13 @@ footer {
 
 .detail-metadata {
   display: grid;
+  min-width: 0;
   gap: 14px;
 }
 
 .detail-section {
   display: grid;
+  min-width: 0;
   gap: 6px;
 }
 
@@ -588,6 +601,7 @@ footer {
 
 .detail-controls {
   display: grid;
+  min-width: 0;
   grid-template-columns: 1fr 1fr;
   gap: 10px;
 }
@@ -606,9 +620,15 @@ footer {
 }
 
 @media (max-width: 560px) {
+  .cards {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
   .candidate-dialog {
-    width: calc(100vw - 12px);
+    width: calc(100vw - 24px);
+    max-width: calc(100vw - 24px);
     max-height: calc(100vh - 12px);
+    margin: 12px auto;
   }
 
   .detail-panel {
