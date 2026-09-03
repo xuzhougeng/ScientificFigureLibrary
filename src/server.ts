@@ -74,6 +74,7 @@ import type {
 } from "./types.ts";
 import { legacyValidationStateFromExecutionStatus, VersionedTemplateLibrary } from "./versioned-library.ts";
 import { VERSION } from "./version.ts";
+import { SFL_SERVER_IDENTITY } from "./brand.ts";
 
 export { VERSION };
 export const MATERIALIZATION_PROTOCOL_VERSION = 2;
@@ -550,7 +551,7 @@ export async function createServer(options: {
       ...(moduleSourcePackDir ? { moduleSourcePackDir } : {}),
     });
 
-  const server = new McpServer({ name: "Scientific Figure Library", version: VERSION });
+  const server = new McpServer({ ...SFL_SERVER_IDENTITY, version: VERSION });
 
   registerAppTool(
     server,

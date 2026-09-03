@@ -15,6 +15,7 @@ import {
 import { COMMUNITY_PROVIDER_ID } from "../src/public-catalog-provider.ts";
 import { createServer } from "../src/server.ts";
 import { VERSION } from "../src/version.ts";
+import { SFL_WEBSITE_URL } from "../src/brand.ts";
 import {
   VersionedTemplateLibrary,
   type VersionedTemplateCandidate,
@@ -231,10 +232,32 @@ test("standard server unifies Local Published and FigureYa while hiding Working/
     await server.connect(serverTransport);
     await client.connect(clientTransport);
     try {
+      const serverInfo = client.getServerVersion();
+      assert.ok(serverInfo);
+      assert.equal(serverInfo.name, "Scientific Figure Library");
+      assert.equal(serverInfo.title, "Scientific Figure Library");
+      assert.equal(serverInfo.version, VERSION);
+      assert.equal(serverInfo.websiteUrl, SFL_WEBSITE_URL);
+      assert.ok(Array.isArray(serverInfo.icons) && serverInfo.icons.length >= 1);
+      const serverIcon = serverInfo.icons?.[0];
+      assert.equal(serverIcon?.mimeType, "image/svg+xml");
+      assert.deepEqual(serverIcon?.sizes, ["any"]);
+      assert.match(serverIcon?.src ?? "", /^data:image\/svg\+xml;base64,/u);
+      assert.doesNotMatch(serverIcon?.src ?? "", /E:\\|\/mnt\//u);
+      const encodedIcon = (serverIcon?.src ?? "").slice("data:image/svg+xml;base64,".length);
+      assert.equal(
+        Buffer.from(encodedIcon, "base64").toString("utf8"),
+        await fs.readFile(
+          path.resolve(import.meta.dirname, "../assets/brand/sfl-logo.svg"),
+          "utf8",
+        ),
+      );
+
       const listed = await client.listTools();
       const names = listed.tools.map((tool) => tool.name).sort();
       const nameSet = new Set<string>(names);
       assert.deepEqual(names, [...STANDARD_TOOLS]);
+      assert.ok(listed.tools.every((tool) => !("icons" in tool)));
       assert.ok(names.includes("figure_library_search"));
       assert.ok(names.includes("figure_library_plan_materialize"));
       assert.ok(names.includes("figure_library_plan_bundle_export"));
