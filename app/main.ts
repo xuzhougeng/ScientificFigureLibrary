@@ -280,6 +280,8 @@ source: Scientific Figure Library MCP App
 selectedTemplate: ${candidate.templateId}
 templateProvider: ${candidate.providerId}
 exactSelector: ${JSON.stringify(candidate.exactSelector)}
+materializationSelectors: ${JSON.stringify(candidate.materializationSelectors ?? null)}
+materializationModes: ${JSON.stringify(candidate.materializationModes ?? null)}
 previewSha256: ${previewSha256}
 previewReceipt: ${previewReceipt}
 previewConfirmationMode: ${confirmationMode}

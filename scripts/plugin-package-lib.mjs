@@ -12,6 +12,11 @@ import {
   publishArtifactsToDirectory,
   publishReleaseArtifacts,
 } from "./package-release-lib.mjs";
+import {
+  ModuleCatalogIndex,
+  PERSONAL_MODULE_REPOSITORY,
+} from "../src/module-catalog.ts";
+import { PERSONAL_MODULE_PROVIDER_ID } from "../src/providers.ts";
 
 export const root = path.resolve(import.meta.dirname, "..");
 
@@ -39,7 +44,38 @@ export async function walk(directory, prefix) {
   return result;
 }
 
+export function assertPersonalSnapshotInventory(snapshotFiles, declaredFiles) {
+  const personalArchives = snapshotFiles.filter((relative) =>
+    relative.toLocaleLowerCase("en-US").endsWith(".zip"),
+  );
+  if (personalArchives.length) {
+    throw new Error(
+      `personal module archive ZIPs must not enter a plugin: ${personalArchives.join(", ")}`,
+    );
+  }
+  const declared = new Set(declaredFiles);
+  for (const relative of snapshotFiles) {
+    if (!declared.has(relative)) {
+      throw new Error(`unexpected personal module snapshot file: ${relative}`);
+    }
+  }
+  const snapshot = new Set(snapshotFiles);
+  for (const relative of declared) {
+    if (relative.startsWith("assets/personal-modules/") && !snapshot.has(relative)) {
+      throw new Error(`missing declared personal module snapshot file: ${relative}`);
+    }
+  }
+}
+
 export async function commonPluginFiles() {
+  await ModuleCatalogIndex.load(
+    path.join(root, "assets", "personal-modules"),
+    {
+      expectedProviderId: PERSONAL_MODULE_PROVIDER_ID,
+      expectedRepository: PERSONAL_MODULE_REPOSITORY,
+      validatePreviews: true,
+    },
+  );
   const files = [
     "dist/index.js",
     "dist/mcp-app.html",
@@ -50,11 +86,52 @@ export async function commonPluginFiles() {
     "assets/FIGUREYA_LICENSE.txt",
     "assets/figureya-preview.manifest.json",
     "assets/figureya-source-pack.manifest.json",
+    "assets/personal-modules/module-catalog.json",
+    "assets/personal-modules/module-preview.manifest.json",
+    "assets/personal-modules/module-source-pack.manifest.json",
+    "assets/personal-modules/PERSONAL_MODULES_LICENSE.txt",
     "LICENSE",
     "README.md",
     "THIRD_PARTY_NOTICES.md",
   ];
   files.push(...(await walk(path.join(root, "assets", "thumbs"), "assets/thumbs")));
+  const personalPreviewManifest = await readJson(
+    "assets/personal-modules/module-preview.manifest.json",
+  );
+  if (
+    personalPreviewManifest.schema !== "figure-library.module-preview-manifest.v1" ||
+    !Array.isArray(personalPreviewManifest.entries)
+  ) {
+    throw new Error("personal module preview manifest is invalid for packaging");
+  }
+  const personalPreviewFiles = personalPreviewManifest.entries.map((entry, index) => {
+    if (
+      !entry ||
+      typeof entry !== "object" ||
+      Array.isArray(entry) ||
+      (entry.role !== "primary" && entry.role !== "thumbnail") ||
+      typeof entry.path !== "string" ||
+      !entry.path ||
+      entry.path.includes("\\") ||
+      path.posix.isAbsolute(entry.path) ||
+      path.posix.normalize(entry.path) !== entry.path ||
+      entry.path.split("/").some((segment) => !segment || segment === "." || segment === "..") ||
+      (entry.role === "primary" && !entry.path.startsWith("previews/")) ||
+      (entry.role === "thumbnail" && !entry.path.startsWith("thumbs/"))
+    ) {
+      throw new Error(`personal module preview manifest entry ${index} has an invalid path`);
+    }
+    return `assets/personal-modules/${entry.path}`;
+  });
+  if (new Set(personalPreviewFiles).size !== personalPreviewFiles.length) {
+    throw new Error("personal module preview manifest contains duplicate paths");
+  }
+  files.push(...personalPreviewFiles);
+  const personalSnapshotFiles = await walk(
+    path.join(root, "assets", "personal-modules"),
+    "assets/personal-modules",
+  );
+  assertPersonalSnapshotInventory(personalSnapshotFiles, files);
   files.push(...(await walk(path.join(root, "assets", "community"), "assets/community")));
   return files;
 }
@@ -87,6 +164,9 @@ export function assertPackagedGuidance({ packagedReadme, packagedProtocol, packa
     !packagedSkill.includes(`Scientific Figure Library ${version}`) ||
     !packagedSkill.includes("materialization protocol v2") ||
     !packagedSkill.includes("bundled Community") ||
+    !packagedSkill.includes("Open Figure Modules") ||
+    !packagedSkill.includes("includeInDefaultSearch") ||
+    !packagedSkill.includes("module-archive.v1") ||
     !packagedSkill.includes("figure_library_plan_provider_source_change") ||
     !packagedSkill.includes("figure_library_plan_publication_export") ||
     !packagedSkill.includes("figure_library_plan_publication_pr") ||
@@ -110,6 +190,9 @@ export function assertPackagedGuidance({ packagedReadme, packagedProtocol, packa
     "figure_library_plan_provider_source_change",
     "figure_library_plan_publication_export",
     "figure_library_plan_publication_pr",
+    "io.github.jarxunlai.personal-figures",
+    "module-archive.v1",
+    "Open Figure Modules",
     "transport-image-v1",
     "requestDisplayMode",
   ]) {

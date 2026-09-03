@@ -120,7 +120,9 @@ function assertProviderId(value: string, label = "providerId") {
     value === "org.figureya.module" ||
     value.startsWith("org.figureya.") ||
     value === "org.scientificfigurelibrary.local" ||
-    value.startsWith("org.scientificfigurelibrary.")
+    value.startsWith("org.scientificfigurelibrary.") ||
+    value === "io.github.jarxunlai.scientific-figure-community" ||
+    value === "io.github.jarxunlai.personal-figures"
   ) {
     throw new Error(`personal provider cannot claim reserved providerId: ${value}`);
   }

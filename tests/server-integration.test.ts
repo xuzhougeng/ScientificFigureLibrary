@@ -7,7 +7,11 @@ import { EXTENSION_ID, RESOURCE_MIME_TYPE } from "@modelcontextprotocol/ext-apps
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { ensureLibraryRootMarker, readLibraryRootMarker } from "../src/library-runtime.ts";
-import { FIGUREYA_PROVIDER_ID, LOCAL_LIBRARY_PROVIDER_ID } from "../src/providers.ts";
+import {
+  FIGUREYA_PROVIDER_ID,
+  LOCAL_LIBRARY_PROVIDER_ID,
+  PERSONAL_MODULE_PROVIDER_ID,
+} from "../src/providers.ts";
 import { COMMUNITY_PROVIDER_ID } from "../src/public-catalog-provider.ts";
 import { createServer } from "../src/server.ts";
 import { VERSION } from "../src/version.ts";
@@ -327,6 +331,7 @@ test("standard server unifies Local Published and FigureYa while hiding Working/
           },
           { providerId: COMMUNITY_PROVIDER_ID, matched: 0 },
           { providerId: FIGUREYA_PROVIDER_ID, matched: 0 },
+          { providerId: PERSONAL_MODULE_PROVIDER_ID, matched: 0 },
         ],
       );
       const localThumbnail = candidates.find(
@@ -645,6 +650,18 @@ test("standard server unifies Local Published and FigureYa while hiding Working/
       const providerStatus = record(statusStructured.providers);
       assert.ok(record(providerStatus.local));
       assert.ok(record(providerStatus.figureYa));
+      const personalModules = record(providerStatus.personalModules);
+      assert.equal(personalModules.includeInDefaultSearch, true);
+      assert.equal(personalModules.sourceLabel, "Open Figure Modules");
+      assert.equal(personalModules.moduleCount, 36);
+      assert.equal(personalModules.previewAvailableCount, 36);
+      assert.equal(personalModules.thumbnailAvailableCount, 36);
+      assert.equal(personalModules.archiveAvailableCount, 36);
+      assert.equal(personalModules.sourceRepository, "jarxunlai/ScientificFigureLibrary-personal");
+      assert.equal(personalModules.archiveRepository, "jarxunlai/ScientificFigureLibrary-personal");
+      const community = record(providerStatus.community);
+      assert.equal(community.includeInDefaultSearch, false);
+      assert.equal(community.frozen, true);
       const libraryStatus = record(statusStructured.library);
       const marker = await readLibraryRootMarker(libraryRoot);
       assert.ok(marker);
@@ -668,6 +685,9 @@ test("standard server unifies Local Published and FigureYa while hiding Working/
         "WORKING: 1",
         "LEGACY_FLAT: 1",
         "FIGUREYA_CATALOG:",
+        "PERSONAL_MODULES_COUNT: 36",
+        "COMMUNITY_DEFAULT_SEARCH: false",
+        "COMMUNITY_FROZEN: true",
         "CAPTURE_TOOLS_REGISTERED: false",
         "PROJECT_PIN_TOOLS_REGISTERED: false",
       ]) {

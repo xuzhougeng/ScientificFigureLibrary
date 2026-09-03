@@ -1,0 +1,5400 @@
+{
+  "generatedAt": "2000-01-01T00:00:00.000Z",
+  "modules": [
+    {
+      "application": "Compare pathway NES values across A–D subtypes with category annotations and significance marks.",
+      "archive": {
+        "bytes": 293426,
+        "commit": "1e5cdfe188b59d5d425426d2fe32df21257d3591",
+        "path": "archives/cancercell-pathway-nes-heatmap.zip",
+        "repository": "jarxunlai/ScientificFigureLibrary-personal",
+        "sha256": "c77c8c1b992b52faf6c36b47ddc45ba2455629094f2f671d4b916e34c322ff19"
+      },
+      "canonicalCode": "code/organized.R",
+      "codeFiles": [
+        "code/example.R",
+        "code/organized.R"
+      ],
+      "dataProfile": "A pathway table with Pathway, Category, A, B, C, D, and significance-marker columns.",
+      "description": "A portable ComplexHeatmap module for comparing pathway normalized enrichment scores across four subtypes.",
+      "files": [
+        {
+          "bytes": 1194,
+          "path": "README.md",
+          "sha256": "f20b3dcca57621ca3e7b20ddd154045b8cfa308edf5481e1a0c073dfd75e138b"
+        },
+        {
+          "bytes": 391,
+          "path": "code/example.R",
+          "sha256": "5ebd91e7a4b27a93767b6c69687ca067be7b61f3f9bd594ffb2a9635f3a89046"
+        },
+        {
+          "bytes": 6274,
+          "path": "code/organized.R",
+          "sha256": "244bf0b35db275a17df48fe2568e9c099fbe5f428dce72d58b17c6782e364218"
+        },
+        {
+          "bytes": 3147,
+          "path": "data/pathway_nes.csv",
+          "sha256": "2307f458161b73a5c35a0f380864f8e2ad6f15a1ee3c25e971c9cc17e8ab9869"
+        },
+        {
+          "bytes": 330,
+          "path": "data_schema.yml",
+          "sha256": "f35d119b13813f5b4e5181e967628d094bf5e99db7a4ee322d4f66340d262240"
+        },
+        {
+          "bytes": 692,
+          "path": "description.md",
+          "sha256": "d7522caeb84c0ad72f0cbb094580a7d1a645456e680b1e74bc479e0ca7b23ef8"
+        },
+        {
+          "bytes": 2139,
+          "path": "module.yml",
+          "sha256": "7acf568310aa5b68a4126ae907bc3660b2677016ecb96ae38fef988b762a9d8f"
+        },
+        {
+          "bytes": 249128,
+          "path": "preview.png",
+          "sha256": "9da6f61b5dfc837a57f62628d03e18fce79424e266c742fa5695cb2448bfb032"
+        },
+        {
+          "bytes": 1152,
+          "path": "provenance.md",
+          "sha256": "3c9f50e7a014f67ce8cad1333061a160a936b19c7d3cdd6dd054bc77d2b51691"
+        },
+        {
+          "bytes": 83448,
+          "path": "thumbnail.jpg",
+          "sha256": "1bc25fe370a14c117593e1137f9298bbab9ca0b1788645216949be6f2adf4316"
+        }
+      ],
+      "inputFiles": [
+        "data/pathway_nes.csv"
+      ],
+      "language": "R",
+      "licenses": {
+        "code": "MIT",
+        "content": "CC BY 4.0",
+        "documentation": "CC BY 4.0"
+      },
+      "moduleId": "cancercell-pathway-nes-heatmap",
+      "packages": [
+        "ComplexHeatmap",
+        "circlize",
+        "ggsci",
+        "grid",
+        "readr",
+        "tibble"
+      ],
+      "plotFamily": "heatmap",
+      "preview": {
+        "bytes": 249128,
+        "mediaType": "image/png",
+        "path": "previews/cancercell-pathway-nes-heatmap/preview.png",
+        "sha256": "9da6f61b5dfc837a57f62628d03e18fce79424e266c742fa5695cb2448bfb032"
+      },
+      "provenance": [
+        {
+          "note": "Prepared from the reviewed Local Published entry cancercell-pathway-nes-heatmap; internal Library state is not distributed.",
+          "type": "local_published_cleaning"
+        },
+        {
+          "note": "Example inputs were generated for portable execution and do not represent real samples or scientific conclusions.",
+          "type": "synthetic_data"
+        },
+        {
+          "note": "Only files listed in this manifest are distributed; source/reference images, PDFs, logs, receipts, and machine-local state are excluded.",
+          "type": "clean_room_transformation"
+        }
+      ],
+      "publisher": {
+        "evidence": [
+          "README.md",
+          "data_schema.yml",
+          "preview.png"
+        ],
+        "executionScope": "synthetic_data",
+        "executionStatus": "passed",
+        "reviewStatus": "approved"
+      },
+      "requiredFiles": [
+        "README.md",
+        "code/example.R",
+        "code/organized.R",
+        "data/pathway_nes.csv",
+        "data_schema.yml",
+        "description.md",
+        "module.yml",
+        "preview.png",
+        "thumbnail.jpg"
+      ],
+      "source": {
+        "commit": "644ab1034ca358f1584c2ec8666f1036f495f38e",
+        "path": "modules/cancercell-pathway-nes-heatmap",
+        "repository": "jarxunlai/ScientificFigureLibrary-personal"
+      },
+      "tags": [
+        "cancercell",
+        "cancercell-pathway-nes-heatmap",
+        "heatmap",
+        "nes",
+        "pathway"
+      ],
+      "thumbnail": {
+        "bytes": 83448,
+        "mediaType": "image/jpeg",
+        "path": "thumbs/cancercell-pathway-nes-heatmap.jpg",
+        "sha256": "1bc25fe370a14c117593e1137f9298bbab9ca0b1788645216949be6f2adf4316"
+      },
+      "title": "Cancer Cell通路NES热图",
+      "titleEn": "Cancer Cell pathway NES heatmap"
+    },
+    {
+      "application": "Show fold-change and percentage-difference signals beside a compact directional pathway panel.",
+      "archive": {
+        "bytes": 473878,
+        "commit": "1e5cdfe188b59d5d425426d2fe32df21257d3591",
+        "path": "archives/cell-fig2h-volcano-go-combo.zip",
+        "repository": "jarxunlai/ScientificFigureLibrary-personal",
+        "sha256": "8dc01e59c527db3cc0e1802d29dc0e02e167789c3964f0830e4ee197faa62679"
+      },
+      "canonicalCode": "code/organized.R",
+      "codeFiles": [
+        "code/example.R",
+        "code/organized.R"
+      ],
+      "dataProfile": "Two example tables: DEG rows with fold-change/percentage fields and GO rows with direction and bar coordinates.",
+      "description": "A cleaned plotting-layer module combining a percentage-difference bubble scatter with directional GO bars.",
+      "files": [
+        {
+          "bytes": 1254,
+          "path": "README.md",
+          "sha256": "8632dd497b69101b6b0687a4e4654c19c7360a1640becb1c535b245343f67be9"
+        },
+        {
+          "bytes": 489,
+          "path": "code/example.R",
+          "sha256": "4177d89d95a186d73923dd81c7d088acabd1126fc8fae234ec275d71a43e9d1b"
+        },
+        {
+          "bytes": 7530,
+          "path": "code/organized.R",
+          "sha256": "882f69e763ca275014e16c9020aa5cfe216c08b64c3efd4c0bd7fec6a3d2ce1d"
+        },
+        {
+          "bytes": 244105,
+          "path": "data/example_de.csv",
+          "sha256": "f46e0523618235091367694f1c47b6e8aae0330563db11946f36e490417247b8"
+        },
+        {
+          "bytes": 530,
+          "path": "data/example_go.csv",
+          "sha256": "f97f3419a10839a5389d4561bc63d6d4f35ee79f197acba87905d8aa3de9be0a"
+        },
+        {
+          "bytes": 356,
+          "path": "data_schema.yml",
+          "sha256": "a00d31970642f34c570782638ca1e12a116ad936f7fcf137310f8fa953a2a135"
+        },
+        {
+          "bytes": 740,
+          "path": "description.md",
+          "sha256": "f63ae18edfdf2c2d9a1a0518be7da2f267b1c4bd36e440e8c98c752559331a16"
+        },
+        {
+          "bytes": 2280,
+          "path": "module.yml",
+          "sha256": "36e19d0b2e077012b3022376956dba86582471c1a4052637faa79a2ad1588587"
+        },
+        {
+          "bytes": 336592,
+          "path": "preview.png",
+          "sha256": "2772588a816ac402d92d1aed8300f21fc8f820a2dd233e58e59ae832701d4198"
+        },
+        {
+          "bytes": 1149,
+          "path": "provenance.md",
+          "sha256": "4c7b057d24580032560ff82badeb44359e576474f4f7c80b688458f8b5603616"
+        },
+        {
+          "bytes": 72082,
+          "path": "thumbnail.jpg",
+          "sha256": "a1392dd9ae35888dfa8fd04e11c583216c66afe0b2828b768d8e1c1d02836e98"
+        }
+      ],
+      "inputFiles": [
+        "data/example_de.csv",
+        "data/example_go.csv"
+      ],
+      "language": "R",
+      "licenses": {
+        "code": "MIT",
+        "content": "CC BY 4.0",
+        "documentation": "CC BY 4.0"
+      },
+      "moduleId": "cell-fig2h-volcano-go-combo",
+      "packages": [
+        "dplyr",
+        "ggplot2",
+        "grid",
+        "patchwork"
+      ],
+      "plotFamily": "volcano_go_combo",
+      "preview": {
+        "bytes": 336592,
+        "mediaType": "image/png",
+        "path": "previews/cell-fig2h-volcano-go-combo/preview.png",
+        "sha256": "2772588a816ac402d92d1aed8300f21fc8f820a2dd233e58e59ae832701d4198"
+      },
+      "provenance": [
+        {
+          "note": "Prepared from the reviewed Local Published entry cell-fig2h-volcano-go-combo; internal Library state is not distributed.",
+          "type": "local_published_cleaning"
+        },
+        {
+          "note": "Example inputs were generated for portable execution and do not represent real samples or scientific conclusions.",
+          "type": "synthetic_data"
+        },
+        {
+          "note": "Only files listed in this manifest are distributed; source/reference images, PDFs, logs, receipts, and machine-local state are excluded.",
+          "type": "clean_room_transformation"
+        }
+      ],
+      "publisher": {
+        "evidence": [
+          "README.md",
+          "data_schema.yml",
+          "preview.png"
+        ],
+        "executionScope": "synthetic_data",
+        "executionStatus": "passed",
+        "reviewStatus": "approved"
+      },
+      "requiredFiles": [
+        "README.md",
+        "code/example.R",
+        "code/organized.R",
+        "data/example_de.csv",
+        "data/example_go.csv",
+        "data_schema.yml",
+        "description.md",
+        "module.yml",
+        "preview.png",
+        "thumbnail.jpg"
+      ],
+      "source": {
+        "commit": "644ab1034ca358f1584c2ec8666f1036f495f38e",
+        "path": "modules/cell-fig2h-volcano-go-combo",
+        "repository": "jarxunlai/ScientificFigureLibrary-personal"
+      },
+      "tags": [
+        "cell",
+        "cell-fig2h-volcano-go-combo",
+        "combo",
+        "fig2h",
+        "go",
+        "volcano",
+        "volcano_go_combo"
+      ],
+      "thumbnail": {
+        "bytes": 72082,
+        "mediaType": "image/jpeg",
+        "path": "thumbs/cell-fig2h-volcano-go-combo.jpg",
+        "sha256": "a1392dd9ae35888dfa8fd04e11c583216c66afe0b2828b768d8e1c1d02836e98"
+      },
+      "title": "单细胞百分比差火山图加GO条形组合图",
+      "titleEn": "Percentage-difference volcano plot with GO bar chart combination"
+    },
+    {
+      "application": "Present cluster-level expression patterns, marker genes, and pathway annotations in one composite panel.",
+      "archive": {
+        "bytes": 543955,
+        "commit": "1e5cdfe188b59d5d425426d2fe32df21257d3591",
+        "path": "archives/clustergvis-deg-go-kegg-combo.zip",
+        "repository": "jarxunlai/ScientificFigureLibrary-personal",
+        "sha256": "0727e202b251faad7c6858a1b1de2e018d58d827a40c04ebeabf63da1374f08e"
+      },
+      "canonicalCode": "code/organized.R",
+      "codeFiles": [
+        "code/example.R",
+        "code/organized.R"
+      ],
+      "dataProfile": "Synthetic Z-score and pathway tables are bundled as reproducible example inputs for the plotting layer.",
+      "description": "A ComplexHeatmap module showing clustered synthetic expression patterns with GO and KEGG text annotations.",
+      "files": [
+        {
+          "bytes": 1268,
+          "path": "README.md",
+          "sha256": "56c9789f380374643433d61de057c269cc399570dda41057f9367e264d7f1264"
+        },
+        {
+          "bytes": 489,
+          "path": "code/example.R",
+          "sha256": "a5d9e7f098160bce0b0d13e4cfe0c6ec2a761fff765d05998a32119b9dbdf341"
+        },
+        {
+          "bytes": 14616,
+          "path": "code/organized.R",
+          "sha256": "518ea540175ba1da8108c4e483f79089be21b6e5477232bf283c62e023840a7d"
+        },
+        {
+          "bytes": 944,
+          "path": "data/go_terms.csv",
+          "sha256": "9079156d217ad89cdf7afe20f91341147d03fc75ea154c8cdcacda86ccccdc4d"
+        },
+        {
+          "bytes": 568,
+          "path": "data/kegg_terms.csv",
+          "sha256": "fc8b2ab65464821f3814e98947e11f2c142a6ea5e2c45a7b5b2bd6a11bba3607"
+        },
+        {
+          "bytes": 79055,
+          "path": "data/synthetic_zscore.csv",
+          "sha256": "52dd871ef1f34d5b3b43803ad755fda668bde131bd551c14be8506db8e5dbd85"
+        },
+        {
+          "bytes": 346,
+          "path": "data_schema.yml",
+          "sha256": "f947aa98881ed3c281ef71339d20be1438d1ee3e535f94ebcd01a9537ce6934e"
+        },
+        {
+          "bytes": 734,
+          "path": "description.md",
+          "sha256": "4b94b4d3f78df07bb62cb8936d5835207da1f827bbec27884f86947d8c9de58b"
+        },
+        {
+          "bytes": 2406,
+          "path": "module.yml",
+          "sha256": "87c7609705e772d9355fc4194edae4e1eaca8f24ff9784309f2babb4cf6e56b3"
+        },
+        {
+          "bytes": 476095,
+          "path": "preview.png",
+          "sha256": "b3dd768c464ad8bd21842b4c82ddcdd45d2ce699830b130d892800032afe93da"
+        },
+        {
+          "bytes": 1151,
+          "path": "provenance.md",
+          "sha256": "7ffec176bdaae148b1c000a290158fa9524fc444d0b1d88fff8b29fffdd99038"
+        },
+        {
+          "bytes": 69345,
+          "path": "thumbnail.jpg",
+          "sha256": "3aeb60b4d7c6a0786c6beb5a81e3e09389d6503347c1d7c8c0ed18d5c03c16d5"
+        }
+      ],
+      "inputFiles": [
+        "data/go_terms.csv",
+        "data/kegg_terms.csv",
+        "data/synthetic_zscore.csv"
+      ],
+      "language": "R",
+      "licenses": {
+        "code": "MIT",
+        "content": "CC BY 4.0",
+        "documentation": "CC BY 4.0"
+      },
+      "moduleId": "clustergvis-deg-go-kegg-combo",
+      "packages": [
+        "ComplexHeatmap",
+        "circlize",
+        "dplyr",
+        "grid",
+        "ragg",
+        "readr",
+        "scales",
+        "tibble"
+      ],
+      "plotFamily": "clustered_heatmap_annotation",
+      "preview": {
+        "bytes": 476095,
+        "mediaType": "image/png",
+        "path": "previews/clustergvis-deg-go-kegg-combo/preview.png",
+        "sha256": "b3dd768c464ad8bd21842b4c82ddcdd45d2ce699830b130d892800032afe93da"
+      },
+      "provenance": [
+        {
+          "note": "Prepared from the reviewed Local Published entry clustergvis-deg-go-kegg-combo; internal Library state is not distributed.",
+          "type": "local_published_cleaning"
+        },
+        {
+          "note": "Example inputs were generated for portable execution and do not represent real samples or scientific conclusions.",
+          "type": "synthetic_data"
+        },
+        {
+          "note": "Only files listed in this manifest are distributed; source/reference images, PDFs, logs, receipts, and machine-local state are excluded.",
+          "type": "clean_room_transformation"
+        }
+      ],
+      "publisher": {
+        "evidence": [
+          "README.md",
+          "data_schema.yml",
+          "preview.png"
+        ],
+        "executionScope": "synthetic_data",
+        "executionStatus": "passed",
+        "reviewStatus": "approved"
+      },
+      "requiredFiles": [
+        "README.md",
+        "code/example.R",
+        "code/organized.R",
+        "data/go_terms.csv",
+        "data/kegg_terms.csv",
+        "data/synthetic_zscore.csv",
+        "data_schema.yml",
+        "description.md",
+        "module.yml",
+        "preview.png",
+        "thumbnail.jpg"
+      ],
+      "source": {
+        "commit": "644ab1034ca358f1584c2ec8666f1036f495f38e",
+        "path": "modules/clustergvis-deg-go-kegg-combo",
+        "repository": "jarxunlai/ScientificFigureLibrary-personal"
+      },
+      "tags": [
+        "clustered_heatmap_annotation",
+        "clustergvis",
+        "clustergvis-deg-go-kegg-combo",
+        "combo",
+        "deg",
+        "go",
+        "kegg"
+      ],
+      "thumbnail": {
+        "bytes": 69345,
+        "mediaType": "image/jpeg",
+        "path": "thumbs/clustergvis-deg-go-kegg-combo.jpg",
+        "sha256": "3aeb60b4d7c6a0786c6beb5a81e3e09389d6503347c1d7c8c0ed18d5c03c16d5"
+      },
+      "title": "差异基因聚类热图加GO和KEGG注释",
+      "titleEn": "Clustered DEG heatmap with GO and KEGG annotation"
+    },
+    {
+      "application": "Present tissue annotations, differential states, module blocks, and pathway bars in one panel.",
+      "archive": {
+        "bytes": 579598,
+        "commit": "1e5cdfe188b59d5d425426d2fe32df21257d3591",
+        "path": "archives/deg-heatmap-go-panel.zip",
+        "repository": "jarxunlai/ScientificFigureLibrary-personal",
+        "sha256": "4c34970f9b44715aeb8682af576356dc130f35fcbc0f1dab68b3b8a81b223907"
+      },
+      "canonicalCode": "code/organized.R",
+      "codeFiles": [
+        "code/example.R",
+        "code/generate-example-data.R",
+        "code/organized.R"
+      ],
+      "dataProfile": "Three synthetic CSV inputs: cell annotations, gene-by-cell regulation states, and GO terms.",
+      "description": "A composite DEG-state heatmap and GO enrichment panel driven by bundled synthetic inputs.",
+      "files": [
+        {
+          "bytes": 1247,
+          "path": "README.md",
+          "sha256": "40dff17159bec025c31a54aecbdeffcb701d4736b30730ea097551c1fc645825"
+        },
+        {
+          "bytes": 788,
+          "path": "code/example.R",
+          "sha256": "ad87b91b97ebca2af0525a04c1d012e2323a51d21462586bf5590d364196a22f"
+        },
+        {
+          "bytes": 7174,
+          "path": "code/generate-example-data.R",
+          "sha256": "8dbed053087db1bbc6f9459fa60e37afe370e6112b9b553e6bf13e58d30aa702"
+        },
+        {
+          "bytes": 12609,
+          "path": "code/organized.R",
+          "sha256": "dc7252955c323f3d17cedc34c02082c39b56ba732987a9725d1de4e444a44150"
+        },
+        {
+          "bytes": 668,
+          "path": "data/input_cell_annotation.csv",
+          "sha256": "6b27c765ab19f6277973cb8c92feffdb66b5db3500d55e6f01712beaab71a760"
+        },
+        {
+          "bytes": 2071100,
+          "path": "data/input_deg_heatmap.csv",
+          "sha256": "aa3acd250179e60db1339bfa7367a7388603ea090158852903fc0f425be21c44"
+        },
+        {
+          "bytes": 521,
+          "path": "data/input_go_enrichment.csv",
+          "sha256": "9be2d82806ee60b9fdb0bdb905464b9ee204d1ebe7d04c06fee36e1e1e261baa"
+        },
+        {
+          "bytes": 342,
+          "path": "data_schema.yml",
+          "sha256": "da3a9339bc21c717a9d865c9acabfab2cbf0125bb1b2a6cc3f3b1b26aab9623e"
+        },
+        {
+          "bytes": 691,
+          "path": "description.md",
+          "sha256": "831ba7b68293dace1a1aa479f298067a23b19da45add02896be09f634c57fd1e"
+        },
+        {
+          "bytes": 2446,
+          "path": "module.yml",
+          "sha256": "281031a5e99e34117bf8446a33d2291aa6918f1794684b352869c6ee128cb8a3"
+        },
+        {
+          "bytes": 401234,
+          "path": "preview.png",
+          "sha256": "9b280a1d5df272dfa46f7566021ae6653ef46e15b6eab2cca90055d2e983d22d"
+        },
+        {
+          "bytes": 1142,
+          "path": "provenance.md",
+          "sha256": "666b599fecb7c509aece822407b70aa4f52db977c87465c71f8de38c563bc732"
+        },
+        {
+          "bytes": 67461,
+          "path": "thumbnail.jpg",
+          "sha256": "e1a041931da9c286b836bcd70df29d8799cdf33107cfeea5c27b8ed6432142c4"
+        }
+      ],
+      "inputFiles": [
+        "data/input_cell_annotation.csv",
+        "data/input_deg_heatmap.csv",
+        "data/input_go_enrichment.csv"
+      ],
+      "language": "R",
+      "licenses": {
+        "code": "MIT",
+        "content": "CC BY 4.0",
+        "documentation": "CC BY 4.0"
+      },
+      "moduleId": "deg-heatmap-go-panel",
+      "packages": [
+        "dplyr",
+        "ggplot2",
+        "grid",
+        "patchwork",
+        "readr",
+        "scales"
+      ],
+      "plotFamily": "deg_heatmap_go_combo",
+      "preview": {
+        "bytes": 401234,
+        "mediaType": "image/png",
+        "path": "previews/deg-heatmap-go-panel/preview.png",
+        "sha256": "9b280a1d5df272dfa46f7566021ae6653ef46e15b6eab2cca90055d2e983d22d"
+      },
+      "provenance": [
+        {
+          "note": "Prepared from the reviewed Local Published entry deg-heatmap-go-panel; internal Library state is not distributed.",
+          "type": "local_published_cleaning"
+        },
+        {
+          "note": "Example inputs were generated for portable execution and do not represent real samples or scientific conclusions.",
+          "type": "synthetic_data"
+        },
+        {
+          "note": "Only files listed in this manifest are distributed; source/reference images, PDFs, logs, receipts, and machine-local state are excluded.",
+          "type": "clean_room_transformation"
+        }
+      ],
+      "publisher": {
+        "evidence": [
+          "README.md",
+          "data_schema.yml",
+          "preview.png"
+        ],
+        "executionScope": "synthetic_data",
+        "executionStatus": "passed",
+        "reviewStatus": "approved"
+      },
+      "requiredFiles": [
+        "README.md",
+        "code/example.R",
+        "code/generate-example-data.R",
+        "code/organized.R",
+        "data/input_cell_annotation.csv",
+        "data/input_deg_heatmap.csv",
+        "data/input_go_enrichment.csv",
+        "data_schema.yml",
+        "description.md",
+        "module.yml",
+        "preview.png",
+        "thumbnail.jpg"
+      ],
+      "source": {
+        "commit": "644ab1034ca358f1584c2ec8666f1036f495f38e",
+        "path": "modules/deg-heatmap-go-panel",
+        "repository": "jarxunlai/ScientificFigureLibrary-personal"
+      },
+      "tags": [
+        "deg",
+        "deg-heatmap-go-panel",
+        "deg_heatmap_go_combo",
+        "go",
+        "heatmap",
+        "panel"
+      ],
+      "thumbnail": {
+        "bytes": 67461,
+        "mediaType": "image/jpeg",
+        "path": "thumbs/deg-heatmap-go-panel.jpg",
+        "sha256": "e1a041931da9c286b836bcd70df29d8799cdf33107cfeea5c27b8ed6432142c4"
+      },
+      "title": "差异表达热图加GO富集组合图",
+      "titleEn": "Combined DEG heatmap and GO enrichment panel"
+    },
+    {
+      "application": "Use as a readable starting point for Sankey layout, node ordering, color mapping, and aligned pathway enrichment bubbles.",
+      "archive": {
+        "bytes": 603884,
+        "commit": "1e5cdfe188b59d5d425426d2fe32df21257d3591",
+        "path": "archives/ggsankeyfier-layout-color-combo.zip",
+        "repository": "jarxunlai/ScientificFigureLibrary-personal",
+        "sha256": "4e72d136b0d4d603fa0973ce217d6b3a36749eda02a8ec1521874008f295bd59"
+      },
+      "canonicalCode": "code/organized.R",
+      "codeFiles": [
+        "code/example.R",
+        "code/organized.R"
+      ],
+      "dataProfile": "Five small synthetic CSV tables describe cell-class flows, habitat flows, multi-stage land-cover paths, metabolite-pathway links, and pathway enrichment bubbles.",
+      "description": "A portable R module demonstrating Sankey layout, color transitions, multi-stage flows, and pathway-bubble alignment with synthetic data.",
+      "files": [
+        {
+          "bytes": 2385,
+          "path": "README.md",
+          "sha256": "c4ee7b08ec617d2fd386aab47aa2b4f475f666d21e71d3f6ec6de222a2c0a6ac"
+        },
+        {
+          "bytes": 508,
+          "path": "code/example.R",
+          "sha256": "f02c01bf95fe930eb4865180b6e36313618b79722bc069dc6c7e9e1d7a1de738"
+        },
+        {
+          "bytes": 23633,
+          "path": "code/organized.R",
+          "sha256": "03cc94585840e17cef8fd4d4f9d33d492e8bd55ee14d4d2715033526584f4f25"
+        },
+        {
+          "bytes": 756,
+          "path": "data/brain_subclass_predict.csv",
+          "sha256": "4cc589666185a58155128b9f43056bf50eda3254e82816d833674c4672f359f9"
+        },
+        {
+          "bytes": 3978,
+          "path": "data/global_landcover_habitat.csv",
+          "sha256": "54c6cc872a44adb8d47b8d7700317cd90d0721b79beb430de1aab5eab1d9e992"
+        },
+        {
+          "bytes": 156,
+          "path": "data/intertidal_habitat.csv",
+          "sha256": "6a86c24aa0e0896d989679750f88b13eb43cb0a5af9a6764b437fd8871df8e99"
+        },
+        {
+          "bytes": 2426,
+          "path": "data/metabolite_pathway_links.csv",
+          "sha256": "792ba1a42fbba11dd05bdc62cc3169b0057047415e169bb0998857575a9e461a"
+        },
+        {
+          "bytes": 744,
+          "path": "data/pathway_enrichment.csv",
+          "sha256": "a8e9b8871248a9f4446be83b2f5af43403bb718e459769086269f694a3174cc3"
+        },
+        {
+          "bytes": 2280,
+          "path": "data_schema.yml",
+          "sha256": "02323cb0803460cccaca139d34d621dd67e034d4661ea8526cc89f62e5105ace"
+        },
+        {
+          "bytes": 845,
+          "path": "description.md",
+          "sha256": "57b289fe53bf8e18fd06ea33c5a6618e28175a556bab1f41cec45cdd1bc9b7e0"
+        },
+        {
+          "bytes": 3162,
+          "path": "module.yml",
+          "sha256": "e6d1ff964f737b52a107a61758c2b3cc1f6e41a59c58b43f75526bc512c62a28"
+        },
+        {
+          "bytes": 635821,
+          "path": "preview.png",
+          "sha256": "71d6af6d1fddf27a0c82b553fbf1de8af015a4def91c6550313bb71c3c81f11a"
+        },
+        {
+          "bytes": 982,
+          "path": "provenance.md",
+          "sha256": "93f0fe32297e46a8a5c72269e49315bc4dcd3af6f5fea9368837a107add007ff"
+        },
+        {
+          "bytes": 23609,
+          "path": "thumbnail.jpg",
+          "sha256": "725bc06ab64f887b96b79e207f2a77b5784460146c18611a993668bc4bfc7977"
+        }
+      ],
+      "inputFiles": [
+        "data/brain_subclass_predict.csv",
+        "data/global_landcover_habitat.csv",
+        "data/intertidal_habitat.csv",
+        "data/metabolite_pathway_links.csv",
+        "data/pathway_enrichment.csv"
+      ],
+      "language": "R",
+      "licenses": {
+        "code": "MIT",
+        "content": "CC BY 4.0",
+        "documentation": "CC BY 4.0"
+      },
+      "moduleId": "ggsankeyfier-layout-color-combo",
+      "packages": [
+        "RColorBrewer",
+        "dplyr",
+        "ggplot2",
+        "ggsankeyfier",
+        "patchwork",
+        "readr",
+        "tidyr"
+      ],
+      "plotFamily": "sankey",
+      "preview": {
+        "bytes": 635821,
+        "mediaType": "image/png",
+        "path": "previews/ggsankeyfier-layout-color-combo/preview.png",
+        "sha256": "71d6af6d1fddf27a0c82b553fbf1de8af015a4def91c6550313bb71c3c81f11a"
+      },
+      "provenance": [
+        {
+          "note": "The source page supplied visual and API clues but not a complete runnable script or original tables.",
+          "source": "https://mp.weixin.qq.com/s/PidcbXZv4h56V26IxmkTuA",
+          "type": "visual_reference"
+        },
+        {
+          "note": "Only the listed cleaned script, synthetic CSV inputs, documentation, and generated previews are distributed.",
+          "type": "clean_room_transformation"
+        }
+      ],
+      "publisher": {
+        "evidence": [
+          "README.md",
+          "data_schema.yml",
+          "preview.png"
+        ],
+        "executionScope": "synthetic_data",
+        "executionStatus": "passed",
+        "reviewStatus": "approved"
+      },
+      "requiredFiles": [
+        "README.md",
+        "code/example.R",
+        "code/organized.R",
+        "data/brain_subclass_predict.csv",
+        "data/global_landcover_habitat.csv",
+        "data/intertidal_habitat.csv",
+        "data/metabolite_pathway_links.csv",
+        "data/pathway_enrichment.csv",
+        "data_schema.yml",
+        "description.md",
+        "module.yml",
+        "preview.png",
+        "thumbnail.jpg"
+      ],
+      "source": {
+        "commit": "7fa4e210e3283efea0250e73b43e139c941b478b",
+        "path": "modules/ggsankeyfier-layout-color-combo",
+        "repository": "jarxunlai/ScientificFigureLibrary-personal"
+      },
+      "tags": [
+        "ggsankeyfier",
+        "sankey",
+        "synthetic-data"
+      ],
+      "thumbnail": {
+        "bytes": 23609,
+        "mediaType": "image/jpeg",
+        "path": "thumbs/ggsankeyfier-layout-color-combo.jpg",
+        "sha256": "725bc06ab64f887b96b79e207f2a77b5784460146c18611a993668bc4bfc7977"
+      },
+      "title": "ggsankeyfier 桑基图布局、配色与组合",
+      "titleEn": "ggsankeyfier Sankey layout, color, and combo"
+    },
+    {
+      "application": "Compare enrichment strength and contributing-gene counts for several cell clusters on a shared axis.",
+      "archive": {
+        "bytes": 959042,
+        "commit": "1e5cdfe188b59d5d425426d2fe32df21257d3591",
+        "path": "archives/go-enrichment-comet-combined.zip",
+        "repository": "jarxunlai/ScientificFigureLibrary-personal",
+        "sha256": "718966238e237af74ee7d453ac091570de46f80481ee8857e44b354a0faf0480"
+      },
+      "canonicalCode": "code/organized.R",
+      "codeFiles": [
+        "code/example.R",
+        "code/organized.R"
+      ],
+      "dataProfile": "A fully synthetic long table with Cluster, Description, Count, pvalue, and -log10(p) fields.",
+      "description": "A portable overlay comet plot for pathway enrichment rows across multiple cell clusters.",
+      "files": [
+        {
+          "bytes": 1184,
+          "path": "README.md",
+          "sha256": "11ec243f9222f5259f6b9f5f86ef66291ede2933bdb7ba461eed51746e4ade72"
+        },
+        {
+          "bytes": 489,
+          "path": "code/example.R",
+          "sha256": "4177d89d95a186d73923dd81c7d088acabd1126fc8fae234ec275d71a43e9d1b"
+        },
+        {
+          "bytes": 3969,
+          "path": "code/organized.R",
+          "sha256": "ff951dd9f7ca6a21784abcbf40920f9db86fb2ca07a7c48aeeef83b287b5f1b1"
+        },
+        {
+          "bytes": 4040,
+          "path": "data/enrichment_comet.csv",
+          "sha256": "8c7216aec4bffd18358163bb6f03445e6e83f260b11af1fb95f8b845a52c97af"
+        },
+        {
+          "bytes": 343,
+          "path": "data_schema.yml",
+          "sha256": "8d01f2f08f960c4f02ec211e0812414dc70fb201e7ffc463162c5416621d50a3"
+        },
+        {
+          "bytes": 697,
+          "path": "description.md",
+          "sha256": "9e1702d76118195efbdb50e6923e2df8b0e5723057a39fd3afca54b70810b99c"
+        },
+        {
+          "bytes": 2180,
+          "path": "module.yml",
+          "sha256": "b55430b5f62590863b09fa8a41b6a5be499f9363f8abc9ea100d5c7760cccfa8"
+        },
+        {
+          "bytes": 1002833,
+          "path": "preview.png",
+          "sha256": "576ee33ff1a02a94506a31ceff5d0cfc7504a6364d8ce03a04ad840ca97d0455"
+        },
+        {
+          "bytes": 1150,
+          "path": "provenance.md",
+          "sha256": "1a28787676c6594af9dc88c2d18423c99c4f0a5cff9413379aef12d1f79b5724"
+        },
+        {
+          "bytes": 55450,
+          "path": "thumbnail.jpg",
+          "sha256": "03b564ec5ed7f883d41400401c51db89e2b6fff54ee5b30c6fe0c035d55c08af"
+        }
+      ],
+      "inputFiles": [
+        "data/enrichment_comet.csv"
+      ],
+      "language": "R",
+      "licenses": {
+        "code": "MIT",
+        "content": "CC BY 4.0",
+        "documentation": "CC BY 4.0"
+      },
+      "moduleId": "go-enrichment-comet-combined",
+      "packages": [
+        "dplyr",
+        "ggforce",
+        "ggplot2",
+        "ragg",
+        "readr"
+      ],
+      "plotFamily": "enrichment_comet_overlay",
+      "preview": {
+        "bytes": 1002833,
+        "mediaType": "image/png",
+        "path": "previews/go-enrichment-comet-combined/preview.png",
+        "sha256": "576ee33ff1a02a94506a31ceff5d0cfc7504a6364d8ce03a04ad840ca97d0455"
+      },
+      "provenance": [
+        {
+          "note": "Prepared from the reviewed Local Published entry go-enrichment-comet-combined; internal Library state is not distributed.",
+          "type": "local_published_cleaning"
+        },
+        {
+          "note": "Example inputs were generated for portable execution and do not represent real samples or scientific conclusions.",
+          "type": "synthetic_data"
+        },
+        {
+          "note": "Only files listed in this manifest are distributed; source/reference images, PDFs, logs, receipts, and machine-local state are excluded.",
+          "type": "clean_room_transformation"
+        }
+      ],
+      "publisher": {
+        "evidence": [
+          "README.md",
+          "data_schema.yml",
+          "preview.png"
+        ],
+        "executionScope": "synthetic_data",
+        "executionStatus": "passed",
+        "reviewStatus": "approved"
+      },
+      "requiredFiles": [
+        "README.md",
+        "code/example.R",
+        "code/organized.R",
+        "data/enrichment_comet.csv",
+        "data_schema.yml",
+        "description.md",
+        "module.yml",
+        "preview.png",
+        "thumbnail.jpg"
+      ],
+      "source": {
+        "commit": "644ab1034ca358f1584c2ec8666f1036f495f38e",
+        "path": "modules/go-enrichment-comet-combined",
+        "repository": "jarxunlai/ScientificFigureLibrary-personal"
+      },
+      "tags": [
+        "combined",
+        "comet",
+        "enrichment",
+        "enrichment_comet_overlay",
+        "go",
+        "go-enrichment-comet-combined"
+      ],
+      "thumbnail": {
+        "bytes": 55450,
+        "mediaType": "image/jpeg",
+        "path": "thumbs/go-enrichment-comet-combined.jpg",
+        "sha256": "03b564ec5ed7f883d41400401c51db89e2b6fff54ee5b30c6fe0c035d55c08af"
+      },
+      "title": "单细胞GO富集彗星图（叠加）",
+      "titleEn": "Overlay GO enrichment comet plot"
+    },
+    {
+      "application": "Show cluster-specific pathway enrichment with independent facet scales and count labels.",
+      "archive": {
+        "bytes": 840532,
+        "commit": "1e5cdfe188b59d5d425426d2fe32df21257d3591",
+        "path": "archives/go-enrichment-comet-facet.zip",
+        "repository": "jarxunlai/ScientificFigureLibrary-personal",
+        "sha256": "03b410e9fb5d43813fff18fb78661e46cfabce5a97a4b1c1642af4c7e897d1a0"
+      },
+      "canonicalCode": "code/organized.R",
+      "codeFiles": [
+        "code/example.R",
+        "code/organized.R"
+      ],
+      "dataProfile": "A fully synthetic long table with Cluster, Description, Count, pvalue, and -log10(p) fields.",
+      "description": "A faceted comet plot for displaying enrichment results separately by cell cluster.",
+      "files": [
+        {
+          "bytes": 1166,
+          "path": "README.md",
+          "sha256": "1fe737b49b7d5e8aab375a153434a8131b25ab2e781ce74c7d3c532e297e0dbd"
+        },
+        {
+          "bytes": 489,
+          "path": "code/example.R",
+          "sha256": "4177d89d95a186d73923dd81c7d088acabd1126fc8fae234ec275d71a43e9d1b"
+        },
+        {
+          "bytes": 4152,
+          "path": "code/organized.R",
+          "sha256": "5449969e717069df55a04970a0b3b7b7848eecd89be547683a9cdcee67c7ccd9"
+        },
+        {
+          "bytes": 4040,
+          "path": "data/enrichment_comet.csv",
+          "sha256": "8c7216aec4bffd18358163bb6f03445e6e83f260b11af1fb95f8b845a52c97af"
+        },
+        {
+          "bytes": 343,
+          "path": "data_schema.yml",
+          "sha256": "8d01f2f08f960c4f02ec211e0812414dc70fb201e7ffc463162c5416621d50a3"
+        },
+        {
+          "bytes": 679,
+          "path": "description.md",
+          "sha256": "f555cd8ba3555261ae0385a7be0caa9717c0cfe47fdf02c5708aa02574180dcc"
+        },
+        {
+          "bytes": 2145,
+          "path": "module.yml",
+          "sha256": "deb502e56afdb24e25278175b6b8f31a483be72d94f67f16d88ecb5e51b32dcd"
+        },
+        {
+          "bytes": 869697,
+          "path": "preview.png",
+          "sha256": "ed7044e3b54bca2268116241d2bcafd21ab4b17cdb5e794a59152ecc74893411"
+        },
+        {
+          "bytes": 1147,
+          "path": "provenance.md",
+          "sha256": "e0592c089ff63800bcdb2cb08e54531d7d3ace6c79fdd964c682d7562172d5dd"
+        },
+        {
+          "bytes": 67217,
+          "path": "thumbnail.jpg",
+          "sha256": "734d000654d0d4e781ed7fcdb967ff93c299fe920839dc4441971c0d99a09c78"
+        }
+      ],
+      "inputFiles": [
+        "data/enrichment_comet.csv"
+      ],
+      "language": "R",
+      "licenses": {
+        "code": "MIT",
+        "content": "CC BY 4.0",
+        "documentation": "CC BY 4.0"
+      },
+      "moduleId": "go-enrichment-comet-facet",
+      "packages": [
+        "dplyr",
+        "ggforce",
+        "ggplot2",
+        "ragg",
+        "readr"
+      ],
+      "plotFamily": "enrichment_comet_facet",
+      "preview": {
+        "bytes": 869697,
+        "mediaType": "image/png",
+        "path": "previews/go-enrichment-comet-facet/preview.png",
+        "sha256": "ed7044e3b54bca2268116241d2bcafd21ab4b17cdb5e794a59152ecc74893411"
+      },
+      "provenance": [
+        {
+          "note": "Prepared from the reviewed Local Published entry go-enrichment-comet-facet; internal Library state is not distributed.",
+          "type": "local_published_cleaning"
+        },
+        {
+          "note": "Example inputs were generated for portable execution and do not represent real samples or scientific conclusions.",
+          "type": "synthetic_data"
+        },
+        {
+          "note": "Only files listed in this manifest are distributed; source/reference images, PDFs, logs, receipts, and machine-local state are excluded.",
+          "type": "clean_room_transformation"
+        }
+      ],
+      "publisher": {
+        "evidence": [
+          "README.md",
+          "data_schema.yml",
+          "preview.png"
+        ],
+        "executionScope": "synthetic_data",
+        "executionStatus": "passed",
+        "reviewStatus": "approved"
+      },
+      "requiredFiles": [
+        "README.md",
+        "code/example.R",
+        "code/organized.R",
+        "data/enrichment_comet.csv",
+        "data_schema.yml",
+        "description.md",
+        "module.yml",
+        "preview.png",
+        "thumbnail.jpg"
+      ],
+      "source": {
+        "commit": "644ab1034ca358f1584c2ec8666f1036f495f38e",
+        "path": "modules/go-enrichment-comet-facet",
+        "repository": "jarxunlai/ScientificFigureLibrary-personal"
+      },
+      "tags": [
+        "comet",
+        "enrichment",
+        "enrichment_comet_facet",
+        "facet",
+        "go",
+        "go-enrichment-comet-facet"
+      ],
+      "thumbnail": {
+        "bytes": 67217,
+        "mediaType": "image/jpeg",
+        "path": "thumbs/go-enrichment-comet-facet.jpg",
+        "sha256": "734d000654d0d4e781ed7fcdb967ff93c299fe920839dc4441971c0d99a09c78"
+      },
+      "title": "单细胞GO富集彗星图（分面）",
+      "titleEn": "Faceted GO enrichment comet plot"
+    },
+    {
+      "application": "Show ranked pathway NES values with point size and transparency encoding.",
+      "archive": {
+        "bytes": 274242,
+        "commit": "1e5cdfe188b59d5d425426d2fe32df21257d3591",
+        "path": "archives/hallmark-gsea-nes-ranked-scatter.zip",
+        "repository": "jarxunlai/ScientificFigureLibrary-personal",
+        "sha256": "aa49d503dceb1895d0e39da6d1bc5ccc6a1a010775debfe0132d33813f02531a"
+      },
+      "canonicalCode": "code/organized.R",
+      "codeFiles": [
+        "code/example.R",
+        "code/organized.R"
+      ],
+      "dataProfile": "A pathway table with ID, NES, setSize, and pvalue columns.",
+      "description": "A ranked GSEA normalized-enrichment-score bubble scatter using a bundled synthetic pathway table.",
+      "files": [
+        {
+          "bytes": 1110,
+          "path": "README.md",
+          "sha256": "b57a7fa71f6e71841c70df3f06ed7f59907dc1d595959012bb8c1cd500433f95"
+        },
+        {
+          "bytes": 2737,
+          "path": "code/example.R",
+          "sha256": "f6c65cbaff61d986405de6c5b8849130ddc60f24db54e6ad1c35a6a453176f4a"
+        },
+        {
+          "bytes": 4575,
+          "path": "code/organized.R",
+          "sha256": "43740b42d1ec35d9a84649aaf483657f08a1b3fef14175dadbd3bf029005673d"
+        },
+        {
+          "bytes": 2736,
+          "path": "data/example_gsea.csv",
+          "sha256": "8bbc2eeac6489e301872e8ffb46cb564585db8accef426931fc709c28b174349"
+        },
+        {
+          "bytes": 305,
+          "path": "data_schema.yml",
+          "sha256": "f1be6fb1c1d33150158b7819565f7ddce447b0d590cd9b18f1e0e2b1fa182c77"
+        },
+        {
+          "bytes": 626,
+          "path": "description.md",
+          "sha256": "5184850deade9555b3759ee7217acd57f0e00743bddfb161414187763978de3a"
+        },
+        {
+          "bytes": 2070,
+          "path": "module.yml",
+          "sha256": "e900c9d864c0ac1b1425a102cc087e0e061a9acda939557388db215f047e0a88"
+        },
+        {
+          "bytes": 240893,
+          "path": "preview.png",
+          "sha256": "6b74f149998925a62010b119bbfa95f3b9e9996e13faac956bad1dfc9b881c49"
+        },
+        {
+          "bytes": 1154,
+          "path": "provenance.md",
+          "sha256": "775e3043031318e6053b371c27e78a6afe98a88102ded97ddc3d39e08cb6e7eb"
+        },
+        {
+          "bytes": 50279,
+          "path": "thumbnail.jpg",
+          "sha256": "191be2ff3811f2839e76151de5c57b276037841ae4f2bd60e521c2b2269e0b7a"
+        }
+      ],
+      "inputFiles": [
+        "data/example_gsea.csv"
+      ],
+      "language": "R",
+      "licenses": {
+        "code": "MIT",
+        "content": "CC BY 4.0",
+        "documentation": "CC BY 4.0"
+      },
+      "moduleId": "hallmark-gsea-nes-ranked-scatter",
+      "packages": [
+        "ggplot2",
+        "ggrepel"
+      ],
+      "plotFamily": "ranked_nes_scatter",
+      "preview": {
+        "bytes": 240893,
+        "mediaType": "image/png",
+        "path": "previews/hallmark-gsea-nes-ranked-scatter/preview.png",
+        "sha256": "6b74f149998925a62010b119bbfa95f3b9e9996e13faac956bad1dfc9b881c49"
+      },
+      "provenance": [
+        {
+          "note": "Prepared from the reviewed Local Published entry hallmark-gsea-nes-ranked-scatter; internal Library state is not distributed.",
+          "type": "local_published_cleaning"
+        },
+        {
+          "note": "Example inputs were generated for portable execution and do not represent real samples or scientific conclusions.",
+          "type": "synthetic_data"
+        },
+        {
+          "note": "Only files listed in this manifest are distributed; source/reference images, PDFs, logs, receipts, and machine-local state are excluded.",
+          "type": "clean_room_transformation"
+        }
+      ],
+      "publisher": {
+        "evidence": [
+          "README.md",
+          "data_schema.yml",
+          "preview.png"
+        ],
+        "executionScope": "synthetic_data",
+        "executionStatus": "passed",
+        "reviewStatus": "approved"
+      },
+      "requiredFiles": [
+        "README.md",
+        "code/example.R",
+        "code/organized.R",
+        "data/example_gsea.csv",
+        "data_schema.yml",
+        "description.md",
+        "module.yml",
+        "preview.png",
+        "thumbnail.jpg"
+      ],
+      "source": {
+        "commit": "644ab1034ca358f1584c2ec8666f1036f495f38e",
+        "path": "modules/hallmark-gsea-nes-ranked-scatter",
+        "repository": "jarxunlai/ScientificFigureLibrary-personal"
+      },
+      "tags": [
+        "gsea",
+        "hallmark",
+        "hallmark-gsea-nes-ranked-scatter",
+        "nes",
+        "ranked",
+        "ranked_nes_scatter",
+        "scatter"
+      ],
+      "thumbnail": {
+        "bytes": 50279,
+        "mediaType": "image/jpeg",
+        "path": "thumbs/hallmark-gsea-nes-ranked-scatter.jpg",
+        "sha256": "191be2ff3811f2839e76151de5c57b276037841ae4f2bd60e521c2b2269e0b7a"
+      },
+      "title": "GSEA打分排序图",
+      "titleEn": "Ranked GSEA NES scatter"
+    },
+    {
+      "application": "Compare batch-correction and biological-conservation metrics across integration methods and preprocessing settings.",
+      "archive": {
+        "bytes": 1348439,
+        "commit": "1e5cdfe188b59d5d425426d2fe32df21257d3591",
+        "path": "archives/hlca-scib-integration-benchmark-matrix.zip",
+        "repository": "jarxunlai/ScientificFigureLibrary-personal",
+        "sha256": "2b5e002fbbb28fba4a1e93dcd4193394532cfb4ecf9cb46defff6a4d6d9ac6f2"
+      },
+      "canonicalCode": "code/organized.R",
+      "codeFiles": [
+        "code/example.R",
+        "code/organized.R"
+      ],
+      "dataProfile": "A newly generated scIB-shaped metrics table used to demonstrate the weighted score display.",
+      "description": "A reproducible benchmark-table visualization for comparing integration metrics and weighted scores.",
+      "files": [
+        {
+          "bytes": 1242,
+          "path": "README.md",
+          "sha256": "5ee29d38df8661f0d60a9ae78447eecb86810836d55bc8bfafbfdcc2451c03fc"
+        },
+        {
+          "bytes": 489,
+          "path": "code/example.R",
+          "sha256": "4177d89d95a186d73923dd81c7d088acabd1126fc8fae234ec275d71a43e9d1b"
+        },
+        {
+          "bytes": 27226,
+          "path": "code/organized.R",
+          "sha256": "04e006a1e3a7aaeb5e43bf574d6f405c21b0076f591b75499ec9a8f3c2013d21"
+        },
+        {
+          "bytes": 7567,
+          "path": "data/metrics_scgen_added.csv",
+          "sha256": "fcf4d0bca5a4a1b4bf1ac3cba88153e0043f9eb64b8dbe20dd85b06d25f3427f"
+        },
+        {
+          "bytes": 345,
+          "path": "data_schema.yml",
+          "sha256": "9df666bd5df9598a0d4b0da8485d34c8a469e32fdfdb4d9300952e3553bd5b98"
+        },
+        {
+          "bytes": 712,
+          "path": "description.md",
+          "sha256": "71a90bc659d711e5680d3978316154936948444ca207ec55ecb8fff8e303f9c1"
+        },
+        {
+          "bytes": 2282,
+          "path": "module.yml",
+          "sha256": "d6bdf859740b6d16ce0e8e72c271471dadc6ee8ab790e4a820bd186bf4344b4f"
+        },
+        {
+          "bytes": 1270832,
+          "path": "preview.png",
+          "sha256": "96ecc1bc5d45bcc4f5c8d72d8967a3b19f883ea9c94db646b16d2ba41c0a818e"
+        },
+        {
+          "bytes": 1160,
+          "path": "provenance.md",
+          "sha256": "c30011c65ce70b8c37f0e01c47734f75c4e58da0e71647f32c73d8240499b459"
+        },
+        {
+          "bytes": 177581,
+          "path": "thumbnail.jpg",
+          "sha256": "199bf61884dca9336654392fe28ec70e8cc5b99f8a76c44b44f401177fe6b79e"
+        }
+      ],
+      "inputFiles": [
+        "data/metrics_scgen_added.csv"
+      ],
+      "language": "R",
+      "licenses": {
+        "code": "MIT",
+        "content": "CC BY 4.0",
+        "documentation": "CC BY 4.0"
+      },
+      "moduleId": "hlca-scib-integration-benchmark-matrix",
+      "packages": [
+        "RColorBrewer",
+        "dplyr",
+        "ggforce",
+        "ggplot2",
+        "grid",
+        "ragg",
+        "readr",
+        "scales",
+        "stringr"
+      ],
+      "plotFamily": "benchmark_matrix",
+      "preview": {
+        "bytes": 1270832,
+        "mediaType": "image/png",
+        "path": "previews/hlca-scib-integration-benchmark-matrix/preview.png",
+        "sha256": "96ecc1bc5d45bcc4f5c8d72d8967a3b19f883ea9c94db646b16d2ba41c0a818e"
+      },
+      "provenance": [
+        {
+          "note": "Prepared from the reviewed Local Published entry hlca-scib-integration-benchmark-matrix; internal Library state is not distributed.",
+          "type": "local_published_cleaning"
+        },
+        {
+          "note": "Example inputs were generated for portable execution and do not represent real samples or scientific conclusions.",
+          "type": "synthetic_data"
+        },
+        {
+          "note": "Only files listed in this manifest are distributed; source/reference images, PDFs, logs, receipts, and machine-local state are excluded.",
+          "type": "clean_room_transformation"
+        }
+      ],
+      "publisher": {
+        "evidence": [
+          "README.md",
+          "data_schema.yml",
+          "preview.png"
+        ],
+        "executionScope": "synthetic_data",
+        "executionStatus": "passed",
+        "reviewStatus": "approved"
+      },
+      "requiredFiles": [
+        "README.md",
+        "code/example.R",
+        "code/organized.R",
+        "data/metrics_scgen_added.csv",
+        "data_schema.yml",
+        "description.md",
+        "module.yml",
+        "preview.png",
+        "thumbnail.jpg"
+      ],
+      "source": {
+        "commit": "644ab1034ca358f1584c2ec8666f1036f495f38e",
+        "path": "modules/hlca-scib-integration-benchmark-matrix",
+        "repository": "jarxunlai/ScientificFigureLibrary-personal"
+      },
+      "tags": [
+        "benchmark",
+        "benchmark_matrix",
+        "hlca",
+        "hlca-scib-integration-benchmark-matrix",
+        "integration",
+        "matrix",
+        "scib"
+      ],
+      "thumbnail": {
+        "bytes": 177581,
+        "mediaType": "image/jpeg",
+        "path": "thumbs/hlca-scib-integration-benchmark-matrix.jpg",
+        "sha256": "199bf61884dca9336654392fe28ec70e8cc5b99f8a76c44b44f401177fe6b79e"
+      },
+      "title": "HLCA scIB 整合基准总表",
+      "titleEn": "HLCA scIB integration benchmark matrix"
+    },
+    {
+      "application": "Display ranked pathway enrichment with readable labels placed inside each bar.",
+      "archive": {
+        "bytes": 212138,
+        "commit": "1e5cdfe188b59d5d425426d2fe32df21257d3591",
+        "path": "archives/kegg-variant-blue-inside-label.zip",
+        "repository": "jarxunlai/ScientificFigureLibrary-personal",
+        "sha256": "eff0568061ff6ffc48054ec46d57fce423e4a3b7672a6ea7b7f3ed5eb202e322"
+      },
+      "canonicalCode": "code/organized.R",
+      "codeFiles": [
+        "code/example.R",
+        "code/organized.R"
+      ],
+      "dataProfile": "Fifteen synthetic pathway descriptions with adjusted p-values.",
+      "description": "A labeled KEGG enrichment bar variant with a blue-yellow-red gradient and black in-bar pathway names.",
+      "files": [
+        {
+          "bytes": 1156,
+          "path": "README.md",
+          "sha256": "a62f7f6990bf9231cbf9be7f11402b141c0ecf9aa06a3d521af08a6f7828b566"
+        },
+        {
+          "bytes": 391,
+          "path": "code/example.R",
+          "sha256": "5ebd91e7a4b27a93767b6c69687ca067be7b61f3f9bd594ffb2a9635f3a89046"
+        },
+        {
+          "bytes": 2331,
+          "path": "code/organized.R",
+          "sha256": "30df216fa11271cbb165d0f760d22c88a3e2586115d04c807ac874d9d531a76b"
+        },
+        {
+          "bytes": 561,
+          "path": "data/kegg_top15.csv",
+          "sha256": "817caf4257c11b1065ba52b3dd69601e44bfa305230464b643a89e93947e657f"
+        },
+        {
+          "bytes": 307,
+          "path": "data_schema.yml",
+          "sha256": "4c98f92b4be768c17258e3f97d31accf63dd6c86f25afa90aa17a2613fd72ecc"
+        },
+        {
+          "bytes": 666,
+          "path": "description.md",
+          "sha256": "d2f9fc3024e31d5c60bb3331e7e6adf9c03f7dfa99e10c6fc9e7b5e0e4d2704b"
+        },
+        {
+          "bytes": 2121,
+          "path": "module.yml",
+          "sha256": "7fca382cb54b6b66f8d940f4562488854ba9da36cb7c71b26e7732108bb0a7ae"
+        },
+        {
+          "bytes": 181902,
+          "path": "preview.png",
+          "sha256": "27a4c3ec09dd0b9fe386c37b5d1e79f7a1a288c4e7fda82e1a57b6f9fc313d4b"
+        },
+        {
+          "bytes": 1152,
+          "path": "provenance.md",
+          "sha256": "e31944e069348f4372fe0dccfa463efd6173df3e2c7112531b29afee9b38f090"
+        },
+        {
+          "bytes": 76372,
+          "path": "thumbnail.jpg",
+          "sha256": "3e5525c70dc858a3ee81b9cf9dbff17579e44f59d5f480b00972093170024309"
+        }
+      ],
+      "inputFiles": [
+        "data/kegg_top15.csv"
+      ],
+      "language": "R",
+      "licenses": {
+        "code": "MIT",
+        "content": "CC BY 4.0",
+        "documentation": "CC BY 4.0"
+      },
+      "moduleId": "kegg-variant-blue-inside-label",
+      "packages": [
+        "ggplot2",
+        "ragg",
+        "readr"
+      ],
+      "plotFamily": "enrichment_bar",
+      "preview": {
+        "bytes": 181902,
+        "mediaType": "image/png",
+        "path": "previews/kegg-variant-blue-inside-label/preview.png",
+        "sha256": "27a4c3ec09dd0b9fe386c37b5d1e79f7a1a288c4e7fda82e1a57b6f9fc313d4b"
+      },
+      "provenance": [
+        {
+          "note": "Prepared from the reviewed Local Published entry kegg-variant-blue-inside-label; internal Library state is not distributed.",
+          "type": "local_published_cleaning"
+        },
+        {
+          "note": "Example inputs were generated for portable execution and do not represent real samples or scientific conclusions.",
+          "type": "synthetic_data"
+        },
+        {
+          "note": "Only files listed in this manifest are distributed; source/reference images, PDFs, logs, receipts, and machine-local state are excluded.",
+          "type": "clean_room_transformation"
+        }
+      ],
+      "publisher": {
+        "evidence": [
+          "README.md",
+          "data_schema.yml",
+          "preview.png"
+        ],
+        "executionScope": "synthetic_data",
+        "executionStatus": "passed",
+        "reviewStatus": "approved"
+      },
+      "requiredFiles": [
+        "README.md",
+        "code/example.R",
+        "code/organized.R",
+        "data/kegg_top15.csv",
+        "data_schema.yml",
+        "description.md",
+        "module.yml",
+        "preview.png",
+        "thumbnail.jpg"
+      ],
+      "source": {
+        "commit": "644ab1034ca358f1584c2ec8666f1036f495f38e",
+        "path": "modules/kegg-variant-blue-inside-label",
+        "repository": "jarxunlai/ScientificFigureLibrary-personal"
+      },
+      "tags": [
+        "blue",
+        "enrichment_bar",
+        "inside",
+        "kegg",
+        "kegg-variant-blue-inside-label",
+        "label",
+        "variant"
+      ],
+      "thumbnail": {
+        "bytes": 76372,
+        "mediaType": "image/jpeg",
+        "path": "thumbs/kegg-variant-blue-inside-label.jpg",
+        "sha256": "3e5525c70dc858a3ee81b9cf9dbff17579e44f59d5f480b00972093170024309"
+      },
+      "title": "KEGG变体条形图（蓝黄红柱内标签）",
+      "titleEn": "KEGG variant bar with blue-yellow-red inside labels"
+    },
+    {
+      "application": "Compare ranked pathway enrichment while preserving high-contrast labels for the largest bars.",
+      "archive": {
+        "bytes": 213662,
+        "commit": "1e5cdfe188b59d5d425426d2fe32df21257d3591",
+        "path": "archives/kegg-variant-bw-text-classic.zip",
+        "repository": "jarxunlai/ScientificFigureLibrary-personal",
+        "sha256": "eb3b07d3f21a54dcfc04f410a60af362902f779d45b97a30f2e9157cac70ded4"
+      },
+      "canonicalCode": "code/organized.R",
+      "codeFiles": [
+        "code/example.R",
+        "code/organized.R"
+      ],
+      "dataProfile": "Fifteen synthetic pathway descriptions with adjusted p-values.",
+      "description": "A KEGG enrichment bar variant that uses white labels for the first three bars and black labels thereafter.",
+      "files": [
+        {
+          "bytes": 1158,
+          "path": "README.md",
+          "sha256": "efadd025222f39d3f767bb3ae0b3396aca29f51c0f28a07a05966fe1050cbee1"
+        },
+        {
+          "bytes": 391,
+          "path": "code/example.R",
+          "sha256": "5ebd91e7a4b27a93767b6c69687ca067be7b61f3f9bd594ffb2a9635f3a89046"
+        },
+        {
+          "bytes": 2387,
+          "path": "code/organized.R",
+          "sha256": "76c919e57a30e5740dc03771aa039e2f931d0e41d985cbc0c15052550ca04929"
+        },
+        {
+          "bytes": 561,
+          "path": "data/kegg_top15.csv",
+          "sha256": "817caf4257c11b1065ba52b3dd69601e44bfa305230464b643a89e93947e657f"
+        },
+        {
+          "bytes": 307,
+          "path": "data_schema.yml",
+          "sha256": "4c98f92b4be768c17258e3f97d31accf63dd6c86f25afa90aa17a2613fd72ecc"
+        },
+        {
+          "bytes": 677,
+          "path": "description.md",
+          "sha256": "de092912b792a62e46858bf19f55f3db460cac6ed77cb90819970821e58e9a39"
+        },
+        {
+          "bytes": 2115,
+          "path": "module.yml",
+          "sha256": "6dc6d0d32ff65fd1c644bf8301d707570e98459978ccfe5a8e65a9746ad8318e"
+        },
+        {
+          "bytes": 182809,
+          "path": "preview.png",
+          "sha256": "f02996441b12b52b704c384510830753e28ef4586071ca474b4450286a2cc805"
+        },
+        {
+          "bytes": 1150,
+          "path": "provenance.md",
+          "sha256": "f695c48d2fbb942372c9d823a210ad6e2a8e8a2cff34b37de53ea0506dbde9ba"
+        },
+        {
+          "bytes": 76830,
+          "path": "thumbnail.jpg",
+          "sha256": "37fb0f03de2b897f464dfb0ce46937cc76889252e1b551d0fd0114585091f25e"
+        }
+      ],
+      "inputFiles": [
+        "data/kegg_top15.csv"
+      ],
+      "language": "R",
+      "licenses": {
+        "code": "MIT",
+        "content": "CC BY 4.0",
+        "documentation": "CC BY 4.0"
+      },
+      "moduleId": "kegg-variant-bw-text-classic",
+      "packages": [
+        "ggplot2",
+        "ragg",
+        "readr"
+      ],
+      "plotFamily": "enrichment_bar",
+      "preview": {
+        "bytes": 182809,
+        "mediaType": "image/png",
+        "path": "previews/kegg-variant-bw-text-classic/preview.png",
+        "sha256": "f02996441b12b52b704c384510830753e28ef4586071ca474b4450286a2cc805"
+      },
+      "provenance": [
+        {
+          "note": "Prepared from the reviewed Local Published entry kegg-variant-bw-text-classic; internal Library state is not distributed.",
+          "type": "local_published_cleaning"
+        },
+        {
+          "note": "Example inputs were generated for portable execution and do not represent real samples or scientific conclusions.",
+          "type": "synthetic_data"
+        },
+        {
+          "note": "Only files listed in this manifest are distributed; source/reference images, PDFs, logs, receipts, and machine-local state are excluded.",
+          "type": "clean_room_transformation"
+        }
+      ],
+      "publisher": {
+        "evidence": [
+          "README.md",
+          "data_schema.yml",
+          "preview.png"
+        ],
+        "executionScope": "synthetic_data",
+        "executionStatus": "passed",
+        "reviewStatus": "approved"
+      },
+      "requiredFiles": [
+        "README.md",
+        "code/example.R",
+        "code/organized.R",
+        "data/kegg_top15.csv",
+        "data_schema.yml",
+        "description.md",
+        "module.yml",
+        "preview.png",
+        "thumbnail.jpg"
+      ],
+      "source": {
+        "commit": "644ab1034ca358f1584c2ec8666f1036f495f38e",
+        "path": "modules/kegg-variant-bw-text-classic",
+        "repository": "jarxunlai/ScientificFigureLibrary-personal"
+      },
+      "tags": [
+        "bw",
+        "classic",
+        "enrichment_bar",
+        "kegg",
+        "kegg-variant-bw-text-classic",
+        "text",
+        "variant"
+      ],
+      "thumbnail": {
+        "bytes": 76830,
+        "mediaType": "image/jpeg",
+        "path": "thumbs/kegg-variant-bw-text-classic.jpg",
+        "sha256": "37fb0f03de2b897f464dfb0ce46937cc76889252e1b551d0fd0114585091f25e"
+      },
+      "title": "KEGG变体条形图（前三白字）",
+      "titleEn": "KEGG variant bar with white-on-dark labels"
+    },
+    {
+      "application": "Present ranked pathway enrichment in a minimal, label-forward bar layout.",
+      "archive": {
+        "bytes": 214654,
+        "commit": "1e5cdfe188b59d5d425426d2fe32df21257d3591",
+        "path": "archives/kegg-variant-inside-label-bar.zip",
+        "repository": "jarxunlai/ScientificFigureLibrary-personal",
+        "sha256": "4cf7ce8112558e35daf6ff78b77c0ef0b61c06adce62426ecc56642dc7070ecf"
+      },
+      "canonicalCode": "code/organized.R",
+      "codeFiles": [
+        "code/example.R",
+        "code/organized.R"
+      ],
+      "dataProfile": "Fifteen synthetic pathway descriptions with adjusted p-values.",
+      "description": "A compact KEGG enrichment bar variant with a warm gradient and pathway names written inside the bars.",
+      "files": [
+        {
+          "bytes": 1141,
+          "path": "README.md",
+          "sha256": "060a94a44a0eefc765a700667c98b3df6eb907a318743854bcc49f54f6571408"
+        },
+        {
+          "bytes": 391,
+          "path": "code/example.R",
+          "sha256": "5ebd91e7a4b27a93767b6c69687ca067be7b61f3f9bd594ffb2a9635f3a89046"
+        },
+        {
+          "bytes": 2486,
+          "path": "code/organized.R",
+          "sha256": "555df36215fe56f05be05a8aadec8c2442847e6641a0f0819ab56d669794991e"
+        },
+        {
+          "bytes": 561,
+          "path": "data/kegg_top15.csv",
+          "sha256": "817caf4257c11b1065ba52b3dd69601e44bfa305230464b643a89e93947e657f"
+        },
+        {
+          "bytes": 307,
+          "path": "data_schema.yml",
+          "sha256": "4c98f92b4be768c17258e3f97d31accf63dd6c86f25afa90aa17a2613fd72ecc"
+        },
+        {
+          "bytes": 655,
+          "path": "description.md",
+          "sha256": "f6fa63acd3651c9c4ca8ad167d660f6637045beeda0bbb68335c7ae1b3423ac6"
+        },
+        {
+          "bytes": 2102,
+          "path": "module.yml",
+          "sha256": "36a3c3d8ec34e19abf1ecdfc70c4c9bacad917db2b5c5d6560aedd05a131910e"
+        },
+        {
+          "bytes": 174708,
+          "path": "preview.png",
+          "sha256": "9c7224780b6637d2606c0e1ab5cd00fc4c77292f1d805376d36b95f2e00bc792"
+        },
+        {
+          "bytes": 1151,
+          "path": "provenance.md",
+          "sha256": "c781affd407e55b8d141cfbdf87c843b1fbf1b2feb3031e26766897df2d25c71"
+        },
+        {
+          "bytes": 96001,
+          "path": "thumbnail.jpg",
+          "sha256": "ee4edad850b5bdd5f825738b54876ebc5b70972ae3029b3f20720889bd7a4d01"
+        }
+      ],
+      "inputFiles": [
+        "data/kegg_top15.csv"
+      ],
+      "language": "R",
+      "licenses": {
+        "code": "MIT",
+        "content": "CC BY 4.0",
+        "documentation": "CC BY 4.0"
+      },
+      "moduleId": "kegg-variant-inside-label-bar",
+      "packages": [
+        "ggplot2",
+        "ragg",
+        "readr"
+      ],
+      "plotFamily": "enrichment_bar",
+      "preview": {
+        "bytes": 174708,
+        "mediaType": "image/png",
+        "path": "previews/kegg-variant-inside-label-bar/preview.png",
+        "sha256": "9c7224780b6637d2606c0e1ab5cd00fc4c77292f1d805376d36b95f2e00bc792"
+      },
+      "provenance": [
+        {
+          "note": "Prepared from the reviewed Local Published entry kegg-variant-inside-label-bar; internal Library state is not distributed.",
+          "type": "local_published_cleaning"
+        },
+        {
+          "note": "Example inputs were generated for portable execution and do not represent real samples or scientific conclusions.",
+          "type": "synthetic_data"
+        },
+        {
+          "note": "Only files listed in this manifest are distributed; source/reference images, PDFs, logs, receipts, and machine-local state are excluded.",
+          "type": "clean_room_transformation"
+        }
+      ],
+      "publisher": {
+        "evidence": [
+          "README.md",
+          "data_schema.yml",
+          "preview.png"
+        ],
+        "executionScope": "synthetic_data",
+        "executionStatus": "passed",
+        "reviewStatus": "approved"
+      },
+      "requiredFiles": [
+        "README.md",
+        "code/example.R",
+        "code/organized.R",
+        "data/kegg_top15.csv",
+        "data_schema.yml",
+        "description.md",
+        "module.yml",
+        "preview.png",
+        "thumbnail.jpg"
+      ],
+      "source": {
+        "commit": "644ab1034ca358f1584c2ec8666f1036f495f38e",
+        "path": "modules/kegg-variant-inside-label-bar",
+        "repository": "jarxunlai/ScientificFigureLibrary-personal"
+      },
+      "tags": [
+        "bar",
+        "enrichment_bar",
+        "inside",
+        "kegg",
+        "kegg-variant-inside-label-bar",
+        "label",
+        "variant"
+      ],
+      "thumbnail": {
+        "bytes": 96001,
+        "mediaType": "image/jpeg",
+        "path": "thumbs/kegg-variant-inside-label-bar.jpg",
+        "sha256": "ee4edad850b5bdd5f825738b54876ebc5b70972ae3029b3f20720889bd7a4d01"
+      },
+      "title": "KEGG变体条形图（柱内通路名）",
+      "titleEn": "KEGG variant bar with inside-bar pathway labels"
+    },
+    {
+      "application": "Compare differential-gene counts across three time points and cell-type groups.",
+      "archive": {
+        "bytes": 274780,
+        "commit": "1e5cdfe188b59d5d425426d2fe32df21257d3591",
+        "path": "archives/nature-deg-grouped-barplot.zip",
+        "repository": "jarxunlai/ScientificFigureLibrary-personal",
+        "sha256": "a17128f54563e00a152f1e5359d267bbcb97eb7ddb22e12800b469d1024b90c7"
+      },
+      "canonicalCode": "code/organized.R",
+      "codeFiles": [
+        "code/example.R",
+        "code/organized.R"
+      ],
+      "dataProfile": "Synthetic cell-type rows with SNI_3day, SNI_3week, SNI_3month, and Group columns.",
+      "description": "A three-time-point grouped DEG bar layout with color-coded cell-type classes.",
+      "files": [
+        {
+          "bytes": 1118,
+          "path": "README.md",
+          "sha256": "ee70f678aaa156a8efb657305acabd368a1e5d54f031fd894ce00eefd49663c5"
+        },
+        {
+          "bytes": 391,
+          "path": "code/example.R",
+          "sha256": "5ebd91e7a4b27a93767b6c69687ca067be7b61f3f9bd594ffb2a9635f3a89046"
+        },
+        {
+          "bytes": 6961,
+          "path": "code/organized.R",
+          "sha256": "cd343ddf42f5a2739ac21760f774e347c1a0777c496a4ddc011bc4d956a367d8"
+        },
+        {
+          "bytes": 983,
+          "path": "data/DEGs.csv",
+          "sha256": "c64168d26967b6af8714eda0449df46e842a1e96b0824e4d8a30b63a72e1e23e"
+        },
+        {
+          "bytes": 320,
+          "path": "data_schema.yml",
+          "sha256": "957a7922eaf2927d8c09c08eec81091603b339108d6554e0b6959804061cad81"
+        },
+        {
+          "bytes": 646,
+          "path": "description.md",
+          "sha256": "096346193aa2250162b6218c003199631c6f4d3123d502d0e38d6e67c8d6a7c3"
+        },
+        {
+          "bytes": 2049,
+          "path": "module.yml",
+          "sha256": "917b96ae1e70b852551e0980f93c521e7300a9b432fe5fa6bce89aba1f68fc11"
+        },
+        {
+          "bytes": 228900,
+          "path": "preview.png",
+          "sha256": "330065ac7db01c7b97e6ea7d84356613f552f2e8f8b08006349ddfa2a38926c3"
+        },
+        {
+          "bytes": 1148,
+          "path": "provenance.md",
+          "sha256": "7123634fdb39c3b7327a64bfc4a641d1d14a72011468757583634e8018a32aaf"
+        },
+        {
+          "bytes": 79306,
+          "path": "thumbnail.jpg",
+          "sha256": "7bcca6435fd0524e38d5eb5985bdaffac3493288d18fc119c5dc4fb8b789b557"
+        }
+      ],
+      "inputFiles": [
+        "data/DEGs.csv"
+      ],
+      "language": "R",
+      "licenses": {
+        "code": "MIT",
+        "content": "CC BY 4.0",
+        "documentation": "CC BY 4.0"
+      },
+      "moduleId": "nature-deg-grouped-barplot",
+      "packages": [
+        "ggplot2",
+        "ragg",
+        "readr"
+      ],
+      "plotFamily": "grouped_deg_bar",
+      "preview": {
+        "bytes": 228900,
+        "mediaType": "image/png",
+        "path": "previews/nature-deg-grouped-barplot/preview.png",
+        "sha256": "330065ac7db01c7b97e6ea7d84356613f552f2e8f8b08006349ddfa2a38926c3"
+      },
+      "provenance": [
+        {
+          "note": "Prepared from the reviewed Local Published entry nature-deg-grouped-barplot; internal Library state is not distributed.",
+          "type": "local_published_cleaning"
+        },
+        {
+          "note": "Example inputs were generated for portable execution and do not represent real samples or scientific conclusions.",
+          "type": "synthetic_data"
+        },
+        {
+          "note": "Only files listed in this manifest are distributed; source/reference images, PDFs, logs, receipts, and machine-local state are excluded.",
+          "type": "clean_room_transformation"
+        }
+      ],
+      "publisher": {
+        "evidence": [
+          "README.md",
+          "data_schema.yml",
+          "preview.png"
+        ],
+        "executionScope": "synthetic_data",
+        "executionStatus": "passed",
+        "reviewStatus": "approved"
+      },
+      "requiredFiles": [
+        "README.md",
+        "code/example.R",
+        "code/organized.R",
+        "data/DEGs.csv",
+        "data_schema.yml",
+        "description.md",
+        "module.yml",
+        "preview.png",
+        "thumbnail.jpg"
+      ],
+      "source": {
+        "commit": "644ab1034ca358f1584c2ec8666f1036f495f38e",
+        "path": "modules/nature-deg-grouped-barplot",
+        "repository": "jarxunlai/ScientificFigureLibrary-personal"
+      },
+      "tags": [
+        "barplot",
+        "deg",
+        "grouped",
+        "grouped_deg_bar",
+        "nature",
+        "nature-deg-grouped-barplot"
+      ],
+      "thumbnail": {
+        "bytes": 79306,
+        "mediaType": "image/jpeg",
+        "path": "thumbs/nature-deg-grouped-barplot.jpg",
+        "sha256": "7bcca6435fd0524e38d5eb5985bdaffac3493288d18fc119c5dc4fb8b789b557"
+      },
+      "title": "Nature风格分组DEG条形图",
+      "titleEn": "Nature-style grouped DEG bar plot"
+    },
+    {
+      "application": "Show group separation and sample labels in a clean PCA panel.",
+      "archive": {
+        "bytes": 226365,
+        "commit": "1e5cdfe188b59d5d425426d2fe32df21257d3591",
+        "path": "archives/nature-metabolome-style-pca.zip",
+        "repository": "jarxunlai/ScientificFigureLibrary-personal",
+        "sha256": "feee90578412474076c95b8e56499d4953c421a742e89bacfde995a8d678e563"
+      },
+      "canonicalCode": "code/organized.R",
+      "codeFiles": [
+        "code/example.R",
+        "code/organized.R"
+      ],
+      "dataProfile": "Synthetic sample-level coordinates with sample, group, PC1, and PC2 columns.",
+      "description": "A four-group PCA presentation with confidence ellipses, outlined points, and direct sample labels.",
+      "files": [
+        {
+          "bytes": 1113,
+          "path": "README.md",
+          "sha256": "7b977d99ac53fc33d98d8d5ce886e442c2375da7d4f68d052cf9e0a21bd9cd02"
+        },
+        {
+          "bytes": 391,
+          "path": "code/example.R",
+          "sha256": "5ebd91e7a4b27a93767b6c69687ca067be7b61f3f9bd594ffb2a9635f3a89046"
+        },
+        {
+          "bytes": 2976,
+          "path": "code/organized.R",
+          "sha256": "65ff2cf1445ce35f0ab04bd4c39b29070e1e1d8ccd91aae698d58c26c5486443"
+        },
+        {
+          "bytes": 1143,
+          "path": "data/pca_df.csv",
+          "sha256": "f43a54ab2fc22965c49a65fd17bb5cad8a699c2c80c73d570e6494656d761d54"
+        },
+        {
+          "bytes": 317,
+          "path": "data_schema.yml",
+          "sha256": "b732aaa4352da99c32f4b248fab0ef729ff655e32f471c0fcd903c89c186c1ce"
+        },
+        {
+          "bytes": 638,
+          "path": "description.md",
+          "sha256": "4452e3a0763f01dbd6bec52aa342784e25adc77d4173ebed2ac5ff73916dc198"
+        },
+        {
+          "bytes": 2025,
+          "path": "module.yml",
+          "sha256": "775036ce2c66ad359ef559e951c1907ebbc78d6bc5b8ae38f910dc4b8a70215d"
+        },
+        {
+          "bytes": 206118,
+          "path": "preview.png",
+          "sha256": "b256f72c61e8318a2fbea36c42d7785b38267c343e74319b321b572bc6384070"
+        },
+        {
+          "bytes": 1149,
+          "path": "provenance.md",
+          "sha256": "13dee7a7ad9265c753a924997005bafc0501136906768e5b0302b68104e401f1"
+        },
+        {
+          "bytes": 35699,
+          "path": "thumbnail.jpg",
+          "sha256": "b8a6f1358504f9b448f63e6dc913c5208cedb3704506ec0e32a18b4092d4a0fc"
+        }
+      ],
+      "inputFiles": [
+        "data/pca_df.csv"
+      ],
+      "language": "R",
+      "licenses": {
+        "code": "MIT",
+        "content": "CC BY 4.0",
+        "documentation": "CC BY 4.0"
+      },
+      "moduleId": "nature-metabolome-style-pca",
+      "packages": [
+        "ggplot2",
+        "ggrepel",
+        "ragg",
+        "readr"
+      ],
+      "plotFamily": "pca",
+      "preview": {
+        "bytes": 206118,
+        "mediaType": "image/png",
+        "path": "previews/nature-metabolome-style-pca/preview.png",
+        "sha256": "b256f72c61e8318a2fbea36c42d7785b38267c343e74319b321b572bc6384070"
+      },
+      "provenance": [
+        {
+          "note": "Prepared from the reviewed Local Published entry nature-metabolome-style-pca; internal Library state is not distributed.",
+          "type": "local_published_cleaning"
+        },
+        {
+          "note": "Example inputs were generated for portable execution and do not represent real samples or scientific conclusions.",
+          "type": "synthetic_data"
+        },
+        {
+          "note": "Only files listed in this manifest are distributed; source/reference images, PDFs, logs, receipts, and machine-local state are excluded.",
+          "type": "clean_room_transformation"
+        }
+      ],
+      "publisher": {
+        "evidence": [
+          "README.md",
+          "data_schema.yml",
+          "preview.png"
+        ],
+        "executionScope": "synthetic_data",
+        "executionStatus": "passed",
+        "reviewStatus": "approved"
+      },
+      "requiredFiles": [
+        "README.md",
+        "code/example.R",
+        "code/organized.R",
+        "data/pca_df.csv",
+        "data_schema.yml",
+        "description.md",
+        "module.yml",
+        "preview.png",
+        "thumbnail.jpg"
+      ],
+      "source": {
+        "commit": "644ab1034ca358f1584c2ec8666f1036f495f38e",
+        "path": "modules/nature-metabolome-style-pca",
+        "repository": "jarxunlai/ScientificFigureLibrary-personal"
+      },
+      "tags": [
+        "metabolome",
+        "nature",
+        "nature-metabolome-style-pca",
+        "pca",
+        "style"
+      ],
+      "thumbnail": {
+        "bytes": 35699,
+        "mediaType": "image/jpeg",
+        "path": "thumbs/nature-metabolome-style-pca.jpg",
+        "sha256": "b8a6f1358504f9b448f63e6dc913c5208cedb3704506ec0e32a18b4092d4a0fc"
+      },
+      "title": "Nature风格四分组PCA",
+      "titleEn": "Nature-style four-group PCA"
+    },
+    {
+      "application": "Compare nine niche proportions across a sample series with a stable palette.",
+      "archive": {
+        "bytes": 177432,
+        "commit": "1e5cdfe188b59d5d425426d2fe32df21257d3591",
+        "path": "archives/nature-spatial-niche-stacked-bar.zip",
+        "repository": "jarxunlai/ScientificFigureLibrary-personal",
+        "sha256": "088ecc9d58645a8acd5ab6c87a3152c02b0971f7599d1320e9127bf99e765f28"
+      },
+      "canonicalCode": "code/organized.R",
+      "codeFiles": [
+        "code/example.R",
+        "code/organized.R"
+      ],
+      "dataProfile": "Long-form sample-by-niche proportions with patient, ctniche, and Proportion columns.",
+      "description": "A 100% stacked-bar module for comparing spatial niche composition across samples.",
+      "files": [
+        {
+          "bytes": 1140,
+          "path": "README.md",
+          "sha256": "5c8507fedadd68b55a19b0521927d6e73d64b361d9f3a63918bf581f19233964"
+        },
+        {
+          "bytes": 391,
+          "path": "code/example.R",
+          "sha256": "5ebd91e7a4b27a93767b6c69687ca067be7b61f3f9bd594ffb2a9635f3a89046"
+        },
+        {
+          "bytes": 2671,
+          "path": "code/organized.R",
+          "sha256": "3ffb158d2218c2c4e4c4b8f397f359d291245ea656690fbd41a104ae2a7b23ba"
+        },
+        {
+          "bytes": 6165,
+          "path": "data/niche_proportions.csv",
+          "sha256": "575b144e5d46a4c8e45e0017c4e6e7aa502a6162e04b552e46565f7657d389c3"
+        },
+        {
+          "bytes": 336,
+          "path": "data_schema.yml",
+          "sha256": "c38f5be246a4ecee8ca3639d4405f47536a890d72d375aa81a2fedb2c6de0723"
+        },
+        {
+          "bytes": 656,
+          "path": "description.md",
+          "sha256": "4d828feb0b155d18a956d6f88250f1047e4741280efee1f5e990b4fd8a7a6327"
+        },
+        {
+          "bytes": 2151,
+          "path": "module.yml",
+          "sha256": "41569d54fb267f40abb4e7960cef032ad8a35036f20cdd7ae786b66e4d4c8bbb"
+        },
+        {
+          "bytes": 140677,
+          "path": "preview.png",
+          "sha256": "fefba736fd807b71517fa157e742380032347f4b82d5aefa54ed0acb09f7c9d6"
+        },
+        {
+          "bytes": 1154,
+          "path": "provenance.md",
+          "sha256": "5a79dd57e0ad559b17746024c4e441cc46f61f72981c307d5c5cdba74a8473d4"
+        },
+        {
+          "bytes": 74904,
+          "path": "thumbnail.jpg",
+          "sha256": "5ccec74e2806570cbb2e68b1715e2b95ddf0f81df5bf6f69696e265dbaabe084"
+        }
+      ],
+      "inputFiles": [
+        "data/niche_proportions.csv"
+      ],
+      "language": "R",
+      "licenses": {
+        "code": "MIT",
+        "content": "CC BY 4.0",
+        "documentation": "CC BY 4.0"
+      },
+      "moduleId": "nature-spatial-niche-stacked-bar",
+      "packages": [
+        "dplyr",
+        "ggplot2",
+        "ragg",
+        "readr"
+      ],
+      "plotFamily": "stacked_proportion_bar",
+      "preview": {
+        "bytes": 140677,
+        "mediaType": "image/png",
+        "path": "previews/nature-spatial-niche-stacked-bar/preview.png",
+        "sha256": "fefba736fd807b71517fa157e742380032347f4b82d5aefa54ed0acb09f7c9d6"
+      },
+      "provenance": [
+        {
+          "note": "Prepared from the reviewed Local Published entry nature-spatial-niche-stacked-bar; internal Library state is not distributed.",
+          "type": "local_published_cleaning"
+        },
+        {
+          "note": "Example inputs were generated for portable execution and do not represent real samples or scientific conclusions.",
+          "type": "synthetic_data"
+        },
+        {
+          "note": "Only files listed in this manifest are distributed; source/reference images, PDFs, logs, receipts, and machine-local state are excluded.",
+          "type": "clean_room_transformation"
+        }
+      ],
+      "publisher": {
+        "evidence": [
+          "README.md",
+          "data_schema.yml",
+          "preview.png"
+        ],
+        "executionScope": "synthetic_data",
+        "executionStatus": "passed",
+        "reviewStatus": "approved"
+      },
+      "requiredFiles": [
+        "README.md",
+        "code/example.R",
+        "code/organized.R",
+        "data/niche_proportions.csv",
+        "data_schema.yml",
+        "description.md",
+        "module.yml",
+        "preview.png",
+        "thumbnail.jpg"
+      ],
+      "source": {
+        "commit": "644ab1034ca358f1584c2ec8666f1036f495f38e",
+        "path": "modules/nature-spatial-niche-stacked-bar",
+        "repository": "jarxunlai/ScientificFigureLibrary-personal"
+      },
+      "tags": [
+        "bar",
+        "nature",
+        "nature-spatial-niche-stacked-bar",
+        "niche",
+        "spatial",
+        "stacked",
+        "stacked_proportion_bar"
+      ],
+      "thumbnail": {
+        "bytes": 74904,
+        "mediaType": "image/jpeg",
+        "path": "thumbs/nature-spatial-niche-stacked-bar.jpg",
+        "sha256": "5ccec74e2806570cbb2e68b1715e2b95ddf0f81df5bf6f69696e265dbaabe084"
+      },
+      "title": "Nature同款空转生态位堆积柱",
+      "titleEn": "Nature-style spatial niche stacked bar"
+    },
+    {
+      "application": "Compare marker scores for a selected cell type across two named cohorts.",
+      "archive": {
+        "bytes": 161341,
+        "commit": "1e5cdfe188b59d5d425426d2fe32df21257d3591",
+        "path": "archives/nc-backtoback-lollipop.zip",
+        "repository": "jarxunlai/ScientificFigureLibrary-personal",
+        "sha256": "e3df7de37334f70215e0d14c2ad21fe18a784c3d6a9a1e0c9abf7bee27bf960d"
+      },
+      "canonicalCode": "code/organized.R",
+      "codeFiles": [
+        "code/example.R",
+        "code/organized.R"
+      ],
+      "dataProfile": "Synthetic marker-level rows with celltype, group, marker, impact score, EC score, and specificity.",
+      "description": "A back-to-back lollipop panel for comparing marker impact scores between two groups.",
+      "files": [
+        {
+          "bytes": 1150,
+          "path": "README.md",
+          "sha256": "c9045ddfd4768b333529f939258aff97673b3c44e6c3d42d55dc1178d921b19c"
+        },
+        {
+          "bytes": 391,
+          "path": "code/example.R",
+          "sha256": "5ebd91e7a4b27a93767b6c69687ca067be7b61f3f9bd594ffb2a9635f3a89046"
+        },
+        {
+          "bytes": 4311,
+          "path": "code/organized.R",
+          "sha256": "83874bfd1d51e0dc473f7c4a2c957999e75c9472f8bad8d712d150e464571f7e"
+        },
+        {
+          "bytes": 2817,
+          "path": "data/fig5.csv",
+          "sha256": "192b1823d382a76c147bc32aa53fb7a97558469f3c314ee371413fd3644ba3f1"
+        },
+        {
+          "bytes": 337,
+          "path": "data_schema.yml",
+          "sha256": "ced18502835146b36c8a0bc3b508ddaca1bcc6bbef9f110977eeae5e19315730"
+        },
+        {
+          "bytes": 663,
+          "path": "description.md",
+          "sha256": "4a03710f57ee0e9dbbf780da52404d8fc7030530fd780281eec4d04d9924cdfe"
+        },
+        {
+          "bytes": 2076,
+          "path": "module.yml",
+          "sha256": "65b716b22397ec2819769449f0494ae008178c242ad33050020b924034e1219b"
+        },
+        {
+          "bytes": 142834,
+          "path": "preview.png",
+          "sha256": "04f97717c2de59405ab27ff2917a4a18f9aecc07517034137bc6580803719018"
+        },
+        {
+          "bytes": 1144,
+          "path": "provenance.md",
+          "sha256": "10ae12d5ad46aac23a90e83f18b5fb1ec4c4c85ec03ae897a2c9d90fd5df9fb3"
+        },
+        {
+          "bytes": 52715,
+          "path": "thumbnail.jpg",
+          "sha256": "e40f98e1beff34a7b1c5af731b6be38bf55b3b3833b6871f21e1cb5f1a154533"
+        }
+      ],
+      "inputFiles": [
+        "data/fig5.csv"
+      ],
+      "language": "R",
+      "licenses": {
+        "code": "MIT",
+        "content": "CC BY 4.0",
+        "documentation": "CC BY 4.0"
+      },
+      "moduleId": "nc-backtoback-lollipop",
+      "packages": [
+        "dplyr",
+        "ggplot2",
+        "patchwork",
+        "ragg"
+      ],
+      "plotFamily": "back_to_back_lollipop",
+      "preview": {
+        "bytes": 142834,
+        "mediaType": "image/png",
+        "path": "previews/nc-backtoback-lollipop/preview.png",
+        "sha256": "04f97717c2de59405ab27ff2917a4a18f9aecc07517034137bc6580803719018"
+      },
+      "provenance": [
+        {
+          "note": "Prepared from the reviewed Local Published entry nc-backtoback-lollipop; internal Library state is not distributed.",
+          "type": "local_published_cleaning"
+        },
+        {
+          "note": "Example inputs were generated for portable execution and do not represent real samples or scientific conclusions.",
+          "type": "synthetic_data"
+        },
+        {
+          "note": "Only files listed in this manifest are distributed; source/reference images, PDFs, logs, receipts, and machine-local state are excluded.",
+          "type": "clean_room_transformation"
+        }
+      ],
+      "publisher": {
+        "evidence": [
+          "README.md",
+          "data_schema.yml",
+          "preview.png"
+        ],
+        "executionScope": "synthetic_data",
+        "executionStatus": "passed",
+        "reviewStatus": "approved"
+      },
+      "requiredFiles": [
+        "README.md",
+        "code/example.R",
+        "code/organized.R",
+        "data/fig5.csv",
+        "data_schema.yml",
+        "description.md",
+        "module.yml",
+        "preview.png",
+        "thumbnail.jpg"
+      ],
+      "source": {
+        "commit": "644ab1034ca358f1584c2ec8666f1036f495f38e",
+        "path": "modules/nc-backtoback-lollipop",
+        "repository": "jarxunlai/ScientificFigureLibrary-personal"
+      },
+      "tags": [
+        "back_to_back_lollipop",
+        "backtoback",
+        "lollipop",
+        "nc",
+        "nc-backtoback-lollipop"
+      ],
+      "thumbnail": {
+        "bytes": 52715,
+        "mediaType": "image/jpeg",
+        "path": "thumbs/nc-backtoback-lollipop.jpg",
+        "sha256": "e40f98e1beff34a7b1c5af731b6be38bf55b3b3833b6871f21e1cb5f1a154533"
+      },
+      "title": "NC背靠背棒棒图（LHSC）",
+      "titleEn": "Nat Commun back-to-back lollipop plot"
+    },
+    {
+      "application": "Display spatial expression trends along an anterior-posterior axis for HOX groups.",
+      "archive": {
+        "bytes": 367411,
+        "commit": "1e5cdfe188b59d5d425426d2fe32df21257d3591",
+        "path": "archives/ncb-fig2d-hox-ridge-heatmap.zip",
+        "repository": "jarxunlai/ScientificFigureLibrary-personal",
+        "sha256": "afed3eaf11c9dee71f7d4c809a8e95f2f3f4f9cdbc823b094610a676812b437a"
+      },
+      "canonicalCode": "code/organized.R",
+      "codeFiles": [
+        "code/example.R",
+        "code/organized.R"
+      ],
+      "dataProfile": "A synthetic gene-by-position CSV with one expression value for each AP layer.",
+      "description": "A four-panel HOX expression module combining ridgelines and an average-expression heatmap.",
+      "files": [
+        {
+          "bytes": 1177,
+          "path": "README.md",
+          "sha256": "e185a035e573368d5f62aaf17d73e8921ccc397c9ea12cfb0431444c3dc85d18"
+        },
+        {
+          "bytes": 477,
+          "path": "code/example.R",
+          "sha256": "66912865ee3b27fe3c3aa3af6508e8b497cd6ce4d61662b6a64befb78f45c75d"
+        },
+        {
+          "bytes": 10850,
+          "path": "code/organized.R",
+          "sha256": "dafd6f289465e24812b701c9e1f0da38546821edc47cece0185aba84667155f4"
+        },
+        {
+          "bytes": 31784,
+          "path": "data/panel-d.csv",
+          "sha256": "f1b75c18d820535f53a1b1eacb84cc3439382f4415a15ac5e53c40408bcc31f0"
+        },
+        {
+          "bytes": 319,
+          "path": "data_schema.yml",
+          "sha256": "9ce3b8f1628e242510a7417c3cd07b48ffd1d9a6bbb87da2a983bcc73e96d36e"
+        },
+        {
+          "bytes": 658,
+          "path": "description.md",
+          "sha256": "d26d86d6f4800ee304ec5defccecf16f7e3acf1b61cbd061a2c877e17012ac12"
+        },
+        {
+          "bytes": 2130,
+          "path": "module.yml",
+          "sha256": "532667545060fed718ed66b6b117df6f9478850208115cd1713d295e9c2bdc60"
+        },
+        {
+          "bytes": 329147,
+          "path": "preview.png",
+          "sha256": "dda7e92aee434aa1edcc1ec0fe52b62baf0ae5c65c18d2775676c1dd4a0e93f7"
+        },
+        {
+          "bytes": 1149,
+          "path": "provenance.md",
+          "sha256": "315d106ccfaf4a97ee1727751e002c4be2896401a3e6c55732a16547e27a177b"
+        },
+        {
+          "bytes": 58849,
+          "path": "thumbnail.jpg",
+          "sha256": "cbd256431365e041764c9ccb4f720f3730ea95d75bac0044ac3760335b425f88"
+        }
+      ],
+      "inputFiles": [
+        "data/panel-d.csv"
+      ],
+      "language": "R",
+      "licenses": {
+        "code": "MIT",
+        "content": "CC BY 4.0",
+        "documentation": "CC BY 4.0"
+      },
+      "moduleId": "ncb-fig2d-hox-ridge-heatmap",
+      "packages": [
+        "cowplot",
+        "ggplot2",
+        "ggridges",
+        "patchwork",
+        "ragg",
+        "scales"
+      ],
+      "plotFamily": "ridgeline_heatmap",
+      "preview": {
+        "bytes": 329147,
+        "mediaType": "image/png",
+        "path": "previews/ncb-fig2d-hox-ridge-heatmap/preview.png",
+        "sha256": "dda7e92aee434aa1edcc1ec0fe52b62baf0ae5c65c18d2775676c1dd4a0e93f7"
+      },
+      "provenance": [
+        {
+          "note": "Prepared from the reviewed Local Published entry ncb-fig2d-hox-ridge-heatmap; internal Library state is not distributed.",
+          "type": "local_published_cleaning"
+        },
+        {
+          "note": "Example inputs were generated for portable execution and do not represent real samples or scientific conclusions.",
+          "type": "synthetic_data"
+        },
+        {
+          "note": "Only files listed in this manifest are distributed; source/reference images, PDFs, logs, receipts, and machine-local state are excluded.",
+          "type": "clean_room_transformation"
+        }
+      ],
+      "publisher": {
+        "evidence": [
+          "README.md",
+          "data_schema.yml",
+          "preview.png"
+        ],
+        "executionScope": "synthetic_data",
+        "executionStatus": "passed",
+        "reviewStatus": "approved"
+      },
+      "requiredFiles": [
+        "README.md",
+        "code/example.R",
+        "code/organized.R",
+        "data/panel-d.csv",
+        "data_schema.yml",
+        "description.md",
+        "module.yml",
+        "preview.png",
+        "thumbnail.jpg"
+      ],
+      "source": {
+        "commit": "644ab1034ca358f1584c2ec8666f1036f495f38e",
+        "path": "modules/ncb-fig2d-hox-ridge-heatmap",
+        "repository": "jarxunlai/ScientificFigureLibrary-personal"
+      },
+      "tags": [
+        "fig2d",
+        "heatmap",
+        "hox",
+        "ncb",
+        "ncb-fig2d-hox-ridge-heatmap",
+        "ridge",
+        "ridgeline_heatmap"
+      ],
+      "thumbnail": {
+        "bytes": 58849,
+        "mediaType": "image/jpeg",
+        "path": "thumbs/ncb-fig2d-hox-ridge-heatmap.jpg",
+        "sha256": "cbd256431365e041764c9ccb4f720f3730ea95d75bac0044ac3760335b425f88"
+      },
+      "title": "HOX前后轴山脊图加热图",
+      "titleEn": "HOX A-P ridgeline with average-expression heatmap"
+    },
+    {
+      "application": "Compare aggregate absolute cell counts between groups for each cell type.",
+      "archive": {
+        "bytes": 185312,
+        "commit": "1e5cdfe188b59d5d425426d2fe32df21257d3591",
+        "path": "archives/sc-celltype-grouped-dodge-count.zip",
+        "repository": "jarxunlai/ScientificFigureLibrary-personal",
+        "sha256": "0a972a161f6fcaa02b9b61a205860b7c3d171f9d93e942f30e1698a32e187a13"
+      },
+      "canonicalCode": "code/organized.R",
+      "codeFiles": [
+        "code/example.R",
+        "code/organized.R"
+      ],
+      "dataProfile": "A sample-level long table with Sample_ID, Group, celltype, and n. All distributed values are newly generated synthetic examples.",
+      "description": "A portable R module for grouped dodged bars of absolute cell counts, using a fully synthetic sample-level count table.",
+      "files": [
+        {
+          "bytes": 1082,
+          "path": "README.md",
+          "sha256": "aa4ac95396af1e98577718a624e89d23a6afe435a31b81f7dc77bcf1bd293c2c"
+        },
+        {
+          "bytes": 418,
+          "path": "code/example.R",
+          "sha256": "9c57e421be0673b5f0ef1aad0afdbe876d53198fa8ed3500098a04e91a219ce2"
+        },
+        {
+          "bytes": 3917,
+          "path": "code/organized.R",
+          "sha256": "00e0e1ace498072c14277a64ba909220a2fc270b4127c9f72c42d2aa1238bb71"
+        },
+        {
+          "bytes": 1898,
+          "path": "data/example-counts-csv.csv",
+          "sha256": "d47f19361a71fa8ea040902e764763afd60e0b91c4f80597b118749dfd2531f7"
+        },
+        {
+          "bytes": 721,
+          "path": "data_schema.yml",
+          "sha256": "f5e711cf533f8235e30fde5fcaf658da10d45009d9018e02ac6fcb3f6b0be638"
+        },
+        {
+          "bytes": 546,
+          "path": "description.md",
+          "sha256": "47035388e048e641f34c349bd09fd9448cf18f6a5208d50aabbc95a0660315e6"
+        },
+        {
+          "bytes": 2177,
+          "path": "module.yml",
+          "sha256": "b8d24a898ccb67f5b1b942608b7627963aaefcca69b5538e20a99d2bd4587e6f"
+        },
+        {
+          "bytes": 193714,
+          "path": "preview.png",
+          "sha256": "16adccf6c9a78b65d92e992b6c196b0fe28830217222d99bed826a8104310dc8"
+        },
+        {
+          "bytes": 982,
+          "path": "provenance.md",
+          "sha256": "f6d1c875bdf1c5b556c271d0134899c1ee2ff2b03a43175a7d6e2528be236264"
+        },
+        {
+          "bytes": 32603,
+          "path": "thumbnail.jpg",
+          "sha256": "735f0726d8d2b5764deb3891b3953779c1fec5bd31e324bb0d7e726fa610c884"
+        }
+      ],
+      "inputFiles": [
+        "data/example-counts-csv.csv"
+      ],
+      "language": "R",
+      "licenses": {
+        "code": "MIT",
+        "content": "CC BY 4.0",
+        "documentation": "CC BY 4.0"
+      },
+      "moduleId": "sc-celltype-grouped-dodge-count",
+      "packages": [
+        "dplyr",
+        "forcats",
+        "ggplot2",
+        "scales"
+      ],
+      "plotFamily": "grouped_bar",
+      "preview": {
+        "bytes": 193714,
+        "mediaType": "image/png",
+        "path": "previews/sc-celltype-grouped-dodge-count/preview.png",
+        "sha256": "16adccf6c9a78b65d92e992b6c196b0fe28830217222d99bed826a8104310dc8"
+      },
+      "provenance": [
+        {
+          "note": "Prepared from a reviewed Local Published entry; internal Library records and source/reference bytes are not distributed.",
+          "type": "local_published_cleaning"
+        },
+        {
+          "note": "The distributed CSV values were generated for this portable module and do not represent real samples or scientific conclusions.",
+          "type": "synthetic_data"
+        },
+        {
+          "note": "Only the files listed in this manifest are distributed.",
+          "type": "clean_room_transformation"
+        }
+      ],
+      "publisher": {
+        "evidence": [
+          "README.md",
+          "data_schema.yml",
+          "preview.png"
+        ],
+        "executionScope": "synthetic_data",
+        "executionStatus": "passed",
+        "reviewStatus": "approved"
+      },
+      "requiredFiles": [
+        "README.md",
+        "code/example.R",
+        "code/organized.R",
+        "data/example-counts-csv.csv",
+        "data_schema.yml",
+        "description.md",
+        "module.yml",
+        "preview.png",
+        "thumbnail.jpg"
+      ],
+      "source": {
+        "commit": "87c2f52459db24cb78af73ddbbadc1bc6ce0f3ea",
+        "path": "modules/sc-celltype-grouped-dodge-count",
+        "repository": "jarxunlai/ScientificFigureLibrary-personal"
+      },
+      "tags": [
+        "absolute-count",
+        "cell-composition",
+        "single-cell"
+      ],
+      "thumbnail": {
+        "bytes": 32603,
+        "mediaType": "image/jpeg",
+        "path": "thumbs/sc-celltype-grouped-dodge-count.jpg",
+        "sha256": "735f0726d8d2b5764deb3891b3953779c1fec5bd31e324bb0d7e726fa610c884"
+      },
+      "title": "分组细胞绝对数 dodge 柱状图",
+      "titleEn": "Grouped dodged bars of absolute cell counts"
+    },
+    {
+      "application": "Compare cell-type proportions between groups with side-by-side horizontal facets.",
+      "archive": {
+        "bytes": 110730,
+        "commit": "1e5cdfe188b59d5d425426d2fe32df21257d3591",
+        "path": "archives/sc-celltype-grouped-horizontal-bar.zip",
+        "repository": "jarxunlai/ScientificFigureLibrary-personal",
+        "sha256": "02bce790d1a3012a70703b46308a292ec3d657418e41e63445139ac8b10feb85"
+      },
+      "canonicalCode": "code/organized.R",
+      "codeFiles": [
+        "code/example.R",
+        "code/organized.R"
+      ],
+      "dataProfile": "A sample-level long table with Sample_ID, Group, celltype, and n. All distributed values are newly generated synthetic examples.",
+      "description": "A portable R module for faceted horizontal bars of cell-type proportions, using a fully synthetic sample-level count table.",
+      "files": [
+        {
+          "bytes": 1065,
+          "path": "README.md",
+          "sha256": "d84b88912db7398e5ba748a909767fab26b8feb4de2fd502fa286ebde537d254"
+        },
+        {
+          "bytes": 418,
+          "path": "code/example.R",
+          "sha256": "9c57e421be0673b5f0ef1aad0afdbe876d53198fa8ed3500098a04e91a219ce2"
+        },
+        {
+          "bytes": 3926,
+          "path": "code/organized.R",
+          "sha256": "96106fdc45a16bc430b0545775ada1be8527c2a3ef25bbb312dd963d0b95417a"
+        },
+        {
+          "bytes": 1898,
+          "path": "data/example-counts-csv.csv",
+          "sha256": "d47f19361a71fa8ea040902e764763afd60e0b91c4f80597b118749dfd2531f7"
+        },
+        {
+          "bytes": 721,
+          "path": "data_schema.yml",
+          "sha256": "f5e711cf533f8235e30fde5fcaf658da10d45009d9018e02ac6fcb3f6b0be638"
+        },
+        {
+          "bytes": 563,
+          "path": "description.md",
+          "sha256": "f83c9efea559f0adb7a352a3c8f94669cc04662b130410b53147b94797933307"
+        },
+        {
+          "bytes": 2184,
+          "path": "module.yml",
+          "sha256": "bce7a483d1087826da6e634d78cbfdc48bdb06db61831686d80f1ba654f76af1"
+        },
+        {
+          "bytes": 104515,
+          "path": "preview.png",
+          "sha256": "058843d872671e6c2c0a2dad8749fb7cfa310a2346effa46b3533b4d085b6186"
+        },
+        {
+          "bytes": 985,
+          "path": "provenance.md",
+          "sha256": "7ed220e9bcb15c00c70bea0be6c1bd83a5522e27802ad9e6e1c5826e1ea80ab4"
+        },
+        {
+          "bytes": 34209,
+          "path": "thumbnail.jpg",
+          "sha256": "a0ad2f643ca55a98a8b7f30c40bbdfeb13d7ea421fbc227883e67614cd2d01be"
+        }
+      ],
+      "inputFiles": [
+        "data/example-counts-csv.csv"
+      ],
+      "language": "R",
+      "licenses": {
+        "code": "MIT",
+        "content": "CC BY 4.0",
+        "documentation": "CC BY 4.0"
+      },
+      "moduleId": "sc-celltype-grouped-horizontal-bar",
+      "packages": [
+        "dplyr",
+        "ggplot2"
+      ],
+      "plotFamily": "faceted_horizontal_bar",
+      "preview": {
+        "bytes": 104515,
+        "mediaType": "image/png",
+        "path": "previews/sc-celltype-grouped-horizontal-bar/preview.png",
+        "sha256": "058843d872671e6c2c0a2dad8749fb7cfa310a2346effa46b3533b4d085b6186"
+      },
+      "provenance": [
+        {
+          "note": "Prepared from a reviewed Local Published entry; internal Library records and source/reference bytes are not distributed.",
+          "type": "local_published_cleaning"
+        },
+        {
+          "note": "The distributed CSV values were generated for this portable module and do not represent real samples or scientific conclusions.",
+          "type": "synthetic_data"
+        },
+        {
+          "note": "Only the files listed in this manifest are distributed.",
+          "type": "clean_room_transformation"
+        }
+      ],
+      "publisher": {
+        "evidence": [
+          "README.md",
+          "data_schema.yml",
+          "preview.png"
+        ],
+        "executionScope": "synthetic_data",
+        "executionStatus": "passed",
+        "reviewStatus": "approved"
+      },
+      "requiredFiles": [
+        "README.md",
+        "code/example.R",
+        "code/organized.R",
+        "data/example-counts-csv.csv",
+        "data_schema.yml",
+        "description.md",
+        "module.yml",
+        "preview.png",
+        "thumbnail.jpg"
+      ],
+      "source": {
+        "commit": "87c2f52459db24cb78af73ddbbadc1bc6ce0f3ea",
+        "path": "modules/sc-celltype-grouped-horizontal-bar",
+        "repository": "jarxunlai/ScientificFigureLibrary-personal"
+      },
+      "tags": [
+        "cell-composition",
+        "group-comparison",
+        "single-cell"
+      ],
+      "thumbnail": {
+        "bytes": 34209,
+        "mediaType": "image/jpeg",
+        "path": "thumbs/sc-celltype-grouped-horizontal-bar.jpg",
+        "sha256": "a0ad2f643ca55a98a8b7f30c40bbdfeb13d7ea421fbc227883e67614cd2d01be"
+      },
+      "title": "分组水平条形细胞比例图",
+      "titleEn": "Faceted horizontal bars of cell-type proportions"
+    },
+    {
+      "application": "Compare group-level cell composition with normalized stacked bars.",
+      "archive": {
+        "bytes": 93069,
+        "commit": "1e5cdfe188b59d5d425426d2fe32df21257d3591",
+        "path": "archives/sc-celltype-grouped-stacked-bar.zip",
+        "repository": "jarxunlai/ScientificFigureLibrary-personal",
+        "sha256": "8b4aea88bdd34cf5167b6c97d30f08c2e82b49c92a58bc96fbcd8d99e620c251"
+      },
+      "canonicalCode": "code/organized.R",
+      "codeFiles": [
+        "code/example.R",
+        "code/organized.R"
+      ],
+      "dataProfile": "A sample-level long table with Sample_ID, Group, celltype, and n. All distributed values are newly generated synthetic examples.",
+      "description": "A portable R module for grouped 100% stacked bars of cell composition, using a fully synthetic sample-level count table.",
+      "files": [
+        {
+          "bytes": 1068,
+          "path": "README.md",
+          "sha256": "b9d64f415c1fd26582c136235d3134e460d790e88ba5bef96577fced84471b93"
+        },
+        {
+          "bytes": 418,
+          "path": "code/example.R",
+          "sha256": "9c57e421be0673b5f0ef1aad0afdbe876d53198fa8ed3500098a04e91a219ce2"
+        },
+        {
+          "bytes": 3450,
+          "path": "code/organized.R",
+          "sha256": "a05ebfcbb93802e60af02886700c042559842dc5503f28291c6a473f0e42dcb0"
+        },
+        {
+          "bytes": 1898,
+          "path": "data/example-counts-csv.csv",
+          "sha256": "d47f19361a71fa8ea040902e764763afd60e0b91c4f80597b118749dfd2531f7"
+        },
+        {
+          "bytes": 721,
+          "path": "data_schema.yml",
+          "sha256": "f5e711cf533f8235e30fde5fcaf658da10d45009d9018e02ac6fcb3f6b0be638"
+        },
+        {
+          "bytes": 533,
+          "path": "description.md",
+          "sha256": "9d8a095b8ffb0d2b6c49b35aae6bf7fbaccd3cb174f8df9a1a47ae099b3c1a5a"
+        },
+        {
+          "bytes": 2166,
+          "path": "module.yml",
+          "sha256": "4c5effc3a504a558fd2c49713de2047389618ab93e7b9d996f39981de328b8f8"
+        },
+        {
+          "bytes": 105792,
+          "path": "preview.png",
+          "sha256": "38c9ea2f67ec740ed66a12abd2489b5db3f876283d7430d731f881e033ae4610"
+        },
+        {
+          "bytes": 982,
+          "path": "provenance.md",
+          "sha256": "8363cf4a4ce4e4916a864ce665c2297eaf74c4a8be53c9c79b0c6afe0744445a"
+        },
+        {
+          "bytes": 28581,
+          "path": "thumbnail.jpg",
+          "sha256": "45f98a42bb65edb46f5cb7c203f268cbdf09f10f675d0a401a166a977990fba1"
+        }
+      ],
+      "inputFiles": [
+        "data/example-counts-csv.csv"
+      ],
+      "language": "R",
+      "licenses": {
+        "code": "MIT",
+        "content": "CC BY 4.0",
+        "documentation": "CC BY 4.0"
+      },
+      "moduleId": "sc-celltype-grouped-stacked-bar",
+      "packages": [
+        "RColorBrewer",
+        "dplyr",
+        "ggplot2"
+      ],
+      "plotFamily": "stacked_bar",
+      "preview": {
+        "bytes": 105792,
+        "mediaType": "image/png",
+        "path": "previews/sc-celltype-grouped-stacked-bar/preview.png",
+        "sha256": "38c9ea2f67ec740ed66a12abd2489b5db3f876283d7430d731f881e033ae4610"
+      },
+      "provenance": [
+        {
+          "note": "Prepared from a reviewed Local Published entry; internal Library records and source/reference bytes are not distributed.",
+          "type": "local_published_cleaning"
+        },
+        {
+          "note": "The distributed CSV values were generated for this portable module and do not represent real samples or scientific conclusions.",
+          "type": "synthetic_data"
+        },
+        {
+          "note": "Only the files listed in this manifest are distributed.",
+          "type": "clean_room_transformation"
+        }
+      ],
+      "publisher": {
+        "evidence": [
+          "README.md",
+          "data_schema.yml",
+          "preview.png"
+        ],
+        "executionScope": "synthetic_data",
+        "executionStatus": "passed",
+        "reviewStatus": "approved"
+      },
+      "requiredFiles": [
+        "README.md",
+        "code/example.R",
+        "code/organized.R",
+        "data/example-counts-csv.csv",
+        "data_schema.yml",
+        "description.md",
+        "module.yml",
+        "preview.png",
+        "thumbnail.jpg"
+      ],
+      "source": {
+        "commit": "87c2f52459db24cb78af73ddbbadc1bc6ce0f3ea",
+        "path": "modules/sc-celltype-grouped-stacked-bar",
+        "repository": "jarxunlai/ScientificFigureLibrary-personal"
+      },
+      "tags": [
+        "cell-composition",
+        "group-comparison",
+        "single-cell"
+      ],
+      "thumbnail": {
+        "bytes": 28581,
+        "mediaType": "image/jpeg",
+        "path": "thumbs/sc-celltype-grouped-stacked-bar.jpg",
+        "sha256": "45f98a42bb65edb46f5cb7c203f268cbdf09f10f675d0a401a166a977990fba1"
+      },
+      "title": "分组堆叠柱状细胞构成图",
+      "titleEn": "Grouped 100% stacked bars of cell composition"
+    },
+    {
+      "application": "Display per-sample cell-type proportions as faceted polar stacked bars.",
+      "archive": {
+        "bytes": 810981,
+        "commit": "1e5cdfe188b59d5d425426d2fe32df21257d3591",
+        "path": "archives/sc-celltype-nightingale-rose.zip",
+        "repository": "jarxunlai/ScientificFigureLibrary-personal",
+        "sha256": "906812b54900cc0ea325f017d3147c5c24c51eadd28c3f5b41eda75d476646c5"
+      },
+      "canonicalCode": "code/organized.R",
+      "codeFiles": [
+        "code/example.R",
+        "code/organized.R"
+      ],
+      "dataProfile": "A sample-level long table with Sample_ID, Group, celltype, and n. All distributed values are newly generated synthetic examples.",
+      "description": "A portable R module for nightingale rose chart of cell composition, using a fully synthetic sample-level count table.",
+      "files": [
+        {
+          "bytes": 1075,
+          "path": "README.md",
+          "sha256": "75f7a40d4b728e04777b4eaae24e988604fbba07876869fc14b8b095219f4e61"
+        },
+        {
+          "bytes": 418,
+          "path": "code/example.R",
+          "sha256": "9c57e421be0673b5f0ef1aad0afdbe876d53198fa8ed3500098a04e91a219ce2"
+        },
+        {
+          "bytes": 4786,
+          "path": "code/organized.R",
+          "sha256": "869684a624053d1bf37f12c237b8aaceb01a10f3207363f565d6df7088de5e77"
+        },
+        {
+          "bytes": 1898,
+          "path": "data/example-counts-csv.csv",
+          "sha256": "d47f19361a71fa8ea040902e764763afd60e0b91c4f80597b118749dfd2531f7"
+        },
+        {
+          "bytes": 721,
+          "path": "data_schema.yml",
+          "sha256": "f5e711cf533f8235e30fde5fcaf658da10d45009d9018e02ac6fcb3f6b0be638"
+        },
+        {
+          "bytes": 548,
+          "path": "description.md",
+          "sha256": "4ff94dd078d48a6e442bd0186eae91a927cff7efc63e8d82b13769a9e152701e"
+        },
+        {
+          "bytes": 2161,
+          "path": "module.yml",
+          "sha256": "cbbc907be04dc0e822ae52800fce00d6bc6da2b5345c935423818eb3f64df402"
+        },
+        {
+          "bytes": 776633,
+          "path": "preview.png",
+          "sha256": "aa65364e02e8627b0eabae65bb91b4335a24d10b431b5c2f020753b31a23a11c"
+        },
+        {
+          "bytes": 979,
+          "path": "provenance.md",
+          "sha256": "e5189fae3d9a337b5e5a1424af2b0b79bcc8f4842bce43a7d528dea7ce029c4a"
+        },
+        {
+          "bytes": 59549,
+          "path": "thumbnail.jpg",
+          "sha256": "9469b250874e4b4a7aa2cb5d6726d6740dba452ad2e06079477cd009eeb8ebf1"
+        }
+      ],
+      "inputFiles": [
+        "data/example-counts-csv.csv"
+      ],
+      "language": "R",
+      "licenses": {
+        "code": "MIT",
+        "content": "CC BY 4.0",
+        "documentation": "CC BY 4.0"
+      },
+      "moduleId": "sc-celltype-nightingale-rose",
+      "packages": [
+        "dplyr",
+        "forcats",
+        "ggplot2",
+        "scales"
+      ],
+      "plotFamily": "polar_bar",
+      "preview": {
+        "bytes": 776633,
+        "mediaType": "image/png",
+        "path": "previews/sc-celltype-nightingale-rose/preview.png",
+        "sha256": "aa65364e02e8627b0eabae65bb91b4335a24d10b431b5c2f020753b31a23a11c"
+      },
+      "provenance": [
+        {
+          "note": "Prepared from a reviewed Local Published entry; internal Library records and source/reference bytes are not distributed.",
+          "type": "local_published_cleaning"
+        },
+        {
+          "note": "The distributed CSV values were generated for this portable module and do not represent real samples or scientific conclusions.",
+          "type": "synthetic_data"
+        },
+        {
+          "note": "Only the files listed in this manifest are distributed.",
+          "type": "clean_room_transformation"
+        }
+      ],
+      "publisher": {
+        "evidence": [
+          "README.md",
+          "data_schema.yml",
+          "preview.png"
+        ],
+        "executionScope": "synthetic_data",
+        "executionStatus": "passed",
+        "reviewStatus": "approved"
+      },
+      "requiredFiles": [
+        "README.md",
+        "code/example.R",
+        "code/organized.R",
+        "data/example-counts-csv.csv",
+        "data_schema.yml",
+        "description.md",
+        "module.yml",
+        "preview.png",
+        "thumbnail.jpg"
+      ],
+      "source": {
+        "commit": "87c2f52459db24cb78af73ddbbadc1bc6ce0f3ea",
+        "path": "modules/sc-celltype-nightingale-rose",
+        "repository": "jarxunlai/ScientificFigureLibrary-personal"
+      },
+      "tags": [
+        "cell-composition",
+        "polar-chart",
+        "single-cell"
+      ],
+      "thumbnail": {
+        "bytes": 59549,
+        "mediaType": "image/jpeg",
+        "path": "thumbs/sc-celltype-nightingale-rose.jpg",
+        "sha256": "9469b250874e4b4a7aa2cb5d6726d6740dba452ad2e06079477cd009eeb8ebf1"
+      },
+      "title": "南丁格尔玫瑰细胞构成图",
+      "titleEn": "Nightingale rose chart of cell composition"
+    },
+    {
+      "application": "Compare absolute cell counts at sample level, faceted by group.",
+      "archive": {
+        "bytes": 231487,
+        "commit": "1e5cdfe188b59d5d425426d2fe32df21257d3591",
+        "path": "archives/sc-celltype-sample-dodge-count.zip",
+        "repository": "jarxunlai/ScientificFigureLibrary-personal",
+        "sha256": "f30e74f9b8da5e5b393b22ccd9a411ff74bf6261b3bde3cf8a7a85d3456fccdf"
+      },
+      "canonicalCode": "code/organized.R",
+      "codeFiles": [
+        "code/example.R",
+        "code/organized.R"
+      ],
+      "dataProfile": "A sample-level long table with Sample_ID, Group, celltype, and n. All distributed values are newly generated synthetic examples.",
+      "description": "A portable R module for sample-level dodged bars of absolute cell counts, using a fully synthetic sample-level count table.",
+      "files": [
+        {
+          "bytes": 1077,
+          "path": "README.md",
+          "sha256": "2e75fc6d5279a37cc43a35ffe05d898c7dbbbb8ed33edf0d6f8967a2191b8b6f"
+        },
+        {
+          "bytes": 418,
+          "path": "code/example.R",
+          "sha256": "9c57e421be0673b5f0ef1aad0afdbe876d53198fa8ed3500098a04e91a219ce2"
+        },
+        {
+          "bytes": 4373,
+          "path": "code/organized.R",
+          "sha256": "fede1f6f781cfbe473930517a12db88c6a3d4294a4aa15af66dda17c36829e72"
+        },
+        {
+          "bytes": 1898,
+          "path": "data/example-counts-csv.csv",
+          "sha256": "d47f19361a71fa8ea040902e764763afd60e0b91c4f80597b118749dfd2531f7"
+        },
+        {
+          "bytes": 721,
+          "path": "data_schema.yml",
+          "sha256": "f5e711cf533f8235e30fde5fcaf658da10d45009d9018e02ac6fcb3f6b0be638"
+        },
+        {
+          "bytes": 552,
+          "path": "description.md",
+          "sha256": "e17544b875089c731db373e4534f3237d615dd596d450473b424423c3961a540"
+        },
+        {
+          "bytes": 2176,
+          "path": "module.yml",
+          "sha256": "583cbba7f7f74bff9b05d5e1c046b37c6a64acdf7b41f8810316fae259a1d2c7"
+        },
+        {
+          "bytes": 243648,
+          "path": "preview.png",
+          "sha256": "51bdb9ba11272fdc931956406d747ffab5760739ba3fffc1257e2ce31b198ed8"
+        },
+        {
+          "bytes": 981,
+          "path": "provenance.md",
+          "sha256": "df9c3c371ea7b79c913edbb9293bf39d9cd0192468d34dd3994e7f836fa6a8a2"
+        },
+        {
+          "bytes": 38411,
+          "path": "thumbnail.jpg",
+          "sha256": "18fc3a528e3215cfe5f0b637d624d5784c767cfc38c01509f21e59ffbcc55fb2"
+        }
+      ],
+      "inputFiles": [
+        "data/example-counts-csv.csv"
+      ],
+      "language": "R",
+      "licenses": {
+        "code": "MIT",
+        "content": "CC BY 4.0",
+        "documentation": "CC BY 4.0"
+      },
+      "moduleId": "sc-celltype-sample-dodge-count",
+      "packages": [
+        "dplyr",
+        "forcats",
+        "ggplot2",
+        "scales"
+      ],
+      "plotFamily": "grouped_bar",
+      "preview": {
+        "bytes": 243648,
+        "mediaType": "image/png",
+        "path": "previews/sc-celltype-sample-dodge-count/preview.png",
+        "sha256": "51bdb9ba11272fdc931956406d747ffab5760739ba3fffc1257e2ce31b198ed8"
+      },
+      "provenance": [
+        {
+          "note": "Prepared from a reviewed Local Published entry; internal Library records and source/reference bytes are not distributed.",
+          "type": "local_published_cleaning"
+        },
+        {
+          "note": "The distributed CSV values were generated for this portable module and do not represent real samples or scientific conclusions.",
+          "type": "synthetic_data"
+        },
+        {
+          "note": "Only the files listed in this manifest are distributed.",
+          "type": "clean_room_transformation"
+        }
+      ],
+      "publisher": {
+        "evidence": [
+          "README.md",
+          "data_schema.yml",
+          "preview.png"
+        ],
+        "executionScope": "synthetic_data",
+        "executionStatus": "passed",
+        "reviewStatus": "approved"
+      },
+      "requiredFiles": [
+        "README.md",
+        "code/example.R",
+        "code/organized.R",
+        "data/example-counts-csv.csv",
+        "data_schema.yml",
+        "description.md",
+        "module.yml",
+        "preview.png",
+        "thumbnail.jpg"
+      ],
+      "source": {
+        "commit": "87c2f52459db24cb78af73ddbbadc1bc6ce0f3ea",
+        "path": "modules/sc-celltype-sample-dodge-count",
+        "repository": "jarxunlai/ScientificFigureLibrary-personal"
+      },
+      "tags": [
+        "absolute-count",
+        "cell-composition",
+        "single-cell"
+      ],
+      "thumbnail": {
+        "bytes": 38411,
+        "mediaType": "image/jpeg",
+        "path": "thumbs/sc-celltype-sample-dodge-count.jpg",
+        "sha256": "18fc3a528e3215cfe5f0b637d624d5784c767cfc38c01509f21e59ffbcc55fb2"
+      },
+      "title": "样本细胞绝对数 dodge 柱状图",
+      "titleEn": "Sample-level dodged bars of absolute cell counts"
+    },
+    {
+      "application": "Show per-sample cell-type proportions with sample totals and group facets.",
+      "archive": {
+        "bytes": 230723,
+        "commit": "1e5cdfe188b59d5d425426d2fe32df21257d3591",
+        "path": "archives/sc-celltype-sample-stacked-proportion.zip",
+        "repository": "jarxunlai/ScientificFigureLibrary-personal",
+        "sha256": "3d333d2192aff8c059c40adb576326d20ec8c6f057c49ae7b40bdd3243822c74"
+      },
+      "canonicalCode": "code/organized.R",
+      "codeFiles": [
+        "code/example.R",
+        "code/organized.R"
+      ],
+      "dataProfile": "A sample-level long table with Sample_ID, Group, celltype, and n. All distributed values are newly generated synthetic examples.",
+      "description": "A portable R module for sample stacked proportions with totals, using a fully synthetic sample-level count table.",
+      "files": [
+        {
+          "bytes": 1077,
+          "path": "README.md",
+          "sha256": "b484c1f4b753b914edd978a42ef995ede69eba9789b9acb91fbeb72d887c12e7"
+        },
+        {
+          "bytes": 418,
+          "path": "code/example.R",
+          "sha256": "9c57e421be0673b5f0ef1aad0afdbe876d53198fa8ed3500098a04e91a219ce2"
+        },
+        {
+          "bytes": 4770,
+          "path": "code/organized.R",
+          "sha256": "e54f1091ab738efacc676e142177fce9448a6146232249879f8d24c363b41727"
+        },
+        {
+          "bytes": 1898,
+          "path": "data/example-counts-csv.csv",
+          "sha256": "d47f19361a71fa8ea040902e764763afd60e0b91c4f80597b118749dfd2531f7"
+        },
+        {
+          "bytes": 721,
+          "path": "data_schema.yml",
+          "sha256": "f5e711cf533f8235e30fde5fcaf658da10d45009d9018e02ac6fcb3f6b0be638"
+        },
+        {
+          "bytes": 560,
+          "path": "description.md",
+          "sha256": "762b6c2be8876cc51841239e30eb6072cfbf592cfecbc154b5ce07a708253a9d"
+        },
+        {
+          "bytes": 2169,
+          "path": "module.yml",
+          "sha256": "dbf206d4c2bc5ec4447401d0e7adc1052ff028517f458402a895131c7fc7f9f6"
+        },
+        {
+          "bytes": 219252,
+          "path": "preview.png",
+          "sha256": "cc7cb6a732653071bc4974c1e1cbc43cb773f9cd1529b4421c2b7b20c3808fb2"
+        },
+        {
+          "bytes": 988,
+          "path": "provenance.md",
+          "sha256": "0a0e39057fed716bba73d42d774fd793fc56eeb54ea7cb4274b91e39f2b25412"
+        },
+        {
+          "bytes": 49208,
+          "path": "thumbnail.jpg",
+          "sha256": "fd394fb1fa8f916c66742e80b225bc0244a5e1afc39c270f44ffb68e479407ab"
+        }
+      ],
+      "inputFiles": [
+        "data/example-counts-csv.csv"
+      ],
+      "language": "R",
+      "licenses": {
+        "code": "MIT",
+        "content": "CC BY 4.0",
+        "documentation": "CC BY 4.0"
+      },
+      "moduleId": "sc-celltype-sample-stacked-proportion",
+      "packages": [
+        "dplyr",
+        "forcats",
+        "ggplot2",
+        "scales"
+      ],
+      "plotFamily": "stacked_bar",
+      "preview": {
+        "bytes": 219252,
+        "mediaType": "image/png",
+        "path": "previews/sc-celltype-sample-stacked-proportion/preview.png",
+        "sha256": "cc7cb6a732653071bc4974c1e1cbc43cb773f9cd1529b4421c2b7b20c3808fb2"
+      },
+      "provenance": [
+        {
+          "note": "Prepared from a reviewed Local Published entry; internal Library records and source/reference bytes are not distributed.",
+          "type": "local_published_cleaning"
+        },
+        {
+          "note": "The distributed CSV values were generated for this portable module and do not represent real samples or scientific conclusions.",
+          "type": "synthetic_data"
+        },
+        {
+          "note": "Only the files listed in this manifest are distributed.",
+          "type": "clean_room_transformation"
+        }
+      ],
+      "publisher": {
+        "evidence": [
+          "README.md",
+          "data_schema.yml",
+          "preview.png"
+        ],
+        "executionScope": "synthetic_data",
+        "executionStatus": "passed",
+        "reviewStatus": "approved"
+      },
+      "requiredFiles": [
+        "README.md",
+        "code/example.R",
+        "code/organized.R",
+        "data/example-counts-csv.csv",
+        "data_schema.yml",
+        "description.md",
+        "module.yml",
+        "preview.png",
+        "thumbnail.jpg"
+      ],
+      "source": {
+        "commit": "87c2f52459db24cb78af73ddbbadc1bc6ce0f3ea",
+        "path": "modules/sc-celltype-sample-stacked-proportion",
+        "repository": "jarxunlai/ScientificFigureLibrary-personal"
+      },
+      "tags": [
+        "cell-composition",
+        "proportion",
+        "single-cell"
+      ],
+      "thumbnail": {
+        "bytes": 49208,
+        "mediaType": "image/jpeg",
+        "path": "thumbs/sc-celltype-sample-stacked-proportion.jpg",
+        "sha256": "fd394fb1fa8f916c66742e80b225bc0244a5e1afc39c270f44ffb68e479407ab"
+      },
+      "title": "样本堆叠比例加总数柱状图",
+      "titleEn": "Sample stacked proportions with totals"
+    },
+    {
+      "application": "Show aggregate flows from cell types to experimental groups with parallel-set ribbons.",
+      "archive": {
+        "bytes": 362344,
+        "commit": "1e5cdfe188b59d5d425426d2fe32df21257d3591",
+        "path": "archives/sc-celltype-sankey.zip",
+        "repository": "jarxunlai/ScientificFigureLibrary-personal",
+        "sha256": "1f61232ab88cd778743940e7bdb9d41884f195bd743aea17cf96c10f7ac10414"
+      },
+      "canonicalCode": "code/organized.R",
+      "codeFiles": [
+        "code/example.R",
+        "code/organized.R"
+      ],
+      "dataProfile": "A sample-level long table with Sample_ID, Group, celltype, and n. All distributed values are newly generated synthetic examples.",
+      "description": "A portable R module for cell type to group sankey, using a fully synthetic sample-level count table.",
+      "files": [
+        {
+          "bytes": 1060,
+          "path": "README.md",
+          "sha256": "8f146092e4b73f684483a08ebc2c5999576021d175b981b782cbe166feeddf7a"
+        },
+        {
+          "bytes": 418,
+          "path": "code/example.R",
+          "sha256": "9c57e421be0673b5f0ef1aad0afdbe876d53198fa8ed3500098a04e91a219ce2"
+        },
+        {
+          "bytes": 5286,
+          "path": "code/organized.R",
+          "sha256": "4537f0f136dc06b4fa603c900f2424357f29d8dc647be63d983d14009d333f99"
+        },
+        {
+          "bytes": 1898,
+          "path": "data/example-counts-csv.csv",
+          "sha256": "d47f19361a71fa8ea040902e764763afd60e0b91c4f80597b118749dfd2531f7"
+        },
+        {
+          "bytes": 721,
+          "path": "data_schema.yml",
+          "sha256": "f5e711cf533f8235e30fde5fcaf658da10d45009d9018e02ac6fcb3f6b0be638"
+        },
+        {
+          "bytes": 554,
+          "path": "description.md",
+          "sha256": "1c86a1e20f6604cd1e95e1b580c632cf29934eb8023257d6ee06a90559dc9c0d"
+        },
+        {
+          "bytes": 2110,
+          "path": "module.yml",
+          "sha256": "7bb429db084c0069f8ec522bc0a6bd72dea080ecdc148f4b6cbd89e083ae86e3"
+        },
+        {
+          "bytes": 346625,
+          "path": "preview.png",
+          "sha256": "40b0d4c61f6aef524ad51cdff51e48f8a3e43f0f7c4b15db4db9e2aa97263238"
+        },
+        {
+          "bytes": 969,
+          "path": "provenance.md",
+          "sha256": "fde404dd526223c4ec68d2a183515f6d85b459d4674506a763fdc0327275ee2f"
+        },
+        {
+          "bytes": 43786,
+          "path": "thumbnail.jpg",
+          "sha256": "7c7916fd33664e65a764f1fcc24407996e9ee1ebc64a2ccc9bcfe43e649d4d32"
+        }
+      ],
+      "inputFiles": [
+        "data/example-counts-csv.csv"
+      ],
+      "language": "R",
+      "licenses": {
+        "code": "MIT",
+        "content": "CC BY 4.0",
+        "documentation": "CC BY 4.0"
+      },
+      "moduleId": "sc-celltype-sankey",
+      "packages": [
+        "dplyr",
+        "ggforce",
+        "ggplot2"
+      ],
+      "plotFamily": "sankey",
+      "preview": {
+        "bytes": 346625,
+        "mediaType": "image/png",
+        "path": "previews/sc-celltype-sankey/preview.png",
+        "sha256": "40b0d4c61f6aef524ad51cdff51e48f8a3e43f0f7c4b15db4db9e2aa97263238"
+      },
+      "provenance": [
+        {
+          "note": "Prepared from a reviewed Local Published entry; internal Library records and source/reference bytes are not distributed.",
+          "type": "local_published_cleaning"
+        },
+        {
+          "note": "The distributed CSV values were generated for this portable module and do not represent real samples or scientific conclusions.",
+          "type": "synthetic_data"
+        },
+        {
+          "note": "Only the files listed in this manifest are distributed.",
+          "type": "clean_room_transformation"
+        }
+      ],
+      "publisher": {
+        "evidence": [
+          "README.md",
+          "data_schema.yml",
+          "preview.png"
+        ],
+        "executionScope": "synthetic_data",
+        "executionStatus": "passed",
+        "reviewStatus": "approved"
+      },
+      "requiredFiles": [
+        "README.md",
+        "code/example.R",
+        "code/organized.R",
+        "data/example-counts-csv.csv",
+        "data_schema.yml",
+        "description.md",
+        "module.yml",
+        "preview.png",
+        "thumbnail.jpg"
+      ],
+      "source": {
+        "commit": "87c2f52459db24cb78af73ddbbadc1bc6ce0f3ea",
+        "path": "modules/sc-celltype-sankey",
+        "repository": "jarxunlai/ScientificFigureLibrary-personal"
+      },
+      "tags": [
+        "cell-composition",
+        "sankey",
+        "single-cell"
+      ],
+      "thumbnail": {
+        "bytes": 43786,
+        "mediaType": "image/jpeg",
+        "path": "thumbs/sc-celltype-sankey.jpg",
+        "sha256": "7c7916fd33664e65a764f1fcc24407996e9ee1ebc64a2ccc9bcfe43e649d4d32"
+      },
+      "title": "细胞类型到分组桑基图",
+      "titleEn": "Cell type to group Sankey"
+    },
+    {
+      "application": "Show cell-type composition changes across ordered samples as a normalized stacked area chart.",
+      "archive": {
+        "bytes": 208687,
+        "commit": "1e5cdfe188b59d5d425426d2fe32df21257d3591",
+        "path": "archives/sc-celltype-stacked-area.zip",
+        "repository": "jarxunlai/ScientificFigureLibrary-personal",
+        "sha256": "05d99642b53f728764a94febe53c25bd9b807a1661ce1e5d40fcbacfb36951e8"
+      },
+      "canonicalCode": "code/organized.R",
+      "codeFiles": [
+        "code/example.R",
+        "code/organized.R"
+      ],
+      "dataProfile": "A sample-level long table with Sample_ID, Group, celltype, and n. All distributed values are newly generated synthetic examples.",
+      "description": "A portable R module for stacked area of cell composition across samples, using a fully synthetic sample-level count table.",
+      "files": [
+        {
+          "bytes": 1109,
+          "path": "README.md",
+          "sha256": "b918e91f30f61f423daacfdb8ca657409c11dfd0469b9b9223eb474d19aa3a8e"
+        },
+        {
+          "bytes": 418,
+          "path": "code/example.R",
+          "sha256": "9c57e421be0673b5f0ef1aad0afdbe876d53198fa8ed3500098a04e91a219ce2"
+        },
+        {
+          "bytes": 4568,
+          "path": "code/organized.R",
+          "sha256": "678acc7e5713b8f0c538dd3827796625343f768540da7f20a10edfabc7bcea8b"
+        },
+        {
+          "bytes": 1898,
+          "path": "data/example-counts-csv.csv",
+          "sha256": "d47f19361a71fa8ea040902e764763afd60e0b91c4f80597b118749dfd2531f7"
+        },
+        {
+          "bytes": 721,
+          "path": "data_schema.yml",
+          "sha256": "f5e711cf533f8235e30fde5fcaf658da10d45009d9018e02ac6fcb3f6b0be638"
+        },
+        {
+          "bytes": 548,
+          "path": "description.md",
+          "sha256": "0fd52aef28c4338c2ae7cc4c7374d01119490c01d3c622b9475f32e9031b7239"
+        },
+        {
+          "bytes": 2201,
+          "path": "module.yml",
+          "sha256": "8edf6d4619eadac32e6f5eb9bf216ce4ad176988f2de23786a50f5ec574161d4"
+        },
+        {
+          "bytes": 203558,
+          "path": "preview.png",
+          "sha256": "e78e0917b49d49d6eb1c76090df2ddde6565f2bb02613405e12cc579dd3e7336"
+        },
+        {
+          "bytes": 975,
+          "path": "provenance.md",
+          "sha256": "1480a4c0e245585f62ea9d14917269cc88cafd76eb538ca00494b44e4ac7b31f"
+        },
+        {
+          "bytes": 33730,
+          "path": "thumbnail.jpg",
+          "sha256": "a91354f3312e92b42c222b4378800448831dd5badef4be7c7d1d7c796f7cee2d"
+        }
+      ],
+      "inputFiles": [
+        "data/example-counts-csv.csv"
+      ],
+      "language": "R",
+      "licenses": {
+        "code": "MIT",
+        "content": "CC BY 4.0",
+        "documentation": "CC BY 4.0"
+      },
+      "moduleId": "sc-celltype-stacked-area",
+      "packages": [
+        "dplyr",
+        "forcats",
+        "ggplot2",
+        "scales"
+      ],
+      "plotFamily": "stacked_area",
+      "preview": {
+        "bytes": 203558,
+        "mediaType": "image/png",
+        "path": "previews/sc-celltype-stacked-area/preview.png",
+        "sha256": "e78e0917b49d49d6eb1c76090df2ddde6565f2bb02613405e12cc579dd3e7336"
+      },
+      "provenance": [
+        {
+          "note": "Prepared from a reviewed Local Published entry; internal Library records and source/reference bytes are not distributed.",
+          "type": "local_published_cleaning"
+        },
+        {
+          "note": "The distributed CSV values were generated for this portable module and do not represent real samples or scientific conclusions.",
+          "type": "synthetic_data"
+        },
+        {
+          "note": "Only the files listed in this manifest are distributed.",
+          "type": "clean_room_transformation"
+        }
+      ],
+      "publisher": {
+        "evidence": [
+          "README.md",
+          "data_schema.yml",
+          "preview.png"
+        ],
+        "executionScope": "synthetic_data",
+        "executionStatus": "passed",
+        "reviewStatus": "approved"
+      },
+      "requiredFiles": [
+        "README.md",
+        "code/example.R",
+        "code/organized.R",
+        "data/example-counts-csv.csv",
+        "data_schema.yml",
+        "description.md",
+        "module.yml",
+        "preview.png",
+        "thumbnail.jpg"
+      ],
+      "source": {
+        "commit": "87c2f52459db24cb78af73ddbbadc1bc6ce0f3ea",
+        "path": "modules/sc-celltype-stacked-area",
+        "repository": "jarxunlai/ScientificFigureLibrary-personal"
+      },
+      "tags": [
+        "cell-composition",
+        "sample-comparison",
+        "single-cell"
+      ],
+      "thumbnail": {
+        "bytes": 33730,
+        "mediaType": "image/jpeg",
+        "path": "thumbs/sc-celltype-stacked-area.jpg",
+        "sha256": "a91354f3312e92b42c222b4378800448831dd5badef4be7c7d1d7c796f7cee2d"
+      },
+      "title": "跨样本堆叠面积细胞构成图",
+      "titleEn": "Stacked area of cell composition across samples"
+    },
+    {
+      "application": "Compare marker expression across named cell clusters while emphasizing selected cluster blocks.",
+      "archive": {
+        "bytes": 547688,
+        "commit": "1e5cdfe188b59d5d425426d2fe32df21257d3591",
+        "path": "archives/sc-marker-dotplot-highlight-boxes.zip",
+        "repository": "jarxunlai/ScientificFigureLibrary-personal",
+        "sha256": "b06cd653c9153ddc0492e06e543eba655a7a0972db89b0abadfe478bee1ef198"
+      },
+      "canonicalCode": "code/organized.R",
+      "codeFiles": [
+        "code/example.R",
+        "code/organized.R"
+      ],
+      "dataProfile": "A DotPlot-style table with avg.exp, pct.exp, features.plot, id, and avg.exp.scaled columns.",
+      "description": "A marker dot plot with expression color, percent-expressed size, and three highlighted cluster regions.",
+      "files": [
+        {
+          "bytes": 1184,
+          "path": "README.md",
+          "sha256": "b8f07e094600303492983d252372173a5b4f4e69ddeec90bbcfc69f405a2efd1"
+        },
+        {
+          "bytes": 391,
+          "path": "code/example.R",
+          "sha256": "5ebd91e7a4b27a93767b6c69687ca067be7b61f3f9bd594ffb2a9635f3a89046"
+        },
+        {
+          "bytes": 5370,
+          "path": "code/organized.R",
+          "sha256": "5363357962416d7b0999d5b5760f6504df80625d9fbfe8a617f0e754250fd00d"
+        },
+        {
+          "bytes": 9557,
+          "path": "data/dotplot_dt.csv",
+          "sha256": "d3ba4e5b9e855ff142c85b63eb1e002f1a25cd2aa89c932c24af72a3b698a989"
+        },
+        {
+          "bytes": 336,
+          "path": "data_schema.yml",
+          "sha256": "03aeb95962f27b170e33a6bff6cdc078171cf7fefd9fe083c7660ef700e90350"
+        },
+        {
+          "bytes": 704,
+          "path": "description.md",
+          "sha256": "199295ffc10315a26263ca003d838d37b952453e84ecb908e7fe4a8259434507"
+        },
+        {
+          "bytes": 2165,
+          "path": "module.yml",
+          "sha256": "ab45336d402a810a945cd8e3e0bb38f17105ef30cce3c4c4485aac1636bab110"
+        },
+        {
+          "bytes": 511035,
+          "path": "preview.png",
+          "sha256": "fd5aacca36ca794deae1efb582a45c5b0a6e7ee1b4cafccbc4c50ec8cada27dd"
+        },
+        {
+          "bytes": 1155,
+          "path": "provenance.md",
+          "sha256": "2fb8cb69b313ef7ba66f33d450771579e7c0aed0c1f9bfbaa323bcb3149f4e70"
+        },
+        {
+          "bytes": 90086,
+          "path": "thumbnail.jpg",
+          "sha256": "e5439046fd62090fccea4e1b7da5401c7bd5463fb488684cdf4d8dfcd4cd71b4"
+        }
+      ],
+      "inputFiles": [
+        "data/dotplot_dt.csv"
+      ],
+      "language": "R",
+      "licenses": {
+        "code": "MIT",
+        "content": "CC BY 4.0",
+        "documentation": "CC BY 4.0"
+      },
+      "moduleId": "sc-marker-dotplot-highlight-boxes",
+      "packages": [
+        "ggplot2",
+        "ragg",
+        "readr"
+      ],
+      "plotFamily": "marker_dotplot",
+      "preview": {
+        "bytes": 511035,
+        "mediaType": "image/png",
+        "path": "previews/sc-marker-dotplot-highlight-boxes/preview.png",
+        "sha256": "fd5aacca36ca794deae1efb582a45c5b0a6e7ee1b4cafccbc4c50ec8cada27dd"
+      },
+      "provenance": [
+        {
+          "note": "Prepared from the reviewed Local Published entry sc-marker-dotplot-highlight-boxes; internal Library state is not distributed.",
+          "type": "local_published_cleaning"
+        },
+        {
+          "note": "Example inputs were generated for portable execution and do not represent real samples or scientific conclusions.",
+          "type": "synthetic_data"
+        },
+        {
+          "note": "Only files listed in this manifest are distributed; source/reference images, PDFs, logs, receipts, and machine-local state are excluded.",
+          "type": "clean_room_transformation"
+        }
+      ],
+      "publisher": {
+        "evidence": [
+          "README.md",
+          "data_schema.yml",
+          "preview.png"
+        ],
+        "executionScope": "synthetic_data",
+        "executionStatus": "passed",
+        "reviewStatus": "approved"
+      },
+      "requiredFiles": [
+        "README.md",
+        "code/example.R",
+        "code/organized.R",
+        "data/dotplot_dt.csv",
+        "data_schema.yml",
+        "description.md",
+        "module.yml",
+        "preview.png",
+        "thumbnail.jpg"
+      ],
+      "source": {
+        "commit": "644ab1034ca358f1584c2ec8666f1036f495f38e",
+        "path": "modules/sc-marker-dotplot-highlight-boxes",
+        "repository": "jarxunlai/ScientificFigureLibrary-personal"
+      },
+      "tags": [
+        "boxes",
+        "dotplot",
+        "highlight",
+        "marker",
+        "marker_dotplot",
+        "sc",
+        "sc-marker-dotplot-highlight-boxes"
+      ],
+      "thumbnail": {
+        "bytes": 90086,
+        "mediaType": "image/jpeg",
+        "path": "thumbs/sc-marker-dotplot-highlight-boxes.jpg",
+        "sha256": "e5439046fd62090fccea4e1b7da5401c7bd5463fb488684cdf4d8dfcd4cd71b4"
+      },
+      "title": "单细胞marker气泡图加突出框",
+      "titleEn": "scRNA marker dotplot with highlight boxes"
+    },
+    {
+      "application": "Relate environmental variables to grouped composition blocks with a compact network overlay.",
+      "archive": {
+        "bytes": 723800,
+        "commit": "1e5cdfe188b59d5d425426d2fe32df21257d3591",
+        "path": "archives/science-mantel-corrplot.zip",
+        "repository": "jarxunlai/ScientificFigureLibrary-personal",
+        "sha256": "d5869fb7c09156f11c22ead3954ce633fc4f96d8ab1ecb638d8d8de0acfd434c"
+      },
+      "canonicalCode": "code/organized.R",
+      "codeFiles": [
+        "code/example.R",
+        "code/organized.R"
+      ],
+      "dataProfile": "Two synthetic numeric tables: a composition matrix and an environmental-variable matrix.",
+      "description": "A correlation heatmap with Mantel links, significance colors, and effect-size widths.",
+      "files": [
+        {
+          "bytes": 1202,
+          "path": "README.md",
+          "sha256": "6837591c999b0add024040e682e7bd394228d21c4ba57174b5f275505f246dce"
+        },
+        {
+          "bytes": 427,
+          "path": "code/example.R",
+          "sha256": "14baeaf630db099d2282ac9f052f124c43c9197f31078452f248273ad3c6ef41"
+        },
+        {
+          "bytes": 4567,
+          "path": "code/organized.R",
+          "sha256": "0bcc6b2b531556a632aa784971ff717f5c956941389cc3b2117a459058d6dd1b"
+        },
+        {
+          "bytes": 2843,
+          "path": "data/varechem.csv",
+          "sha256": "2cf40ab6f5cb6c7e55adec6daa61f5bdb57a897ed3a2795f62d7156491e44038"
+        },
+        {
+          "bytes": 9931,
+          "path": "data/varespec.csv",
+          "sha256": "ffddbe46b67f248cb819dec7e2a520cd0630b881c152fddac1bcdf95c0d0517b"
+        },
+        {
+          "bytes": 331,
+          "path": "data_schema.yml",
+          "sha256": "ec5e14d5a2f3ec80af18455226a2250813b9e0f8b47bebcc9bcf875ab26004f8"
+        },
+        {
+          "bytes": 681,
+          "path": "description.md",
+          "sha256": "00450393b3961ce01f6e39d6e4b3f3b07149f1cd4fec801b9695274f9d315737"
+        },
+        {
+          "bytes": 2197,
+          "path": "module.yml",
+          "sha256": "b37ff581301411dad2cbd9c1e860a334346952a8edc5c459237e5c7afbe4ba1f"
+        },
+        {
+          "bytes": 642972,
+          "path": "preview.png",
+          "sha256": "8bc4a0ea62b90736929a7d5233cc9b9dd982a03115f5a8c5fbaa43bce6d1d205"
+        },
+        {
+          "bytes": 1145,
+          "path": "provenance.md",
+          "sha256": "e8b69b174b19c14db3558a06840bae9c0a4b4cad2a5828d7cecd0ba25457c820"
+        },
+        {
+          "bytes": 101633,
+          "path": "thumbnail.jpg",
+          "sha256": "38c613f5fbe90ca231e9b6fe22519fb475da2d6da14be15b9d0989b7c505c3d0"
+        }
+      ],
+      "inputFiles": [
+        "data/varechem.csv",
+        "data/varespec.csv"
+      ],
+      "language": "R",
+      "licenses": {
+        "code": "MIT",
+        "content": "CC BY 4.0",
+        "documentation": "CC BY 4.0"
+      },
+      "moduleId": "science-mantel-corrplot",
+      "packages": [
+        "RColorBrewer",
+        "dplyr",
+        "ggnewscale",
+        "ggplot2",
+        "linkET",
+        "ragg"
+      ],
+      "plotFamily": "mantel_corrplot",
+      "preview": {
+        "bytes": 642972,
+        "mediaType": "image/png",
+        "path": "previews/science-mantel-corrplot/preview.png",
+        "sha256": "8bc4a0ea62b90736929a7d5233cc9b9dd982a03115f5a8c5fbaa43bce6d1d205"
+      },
+      "provenance": [
+        {
+          "note": "Prepared from the reviewed Local Published entry science-mantel-corrplot; internal Library state is not distributed.",
+          "type": "local_published_cleaning"
+        },
+        {
+          "note": "Example inputs were generated for portable execution and do not represent real samples or scientific conclusions.",
+          "type": "synthetic_data"
+        },
+        {
+          "note": "Only files listed in this manifest are distributed; source/reference images, PDFs, logs, receipts, and machine-local state are excluded.",
+          "type": "clean_room_transformation"
+        }
+      ],
+      "publisher": {
+        "evidence": [
+          "README.md",
+          "data_schema.yml",
+          "preview.png"
+        ],
+        "executionScope": "synthetic_data",
+        "executionStatus": "passed",
+        "reviewStatus": "approved"
+      },
+      "requiredFiles": [
+        "README.md",
+        "code/example.R",
+        "code/organized.R",
+        "data/varechem.csv",
+        "data/varespec.csv",
+        "data_schema.yml",
+        "description.md",
+        "module.yml",
+        "preview.png",
+        "thumbnail.jpg"
+      ],
+      "source": {
+        "commit": "644ab1034ca358f1584c2ec8666f1036f495f38e",
+        "path": "modules/science-mantel-corrplot",
+        "repository": "jarxunlai/ScientificFigureLibrary-personal"
+      },
+      "tags": [
+        "corrplot",
+        "mantel",
+        "mantel_corrplot",
+        "science",
+        "science-mantel-corrplot"
+      ],
+      "thumbnail": {
+        "bytes": 101633,
+        "mediaType": "image/jpeg",
+        "path": "thumbs/science-mantel-corrplot.jpg",
+        "sha256": "38c613f5fbe90ca231e9b6fe22519fb475da2d6da14be15b9d0989b7c505c3d0"
+      },
+      "title": "Science风格Mantel网络相关热图",
+      "titleEn": "Science-style Mantel network correlation heatmap"
+    },
+    {
+      "application": "Compare top enriched pathways across selected cell clusters with direct labels.",
+      "archive": {
+        "bytes": 349971,
+        "commit": "1e5cdfe188b59d5d425426d2fe32df21257d3591",
+        "path": "archives/single-cell-enrichment-bar-pathway-genes.zip",
+        "repository": "jarxunlai/ScientificFigureLibrary-personal",
+        "sha256": "2c23ab2f33e63c63ac0860c8f5424da15bccc6d1c5a3a3c4daee7409bdcbb928"
+      },
+      "canonicalCode": "code/organized.R",
+      "codeFiles": [
+        "code/example.R",
+        "code/organized.R"
+      ],
+      "dataProfile": "A long-form enrichment table with Cluster, Description, pvalue, geneID, and optional enrichment fields.",
+      "description": "A reusable labeled enrichment-bar function with pathway names, contributing genes, and cluster blocks.",
+      "files": [
+        {
+          "bytes": 1206,
+          "path": "README.md",
+          "sha256": "41e64e1dba0f0899cbd741db18064e6a920bec35132e88467f2040901e2014eb"
+        },
+        {
+          "bytes": 489,
+          "path": "code/example.R",
+          "sha256": "4177d89d95a186d73923dd81c7d088acabd1126fc8fae234ec275d71a43e9d1b"
+        },
+        {
+          "bytes": 10291,
+          "path": "code/organized.R",
+          "sha256": "122ba8749a5eb29a66554055d1670b4b202b3bede79ed419b1d059206d36f56b"
+        },
+        {
+          "bytes": 1134,
+          "path": "data/example.csv",
+          "sha256": "acc3c406961039cff7747c0a54a09f411d4ddac6777d475deacdf8c762b6a314"
+        },
+        {
+          "bytes": 345,
+          "path": "data_schema.yml",
+          "sha256": "82a245624cefb585f9507418e9ba3ea208df9db76284545651f482021c74b454"
+        },
+        {
+          "bytes": 712,
+          "path": "description.md",
+          "sha256": "6c59ad8ab8e3250ddc3bbcfa8945e6e176fdf84e7f55b86337b3504a38eefd34"
+        },
+        {
+          "bytes": 2246,
+          "path": "module.yml",
+          "sha256": "a0603d7a46645c9948d8e50c0a0eda3c53e0fe94c45a05cd1c5713ad78f68526"
+        },
+        {
+          "bytes": 249358,
+          "path": "preview.png",
+          "sha256": "4cb7dd174db4f2c2e5b8b8cba2d02ea703f4ba88307cda26a14025a348e598c9"
+        },
+        {
+          "bytes": 1162,
+          "path": "provenance.md",
+          "sha256": "d97a0c2d356718f1b9f71978045890acdc6ae90bcb5063d8311eb83da9654de9"
+        },
+        {
+          "bytes": 117571,
+          "path": "thumbnail.jpg",
+          "sha256": "0b44bc01c7329d495ced37c4d2b8ce56c9a70c0876dd86ad4d82c7630982af6c"
+        }
+      ],
+      "inputFiles": [
+        "data/example.csv"
+      ],
+      "language": "R",
+      "licenses": {
+        "code": "MIT",
+        "content": "CC BY 4.0",
+        "documentation": "CC BY 4.0"
+      },
+      "moduleId": "single-cell-enrichment-bar-pathway-genes",
+      "packages": [
+        "dplyr",
+        "ggplot2",
+        "grid"
+      ],
+      "plotFamily": "enrichment_bar_with_genes",
+      "preview": {
+        "bytes": 249358,
+        "mediaType": "image/png",
+        "path": "previews/single-cell-enrichment-bar-pathway-genes/preview.png",
+        "sha256": "4cb7dd174db4f2c2e5b8b8cba2d02ea703f4ba88307cda26a14025a348e598c9"
+      },
+      "provenance": [
+        {
+          "note": "Prepared from the reviewed Local Published entry single-cell-enrichment-bar-pathway-genes; internal Library state is not distributed.",
+          "type": "local_published_cleaning"
+        },
+        {
+          "note": "Distributed inputs are declared example data for the included plotting layer and do not claim to reproduce an upstream analysis.",
+          "type": "example_data"
+        },
+        {
+          "note": "Only files listed in this manifest are distributed; source/reference images, PDFs, logs, receipts, and machine-local state are excluded.",
+          "type": "clean_room_transformation"
+        }
+      ],
+      "publisher": {
+        "evidence": [
+          "README.md",
+          "data_schema.yml",
+          "preview.png"
+        ],
+        "executionScope": "example_data",
+        "executionStatus": "passed",
+        "reviewStatus": "approved"
+      },
+      "requiredFiles": [
+        "README.md",
+        "code/example.R",
+        "code/organized.R",
+        "data/example.csv",
+        "data_schema.yml",
+        "description.md",
+        "module.yml",
+        "preview.png",
+        "thumbnail.jpg"
+      ],
+      "source": {
+        "commit": "644ab1034ca358f1584c2ec8666f1036f495f38e",
+        "path": "modules/single-cell-enrichment-bar-pathway-genes",
+        "repository": "jarxunlai/ScientificFigureLibrary-personal"
+      },
+      "tags": [
+        "bar",
+        "cell",
+        "enrichment",
+        "enrichment_bar_with_genes",
+        "genes",
+        "pathway",
+        "single",
+        "single-cell-enrichment-bar-pathway-genes"
+      ],
+      "thumbnail": {
+        "bytes": 117571,
+        "mediaType": "image/jpeg",
+        "path": "thumbs/single-cell-enrichment-bar-pathway-genes.jpg",
+        "sha256": "0b44bc01c7329d495ced37c4d2b8ce56c9a70c0876dd86ad4d82c7630982af6c"
+      },
+      "title": "单细胞富集分析条形图（通路+基因）",
+      "titleEn": "Single-cell enrichment bar plot with pathways and genes"
+    },
+    {
+      "application": "Show density hotspots and cluster boundaries in a single-cell embedding.",
+      "archive": {
+        "bytes": 2768711,
+        "commit": "1e5cdfe188b59d5d425426d2fe32df21257d3591",
+        "path": "archives/umap-style-density-heatmap.zip",
+        "repository": "jarxunlai/ScientificFigureLibrary-personal",
+        "sha256": "3c13ae55288828304a9c7832348701bac6f39a28d775dc8b7aeeee379e19b0ab"
+      },
+      "canonicalCode": "code/organized.R",
+      "codeFiles": [
+        "code/example.R",
+        "code/organized.R"
+      ],
+      "dataProfile": "Synthetic cell-level coordinates with cell, UMAP_1, UMAP_2, celltype, and group columns.",
+      "description": "A dark-background density UMAP with white cluster ellipses and direct labels.",
+      "files": [
+        {
+          "bytes": 1112,
+          "path": "README.md",
+          "sha256": "00c7d32ac638fc9bbd44536eefcbc0918c42302750a927ab128c2e820b6591de"
+        },
+        {
+          "bytes": 489,
+          "path": "code/example.R",
+          "sha256": "4177d89d95a186d73923dd81c7d088acabd1126fc8fae234ec275d71a43e9d1b"
+        },
+        {
+          "bytes": 3530,
+          "path": "code/organized.R",
+          "sha256": "aefc9ec9647d7dc5a60866e96e6af5a1a709ba033cc3f2e11b2900e22a09c5ae"
+        },
+        {
+          "bytes": 1932599,
+          "path": "data/example_umap.csv",
+          "sha256": "f6e092c5adf9ad2f2365dc600a92bd6e5abebb1691ebd58e4dca9f041828eebc"
+        },
+        {
+          "bytes": 335,
+          "path": "data_schema.yml",
+          "sha256": "0924791a5c89f21e8083e62431c8cc0c79aeb3fef1745d2b2d069f73bba250a5"
+        },
+        {
+          "bytes": 638,
+          "path": "description.md",
+          "sha256": "7f7c1612fced561d41471c51cc267731730310926b5b3d6dc6c9b09639193ef6"
+        },
+        {
+          "bytes": 2063,
+          "path": "module.yml",
+          "sha256": "d3751f9d456b0f7285f1caf5265f1b9324c833a7f52fa39235d77a8ca0874e3c"
+        },
+        {
+          "bytes": 2248351,
+          "path": "preview.png",
+          "sha256": "6517434af6bffa46b10e0f13020c05d7f8a5e616b3ba4dd256b48ee362b463d8"
+        },
+        {
+          "bytes": 1148,
+          "path": "provenance.md",
+          "sha256": "19e32e2fec8a08f7d7fbad5e1c3ee72dd3ca14e3f567ae1a7eda569226c7adcf"
+        },
+        {
+          "bytes": 72526,
+          "path": "thumbnail.jpg",
+          "sha256": "62d9dd7dd69771b889dc81b0e69df83cd21fbf58e795f2b465f74a1ee78f322c"
+        }
+      ],
+      "inputFiles": [
+        "data/example_umap.csv"
+      ],
+      "language": "R",
+      "licenses": {
+        "code": "MIT",
+        "content": "CC BY 4.0",
+        "documentation": "CC BY 4.0"
+      },
+      "moduleId": "umap-style-density-heatmap",
+      "packages": [
+        "dplyr",
+        "ggplot2",
+        "ggrepel",
+        "viridis"
+      ],
+      "plotFamily": "umap_density",
+      "preview": {
+        "bytes": 2248351,
+        "mediaType": "image/png",
+        "path": "previews/umap-style-density-heatmap/preview.png",
+        "sha256": "6517434af6bffa46b10e0f13020c05d7f8a5e616b3ba4dd256b48ee362b463d8"
+      },
+      "provenance": [
+        {
+          "note": "Prepared from the reviewed Local Published entry umap-style-density-heatmap; internal Library state is not distributed.",
+          "type": "local_published_cleaning"
+        },
+        {
+          "note": "Example inputs were generated for portable execution and do not represent real samples or scientific conclusions.",
+          "type": "synthetic_data"
+        },
+        {
+          "note": "Only files listed in this manifest are distributed; source/reference images, PDFs, logs, receipts, and machine-local state are excluded.",
+          "type": "clean_room_transformation"
+        }
+      ],
+      "publisher": {
+        "evidence": [
+          "README.md",
+          "data_schema.yml",
+          "preview.png"
+        ],
+        "executionScope": "synthetic_data",
+        "executionStatus": "passed",
+        "reviewStatus": "approved"
+      },
+      "requiredFiles": [
+        "README.md",
+        "code/example.R",
+        "code/organized.R",
+        "data/example_umap.csv",
+        "data_schema.yml",
+        "description.md",
+        "module.yml",
+        "preview.png",
+        "thumbnail.jpg"
+      ],
+      "source": {
+        "commit": "644ab1034ca358f1584c2ec8666f1036f495f38e",
+        "path": "modules/umap-style-density-heatmap",
+        "repository": "jarxunlai/ScientificFigureLibrary-personal"
+      },
+      "tags": [
+        "density",
+        "heatmap",
+        "style",
+        "umap",
+        "umap-style-density-heatmap",
+        "umap_density"
+      ],
+      "thumbnail": {
+        "bytes": 72526,
+        "mediaType": "image/jpeg",
+        "path": "thumbs/umap-style-density-heatmap.jpg",
+        "sha256": "62d9dd7dd69771b889dc81b0e69df83cd21fbf58e795f2b465f74a1ee78f322c"
+      },
+      "title": "暗夜密度热力UMAP",
+      "titleEn": "Dark magma density UMAP"
+    },
+    {
+      "application": "Show cluster shape and location while removing a separate legend.",
+      "archive": {
+        "bytes": 1663413,
+        "commit": "1e5cdfe188b59d5d425426d2fe32df21257d3591",
+        "path": "archives/umap-style-ellipse-labels.zip",
+        "repository": "jarxunlai/ScientificFigureLibrary-personal",
+        "sha256": "89b243436c2e759f23fb0d8460a0e9a8a30f81743c4b0484f405cc501ff96503"
+      },
+      "canonicalCode": "code/organized.R",
+      "codeFiles": [
+        "code/example.R",
+        "code/organized.R"
+      ],
+      "dataProfile": "Synthetic cell-level UMAP coordinates and cell-type labels.",
+      "description": "A UMAP module with translucent per-cluster ellipses and labels in matching colors.",
+      "files": [
+        {
+          "bytes": 1120,
+          "path": "README.md",
+          "sha256": "5f8c5040e21cd4112dd93ae40cb6abd495c6adaf5d9a4a448a2c755c5eac5bef"
+        },
+        {
+          "bytes": 489,
+          "path": "code/example.R",
+          "sha256": "4177d89d95a186d73923dd81c7d088acabd1126fc8fae234ec275d71a43e9d1b"
+        },
+        {
+          "bytes": 3635,
+          "path": "code/organized.R",
+          "sha256": "38754aeabea0575ece96d8bc9729be44491e282dac0133aea87b962bd87a0040"
+        },
+        {
+          "bytes": 1932599,
+          "path": "data/example_umap.csv",
+          "sha256": "f6e092c5adf9ad2f2365dc600a92bd6e5abebb1691ebd58e4dca9f041828eebc"
+        },
+        {
+          "bytes": 306,
+          "path": "data_schema.yml",
+          "sha256": "d040c4c446ccb59a6aa756e72c29a5718d060db2de2bfe008e73cd60959425cc"
+        },
+        {
+          "bytes": 616,
+          "path": "description.md",
+          "sha256": "f6d780e5e8be92a6add46c48a62973457632751e9541b8e12637d22799a8bbb9"
+        },
+        {
+          "bytes": 2067,
+          "path": "module.yml",
+          "sha256": "6cf864f9125b3b4be92baa474914c1dc46bc039e745e6ff502449ffd9d38377f"
+        },
+        {
+          "bytes": 1165182,
+          "path": "preview.png",
+          "sha256": "b5798a332c75f6029e9524fea0fab680deb524a836f44ce8171627065d601bf3"
+        },
+        {
+          "bytes": 1147,
+          "path": "provenance.md",
+          "sha256": "88923900c3fadc61d4bd2cdfcbd697799c82442fbde91074682217ea1a6f898a"
+        },
+        {
+          "bytes": 52522,
+          "path": "thumbnail.jpg",
+          "sha256": "84dc232c0d99e24fa7a1d08ec9a79efbe1e562e7513c28971710e9b452d5587a"
+        }
+      ],
+      "inputFiles": [
+        "data/example_umap.csv"
+      ],
+      "language": "R",
+      "licenses": {
+        "code": "MIT",
+        "content": "CC BY 4.0",
+        "documentation": "CC BY 4.0"
+      },
+      "moduleId": "umap-style-ellipse-labels",
+      "packages": [
+        "colorspace",
+        "dplyr",
+        "ggplot2",
+        "ggrepel"
+      ],
+      "plotFamily": "umap_ellipse",
+      "preview": {
+        "bytes": 1165182,
+        "mediaType": "image/png",
+        "path": "previews/umap-style-ellipse-labels/preview.png",
+        "sha256": "b5798a332c75f6029e9524fea0fab680deb524a836f44ce8171627065d601bf3"
+      },
+      "provenance": [
+        {
+          "note": "Prepared from the reviewed Local Published entry umap-style-ellipse-labels; internal Library state is not distributed.",
+          "type": "local_published_cleaning"
+        },
+        {
+          "note": "Example inputs were generated for portable execution and do not represent real samples or scientific conclusions.",
+          "type": "synthetic_data"
+        },
+        {
+          "note": "Only files listed in this manifest are distributed; source/reference images, PDFs, logs, receipts, and machine-local state are excluded.",
+          "type": "clean_room_transformation"
+        }
+      ],
+      "publisher": {
+        "evidence": [
+          "README.md",
+          "data_schema.yml",
+          "preview.png"
+        ],
+        "executionScope": "synthetic_data",
+        "executionStatus": "passed",
+        "reviewStatus": "approved"
+      },
+      "requiredFiles": [
+        "README.md",
+        "code/example.R",
+        "code/organized.R",
+        "data/example_umap.csv",
+        "data_schema.yml",
+        "description.md",
+        "module.yml",
+        "preview.png",
+        "thumbnail.jpg"
+      ],
+      "source": {
+        "commit": "644ab1034ca358f1584c2ec8666f1036f495f38e",
+        "path": "modules/umap-style-ellipse-labels",
+        "repository": "jarxunlai/ScientificFigureLibrary-personal"
+      },
+      "tags": [
+        "ellipse",
+        "labels",
+        "style",
+        "umap",
+        "umap-style-ellipse-labels",
+        "umap_ellipse"
+      ],
+      "thumbnail": {
+        "bytes": 52522,
+        "mediaType": "image/jpeg",
+        "path": "thumbs/umap-style-ellipse-labels.jpg",
+        "sha256": "84dc232c0d99e24fa7a1d08ec9a79efbe1e562e7513c28971710e9b452d5587a"
+      },
+      "title": "半透明椭圆同色标签UMAP",
+      "titleEn": "UMAP with translucent ellipses and matching labels"
+    },
+    {
+      "application": "Combine a central embedding with categorical rings and group composition arcs.",
+      "archive": {
+        "bytes": 567974,
+        "commit": "1e5cdfe188b59d5d425426d2fe32df21257d3591",
+        "path": "archives/umap-style-plot1cell-circlize.zip",
+        "repository": "jarxunlai/ScientificFigureLibrary-personal",
+        "sha256": "0d053408e227d84165690ea9a19e3821b19b84f8932a00118d47ae663fd90164"
+      },
+      "canonicalCode": "code/organized.R",
+      "codeFiles": [
+        "code/example.R",
+        "code/organized.R"
+      ],
+      "dataProfile": "Synthetic UMAP coordinates with celltype and group columns.",
+      "description": "A circular UMAP presentation with cell-type and group rings around the embedding.",
+      "files": [
+        {
+          "bytes": 1078,
+          "path": "README.md",
+          "sha256": "eb0555c50450dc93867f8e5e8486d3107a1283542ba2563ea31e606103712306"
+        },
+        {
+          "bytes": 489,
+          "path": "code/example.R",
+          "sha256": "4177d89d95a186d73923dd81c7d088acabd1126fc8fae234ec275d71a43e9d1b"
+        },
+        {
+          "bytes": 4394,
+          "path": "code/organized.R",
+          "sha256": "16a7864b078e2d34bdf5776c5fc397f649a53abfd10f6e99ba7c8601d4daefe3"
+        },
+        {
+          "bytes": 275147,
+          "path": "data/example_umap.csv",
+          "sha256": "4ed2fa52ebdde0c19b00064b82d84f4fc9ad2a8bf71d7dd4f3cc98f8d3df69a9"
+        },
+        {
+          "bytes": 306,
+          "path": "data_schema.yml",
+          "sha256": "1f4fe784c5a85f0d45a5bea590690e06baeafa3b7cb3eb0febfd784cb82a6fa5"
+        },
+        {
+          "bytes": 619,
+          "path": "description.md",
+          "sha256": "9be65e88473f5aa0a42d19d71f0f823a35b1593eca69396a20e762240269ae0f"
+        },
+        {
+          "bytes": 2040,
+          "path": "module.yml",
+          "sha256": "1acec29edb187abb35df79bc52d3aaa75aef03ca8c31d36d0e8ee57035c16c49"
+        },
+        {
+          "bytes": 450721,
+          "path": "preview.png",
+          "sha256": "0007948540a9f0e21056441f6312352d39ea0e04b4a4a5dafe18c4543909823b"
+        },
+        {
+          "bytes": 1151,
+          "path": "provenance.md",
+          "sha256": "c306e711bf10857337139de702b2048d640690ef93f1cefe6804474e52f0f71b"
+        },
+        {
+          "bytes": 61378,
+          "path": "thumbnail.jpg",
+          "sha256": "31654e507ed6e9a157b07cdf5bbf2cec03a957058e682f47c1adcc17ca09faf3"
+        }
+      ],
+      "inputFiles": [
+        "data/example_umap.csv"
+      ],
+      "language": "R",
+      "licenses": {
+        "code": "MIT",
+        "content": "CC BY 4.0",
+        "documentation": "CC BY 4.0"
+      },
+      "moduleId": "umap-style-plot1cell-circlize",
+      "packages": [
+        "dplyr",
+        "ggplot2"
+      ],
+      "plotFamily": "circular_umap",
+      "preview": {
+        "bytes": 450721,
+        "mediaType": "image/png",
+        "path": "previews/umap-style-plot1cell-circlize/preview.png",
+        "sha256": "0007948540a9f0e21056441f6312352d39ea0e04b4a4a5dafe18c4543909823b"
+      },
+      "provenance": [
+        {
+          "note": "Prepared from the reviewed Local Published entry umap-style-plot1cell-circlize; internal Library state is not distributed.",
+          "type": "local_published_cleaning"
+        },
+        {
+          "note": "Example inputs were generated for portable execution and do not represent real samples or scientific conclusions.",
+          "type": "synthetic_data"
+        },
+        {
+          "note": "Only files listed in this manifest are distributed; source/reference images, PDFs, logs, receipts, and machine-local state are excluded.",
+          "type": "clean_room_transformation"
+        }
+      ],
+      "publisher": {
+        "evidence": [
+          "README.md",
+          "data_schema.yml",
+          "preview.png"
+        ],
+        "executionScope": "synthetic_data",
+        "executionStatus": "passed",
+        "reviewStatus": "approved"
+      },
+      "requiredFiles": [
+        "README.md",
+        "code/example.R",
+        "code/organized.R",
+        "data/example_umap.csv",
+        "data_schema.yml",
+        "description.md",
+        "module.yml",
+        "preview.png",
+        "thumbnail.jpg"
+      ],
+      "source": {
+        "commit": "644ab1034ca358f1584c2ec8666f1036f495f38e",
+        "path": "modules/umap-style-plot1cell-circlize",
+        "repository": "jarxunlai/ScientificFigureLibrary-personal"
+      },
+      "tags": [
+        "circlize",
+        "circular_umap",
+        "plot1cell",
+        "style",
+        "umap",
+        "umap-style-plot1cell-circlize"
+      ],
+      "thumbnail": {
+        "bytes": 61378,
+        "mediaType": "image/jpeg",
+        "path": "thumbs/umap-style-plot1cell-circlize.jpg",
+        "sha256": "31654e507ed6e9a157b07cdf5bbf2cec03a957058e682f47c1adcc17ca09faf3"
+      },
+      "title": "环形Circos风格UMAP",
+      "titleEn": "Circular circos-style UMAP"
+    },
+    {
+      "application": "Keep a dense embedding readable with compact numeric labels and counts.",
+      "archive": {
+        "bytes": 1369938,
+        "commit": "1e5cdfe188b59d5d425426d2fe32df21257d3591",
+        "path": "archives/umap-style-scp-numbered-legend.zip",
+        "repository": "jarxunlai/ScientificFigureLibrary-personal",
+        "sha256": "2ccdde09af8189e03912c54a11aa5863001c9d6f99b5042432fdb519ac2f7810"
+      },
+      "canonicalCode": "code/organized.R",
+      "codeFiles": [
+        "code/example.R",
+        "code/organized.R"
+      ],
+      "dataProfile": "Synthetic cell-level UMAP coordinates and cell-type labels.",
+      "description": "A numbered UMAP with a side legend that reports cell counts for each cluster.",
+      "files": [
+        {
+          "bytes": 1075,
+          "path": "README.md",
+          "sha256": "d632834b901f6a15590b58630fb1e731f740f2e4b72c0c9f1a5022cb658c6d7b"
+        },
+        {
+          "bytes": 489,
+          "path": "code/example.R",
+          "sha256": "4177d89d95a186d73923dd81c7d088acabd1126fc8fae234ec275d71a43e9d1b"
+        },
+        {
+          "bytes": 3875,
+          "path": "code/organized.R",
+          "sha256": "68c03ef0c7a96c5cb74a85486b6c5e59eaed10b2f9fdacaf1ab72d2a8ad944e2"
+        },
+        {
+          "bytes": 1932599,
+          "path": "data/example_umap.csv",
+          "sha256": "f6e092c5adf9ad2f2365dc600a92bd6e5abebb1691ebd58e4dca9f041828eebc"
+        },
+        {
+          "bytes": 306,
+          "path": "data_schema.yml",
+          "sha256": "d040c4c446ccb59a6aa756e72c29a5718d060db2de2bfe008e73cd60959425cc"
+        },
+        {
+          "bytes": 611,
+          "path": "description.md",
+          "sha256": "f90f0f0f7456dcfda01f6b460dd7bb8f876d397f6a01ac38403aa7075a962bad"
+        },
+        {
+          "bytes": 2057,
+          "path": "module.yml",
+          "sha256": "02b5fefb4bcf91cc23d4ca2d6703d2b1f93486fe3425e3db42f47638ff443893"
+        },
+        {
+          "bytes": 878453,
+          "path": "preview.png",
+          "sha256": "ef0c0cc0a8c12b66a725e6c55d02c1e2824f63a1a09d544a243f3eb386511f94"
+        },
+        {
+          "bytes": 1152,
+          "path": "provenance.md",
+          "sha256": "5d8325ad6aeee0bd1f4752fee836f0aa8a9a1df6b49b0f3f02d3561b8e2bee45"
+        },
+        {
+          "bytes": 47403,
+          "path": "thumbnail.jpg",
+          "sha256": "24db7c611c206ebcbf0b448738331c3dee736eb524c5f767679a7a1112d7c4cb"
+        }
+      ],
+      "inputFiles": [
+        "data/example_umap.csv"
+      ],
+      "language": "R",
+      "licenses": {
+        "code": "MIT",
+        "content": "CC BY 4.0",
+        "documentation": "CC BY 4.0"
+      },
+      "moduleId": "umap-style-scp-numbered-legend",
+      "packages": [
+        "dplyr",
+        "ggplot2"
+      ],
+      "plotFamily": "umap_numbered_legend",
+      "preview": {
+        "bytes": 878453,
+        "mediaType": "image/png",
+        "path": "previews/umap-style-scp-numbered-legend/preview.png",
+        "sha256": "ef0c0cc0a8c12b66a725e6c55d02c1e2824f63a1a09d544a243f3eb386511f94"
+      },
+      "provenance": [
+        {
+          "note": "Prepared from the reviewed Local Published entry umap-style-scp-numbered-legend; internal Library state is not distributed.",
+          "type": "local_published_cleaning"
+        },
+        {
+          "note": "Example inputs were generated for portable execution and do not represent real samples or scientific conclusions.",
+          "type": "synthetic_data"
+        },
+        {
+          "note": "Only files listed in this manifest are distributed; source/reference images, PDFs, logs, receipts, and machine-local state are excluded.",
+          "type": "clean_room_transformation"
+        }
+      ],
+      "publisher": {
+        "evidence": [
+          "README.md",
+          "data_schema.yml",
+          "preview.png"
+        ],
+        "executionScope": "synthetic_data",
+        "executionStatus": "passed",
+        "reviewStatus": "approved"
+      },
+      "requiredFiles": [
+        "README.md",
+        "code/example.R",
+        "code/organized.R",
+        "data/example_umap.csv",
+        "data_schema.yml",
+        "description.md",
+        "module.yml",
+        "preview.png",
+        "thumbnail.jpg"
+      ],
+      "source": {
+        "commit": "644ab1034ca358f1584c2ec8666f1036f495f38e",
+        "path": "modules/umap-style-scp-numbered-legend",
+        "repository": "jarxunlai/ScientificFigureLibrary-personal"
+      },
+      "tags": [
+        "legend",
+        "numbered",
+        "scp",
+        "style",
+        "umap",
+        "umap-style-scp-numbered-legend",
+        "umap_numbered_legend"
+      ],
+      "thumbnail": {
+        "bytes": 47403,
+        "mediaType": "image/jpeg",
+        "path": "thumbs/umap-style-scp-numbered-legend.jpg",
+        "sha256": "24db7c611c206ebcbf0b448738331c3dee736eb524c5f767679a7a1112d7c4cb"
+      },
+      "title": "编号加侧边图例UMAP",
+      "titleEn": "Numbered UMAP with count legend"
+    },
+    {
+      "application": "Present a compact, equal-aspect embedding with stable axis limits.",
+      "archive": {
+        "bytes": 1394696,
+        "commit": "1e5cdfe188b59d5d425426d2fe32df21257d3591",
+        "path": "archives/umap-style-scp-square-axes.zip",
+        "repository": "jarxunlai/ScientificFigureLibrary-personal",
+        "sha256": "f244afae6b5d529005fffa6db893e5493dcb876f162c30c67766bd10443c3766"
+      },
+      "canonicalCode": "code/organized.R",
+      "codeFiles": [
+        "code/example.R",
+        "code/organized.R"
+      ],
+      "dataProfile": "Synthetic cell-level UMAP coordinates and cell-type labels.",
+      "description": "A square-axis UMAP with direct cluster labels and a fixed symmetric coordinate range.",
+      "files": [
+        {
+          "bytes": 1066,
+          "path": "README.md",
+          "sha256": "9f64867d70cfec751a746691d3b6aea3d37fbc5c10c40ca39840e98d7e1828b4"
+        },
+        {
+          "bytes": 489,
+          "path": "code/example.R",
+          "sha256": "4177d89d95a186d73923dd81c7d088acabd1126fc8fae234ec275d71a43e9d1b"
+        },
+        {
+          "bytes": 3973,
+          "path": "code/organized.R",
+          "sha256": "535e7a338ecaf8c0893a700918d904ecc27b010ee24bf6de2477e8d4f8ada279"
+        },
+        {
+          "bytes": 1932599,
+          "path": "data/example_umap.csv",
+          "sha256": "f6e092c5adf9ad2f2365dc600a92bd6e5abebb1691ebd58e4dca9f041828eebc"
+        },
+        {
+          "bytes": 306,
+          "path": "data_schema.yml",
+          "sha256": "d040c4c446ccb59a6aa756e72c29a5718d060db2de2bfe008e73cd60959425cc"
+        },
+        {
+          "bytes": 608,
+          "path": "description.md",
+          "sha256": "6d0e42358f358fbac3a0c189caf3090e4e57549ff2a45860b7690a84bff715cd"
+        },
+        {
+          "bytes": 2024,
+          "path": "module.yml",
+          "sha256": "04bfc1e700ad6efb1e814cdaa2a57dc3b1fe8c8394b3bb0fc280cd4e97ae5f5b"
+        },
+        {
+          "bytes": 897855,
+          "path": "preview.png",
+          "sha256": "7e2cf9954d23c9efbe0e5631dcfd903b90a0e5bdb64cb861b72fd3a53adba456"
+        },
+        {
+          "bytes": 1148,
+          "path": "provenance.md",
+          "sha256": "c8b1544e0a7d402b28ee7e5378ab0fed8e69bf97c717fa7a3b690a85d26f14b4"
+        },
+        {
+          "bytes": 53368,
+          "path": "thumbnail.jpg",
+          "sha256": "b7b7eda03163dff36a19414f5a0aef0fa6667f66ce29144ad024ff37b4f6eb4f"
+        }
+      ],
+      "inputFiles": [
+        "data/example_umap.csv"
+      ],
+      "language": "R",
+      "licenses": {
+        "code": "MIT",
+        "content": "CC BY 4.0",
+        "documentation": "CC BY 4.0"
+      },
+      "moduleId": "umap-style-scp-square-axes",
+      "packages": [
+        "dplyr",
+        "ggplot2"
+      ],
+      "plotFamily": "umap_square_axes",
+      "preview": {
+        "bytes": 897855,
+        "mediaType": "image/png",
+        "path": "previews/umap-style-scp-square-axes/preview.png",
+        "sha256": "7e2cf9954d23c9efbe0e5631dcfd903b90a0e5bdb64cb861b72fd3a53adba456"
+      },
+      "provenance": [
+        {
+          "note": "Prepared from the reviewed Local Published entry umap-style-scp-square-axes; internal Library state is not distributed.",
+          "type": "local_published_cleaning"
+        },
+        {
+          "note": "Example inputs were generated for portable execution and do not represent real samples or scientific conclusions.",
+          "type": "synthetic_data"
+        },
+        {
+          "note": "Only files listed in this manifest are distributed; source/reference images, PDFs, logs, receipts, and machine-local state are excluded.",
+          "type": "clean_room_transformation"
+        }
+      ],
+      "publisher": {
+        "evidence": [
+          "README.md",
+          "data_schema.yml",
+          "preview.png"
+        ],
+        "executionScope": "synthetic_data",
+        "executionStatus": "passed",
+        "reviewStatus": "approved"
+      },
+      "requiredFiles": [
+        "README.md",
+        "code/example.R",
+        "code/organized.R",
+        "data/example_umap.csv",
+        "data_schema.yml",
+        "description.md",
+        "module.yml",
+        "preview.png",
+        "thumbnail.jpg"
+      ],
+      "source": {
+        "commit": "644ab1034ca358f1584c2ec8666f1036f495f38e",
+        "path": "modules/umap-style-scp-square-axes",
+        "repository": "jarxunlai/ScientificFigureLibrary-personal"
+      },
+      "tags": [
+        "axes",
+        "scp",
+        "square",
+        "style",
+        "umap",
+        "umap-style-scp-square-axes",
+        "umap_square_axes"
+      ],
+      "thumbnail": {
+        "bytes": 53368,
+        "mediaType": "image/jpeg",
+        "path": "thumbs/umap-style-scp-square-axes.jpg",
+        "sha256": "b7b7eda03163dff36a19414f5a0aef0fa6667f66ce29144ad024ff37b4f6eb4f"
+      },
+      "title": "方形坐标轴UMAP",
+      "titleEn": "Square-axis labelled UMAP"
+    },
+    {
+      "application": "Emphasize point boundaries and preserve cluster identity in a dense embedding.",
+      "archive": {
+        "bytes": 3423409,
+        "commit": "1e5cdfe188b59d5d425426d2fe32df21257d3591",
+        "path": "archives/umap-style-scpubr-stroke.zip",
+        "repository": "jarxunlai/ScientificFigureLibrary-personal",
+        "sha256": "398f1d1d3f8bda7cd243000e49c05d94abb83131e173c17b08d5660674f333c4"
+      },
+      "canonicalCode": "code/organized.R",
+      "codeFiles": [
+        "code/example.R",
+        "code/organized.R"
+      ],
+      "dataProfile": "Synthetic cell-level UMAP coordinates and cell-type labels.",
+      "description": "A marker UMAP with black outlines, cluster labels, and a compact bottom legend.",
+      "files": [
+        {
+          "bytes": 1084,
+          "path": "README.md",
+          "sha256": "33223286489d67b7f830fc1cbf5f1619d8584e2fe745226099a28e405a08c1b6"
+        },
+        {
+          "bytes": 489,
+          "path": "code/example.R",
+          "sha256": "4177d89d95a186d73923dd81c7d088acabd1126fc8fae234ec275d71a43e9d1b"
+        },
+        {
+          "bytes": 3936,
+          "path": "code/organized.R",
+          "sha256": "080696def516096e7d2baae93752e4a3396e7f838a541fa0c4259fb3855c5ac7"
+        },
+        {
+          "bytes": 1932599,
+          "path": "data/example_umap.csv",
+          "sha256": "f6e092c5adf9ad2f2365dc600a92bd6e5abebb1691ebd58e4dca9f041828eebc"
+        },
+        {
+          "bytes": 306,
+          "path": "data_schema.yml",
+          "sha256": "d040c4c446ccb59a6aa756e72c29a5718d060db2de2bfe008e73cd60959425cc"
+        },
+        {
+          "bytes": 614,
+          "path": "description.md",
+          "sha256": "a1041dafb8c4c93a6c798bbeba6d5ebb571a9ad3a2c69fb534787ac072eac526"
+        },
+        {
+          "bytes": 2025,
+          "path": "module.yml",
+          "sha256": "399623d1756be2e921d21432936e5341a1597b5de60d01874cc65683894c5b48"
+        },
+        {
+          "bytes": 2857943,
+          "path": "preview.png",
+          "sha256": "9db1c3c4d6d4d5fdc9f2eb8f15ddbb56ae421e16c34c22d38aa2ef3b9c823bda"
+        },
+        {
+          "bytes": 1146,
+          "path": "provenance.md",
+          "sha256": "04797ce55546aee95f7eecac454e1981d866860e7dafd1fe4986e5ff89b38c17"
+        },
+        {
+          "bytes": 145212,
+          "path": "thumbnail.jpg",
+          "sha256": "64e224413d1e6237b76ce149d210446ac47aa7a2d9edc1f8fd85d7bdc49becb6"
+        }
+      ],
+      "inputFiles": [
+        "data/example_umap.csv"
+      ],
+      "language": "R",
+      "licenses": {
+        "code": "MIT",
+        "content": "CC BY 4.0",
+        "documentation": "CC BY 4.0"
+      },
+      "moduleId": "umap-style-scpubr-stroke",
+      "packages": [
+        "dplyr",
+        "ggplot2",
+        "shadowtext"
+      ],
+      "plotFamily": "umap_stroke",
+      "preview": {
+        "bytes": 2857943,
+        "mediaType": "image/png",
+        "path": "previews/umap-style-scpubr-stroke/preview.png",
+        "sha256": "9db1c3c4d6d4d5fdc9f2eb8f15ddbb56ae421e16c34c22d38aa2ef3b9c823bda"
+      },
+      "provenance": [
+        {
+          "note": "Prepared from the reviewed Local Published entry umap-style-scpubr-stroke; internal Library state is not distributed.",
+          "type": "local_published_cleaning"
+        },
+        {
+          "note": "Example inputs were generated for portable execution and do not represent real samples or scientific conclusions.",
+          "type": "synthetic_data"
+        },
+        {
+          "note": "Only files listed in this manifest are distributed; source/reference images, PDFs, logs, receipts, and machine-local state are excluded.",
+          "type": "clean_room_transformation"
+        }
+      ],
+      "publisher": {
+        "evidence": [
+          "README.md",
+          "data_schema.yml",
+          "preview.png"
+        ],
+        "executionScope": "synthetic_data",
+        "executionStatus": "passed",
+        "reviewStatus": "approved"
+      },
+      "requiredFiles": [
+        "README.md",
+        "code/example.R",
+        "code/organized.R",
+        "data/example_umap.csv",
+        "data_schema.yml",
+        "description.md",
+        "module.yml",
+        "preview.png",
+        "thumbnail.jpg"
+      ],
+      "source": {
+        "commit": "644ab1034ca358f1584c2ec8666f1036f495f38e",
+        "path": "modules/umap-style-scpubr-stroke",
+        "repository": "jarxunlai/ScientificFigureLibrary-personal"
+      },
+      "tags": [
+        "scpubr",
+        "stroke",
+        "style",
+        "umap",
+        "umap-style-scpubr-stroke",
+        "umap_stroke"
+      ],
+      "thumbnail": {
+        "bytes": 145212,
+        "mediaType": "image/jpeg",
+        "path": "thumbs/umap-style-scpubr-stroke.jpg",
+        "sha256": "64e224413d1e6237b76ce149d210446ac47aa7a2d9edc1f8fd85d7bdc49becb6"
+      },
+      "title": "黑边颗粒风UMAP",
+      "titleEn": "Black-stroke granule UMAP"
+    },
+    {
+      "application": "Place cell-type names in the embedding while retaining a small coordinate cue.",
+      "archive": {
+        "bytes": 1334023,
+        "commit": "1e5cdfe188b59d5d425426d2fe32df21257d3591",
+        "path": "archives/umap-style-scrnatoolvis-insitu.zip",
+        "repository": "jarxunlai/ScientificFigureLibrary-personal",
+        "sha256": "40a2066bb9fbaa21871ebb1bfa78fc5ab5c2d02ca5ba6d36e1e295c98a7697f1"
+      },
+      "canonicalCode": "code/organized.R",
+      "codeFiles": [
+        "code/example.R",
+        "code/organized.R"
+      ],
+      "dataProfile": "Synthetic cell-level UMAP coordinates and cell-type labels.",
+      "description": "A directly labelled UMAP with corner arrows standing in for a specialized cluster-axis theme.",
+      "files": [
+        {
+          "bytes": 1085,
+          "path": "README.md",
+          "sha256": "7323ffb9fda9e176c1bfb14a5ceb6bf25cbbd154dd31e061c9582fc2a4a0e2fe"
+        },
+        {
+          "bytes": 489,
+          "path": "code/example.R",
+          "sha256": "4177d89d95a186d73923dd81c7d088acabd1126fc8fae234ec275d71a43e9d1b"
+        },
+        {
+          "bytes": 4085,
+          "path": "code/organized.R",
+          "sha256": "0cb65dcf109b3d4ce05d1d3b18374e6f07644b70218dbb4f89a686f2db9b74b2"
+        },
+        {
+          "bytes": 1932599,
+          "path": "data/example_umap.csv",
+          "sha256": "f6e092c5adf9ad2f2365dc600a92bd6e5abebb1691ebd58e4dca9f041828eebc"
+        },
+        {
+          "bytes": 306,
+          "path": "data_schema.yml",
+          "sha256": "d040c4c446ccb59a6aa756e72c29a5718d060db2de2bfe008e73cd60959425cc"
+        },
+        {
+          "bytes": 631,
+          "path": "description.md",
+          "sha256": "6133c1a641404351edb206feafb1dd72625f8ab5c00b769b24e3b908d311bfd6"
+        },
+        {
+          "bytes": 2063,
+          "path": "module.yml",
+          "sha256": "24acd86454c20061887f4ed38246f1226544ec39abd9050390cc388c3a04e039"
+        },
+        {
+          "bytes": 844779,
+          "path": "preview.png",
+          "sha256": "c9bdd9ff4d9e81038407c959f50eb8b34b707c2a919728116863e485b9342b93"
+        },
+        {
+          "bytes": 1152,
+          "path": "provenance.md",
+          "sha256": "6d337c8f901a35c3acbfb5091913f90e4075daeb34b13a4e873f97b3ed91871b"
+        },
+        {
+          "bytes": 42749,
+          "path": "thumbnail.jpg",
+          "sha256": "b281b62f657a5b40c58d66bec5d26c7d8a136163b8833a3a53d69ec7c59b412c"
+        }
+      ],
+      "inputFiles": [
+        "data/example_umap.csv"
+      ],
+      "language": "R",
+      "licenses": {
+        "code": "MIT",
+        "content": "CC BY 4.0",
+        "documentation": "CC BY 4.0"
+      },
+      "moduleId": "umap-style-scrnatoolvis-insitu",
+      "packages": [
+        "dplyr",
+        "ggplot2"
+      ],
+      "plotFamily": "umap_in_situ_labels",
+      "preview": {
+        "bytes": 844779,
+        "mediaType": "image/png",
+        "path": "previews/umap-style-scrnatoolvis-insitu/preview.png",
+        "sha256": "c9bdd9ff4d9e81038407c959f50eb8b34b707c2a919728116863e485b9342b93"
+      },
+      "provenance": [
+        {
+          "note": "Prepared from the reviewed Local Published entry umap-style-scrnatoolvis-insitu; internal Library state is not distributed.",
+          "type": "local_published_cleaning"
+        },
+        {
+          "note": "Example inputs were generated for portable execution and do not represent real samples or scientific conclusions.",
+          "type": "synthetic_data"
+        },
+        {
+          "note": "Only files listed in this manifest are distributed; source/reference images, PDFs, logs, receipts, and machine-local state are excluded.",
+          "type": "clean_room_transformation"
+        }
+      ],
+      "publisher": {
+        "evidence": [
+          "README.md",
+          "data_schema.yml",
+          "preview.png"
+        ],
+        "executionScope": "synthetic_data",
+        "executionStatus": "passed",
+        "reviewStatus": "approved"
+      },
+      "requiredFiles": [
+        "README.md",
+        "code/example.R",
+        "code/organized.R",
+        "data/example_umap.csv",
+        "data_schema.yml",
+        "description.md",
+        "module.yml",
+        "preview.png",
+        "thumbnail.jpg"
+      ],
+      "source": {
+        "commit": "644ab1034ca358f1584c2ec8666f1036f495f38e",
+        "path": "modules/umap-style-scrnatoolvis-insitu",
+        "repository": "jarxunlai/ScientificFigureLibrary-personal"
+      },
+      "tags": [
+        "insitu",
+        "scrnatoolvis",
+        "style",
+        "umap",
+        "umap-style-scrnatoolvis-insitu",
+        "umap_in_situ_labels"
+      ],
+      "thumbnail": {
+        "bytes": 42749,
+        "mediaType": "image/jpeg",
+        "path": "thumbs/umap-style-scrnatoolvis-insitu.jpg",
+        "sha256": "b281b62f657a5b40c58d66bec5d26c7d8a136163b8833a3a53d69ec7c59b412c"
+      },
+      "title": "簇内直接标注UMAP",
+      "titleEn": "In-situ labelled UMAP"
+    },
+    {
+      "application": "Show broad cell-type territories around subclusters in a synthetic embedding.",
+      "archive": {
+        "bytes": 458101,
+        "commit": "1e5cdfe188b59d5d425426d2fe32df21257d3591",
+        "path": "archives/umap-unchull-main-type-circles.zip",
+        "repository": "jarxunlai/ScientificFigureLibrary-personal",
+        "sha256": "15ae043cfae66e48e74748fe5d8793f6b99303dbcdea064e36f48180a7465967"
+      },
+      "canonicalCode": "code/organized.R",
+      "codeFiles": [
+        "code/example.R",
+        "code/organized.R"
+      ],
+      "dataProfile": "Synthetic cell-level coordinates with subcluster and main-cell-type columns.",
+      "description": "A UMAP module with colored main-type hull outlines, subcluster labels, and a compact coordinate cue.",
+      "files": [
+        {
+          "bytes": 1189,
+          "path": "README.md",
+          "sha256": "ff968a77f0ad4d3109136e7f3f24b3c3be798f2bc528ad747ab42f424dbf3627"
+        },
+        {
+          "bytes": 489,
+          "path": "code/example.R",
+          "sha256": "4177d89d95a186d73923dd81c7d088acabd1126fc8fae234ec275d71a43e9d1b"
+        },
+        {
+          "bytes": 5773,
+          "path": "code/organized.R",
+          "sha256": "99eaff9ad3c49295e4f301565f6fc9c8daa969ba2330972d066cd1da45c51a96"
+        },
+        {
+          "bytes": 202258,
+          "path": "data/example_umap.csv",
+          "sha256": "0d646d09706b0c3dd5a7edd36266219c64a1f9d8828feb34949e655ae710eed5"
+        },
+        {
+          "bytes": 318,
+          "path": "data_schema.yml",
+          "sha256": "de72cd1cc6a898798523c45fa821cd88fd530020c18aafe7f5ee2760e8720b61"
+        },
+        {
+          "bytes": 666,
+          "path": "description.md",
+          "sha256": "2803c4a0ae087b509bc94ef8f6172f7a1a43f1e713512ce579cd944e2baa77c1"
+        },
+        {
+          "bytes": 2155,
+          "path": "module.yml",
+          "sha256": "024a14b3c26469245389ddb5da7c1d4aa53a3c664c509a1dbf9c88143e3ba60f"
+        },
+        {
+          "bytes": 362284,
+          "path": "preview.png",
+          "sha256": "44ab2ea782cc2690e37944c7e9d99819176522db0c95757cb8e7b7a5d2cfd907"
+        },
+        {
+          "bytes": 1152,
+          "path": "provenance.md",
+          "sha256": "7c9da0d048e2bb85204cc50b95ea5952a56b9d8f8375b26c9a2e3a7725ed3b7b"
+        },
+        {
+          "bytes": 55085,
+          "path": "thumbnail.jpg",
+          "sha256": "396883cb62dff3b88706590e06b7e4d2046d7935040031e6b01c64b1c9b7adf5"
+        }
+      ],
+      "inputFiles": [
+        "data/example_umap.csv"
+      ],
+      "language": "R",
+      "licenses": {
+        "code": "MIT",
+        "content": "CC BY 4.0",
+        "documentation": "CC BY 4.0"
+      },
+      "moduleId": "umap-unchull-main-type-circles",
+      "packages": [
+        "dplyr",
+        "ggplot2",
+        "ggrepel",
+        "ggunchull",
+        "grid",
+        "tidydr"
+      ],
+      "plotFamily": "umap_hulls",
+      "preview": {
+        "bytes": 362284,
+        "mediaType": "image/png",
+        "path": "previews/umap-unchull-main-type-circles/preview.png",
+        "sha256": "44ab2ea782cc2690e37944c7e9d99819176522db0c95757cb8e7b7a5d2cfd907"
+      },
+      "provenance": [
+        {
+          "note": "Prepared from the reviewed Local Published entry umap-unchull-main-type-circles; internal Library state is not distributed.",
+          "type": "local_published_cleaning"
+        },
+        {
+          "note": "Example inputs were generated for portable execution and do not represent real samples or scientific conclusions.",
+          "type": "synthetic_data"
+        },
+        {
+          "note": "Only files listed in this manifest are distributed; source/reference images, PDFs, logs, receipts, and machine-local state are excluded.",
+          "type": "clean_room_transformation"
+        }
+      ],
+      "publisher": {
+        "evidence": [
+          "README.md",
+          "data_schema.yml",
+          "preview.png"
+        ],
+        "executionScope": "synthetic_data",
+        "executionStatus": "passed",
+        "reviewStatus": "approved"
+      },
+      "requiredFiles": [
+        "README.md",
+        "code/example.R",
+        "code/organized.R",
+        "data/example_umap.csv",
+        "data_schema.yml",
+        "description.md",
+        "module.yml",
+        "preview.png",
+        "thumbnail.jpg"
+      ],
+      "source": {
+        "commit": "644ab1034ca358f1584c2ec8666f1036f495f38e",
+        "path": "modules/umap-unchull-main-type-circles",
+        "repository": "jarxunlai/ScientificFigureLibrary-personal"
+      },
+      "tags": [
+        "circles",
+        "main",
+        "type",
+        "umap",
+        "umap-unchull-main-type-circles",
+        "umap_hulls",
+        "unchull"
+      ],
+      "thumbnail": {
+        "bytes": 55085,
+        "mediaType": "image/jpeg",
+        "path": "thumbs/umap-unchull-main-type-circles.jpg",
+        "sha256": "396883cb62dff3b88706590e06b7e4d2046d7935040031e6b01c64b1c9b7adf5"
+      },
+      "title": "单细胞UMAP大群虚线非凸包",
+      "titleEn": "UMAP with dashed non-convex hulls around main cell types"
+    }
+  ],
+  "provider": {
+    "displayName": "Open Figure Modules",
+    "providerId": "io.github.jarxunlai.personal-figures",
+    "repository": "jarxunlai/ScientificFigureLibrary-personal"
+  },
+  "schema": "figure-library.module-catalog.v1"
+}

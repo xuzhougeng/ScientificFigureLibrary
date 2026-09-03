@@ -128,6 +128,68 @@ test("search result hydrates App thumbnails from component-only metadata", () =>
   assert.equal(parsed?.candidates[0]?.previewDataUrl, dataUrl);
 });
 
+test("personal module cards keep publisher state, Local state, and thumbnail status separate", () => {
+  const window = new Window();
+  const document = window.document as unknown as Document;
+  const cards = document.createElement("section");
+  const empty = document.createElement("section");
+  const personal = candidate(
+    "io.github.jarxunlai.personal-figures",
+    "personal-module-fixture",
+    "ready",
+    "data:image/png;base64,fixture",
+  );
+  personal.searchPreviewAvailable = true;
+  personal.searchPreviewStatus = "ready";
+  personal.previewStatus = undefined;
+  personal.sourceLabel = "Open Figure Modules";
+  personal.upstreamStatus = "published";
+  personal.publisherReviewStatus = "approved";
+  personal.publisherExecutionStatus = "passed";
+  personal.publisherExecutionScope = "synthetic_data";
+  personal.codeExecutedBySflClient = false;
+  personal.exactSelector = {
+    ...personal.exactSelector,
+    kind: "module-archive.v1",
+    identity: {
+      moduleId: personal.templateId,
+      sourceCommit: "a".repeat(40),
+      archiveCommit: "b".repeat(40),
+      archive: { digest: "c".repeat(64) },
+      mode: "template",
+    },
+  };
+  renderCandidateCards({
+    document,
+    cards,
+    empty,
+    result: searchResult([personal]),
+    onDetail() {},
+  });
+  assert.match(cards.textContent ?? "", /Open Figure Modules/u);
+  assert.match(cards.textContent ?? "", /发布者审核状态：approved/u);
+  assert.match(cards.textContent ?? "", /发布者执行状态：passed（synthetic_data）/u);
+  assert.match(cards.textContent ?? "", /SFL Local review：not_reviewed/u);
+  assert.match(cards.textContent ?? "", /SFL code execution：false/u);
+
+  const opener = document.createElement("button");
+  document.body.append(opener);
+  const detail = openCandidateDetail({
+    document,
+    candidate: personal,
+    opener,
+    serverToolsAvailable: true,
+    updateModelContextAvailable: true,
+    onRequestExactPreview() {},
+    onRequestAgentReview() {},
+  });
+  assert.match(detail.dialog.textContent ?? "", /源码 commit：aaaaaaaa/u);
+  assert.match(detail.dialog.textContent ?? "", /归档 commit：bbbbbbbb/u);
+  assert.match(detail.dialog.textContent ?? "", /ZIP SHA-256：cccccccc/u);
+  assert.equal(detail.exactPreviewButton.disabled, false);
+  detail.closeButton.click();
+});
+
 test("thumbnail, title, and explicit action open candidate details without exact preview", () => {
   const window = new Window();
   const document = window.document as unknown as Document;

@@ -5,6 +5,8 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 import type { CatalogIndex } from "./catalog.ts";
+import type { ModuleCatalogIndex } from "./module-catalog.ts";
+import { parseModuleTemplateLock } from "./module-materialize.ts";
 import { canonicalJson, compareCanonicalStrings } from "./canonical-json.ts";
 import type { DiagnosticsManager } from "./diagnostics.ts";
 import { withCrossRuntimeWriteLock } from "./cross-runtime-lock.ts";
@@ -13,6 +15,7 @@ import {
   LOCAL_LIBRARY_PROVIDER_ID,
   assertExactTemplateSelector,
   assertFigureYaExactSelector,
+  assertModuleArchiveExactSelector,
 } from "./providers.ts";
 import type { ExactTemplateSelector } from "./types.ts";
 import {
@@ -580,6 +583,12 @@ function validateReceiptValue(
     ) {
       throw new Error("FigureYa receipt archive digest does not match its resolved selector");
     }
+  } else if (value.plannedSelector.kind === "module-archive.v1") {
+    assertModuleArchiveExactSelector(value.plannedSelector);
+    assertModuleArchiveExactSelector(value.exactSelector);
+    if (value.archiveSha256 !== value.exactSelector.identity.archive.digest) {
+      throw new Error("personal module receipt archive digest does not match its exact selector");
+    }
   } else {
     assertPublicTemplateSelector(value.plannedSelector);
     assertPublicTemplateSelector(value.exactSelector);
@@ -748,6 +757,18 @@ async function inspectTargetBinding(input: {
       }
       lockOperationId = lock.operation.operationId;
       lockPlanDigest = lock.operation.planDigest;
+    } else if (lock.schema === "figure-library.module-template-lock.v1") {
+      const moduleLock = parseModuleTemplateLock(lock);
+      if (!moduleLock.operation) throw new Error("personal module operation binding is missing");
+      exactSelector = moduleLock.exactSelector;
+      plannedSelector = moduleLock.plannedSelector;
+      registry.get(input.providerId).assertSelector(exactSelector, "replay");
+      registry.get(input.providerId).assertSelector(plannedSelector, "replay");
+      if (exactSelector.providerId !== input.providerId || plannedSelector.providerId !== input.providerId) {
+        throw new Error("personal module lock provider differs from its target binding");
+      }
+      lockOperationId = moduleLock.operation.operationId;
+      lockPlanDigest = moduleLock.operation.planDigest;
     } else if (lock.schema === PUBLIC_TEMPLATE_LOCK_SCHEMA) {
       if (!isRecord(lock.operation)) throw new Error("public Provider operation binding is missing");
       exactSelector = lock.exactSelector as ExactTemplateSelector;
@@ -799,8 +820,11 @@ async function validateCurrentSelection(input: {
   operationId: string;
   planDigest: string;
   inventory: MaterializedFileInventoryEntry[];
+  moduleCatalogs?: ReadonlyMap<string, ModuleCatalogIndex>;
 }) {
-  const providerContext = createProviderContext(input.context, input.index);
+  const providerContext = createProviderContext(input.context, input.index, {
+    ...(input.moduleCatalogs ? { moduleCatalogs: input.moduleCatalogs } : {}),
+  });
   await input.registry.get(input.providerId).verifyMaterialized(providerContext, {
     plannedSelector: input.plannedSelector,
     exactSelector: input.exactSelector,
@@ -820,6 +844,7 @@ async function verifyReceiptAndTarget(input: {
   expectedProviderId: string;
   operationId: string;
   planDigest: string;
+  moduleCatalogs?: ReadonlyMap<string, ModuleCatalogIndex>;
 }) {
   const { receipt } = input;
   if (
@@ -858,6 +883,7 @@ async function verifyReceiptAndTarget(input: {
     operationId: input.operationId,
     planDigest: input.planDigest,
     inventory: binding.inventory,
+    moduleCatalogs: input.moduleCatalogs,
   });
   return {
     operationId: input.operationId,
@@ -881,6 +907,7 @@ async function durableReplay(input: {
   operationId: string;
   planDigest: string;
   cachedPlan?: MaterializationPlan;
+  moduleCatalogs?: ReadonlyMap<string, ModuleCatalogIndex>;
 }): Promise<MaterializationResult | undefined> {
   const marker = await requireLibraryAuthority(input.context);
   const actualLibraryContext = currentOperationContext(input.context, marker.libraryId);
@@ -986,6 +1013,7 @@ async function durableReplay(input: {
         planDigest: input.planDigest,
         registry: input.registry,
         inventory: binding.inventory,
+        moduleCatalogs: input.moduleCatalogs,
       });
       let archiveSha256: string | undefined;
       if (input.expectedProviderId === FIGUREYA_PROVIDER_ID) {
@@ -993,6 +1021,9 @@ async function durableReplay(input: {
         if (binding.exactSelector.identity.archive.algorithm === "sha256") {
           archiveSha256 = binding.exactSelector.identity.archive.digest;
         }
+      } else if (binding.exactSelector.kind === "module-archive.v1") {
+        assertModuleArchiveExactSelector(binding.exactSelector);
+        archiveSha256 = binding.exactSelector.identity.archive.digest;
       } else if (input.expectedProviderId !== LOCAL_LIBRARY_PROVIDER_ID) {
         assertPublicTemplateSelector(binding.exactSelector);
         archiveSha256 = binding.exactSelector.identity.archive.sha256;
@@ -1076,6 +1107,7 @@ async function persistAuthoritativeReceipt(input: {
   result: MaterializationResult;
   operationId: string;
   registry: ProviderRegistry;
+  moduleCatalogs?: ReadonlyMap<string, ModuleCatalogIndex>;
 }) {
   const marker = await requireLibraryAuthority(input.context);
   return withCrossRuntimeWriteLock(
@@ -1123,6 +1155,7 @@ async function persistAuthoritativeReceipt(input: {
           operationId: input.operationId,
           planDigest: input.plan.planDigest,
           registry: input.registry,
+          moduleCatalogs: input.moduleCatalogs,
         });
         return prior;
       }
@@ -1153,6 +1186,7 @@ async function persistAuthoritativeReceipt(input: {
         operationId: input.operationId,
         planDigest: input.plan.planDigest,
         inventory: binding.inventory,
+        moduleCatalogs: input.moduleCatalogs,
       });
       return writeAuthoritativeReceipt({
         context: input.context,
@@ -1195,6 +1229,7 @@ export function registerMaterializationTools(options: {
   currentLibraries: () => Promise<CurrentLibraryContext>;
   previewConfirmations: PreviewConfirmationStore;
   diagnostics?: DiagnosticsManager;
+  moduleCatalogs?: ReadonlyMap<string, ModuleCatalogIndex>;
   faultInjector?: (
     point: MaterializationFaultPoint,
     operation: { operationId: string; planDigest: string; providerId: string },
@@ -1207,6 +1242,7 @@ export function registerMaterializationTools(options: {
     previewConfirmations,
     diagnostics,
     faultInjector,
+    moduleCatalogs,
   } = options;
   const registry = options.registry ?? createDefaultProviderRegistry();
   const plans = new Map<string, CachedPlan>();
@@ -1279,7 +1315,9 @@ export function registerMaterializationTools(options: {
         const exactSelector = input.exactSelector as unknown as ExactTemplateSelector;
         assertExactTemplateSelector(exactSelector);
         const context = await currentLibraries();
-        const providerContext = createProviderContext(context, index);
+        const providerContext = createProviderContext(context, index, {
+          ...(moduleCatalogs ? { moduleCatalogs } : {}),
+        });
         const adapter = registry.get(input.providerId);
         const resolved = await adapter.resolve(providerContext, exactSelector, "materialize");
         const templateId = resolved.templateId;
@@ -1300,6 +1338,7 @@ export function registerMaterializationTools(options: {
           providerId: input.providerId,
           exactSelector,
           registry,
+          moduleCatalogs,
         });
         const confirmedPreview = previewConfirmations.requireReceipt({
           previewReceipt: input.previewReceipt,
@@ -1429,6 +1468,7 @@ export function registerMaterializationTools(options: {
           operationId: input.operationId,
           planDigest: input.planDigest,
           registry,
+          moduleCatalogs,
           ...(cached ? { cachedPlan: cached.plan } : {}),
         });
         if (replay) {
@@ -1477,6 +1517,7 @@ export function registerMaterializationTools(options: {
           throw new Error(`target already exists after intent creation: ${plan.target}`);
         }
         const providerContext = createProviderContext(context, index, {
+          ...(moduleCatalogs ? { moduleCatalogs } : {}),
           materialization: {
             operationId: input.operationId,
             planDigest: plan.planDigest,
@@ -1518,6 +1559,7 @@ export function registerMaterializationTools(options: {
           result,
           operationId: input.operationId,
           registry,
+          moduleCatalogs,
         });
         result = {
           ...result,

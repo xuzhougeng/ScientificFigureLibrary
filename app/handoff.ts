@@ -15,6 +15,12 @@ export function buildHeadlessReviewHandoff(options: {
       providerId: candidate.providerId,
       templateId: candidate.templateId,
       exactSelector: candidate.exactSelector,
+      ...(candidate.materializationSelectors
+        ? { materializationSelectors: candidate.materializationSelectors }
+        : {}),
+      ...(candidate.materializationModes
+        ? { materializationModes: candidate.materializationModes }
+        : {}),
       title: candidate.title,
       ...(candidate.previewSha256
         ? { candidateThumbnailSha256: candidate.previewSha256 }
@@ -57,6 +63,12 @@ export function compactPlotCandidate(candidate: Candidate) {
     providerId: candidate.providerId,
     templateId: candidate.templateId,
     exactSelector: candidate.exactSelector,
+    ...(candidate.materializationSelectors
+      ? { materializationSelectors: candidate.materializationSelectors }
+      : {}),
+    ...(candidate.materializationModes
+      ? { materializationModes: candidate.materializationModes }
+      : {}),
     title: candidate.title,
     ...(candidate.scientificQuestion ? { scientificQuestion: candidate.scientificQuestion } : {}),
     ...(candidate.previewSha256 ? { candidateThumbnailSha256: candidate.previewSha256 } : {}),

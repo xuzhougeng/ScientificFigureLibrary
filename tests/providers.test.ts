@@ -3,6 +3,7 @@ import test from "node:test";
 import {
   FIGUREYA_PROVIDER_ID,
   LOCAL_LIBRARY_PROVIDER_ID,
+  PERSONAL_MODULE_PROVIDER_ID,
   assertExactTemplateSelector,
   assertFigureYaSelectorMatches,
   assertFigureYaSourceSelectorMatches,
@@ -11,9 +12,11 @@ import {
   figureYaCandidateSelector,
   figureYaExactSelector,
   localPublishedExactSelector,
+  moduleArchiveExactSelector,
+  assertModuleArchiveSelectorMatches,
   normalizeProviderId,
 } from "../src/providers.ts";
-import type { FigureYaCatalog, FigureYaModule } from "../src/types.ts";
+import type { FigureYaCatalog, FigureYaModule, ModuleCatalogEntry } from "../src/types.ts";
 
 const module: FigureYaModule = {
   moduleId: "FigureYaProviderTest",
@@ -127,4 +130,82 @@ test("legacy sourceId is normalized only at an input compatibility boundary", ()
     "org.example.future-provider",
   );
   assert.throws(() => normalizeProviderId({ sourceId: "future" }), /providerId is required/u);
+});
+
+test("personal module selectors bind source, archive, Catalog, preview, and mode", () => {
+  const entry: ModuleCatalogEntry = {
+    moduleId: "personal-selector-fixture",
+    title: "个人选择器测试",
+    titleEn: "Personal selector fixture",
+    description: "Selector identity fixture.",
+    application: "Test",
+    dataProfile: "Synthetic CSV",
+    plotFamily: "scatter",
+    language: "R",
+    tags: ["fixture"],
+    packages: ["ggplot2"],
+    codeFiles: ["code/plot.R"],
+    inputFiles: ["data/input.csv"],
+    canonicalCode: "code/plot.R",
+    requiredFiles: ["code/plot.R", "data/input.csv"],
+    files: [
+      { path: "code/plot.R", bytes: 10, sha256: "1".repeat(64) },
+      { path: "data/input.csv", bytes: 8, sha256: "2".repeat(64) },
+    ],
+    source: {
+      repository: "jarxunlai/ScientificFigureLibrary-personal",
+      commit: "3".repeat(40),
+      path: "modules/personal-selector-fixture",
+    },
+    archive: {
+      repository: "jarxunlai/ScientificFigureLibrary-personal",
+      commit: "4".repeat(40),
+      path: "archives/personal-selector-fixture.zip",
+      bytes: 100,
+      sha256: "5".repeat(64),
+    },
+    preview: {
+      path: "previews/personal-selector-fixture/preview.png",
+      bytes: 80,
+      sha256: "6".repeat(64),
+      mediaType: "image/png",
+    },
+    thumbnail: {
+      path: "thumbs/personal-selector-fixture.png",
+      bytes: 40,
+      sha256: "7".repeat(64),
+      mediaType: "image/png",
+    },
+    licenses: { code: "MIT", content: "CC BY 4.0", documentation: "CC BY 4.0" },
+    publisher: {
+      reviewStatus: "approved",
+      executionStatus: "passed",
+      executionScope: "synthetic_data",
+    },
+  };
+  const selector = moduleArchiveExactSelector(
+    PERSONAL_MODULE_PROVIDER_ID,
+    entry,
+    "8".repeat(64),
+    "template",
+  );
+  assert.equal(selector.kind, "module-archive.v1");
+  assert.equal(selector.identity.archive.commit, entry.archive.commit);
+  assert.equal(selector.identity.preview.digest, entry.preview.sha256);
+  assertModuleArchiveSelectorMatches(
+    selector,
+    PERSONAL_MODULE_PROVIDER_ID,
+    entry,
+    "8".repeat(64),
+  );
+  assert.throws(
+    () =>
+      assertModuleArchiveSelectorMatches(
+        { ...selector, identity: { ...selector.identity, mode: "full" } },
+        PERSONAL_MODULE_PROVIDER_ID,
+        entry,
+        "9".repeat(64),
+      ),
+    /stale module selector/u,
+  );
 });

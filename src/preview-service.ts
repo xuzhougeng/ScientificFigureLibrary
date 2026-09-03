@@ -8,6 +8,7 @@ import {
   type LoadedProviderPreview,
   type ProviderRegistry,
 } from "./provider-registry.ts";
+import type { ModuleCatalogIndex } from "./module-catalog.ts";
 import { assertExactTemplateSelector } from "./providers.ts";
 import type { ExactTemplateSelector } from "./types.ts";
 
@@ -20,8 +21,12 @@ export async function searchCatalogRevision(
   index: CatalogIndex,
   providerIds: string[],
   registry: ProviderRegistry = createDefaultProviderRegistry(),
+  moduleCatalogs?: ReadonlyMap<string, ModuleCatalogIndex>,
 ) {
-  return registry.catalogRevision(providerIds, createProviderContext(context, index));
+  return registry.catalogRevision(
+    providerIds,
+    createProviderContext(context, index, moduleCatalogs ? { moduleCatalogs } : {}),
+  );
 }
 
 export async function loadProviderPreview(options: {
@@ -30,6 +35,8 @@ export async function loadProviderPreview(options: {
   providerId: string;
   exactSelector: ExactTemplateSelector;
   registry?: ProviderRegistry;
+  moduleCatalogs?: ReadonlyMap<string, ModuleCatalogIndex>;
+  purpose?: "primary" | "search";
 }): Promise<LoadedProviderPreview> {
   const { context, index, providerId, exactSelector } = options;
   const registry = options.registry ?? createDefaultProviderRegistry();
@@ -38,8 +45,15 @@ export async function loadProviderPreview(options: {
     throw new Error("providerId does not match exactSelector.providerId");
   }
 
-  const providerContext = createProviderContext(context, index);
+  const providerContext = createProviderContext(
+    context,
+    index,
+    options.moduleCatalogs ? { moduleCatalogs: options.moduleCatalogs } : {},
+  );
   const adapter = registry.get(providerId);
   const resolved = await adapter.resolve(providerContext, exactSelector, "preview");
+  if (options.purpose === "search" && adapter.loadSearchPreview) {
+    return adapter.loadSearchPreview(providerContext, resolved);
+  }
   return adapter.loadPreview(providerContext, resolved);
 }

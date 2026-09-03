@@ -77,6 +77,31 @@ test("FigureYa source retrieves common plot families", async () => {
   }
 });
 
+test("bundled FigureYa compatibility inventory remains 319 modules, 316 previews, and 318 archives", async () => {
+  const index = await CatalogIndex.load();
+  assert.equal(index.catalog.modules.length, 319);
+  assert.equal(
+    index.catalog.modules.filter((module) => module.archiveAvailable).length,
+    318,
+  );
+  assert.equal(
+    index.catalog.modules.filter(
+      (module) =>
+        Boolean(module.previewSha256) &&
+        Boolean(module.previewBytes) &&
+        Boolean(module.previewMediaType),
+    ).length,
+    316,
+  );
+  const previewManifest = JSON.parse(
+    await fs.readFile(
+      path.resolve(import.meta.dirname, "..", "assets", "figureya-preview.manifest.json"),
+      "utf8",
+    ),
+  ) as { previews?: unknown[] };
+  assert.equal(previewManifest.previews?.length, 316);
+});
+
 test("Chinese and English bar-chart searches return the complete stable ranked set", async () => {
   const index = await CatalogIndex.load();
   for (const query of ["柱状图", "bar chart"]) {

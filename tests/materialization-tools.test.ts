@@ -17,6 +17,15 @@ import {
 import { registerMaterializationTools } from "../src/materialization-tools.ts";
 import { PreviewConfirmationStore } from "../src/preview-confirmation.ts";
 import {
+  DefaultProviderRegistry,
+  LocalPublishedProviderAdapter,
+  ModuleCatalogProviderAdapter,
+  type ProviderRegistry,
+} from "../src/provider-registry.ts";
+import { ModuleCatalogIndex } from "../src/module-catalog.ts";
+import { ProviderSourceManager, type ProviderSourcePaths } from "../src/provider-sources.ts";
+import { createServer } from "../src/server.ts";
+import {
   libraryBindingDigest,
   loadProviderPreview,
   searchCatalogRevision,
@@ -24,11 +33,19 @@ import {
 import {
   FIGUREYA_PROVIDER_ID,
   LOCAL_LIBRARY_PROVIDER_ID,
+  PERSONAL_MODULE_PROVIDER_ID,
   exactSelectorDigest,
   figureYaExactSelector,
   localPublishedExactSelector,
+  moduleArchiveExactSelector,
 } from "../src/providers.ts";
-import type { ExactTemplateSelector, FigureYaCatalog, FigureYaModule } from "../src/types.ts";
+import type {
+  ExactTemplateSelector,
+  FigureYaCatalog,
+  FigureYaModule,
+  ModuleCatalog,
+  ModuleCatalogEntry,
+} from "../src/types.ts";
 import {
   VersionedTemplateLibrary,
   type VersionedTemplateCandidate,
@@ -129,6 +146,8 @@ async function startClient(
   context: CurrentLibraryContext | (() => Promise<CurrentLibraryContext>),
   index: CatalogIndex,
   options: {
+    registry?: ProviderRegistry;
+    moduleCatalogs?: ReadonlyMap<string, ModuleCatalogIndex>;
     faultInjector?: (
       point: "after_public_intent" | "before_public_receipt",
       operation: { operationId: string; planDigest: string; providerId: string },
@@ -144,13 +163,23 @@ async function startClient(
     index,
     currentLibraries,
     previewConfirmations,
+    ...(options.registry ? { registry: options.registry } : {}),
+    ...(options.moduleCatalogs ? { moduleCatalogs: options.moduleCatalogs } : {}),
     ...(options.faultInjector ? { faultInjector: options.faultInjector } : {}),
   });
   const client = new Client({ name: "materialization-tools-test", version: "0.5.1" });
   const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
   await server.connect(serverTransport);
   await client.connect(clientTransport);
-  return { client, server, currentLibraries, index, previewConfirmations };
+  return {
+    client,
+    server,
+    currentLibraries,
+    index,
+    previewConfirmations,
+    registry: options.registry,
+    moduleCatalogs: options.moduleCatalogs,
+  };
 }
 
 async function confirmedReceipt(
@@ -160,7 +189,14 @@ async function confirmedReceipt(
 ) {
   const context = await connection.currentLibraries();
   const providerIds = [providerId];
-  const catalogRevision = await searchCatalogRevision(context, connection.index, providerIds);
+  const registry = connection.registry ?? undefined;
+  const catalogRevision = await searchCatalogRevision(
+    context,
+    connection.index,
+    providerIds,
+    registry,
+    connection.moduleCatalogs,
+  );
   const bindingDigest = libraryBindingDigest(context);
   const resultSetId = connection.previewConfirmations.registerResultSet({
     queryDigest: "materialization-test-result-set",
@@ -174,6 +210,8 @@ async function confirmedReceipt(
     index: connection.index,
     providerId,
     exactSelector,
+    registry,
+    moduleCatalogs: connection.moduleCatalogs,
   });
   const previewChallenge = connection.previewConfirmations.issueChallenge({
     resultSetId,
@@ -298,6 +336,168 @@ async function figureYaFixture(root: string) {
     exactSelector: figureYaExactSelector(catalog, module, "template"),
     index: await CatalogIndex.load(assets),
   };
+}
+
+async function personalModuleFixture(root: string) {
+  const moduleId = "PersonalMaterializationReceiptFixture".toLocaleLowerCase("en-US");
+  const moduleFiles: Record<string, Uint8Array> = {
+    "README.md": strToU8("# Personal module fixture\n"),
+    "code/example.R": strToU8("plot(1:3)\n"),
+    "data/input.csv": strToU8("x,y\n1,2\n"),
+    "description.md": strToU8("A clean personal module fixture.\n"),
+    "module.yml": strToU8("schema: figure-library.personal-module.v1\n"),
+    "preview.png": ONE_PIXEL_PNG,
+    "thumbnail.png": ONE_PIXEL_PNG,
+  };
+  const archiveBytes = zipSync(moduleFiles, {
+    level: 6,
+    mtime: new Date("2000-01-01T00:00:00.000Z"),
+  });
+  const archiveSha256 = createHash("sha256").update(archiveBytes).digest("hex");
+  const canonicalSort = (left: string, right: string) =>
+    left < right ? -1 : left > right ? 1 : 0;
+  const fileInventory = Object.entries(moduleFiles)
+    .sort(([left], [right]) => canonicalSort(left, right))
+    .map(([file, bytes]) => ({
+      path: file,
+      bytes: bytes.byteLength,
+      sha256: createHash("sha256").update(bytes).digest("hex"),
+    }));
+  const sourceCommit = "a".repeat(40);
+  const archiveCommit = "b".repeat(40);
+  const repository = "jarxunlai/ScientificFigureLibrary-personal";
+  const module: ModuleCatalogEntry = {
+    moduleId,
+    title: "个人模块回执测试",
+    titleEn: "Personal materialization receipt fixture",
+    description: "A clean personal module fixture.",
+    application: "Materialization replay tests.",
+    dataProfile: "Synthetic CSV.",
+    plotFamily: "scatter",
+    language: "R",
+    tags: ["fixture", "personal"],
+    packages: ["ggplot2"],
+    codeFiles: ["code/example.R"],
+    inputFiles: ["data/input.csv"],
+    canonicalCode: "code/example.R",
+    requiredFiles: [
+      "README.md",
+      "code/example.R",
+      "data/input.csv",
+      "description.md",
+      "module.yml",
+      "preview.png",
+    ].sort(canonicalSort),
+    files: fileInventory,
+    source: { repository, commit: sourceCommit, path: `modules/${moduleId}` },
+    archive: {
+      repository,
+      commit: archiveCommit,
+      path: `archives/${moduleId}.zip`,
+      bytes: archiveBytes.byteLength,
+      sha256: archiveSha256,
+    },
+    preview: {
+      path: `previews/${moduleId}/preview.png`,
+      bytes: ONE_PIXEL_PNG.byteLength,
+      sha256: createHash("sha256").update(ONE_PIXEL_PNG).digest("hex"),
+      mediaType: "image/png",
+    },
+    thumbnail: {
+      path: `thumbs/${moduleId}.png`,
+      bytes: ONE_PIXEL_PNG.byteLength,
+      sha256: createHash("sha256").update(ONE_PIXEL_PNG).digest("hex"),
+      mediaType: "image/png",
+    },
+    licenses: { code: "MIT", content: "CC BY 4.0", documentation: "CC BY 4.0" },
+    publisher: {
+      reviewStatus: "approved",
+      executionStatus: "passed",
+      executionScope: "synthetic_data",
+    },
+  };
+  const catalog: ModuleCatalog = {
+    schema: "figure-library.module-catalog.v1",
+    generatedAt: "2000-01-01T00:00:00.000Z",
+    provider: {
+      providerId: PERSONAL_MODULE_PROVIDER_ID,
+      displayName: "Open Figure Modules",
+      repository,
+    },
+    modules: [module],
+  };
+  const assets = path.join(root, "personal-module-assets");
+  await fs.mkdir(path.join(assets, "previews", moduleId), { recursive: true });
+  await fs.mkdir(path.join(assets, "thumbs"), { recursive: true });
+  await fs.writeFile(path.join(assets, "module-catalog.json"), `${JSON.stringify(catalog)}\n`);
+  await fs.writeFile(
+    path.join(assets, "module-preview.manifest.json"),
+    `${JSON.stringify({
+      schema: "figure-library.module-preview-manifest.v1",
+      providerId: PERSONAL_MODULE_PROVIDER_ID,
+      entries: [
+        { moduleId, role: "primary", ...module.preview },
+        { moduleId, role: "thumbnail", ...module.thumbnail },
+      ],
+    })}\n`,
+  );
+  const sourcePackEntry = {
+    moduleId,
+    sourceRepository: repository,
+    sourceCommit,
+    archiveRepository: repository,
+    archiveCommit,
+    file: module.archive.path,
+    bytes: module.archive.bytes,
+    sha256: module.archive.sha256,
+  };
+  await fs.writeFile(
+    path.join(assets, "module-source-pack.manifest.json"),
+    `${JSON.stringify({
+      schema: "figure-library.module-source-pack.v1",
+      providerId: PERSONAL_MODULE_PROVIDER_ID,
+      repository,
+      entries: [sourcePackEntry],
+    })}\n`,
+  );
+  await fs.writeFile(path.join(assets, "PERSONAL_MODULES_LICENSE.txt"), "Personal module fixture\n");
+  await fs.writeFile(path.join(assets, ...module.preview.path.split("/")), ONE_PIXEL_PNG);
+  await fs.writeFile(path.join(assets, ...module.thumbnail.path.split("/")), ONE_PIXEL_PNG);
+
+  const sourcePack = path.join(root, "personal-module-source-pack");
+  await fs.mkdir(path.join(sourcePack, "archives"), { recursive: true });
+  await fs.writeFile(path.join(sourcePack, ...module.archive.path.split("/")), archiveBytes);
+  await fs.writeFile(
+    path.join(sourcePack, "module-source-pack.manifest.json"),
+    `${JSON.stringify({
+      schema: "figure-library.module-source-pack.v1",
+      providerId: PERSONAL_MODULE_PROVIDER_ID,
+      repository,
+      entries: [sourcePackEntry],
+    })}\n`,
+  );
+  const index = await ModuleCatalogIndex.load(assets, {
+    expectedProviderId: PERSONAL_MODULE_PROVIDER_ID,
+    expectedRepository: repository,
+    validatePreviews: true,
+  });
+  const exactSelector = moduleArchiveExactSelector(
+    PERSONAL_MODULE_PROVIDER_ID,
+    module,
+    index.catalogSha256,
+    "template",
+  );
+  return { assets, sourcePack, index, module, catalog, exactSelector, archiveSha256 };
+}
+
+async function isolatedProviderManager(root: string) {
+  const configRoot = path.join(root, "provider-config");
+  const paths: ProviderSourcePaths = {
+    configRoot,
+    registryFile: path.join(configRoot, "provider-sources.json"),
+    dataRoot: path.join(root, "provider-data"),
+  };
+  return new ProviderSourceManager({ paths });
 }
 
 test("Local Published materialization plans, applies, and durably replays after restart", async () => {
@@ -887,6 +1087,377 @@ test("FigureYa replay requires an authoritative receipt and a selector matching 
       await corruptedReceipt.server.close();
     }
   } finally {
+    await fs.rm(root, { recursive: true, force: true });
+  }
+});
+
+test("Personal module materialization writes an authoritative receipt and rejects stale or tampered replay", async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "sfl-materialization-personal-receipt-"));
+  const priorLibraryDirectory = process.env.FIGURE_LIBRARY_DIR;
+  try {
+    const libraryRoot = path.join(root, "library");
+    await ensureLibraryRootMarker(libraryRoot);
+    process.env.FIGURE_LIBRARY_DIR = libraryRoot;
+    const fixture = await personalModuleFixture(root);
+    const destination = path.join(root, "materialized");
+    const operationId = "materialize-personal-authoritative";
+
+    let applyArguments: Record<string, unknown>;
+    const firstServer = await createServer({
+      personalModuleRoot: fixture.assets,
+      providerSourceManager: await isolatedProviderManager(path.join(root, "runtime-first")),
+    });
+    const firstClient = new Client({ name: "personal-materialization-test", version: "0.6.1" });
+    const [firstClientTransport, firstServerTransport] = InMemoryTransport.createLinkedPair();
+    await firstServer.connect(firstServerTransport);
+    await firstClient.connect(firstClientTransport);
+    try {
+      const defaultSearch = await firstClient.callTool({
+        name: "figure_library_search",
+        arguments: { query: "personal materialization receipt fixture" },
+      });
+      const defaultStructured = record(defaultSearch.structuredContent);
+      assert.equal(
+        (defaultStructured.candidates as Array<Record<string, unknown>>).some(
+          (item) => item.providerId === "io.github.jarxunlai.scientific-figure-community",
+        ),
+        false,
+      );
+      assert.deepEqual(
+        (defaultStructured.sources as Array<Record<string, unknown>>).map((item) => item.providerId),
+        [
+          "org.scientificfigurelibrary.local",
+          "io.github.jarxunlai.scientific-figure-community",
+          "org.figureya.module",
+          PERSONAL_MODULE_PROVIDER_ID,
+        ],
+      );
+
+      const searched = await firstClient.callTool({
+        name: "figure_library_search",
+        arguments: {
+          query: "personal materialization receipt fixture",
+          providerIds: [PERSONAL_MODULE_PROVIDER_ID],
+        },
+      });
+      const searchStructured = record(searched.structuredContent);
+      const [candidate] = searchStructured.candidates as Array<Record<string, unknown>>;
+      assert.ok(candidate);
+      assert.equal(candidate.providerId, PERSONAL_MODULE_PROVIDER_ID);
+      assert.equal(record(candidate.exactSelector).kind, "module-archive.v1");
+      assert.equal(candidate.searchPreviewAvailable, true);
+      assert.equal(candidate.searchPreviewStatus, "ready");
+      const searchMeta = record(record(searched)._meta);
+      const searchPreviews = record(searchMeta.candidatePreviews);
+      const thumbnail = record(searchPreviews[String(candidate.candidateId)]);
+      assert.equal(thumbnail.previewSha256, fixture.module.thumbnail.sha256);
+
+      const described = await firstClient.callTool({
+        name: "figure_library_describe",
+        arguments: {
+          providerId: PERSONAL_MODULE_PROVIDER_ID,
+          exactSelector: candidate.exactSelector,
+        },
+      });
+      const describedStructured = record(described.structuredContent);
+      assert.equal(describedStructured.publisherReviewStatus, "approved");
+      assert.equal(describedStructured.publisherExecutionStatus, "passed");
+      assert.equal(describedStructured.localReviewStatus, "not_reviewed");
+      assert.equal(describedStructured.executionStatus, "not_run");
+      assert.equal(describedStructured.codeExecutedBySflClient, false);
+
+      const materializationSelectors = record(candidate.materializationSelectors);
+      const fullSelector = materializationSelectors.full as Record<string, unknown>;
+      assert.equal(record(fullSelector).kind, "module-archive.v1");
+      assert.equal(record(fullSelector).identity && record(record(fullSelector).identity).mode, "full");
+      const fullPreview = await firstClient.callTool({
+        name: "figure_library_preview_exact_headless",
+        arguments: {
+          resultSetId: searchStructured.resultSetId,
+          providerId: PERSONAL_MODULE_PROVIDER_ID,
+          exactSelector: fullSelector,
+        },
+      });
+      const fullPreviewStructured = record(fullPreview.structuredContent);
+      const fullConfirmed = await firstClient.callTool({
+        name: "figure_library_confirm_selection_headless",
+        arguments: { previewChallenge: fullPreviewStructured.previewChallenge },
+      });
+      const fullConfirmedStructured = record(fullConfirmed.structuredContent);
+      const fullPlanned = await firstClient.callTool({
+        name: "figure_library_plan_materialize",
+        arguments: {
+          providerId: PERSONAL_MODULE_PROVIDER_ID,
+          exactSelector: fullSelector,
+          previewReceipt: fullConfirmedStructured.previewReceipt,
+          destination: path.join(root, "full-materialized"),
+          sourcePackDir: fixture.sourcePack,
+          allowNetwork: false,
+        },
+      });
+      const fullPlan = record(record(fullPlanned.structuredContent).plan);
+      const fullApplied = await firstClient.callTool({
+        name: "figure_library_apply_materialize",
+        arguments: {
+          planDigest: fullPlan.planDigest,
+          operationId: "materialize-personal-full",
+          expectedProviderId: PERSONAL_MODULE_PROVIDER_ID,
+          expectedTarget: fullPlan.target,
+        },
+      });
+      assert.equal(record(record(fullApplied.structuredContent).envelope).outcome, "applied");
+      assert.equal(
+        record(JSON.parse(await fs.readFile(path.join(String(fullPlan.target), "template.lock.json"), "utf8"))).mode,
+        "full",
+      );
+
+      const explicitCommunity = await firstClient.callTool({
+        name: "figure_library_search",
+        arguments: {
+          query: "personal materialization receipt fixture",
+          providerIds: ["io.github.jarxunlai.scientific-figure-community"],
+        },
+      });
+      const communityStructured = record(explicitCommunity.structuredContent);
+      assert.equal(record(communityStructured.envelope).outcome, "ok");
+      assert.equal(communityStructured.total, 0);
+
+      const exactPreview = await firstClient.callTool({
+        name: "figure_library_preview_exact_headless",
+        arguments: {
+          resultSetId: searchStructured.resultSetId,
+          providerId: PERSONAL_MODULE_PROVIDER_ID,
+          exactSelector: candidate.exactSelector,
+        },
+      });
+      const previewStructured = record(exactPreview.structuredContent);
+      assert.equal(previewStructured.previewSha256, fixture.module.preview.sha256);
+      const confirmed = await firstClient.callTool({
+        name: "figure_library_confirm_selection_headless",
+        arguments: { previewChallenge: previewStructured.previewChallenge },
+      });
+      const confirmedStructured = record(confirmed.structuredContent);
+      const planned = await firstClient.callTool({
+        name: "figure_library_plan_materialize",
+        arguments: {
+          providerId: PERSONAL_MODULE_PROVIDER_ID,
+          exactSelector: candidate.exactSelector,
+          previewReceipt: confirmedStructured.previewReceipt,
+          destination,
+          sourcePackDir: fixture.sourcePack,
+          allowNetwork: false,
+        },
+      });
+      const plan = record(record(planned.structuredContent).plan);
+      applyArguments = {
+        planDigest: String(plan.planDigest),
+        operationId,
+        expectedProviderId: PERSONAL_MODULE_PROVIDER_ID,
+        expectedTarget: String(plan.target),
+      };
+      const applied = await firstClient.callTool({
+        name: "figure_library_apply_materialize",
+        arguments: applyArguments,
+      });
+      const appliedStructured = record(applied.structuredContent);
+      assert.equal(record(appliedStructured.envelope).outcome, "applied");
+      const result = record(appliedStructured.result);
+      assert.equal(result.archiveSha256, fixture.archiveSha256);
+      assert.equal(result.materializationSource, "source-pack");
+      const lock = record(JSON.parse(await fs.readFile(
+        path.join(String(plan.target), "template.lock.json"),
+        "utf8",
+      )));
+      assert.equal(lock.schema, "figure-library.module-template-lock.v1");
+      assert.equal(lock.codeExecutedBySflClient, false);
+      assert.deepEqual(lock.plannedSelector, candidate.exactSelector);
+
+      const status = await firstClient.callTool({
+        name: "figure_library_source_status",
+        arguments: {},
+      });
+      const statusProviders = record(record(status.structuredContent).providers);
+      const personalStatus = record(statusProviders.personalModules);
+      assert.equal(personalStatus.moduleCount, 1);
+      assert.equal(personalStatus.previewAvailableCount, 1);
+      assert.equal(personalStatus.thumbnailAvailableCount, 1);
+      assert.equal(personalStatus.archiveAvailableCount, 1);
+      assert.equal(personalStatus.sourcePackConfigured, false);
+      const communityStatus = record(statusProviders.community);
+      assert.equal(communityStatus.includeInDefaultSearch, false);
+      assert.equal(communityStatus.frozen, true);
+
+      const listedSources = await firstClient.callTool({
+        name: "figure_library_list_provider_sources",
+        arguments: {},
+      });
+      const listedResult = record(record(listedSources.structuredContent).result);
+      const listed = listedResult.sources as Array<Record<string, unknown>>;
+      const listedPersonal = listed.find(
+        (item) => item.providerId === PERSONAL_MODULE_PROVIDER_ID,
+      );
+      assert.equal(listedPersonal?.sourceKind, "module-catalog");
+      assert.equal(listedPersonal?.includeInDefaultSearch, true);
+      assert.equal(listedPersonal?.bundled, true);
+      assert.equal(listedPersonal?.health, "ready");
+      const listedCommunity = listed.find(
+        (item) => item.providerId === "io.github.jarxunlai.scientific-figure-community",
+      );
+      assert.equal(listedCommunity?.includeInDefaultSearch, false);
+      assert.equal(listedCommunity?.frozen, true);
+      assert.equal(record(listedCommunity?.details).frozen, true);
+    } finally {
+      await firstClient.close();
+      await firstServer.close();
+    }
+
+    const thumbnailOnlyAssets = path.join(root, "personal-module-thumbnail-only");
+    await fs.cp(fixture.assets, thumbnailOnlyAssets, { recursive: true });
+    await fs.writeFile(
+      path.join(thumbnailOnlyAssets, ...fixture.module.preview.path.split("/")),
+      Buffer.from("not a valid preview"),
+    );
+    const thumbnailOnlyServer = await createServer({
+      personalModuleRoot: thumbnailOnlyAssets,
+      providerSourceManager: await isolatedProviderManager(path.join(root, "runtime-thumbnail-only")),
+    });
+    const thumbnailOnlyClient = new Client({ name: "personal-thumbnail-only-test", version: "0.6.1" });
+    const [thumbnailOnlyClientTransport, thumbnailOnlyServerTransport] = InMemoryTransport.createLinkedPair();
+    await thumbnailOnlyServer.connect(thumbnailOnlyServerTransport);
+    await thumbnailOnlyClient.connect(thumbnailOnlyClientTransport);
+    try {
+      const thumbnailOnlySearch = await thumbnailOnlyClient.callTool({
+        name: "figure_library_search",
+        arguments: {
+          query: "personal materialization receipt fixture",
+          providerIds: [PERSONAL_MODULE_PROVIDER_ID],
+        },
+      });
+      const thumbnailOnlyStructured = record(thumbnailOnlySearch.structuredContent);
+      const [thumbnailOnlyCandidate] = thumbnailOnlyStructured.candidates as Array<Record<string, unknown>>;
+      assert.ok(thumbnailOnlyCandidate);
+      assert.equal(thumbnailOnlyCandidate.previewAvailable, false);
+      assert.equal(thumbnailOnlyCandidate.searchPreviewAvailable, true);
+      assert.equal(thumbnailOnlyCandidate.searchPreviewStatus, "ready");
+      const thumbnailOnlyPreviews = record(record(record(thumbnailOnlySearch)._meta).candidatePreviews);
+      assert.equal(
+        record(thumbnailOnlyPreviews[String(thumbnailOnlyCandidate.candidateId)]).previewSha256,
+        fixture.module.thumbnail.sha256,
+      );
+      const exactUnavailable = await thumbnailOnlyClient.callTool({
+        name: "figure_library_preview_exact_headless",
+        arguments: {
+          resultSetId: thumbnailOnlyStructured.resultSetId,
+          providerId: PERSONAL_MODULE_PROVIDER_ID,
+          exactSelector: thumbnailOnlyCandidate.exactSelector,
+        },
+      });
+      assert.equal(
+        record(record(exactUnavailable.structuredContent).envelope).code,
+        "preview_unavailable",
+      );
+    } finally {
+      await thumbnailOnlyClient.close();
+      await thumbnailOnlyServer.close();
+    }
+
+    const receiptFile = path.join(
+      libraryRoot,
+      "store",
+      "operations",
+      "receipts",
+      "public-materializations",
+      PERSONAL_MODULE_PROVIDER_ID,
+      `${operationId}.json`,
+    );
+    const receipt = record(JSON.parse(await fs.readFile(receiptFile, "utf8")));
+    assert.equal(receipt.providerId, PERSONAL_MODULE_PROVIDER_ID);
+    assert.equal(receipt.archiveSha256, fixture.archiveSha256);
+    assert.deepEqual(receipt.plannedSelector, fixture.exactSelector);
+    assert.equal(JSON.stringify(receipt).includes(fixture.sourcePack), false);
+
+    const replayServer = await createServer({
+      personalModuleRoot: fixture.assets,
+      providerSourceManager: await isolatedProviderManager(path.join(root, "runtime-replay")),
+    });
+    const replayClient = new Client({ name: "personal-replay-test", version: "0.6.1" });
+    const [replayClientTransport, replayServerTransport] = InMemoryTransport.createLinkedPair();
+    await replayServer.connect(replayServerTransport);
+    await replayClient.connect(replayClientTransport);
+    try {
+      const replayed = await replayClient.callTool({
+        name: "figure_library_apply_materialize",
+        arguments: applyArguments!,
+      });
+      assert.equal(record(record(replayed.structuredContent).envelope).outcome, "replayed");
+      const result = record(record(replayed.structuredContent).result);
+      assert.equal(result.materializationSource, "authoritative-receipt-replay");
+      assert.equal(result.archiveSha256, fixture.archiveSha256);
+    } finally {
+      await replayClient.close();
+      await replayServer.close();
+    }
+
+    await fs.writeFile(
+      path.join(destination, fixture.module.moduleId, "upstream", "code", "example.R"),
+      "tampered\n",
+    );
+    const tamperedServer = await createServer({
+      personalModuleRoot: fixture.assets,
+      providerSourceManager: await isolatedProviderManager(path.join(root, "runtime-tampered")),
+    });
+    const tamperedClient = new Client({ name: "personal-tamper-test", version: "0.6.1" });
+    const [tamperedClientTransport, tamperedServerTransport] = InMemoryTransport.createLinkedPair();
+    await tamperedServer.connect(tamperedServerTransport);
+    await tamperedClient.connect(tamperedClientTransport);
+    try {
+      const rejected = await tamperedClient.callTool({
+        name: "figure_library_apply_materialize",
+        arguments: applyArguments!,
+      });
+      const envelope = record(record(rejected.structuredContent).envelope);
+      assert.equal(envelope.outcome, "conflict");
+      assert.equal(envelope.code, "materialization_target_conflict");
+    } finally {
+      await tamperedClient.close();
+      await tamperedServer.close();
+    }
+
+    await fs.writeFile(
+      path.join(destination, fixture.module.moduleId, "upstream", "code", "example.R"),
+      "plot(1:3)\n",
+    );
+    const staleCatalog = {
+      ...fixture.catalog,
+      generatedAt: "2000-01-02T00:00:00.000Z",
+    };
+    await fs.writeFile(
+      path.join(fixture.assets, "module-catalog.json"),
+      `${JSON.stringify(staleCatalog)}\n`,
+    );
+    const staleServer = await createServer({
+      personalModuleRoot: fixture.assets,
+      providerSourceManager: await isolatedProviderManager(path.join(root, "runtime-stale")),
+    });
+    const staleClient = new Client({ name: "personal-stale-test", version: "0.6.1" });
+    const [staleClientTransport, staleServerTransport] = InMemoryTransport.createLinkedPair();
+    await staleServer.connect(staleServerTransport);
+    await staleClient.connect(staleClientTransport);
+    try {
+      const rejected = await staleClient.callTool({
+        name: "figure_library_apply_materialize",
+        arguments: applyArguments!,
+      });
+      const envelope = record(record(rejected.structuredContent).envelope);
+      assert.equal(envelope.outcome, "conflict");
+      assert.equal(envelope.nextAction, "create_new_plan");
+    } finally {
+      await staleClient.close();
+      await staleServer.close();
+    }
+  } finally {
+    if (priorLibraryDirectory === undefined) delete process.env.FIGURE_LIBRARY_DIR;
+    else process.env.FIGURE_LIBRARY_DIR = priorLibraryDirectory;
     await fs.rm(root, { recursive: true, force: true });
   }
 });

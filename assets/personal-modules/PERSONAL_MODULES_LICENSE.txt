@@ -1,0 +1,5 @@
+Open Figure Modules metadata and generated previews
+
+Complete module archives are not included in the SFL plugin; they remain in the separately maintained personal module repository and are fetched only by an exact selected identity.
+
+Each module's code, content, and documentation license is recorded in module-catalog.json. Do not infer a module license from the SFL project license.

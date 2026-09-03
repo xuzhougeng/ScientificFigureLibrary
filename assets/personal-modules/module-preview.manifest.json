@@ -1,0 +1,582 @@
+{
+  "entries": [
+    {
+      "bytes": 249128,
+      "mediaType": "image/png",
+      "moduleId": "cancercell-pathway-nes-heatmap",
+      "path": "previews/cancercell-pathway-nes-heatmap/preview.png",
+      "role": "primary",
+      "sha256": "9da6f61b5dfc837a57f62628d03e18fce79424e266c742fa5695cb2448bfb032"
+    },
+    {
+      "bytes": 83448,
+      "mediaType": "image/jpeg",
+      "moduleId": "cancercell-pathway-nes-heatmap",
+      "path": "thumbs/cancercell-pathway-nes-heatmap.jpg",
+      "role": "thumbnail",
+      "sha256": "1bc25fe370a14c117593e1137f9298bbab9ca0b1788645216949be6f2adf4316"
+    },
+    {
+      "bytes": 336592,
+      "mediaType": "image/png",
+      "moduleId": "cell-fig2h-volcano-go-combo",
+      "path": "previews/cell-fig2h-volcano-go-combo/preview.png",
+      "role": "primary",
+      "sha256": "2772588a816ac402d92d1aed8300f21fc8f820a2dd233e58e59ae832701d4198"
+    },
+    {
+      "bytes": 72082,
+      "mediaType": "image/jpeg",
+      "moduleId": "cell-fig2h-volcano-go-combo",
+      "path": "thumbs/cell-fig2h-volcano-go-combo.jpg",
+      "role": "thumbnail",
+      "sha256": "a1392dd9ae35888dfa8fd04e11c583216c66afe0b2828b768d8e1c1d02836e98"
+    },
+    {
+      "bytes": 476095,
+      "mediaType": "image/png",
+      "moduleId": "clustergvis-deg-go-kegg-combo",
+      "path": "previews/clustergvis-deg-go-kegg-combo/preview.png",
+      "role": "primary",
+      "sha256": "b3dd768c464ad8bd21842b4c82ddcdd45d2ce699830b130d892800032afe93da"
+    },
+    {
+      "bytes": 69345,
+      "mediaType": "image/jpeg",
+      "moduleId": "clustergvis-deg-go-kegg-combo",
+      "path": "thumbs/clustergvis-deg-go-kegg-combo.jpg",
+      "role": "thumbnail",
+      "sha256": "3aeb60b4d7c6a0786c6beb5a81e3e09389d6503347c1d7c8c0ed18d5c03c16d5"
+    },
+    {
+      "bytes": 401234,
+      "mediaType": "image/png",
+      "moduleId": "deg-heatmap-go-panel",
+      "path": "previews/deg-heatmap-go-panel/preview.png",
+      "role": "primary",
+      "sha256": "9b280a1d5df272dfa46f7566021ae6653ef46e15b6eab2cca90055d2e983d22d"
+    },
+    {
+      "bytes": 67461,
+      "mediaType": "image/jpeg",
+      "moduleId": "deg-heatmap-go-panel",
+      "path": "thumbs/deg-heatmap-go-panel.jpg",
+      "role": "thumbnail",
+      "sha256": "e1a041931da9c286b836bcd70df29d8799cdf33107cfeea5c27b8ed6432142c4"
+    },
+    {
+      "bytes": 635821,
+      "mediaType": "image/png",
+      "moduleId": "ggsankeyfier-layout-color-combo",
+      "path": "previews/ggsankeyfier-layout-color-combo/preview.png",
+      "role": "primary",
+      "sha256": "71d6af6d1fddf27a0c82b553fbf1de8af015a4def91c6550313bb71c3c81f11a"
+    },
+    {
+      "bytes": 23609,
+      "mediaType": "image/jpeg",
+      "moduleId": "ggsankeyfier-layout-color-combo",
+      "path": "thumbs/ggsankeyfier-layout-color-combo.jpg",
+      "role": "thumbnail",
+      "sha256": "725bc06ab64f887b96b79e207f2a77b5784460146c18611a993668bc4bfc7977"
+    },
+    {
+      "bytes": 1002833,
+      "mediaType": "image/png",
+      "moduleId": "go-enrichment-comet-combined",
+      "path": "previews/go-enrichment-comet-combined/preview.png",
+      "role": "primary",
+      "sha256": "576ee33ff1a02a94506a31ceff5d0cfc7504a6364d8ce03a04ad840ca97d0455"
+    },
+    {
+      "bytes": 55450,
+      "mediaType": "image/jpeg",
+      "moduleId": "go-enrichment-comet-combined",
+      "path": "thumbs/go-enrichment-comet-combined.jpg",
+      "role": "thumbnail",
+      "sha256": "03b564ec5ed7f883d41400401c51db89e2b6fff54ee5b30c6fe0c035d55c08af"
+    },
+    {
+      "bytes": 869697,
+      "mediaType": "image/png",
+      "moduleId": "go-enrichment-comet-facet",
+      "path": "previews/go-enrichment-comet-facet/preview.png",
+      "role": "primary",
+      "sha256": "ed7044e3b54bca2268116241d2bcafd21ab4b17cdb5e794a59152ecc74893411"
+    },
+    {
+      "bytes": 67217,
+      "mediaType": "image/jpeg",
+      "moduleId": "go-enrichment-comet-facet",
+      "path": "thumbs/go-enrichment-comet-facet.jpg",
+      "role": "thumbnail",
+      "sha256": "734d000654d0d4e781ed7fcdb967ff93c299fe920839dc4441971c0d99a09c78"
+    },
+    {
+      "bytes": 240893,
+      "mediaType": "image/png",
+      "moduleId": "hallmark-gsea-nes-ranked-scatter",
+      "path": "previews/hallmark-gsea-nes-ranked-scatter/preview.png",
+      "role": "primary",
+      "sha256": "6b74f149998925a62010b119bbfa95f3b9e9996e13faac956bad1dfc9b881c49"
+    },
+    {
+      "bytes": 50279,
+      "mediaType": "image/jpeg",
+      "moduleId": "hallmark-gsea-nes-ranked-scatter",
+      "path": "thumbs/hallmark-gsea-nes-ranked-scatter.jpg",
+      "role": "thumbnail",
+      "sha256": "191be2ff3811f2839e76151de5c57b276037841ae4f2bd60e521c2b2269e0b7a"
+    },
+    {
+      "bytes": 1270832,
+      "mediaType": "image/png",
+      "moduleId": "hlca-scib-integration-benchmark-matrix",
+      "path": "previews/hlca-scib-integration-benchmark-matrix/preview.png",
+      "role": "primary",
+      "sha256": "96ecc1bc5d45bcc4f5c8d72d8967a3b19f883ea9c94db646b16d2ba41c0a818e"
+    },
+    {
+      "bytes": 177581,
+      "mediaType": "image/jpeg",
+      "moduleId": "hlca-scib-integration-benchmark-matrix",
+      "path": "thumbs/hlca-scib-integration-benchmark-matrix.jpg",
+      "role": "thumbnail",
+      "sha256": "199bf61884dca9336654392fe28ec70e8cc5b99f8a76c44b44f401177fe6b79e"
+    },
+    {
+      "bytes": 181902,
+      "mediaType": "image/png",
+      "moduleId": "kegg-variant-blue-inside-label",
+      "path": "previews/kegg-variant-blue-inside-label/preview.png",
+      "role": "primary",
+      "sha256": "27a4c3ec09dd0b9fe386c37b5d1e79f7a1a288c4e7fda82e1a57b6f9fc313d4b"
+    },
+    {
+      "bytes": 76372,
+      "mediaType": "image/jpeg",
+      "moduleId": "kegg-variant-blue-inside-label",
+      "path": "thumbs/kegg-variant-blue-inside-label.jpg",
+      "role": "thumbnail",
+      "sha256": "3e5525c70dc858a3ee81b9cf9dbff17579e44f59d5f480b00972093170024309"
+    },
+    {
+      "bytes": 182809,
+      "mediaType": "image/png",
+      "moduleId": "kegg-variant-bw-text-classic",
+      "path": "previews/kegg-variant-bw-text-classic/preview.png",
+      "role": "primary",
+      "sha256": "f02996441b12b52b704c384510830753e28ef4586071ca474b4450286a2cc805"
+    },
+    {
+      "bytes": 76830,
+      "mediaType": "image/jpeg",
+      "moduleId": "kegg-variant-bw-text-classic",
+      "path": "thumbs/kegg-variant-bw-text-classic.jpg",
+      "role": "thumbnail",
+      "sha256": "37fb0f03de2b897f464dfb0ce46937cc76889252e1b551d0fd0114585091f25e"
+    },
+    {
+      "bytes": 174708,
+      "mediaType": "image/png",
+      "moduleId": "kegg-variant-inside-label-bar",
+      "path": "previews/kegg-variant-inside-label-bar/preview.png",
+      "role": "primary",
+      "sha256": "9c7224780b6637d2606c0e1ab5cd00fc4c77292f1d805376d36b95f2e00bc792"
+    },
+    {
+      "bytes": 96001,
+      "mediaType": "image/jpeg",
+      "moduleId": "kegg-variant-inside-label-bar",
+      "path": "thumbs/kegg-variant-inside-label-bar.jpg",
+      "role": "thumbnail",
+      "sha256": "ee4edad850b5bdd5f825738b54876ebc5b70972ae3029b3f20720889bd7a4d01"
+    },
+    {
+      "bytes": 228900,
+      "mediaType": "image/png",
+      "moduleId": "nature-deg-grouped-barplot",
+      "path": "previews/nature-deg-grouped-barplot/preview.png",
+      "role": "primary",
+      "sha256": "330065ac7db01c7b97e6ea7d84356613f552f2e8f8b08006349ddfa2a38926c3"
+    },
+    {
+      "bytes": 79306,
+      "mediaType": "image/jpeg",
+      "moduleId": "nature-deg-grouped-barplot",
+      "path": "thumbs/nature-deg-grouped-barplot.jpg",
+      "role": "thumbnail",
+      "sha256": "7bcca6435fd0524e38d5eb5985bdaffac3493288d18fc119c5dc4fb8b789b557"
+    },
+    {
+      "bytes": 206118,
+      "mediaType": "image/png",
+      "moduleId": "nature-metabolome-style-pca",
+      "path": "previews/nature-metabolome-style-pca/preview.png",
+      "role": "primary",
+      "sha256": "b256f72c61e8318a2fbea36c42d7785b38267c343e74319b321b572bc6384070"
+    },
+    {
+      "bytes": 35699,
+      "mediaType": "image/jpeg",
+      "moduleId": "nature-metabolome-style-pca",
+      "path": "thumbs/nature-metabolome-style-pca.jpg",
+      "role": "thumbnail",
+      "sha256": "b8a6f1358504f9b448f63e6dc913c5208cedb3704506ec0e32a18b4092d4a0fc"
+    },
+    {
+      "bytes": 140677,
+      "mediaType": "image/png",
+      "moduleId": "nature-spatial-niche-stacked-bar",
+      "path": "previews/nature-spatial-niche-stacked-bar/preview.png",
+      "role": "primary",
+      "sha256": "fefba736fd807b71517fa157e742380032347f4b82d5aefa54ed0acb09f7c9d6"
+    },
+    {
+      "bytes": 74904,
+      "mediaType": "image/jpeg",
+      "moduleId": "nature-spatial-niche-stacked-bar",
+      "path": "thumbs/nature-spatial-niche-stacked-bar.jpg",
+      "role": "thumbnail",
+      "sha256": "5ccec74e2806570cbb2e68b1715e2b95ddf0f81df5bf6f69696e265dbaabe084"
+    },
+    {
+      "bytes": 142834,
+      "mediaType": "image/png",
+      "moduleId": "nc-backtoback-lollipop",
+      "path": "previews/nc-backtoback-lollipop/preview.png",
+      "role": "primary",
+      "sha256": "04f97717c2de59405ab27ff2917a4a18f9aecc07517034137bc6580803719018"
+    },
+    {
+      "bytes": 52715,
+      "mediaType": "image/jpeg",
+      "moduleId": "nc-backtoback-lollipop",
+      "path": "thumbs/nc-backtoback-lollipop.jpg",
+      "role": "thumbnail",
+      "sha256": "e40f98e1beff34a7b1c5af731b6be38bf55b3b3833b6871f21e1cb5f1a154533"
+    },
+    {
+      "bytes": 329147,
+      "mediaType": "image/png",
+      "moduleId": "ncb-fig2d-hox-ridge-heatmap",
+      "path": "previews/ncb-fig2d-hox-ridge-heatmap/preview.png",
+      "role": "primary",
+      "sha256": "dda7e92aee434aa1edcc1ec0fe52b62baf0ae5c65c18d2775676c1dd4a0e93f7"
+    },
+    {
+      "bytes": 58849,
+      "mediaType": "image/jpeg",
+      "moduleId": "ncb-fig2d-hox-ridge-heatmap",
+      "path": "thumbs/ncb-fig2d-hox-ridge-heatmap.jpg",
+      "role": "thumbnail",
+      "sha256": "cbd256431365e041764c9ccb4f720f3730ea95d75bac0044ac3760335b425f88"
+    },
+    {
+      "bytes": 193714,
+      "mediaType": "image/png",
+      "moduleId": "sc-celltype-grouped-dodge-count",
+      "path": "previews/sc-celltype-grouped-dodge-count/preview.png",
+      "role": "primary",
+      "sha256": "16adccf6c9a78b65d92e992b6c196b0fe28830217222d99bed826a8104310dc8"
+    },
+    {
+      "bytes": 32603,
+      "mediaType": "image/jpeg",
+      "moduleId": "sc-celltype-grouped-dodge-count",
+      "path": "thumbs/sc-celltype-grouped-dodge-count.jpg",
+      "role": "thumbnail",
+      "sha256": "735f0726d8d2b5764deb3891b3953779c1fec5bd31e324bb0d7e726fa610c884"
+    },
+    {
+      "bytes": 104515,
+      "mediaType": "image/png",
+      "moduleId": "sc-celltype-grouped-horizontal-bar",
+      "path": "previews/sc-celltype-grouped-horizontal-bar/preview.png",
+      "role": "primary",
+      "sha256": "058843d872671e6c2c0a2dad8749fb7cfa310a2346effa46b3533b4d085b6186"
+    },
+    {
+      "bytes": 34209,
+      "mediaType": "image/jpeg",
+      "moduleId": "sc-celltype-grouped-horizontal-bar",
+      "path": "thumbs/sc-celltype-grouped-horizontal-bar.jpg",
+      "role": "thumbnail",
+      "sha256": "a0ad2f643ca55a98a8b7f30c40bbdfeb13d7ea421fbc227883e67614cd2d01be"
+    },
+    {
+      "bytes": 105792,
+      "mediaType": "image/png",
+      "moduleId": "sc-celltype-grouped-stacked-bar",
+      "path": "previews/sc-celltype-grouped-stacked-bar/preview.png",
+      "role": "primary",
+      "sha256": "38c9ea2f67ec740ed66a12abd2489b5db3f876283d7430d731f881e033ae4610"
+    },
+    {
+      "bytes": 28581,
+      "mediaType": "image/jpeg",
+      "moduleId": "sc-celltype-grouped-stacked-bar",
+      "path": "thumbs/sc-celltype-grouped-stacked-bar.jpg",
+      "role": "thumbnail",
+      "sha256": "45f98a42bb65edb46f5cb7c203f268cbdf09f10f675d0a401a166a977990fba1"
+    },
+    {
+      "bytes": 776633,
+      "mediaType": "image/png",
+      "moduleId": "sc-celltype-nightingale-rose",
+      "path": "previews/sc-celltype-nightingale-rose/preview.png",
+      "role": "primary",
+      "sha256": "aa65364e02e8627b0eabae65bb91b4335a24d10b431b5c2f020753b31a23a11c"
+    },
+    {
+      "bytes": 59549,
+      "mediaType": "image/jpeg",
+      "moduleId": "sc-celltype-nightingale-rose",
+      "path": "thumbs/sc-celltype-nightingale-rose.jpg",
+      "role": "thumbnail",
+      "sha256": "9469b250874e4b4a7aa2cb5d6726d6740dba452ad2e06079477cd009eeb8ebf1"
+    },
+    {
+      "bytes": 243648,
+      "mediaType": "image/png",
+      "moduleId": "sc-celltype-sample-dodge-count",
+      "path": "previews/sc-celltype-sample-dodge-count/preview.png",
+      "role": "primary",
+      "sha256": "51bdb9ba11272fdc931956406d747ffab5760739ba3fffc1257e2ce31b198ed8"
+    },
+    {
+      "bytes": 38411,
+      "mediaType": "image/jpeg",
+      "moduleId": "sc-celltype-sample-dodge-count",
+      "path": "thumbs/sc-celltype-sample-dodge-count.jpg",
+      "role": "thumbnail",
+      "sha256": "18fc3a528e3215cfe5f0b637d624d5784c767cfc38c01509f21e59ffbcc55fb2"
+    },
+    {
+      "bytes": 219252,
+      "mediaType": "image/png",
+      "moduleId": "sc-celltype-sample-stacked-proportion",
+      "path": "previews/sc-celltype-sample-stacked-proportion/preview.png",
+      "role": "primary",
+      "sha256": "cc7cb6a732653071bc4974c1e1cbc43cb773f9cd1529b4421c2b7b20c3808fb2"
+    },
+    {
+      "bytes": 49208,
+      "mediaType": "image/jpeg",
+      "moduleId": "sc-celltype-sample-stacked-proportion",
+      "path": "thumbs/sc-celltype-sample-stacked-proportion.jpg",
+      "role": "thumbnail",
+      "sha256": "fd394fb1fa8f916c66742e80b225bc0244a5e1afc39c270f44ffb68e479407ab"
+    },
+    {
+      "bytes": 346625,
+      "mediaType": "image/png",
+      "moduleId": "sc-celltype-sankey",
+      "path": "previews/sc-celltype-sankey/preview.png",
+      "role": "primary",
+      "sha256": "40b0d4c61f6aef524ad51cdff51e48f8a3e43f0f7c4b15db4db9e2aa97263238"
+    },
+    {
+      "bytes": 43786,
+      "mediaType": "image/jpeg",
+      "moduleId": "sc-celltype-sankey",
+      "path": "thumbs/sc-celltype-sankey.jpg",
+      "role": "thumbnail",
+      "sha256": "7c7916fd33664e65a764f1fcc24407996e9ee1ebc64a2ccc9bcfe43e649d4d32"
+    },
+    {
+      "bytes": 203558,
+      "mediaType": "image/png",
+      "moduleId": "sc-celltype-stacked-area",
+      "path": "previews/sc-celltype-stacked-area/preview.png",
+      "role": "primary",
+      "sha256": "e78e0917b49d49d6eb1c76090df2ddde6565f2bb02613405e12cc579dd3e7336"
+    },
+    {
+      "bytes": 33730,
+      "mediaType": "image/jpeg",
+      "moduleId": "sc-celltype-stacked-area",
+      "path": "thumbs/sc-celltype-stacked-area.jpg",
+      "role": "thumbnail",
+      "sha256": "a91354f3312e92b42c222b4378800448831dd5badef4be7c7d1d7c796f7cee2d"
+    },
+    {
+      "bytes": 511035,
+      "mediaType": "image/png",
+      "moduleId": "sc-marker-dotplot-highlight-boxes",
+      "path": "previews/sc-marker-dotplot-highlight-boxes/preview.png",
+      "role": "primary",
+      "sha256": "fd5aacca36ca794deae1efb582a45c5b0a6e7ee1b4cafccbc4c50ec8cada27dd"
+    },
+    {
+      "bytes": 90086,
+      "mediaType": "image/jpeg",
+      "moduleId": "sc-marker-dotplot-highlight-boxes",
+      "path": "thumbs/sc-marker-dotplot-highlight-boxes.jpg",
+      "role": "thumbnail",
+      "sha256": "e5439046fd62090fccea4e1b7da5401c7bd5463fb488684cdf4d8dfcd4cd71b4"
+    },
+    {
+      "bytes": 642972,
+      "mediaType": "image/png",
+      "moduleId": "science-mantel-corrplot",
+      "path": "previews/science-mantel-corrplot/preview.png",
+      "role": "primary",
+      "sha256": "8bc4a0ea62b90736929a7d5233cc9b9dd982a03115f5a8c5fbaa43bce6d1d205"
+    },
+    {
+      "bytes": 101633,
+      "mediaType": "image/jpeg",
+      "moduleId": "science-mantel-corrplot",
+      "path": "thumbs/science-mantel-corrplot.jpg",
+      "role": "thumbnail",
+      "sha256": "38c613f5fbe90ca231e9b6fe22519fb475da2d6da14be15b9d0989b7c505c3d0"
+    },
+    {
+      "bytes": 249358,
+      "mediaType": "image/png",
+      "moduleId": "single-cell-enrichment-bar-pathway-genes",
+      "path": "previews/single-cell-enrichment-bar-pathway-genes/preview.png",
+      "role": "primary",
+      "sha256": "4cb7dd174db4f2c2e5b8b8cba2d02ea703f4ba88307cda26a14025a348e598c9"
+    },
+    {
+      "bytes": 117571,
+      "mediaType": "image/jpeg",
+      "moduleId": "single-cell-enrichment-bar-pathway-genes",
+      "path": "thumbs/single-cell-enrichment-bar-pathway-genes.jpg",
+      "role": "thumbnail",
+      "sha256": "0b44bc01c7329d495ced37c4d2b8ce56c9a70c0876dd86ad4d82c7630982af6c"
+    },
+    {
+      "bytes": 2248351,
+      "mediaType": "image/png",
+      "moduleId": "umap-style-density-heatmap",
+      "path": "previews/umap-style-density-heatmap/preview.png",
+      "role": "primary",
+      "sha256": "6517434af6bffa46b10e0f13020c05d7f8a5e616b3ba4dd256b48ee362b463d8"
+    },
+    {
+      "bytes": 72526,
+      "mediaType": "image/jpeg",
+      "moduleId": "umap-style-density-heatmap",
+      "path": "thumbs/umap-style-density-heatmap.jpg",
+      "role": "thumbnail",
+      "sha256": "62d9dd7dd69771b889dc81b0e69df83cd21fbf58e795f2b465f74a1ee78f322c"
+    },
+    {
+      "bytes": 1165182,
+      "mediaType": "image/png",
+      "moduleId": "umap-style-ellipse-labels",
+      "path": "previews/umap-style-ellipse-labels/preview.png",
+      "role": "primary",
+      "sha256": "b5798a332c75f6029e9524fea0fab680deb524a836f44ce8171627065d601bf3"
+    },
+    {
+      "bytes": 52522,
+      "mediaType": "image/jpeg",
+      "moduleId": "umap-style-ellipse-labels",
+      "path": "thumbs/umap-style-ellipse-labels.jpg",
+      "role": "thumbnail",
+      "sha256": "84dc232c0d99e24fa7a1d08ec9a79efbe1e562e7513c28971710e9b452d5587a"
+    },
+    {
+      "bytes": 450721,
+      "mediaType": "image/png",
+      "moduleId": "umap-style-plot1cell-circlize",
+      "path": "previews/umap-style-plot1cell-circlize/preview.png",
+      "role": "primary",
+      "sha256": "0007948540a9f0e21056441f6312352d39ea0e04b4a4a5dafe18c4543909823b"
+    },
+    {
+      "bytes": 61378,
+      "mediaType": "image/jpeg",
+      "moduleId": "umap-style-plot1cell-circlize",
+      "path": "thumbs/umap-style-plot1cell-circlize.jpg",
+      "role": "thumbnail",
+      "sha256": "31654e507ed6e9a157b07cdf5bbf2cec03a957058e682f47c1adcc17ca09faf3"
+    },
+    {
+      "bytes": 878453,
+      "mediaType": "image/png",
+      "moduleId": "umap-style-scp-numbered-legend",
+      "path": "previews/umap-style-scp-numbered-legend/preview.png",
+      "role": "primary",
+      "sha256": "ef0c0cc0a8c12b66a725e6c55d02c1e2824f63a1a09d544a243f3eb386511f94"
+    },
+    {
+      "bytes": 47403,
+      "mediaType": "image/jpeg",
+      "moduleId": "umap-style-scp-numbered-legend",
+      "path": "thumbs/umap-style-scp-numbered-legend.jpg",
+      "role": "thumbnail",
+      "sha256": "24db7c611c206ebcbf0b448738331c3dee736eb524c5f767679a7a1112d7c4cb"
+    },
+    {
+      "bytes": 897855,
+      "mediaType": "image/png",
+      "moduleId": "umap-style-scp-square-axes",
+      "path": "previews/umap-style-scp-square-axes/preview.png",
+      "role": "primary",
+      "sha256": "7e2cf9954d23c9efbe0e5631dcfd903b90a0e5bdb64cb861b72fd3a53adba456"
+    },
+    {
+      "bytes": 53368,
+      "mediaType": "image/jpeg",
+      "moduleId": "umap-style-scp-square-axes",
+      "path": "thumbs/umap-style-scp-square-axes.jpg",
+      "role": "thumbnail",
+      "sha256": "b7b7eda03163dff36a19414f5a0aef0fa6667f66ce29144ad024ff37b4f6eb4f"
+    },
+    {
+      "bytes": 2857943,
+      "mediaType": "image/png",
+      "moduleId": "umap-style-scpubr-stroke",
+      "path": "previews/umap-style-scpubr-stroke/preview.png",
+      "role": "primary",
+      "sha256": "9db1c3c4d6d4d5fdc9f2eb8f15ddbb56ae421e16c34c22d38aa2ef3b9c823bda"
+    },
+    {
+      "bytes": 145212,
+      "mediaType": "image/jpeg",
+      "moduleId": "umap-style-scpubr-stroke",
+      "path": "thumbs/umap-style-scpubr-stroke.jpg",
+      "role": "thumbnail",
+      "sha256": "64e224413d1e6237b76ce149d210446ac47aa7a2d9edc1f8fd85d7bdc49becb6"
+    },
+    {
+      "bytes": 844779,
+      "mediaType": "image/png",
+      "moduleId": "umap-style-scrnatoolvis-insitu",
+      "path": "previews/umap-style-scrnatoolvis-insitu/preview.png",
+      "role": "primary",
+      "sha256": "c9bdd9ff4d9e81038407c959f50eb8b34b707c2a919728116863e485b9342b93"
+    },
+    {
+      "bytes": 42749,
+      "mediaType": "image/jpeg",
+      "moduleId": "umap-style-scrnatoolvis-insitu",
+      "path": "thumbs/umap-style-scrnatoolvis-insitu.jpg",
+      "role": "thumbnail",
+      "sha256": "b281b62f657a5b40c58d66bec5d26c7d8a136163b8833a3a53d69ec7c59b412c"
+    },
+    {
+      "bytes": 362284,
+      "mediaType": "image/png",
+      "moduleId": "umap-unchull-main-type-circles",
+      "path": "previews/umap-unchull-main-type-circles/preview.png",
+      "role": "primary",
+      "sha256": "44ab2ea782cc2690e37944c7e9d99819176522db0c95757cb8e7b7a5d2cfd907"
+    },
+    {
+      "bytes": 55085,
+      "mediaType": "image/jpeg",
+      "moduleId": "umap-unchull-main-type-circles",
+      "path": "thumbs/umap-unchull-main-type-circles.jpg",
+      "role": "thumbnail",
+      "sha256": "396883cb62dff3b88706590e06b7e4d2046d7935040031e6b01c64b1c9b7adf5"
+    }
+  ],
+  "providerId": "io.github.jarxunlai.personal-figures",
+  "schema": "figure-library.module-preview-manifest.v1"
+}

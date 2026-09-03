@@ -1,18 +1,20 @@
 ---
 name: figure-library
-description: Build, review, search, select, materialize, and safely publish immutable scientific-figure references from Local Published, bundled Community, FigureYa, and explicitly trusted personal Providers.
+description: Build, review, search, select, and materialize immutable scientific-figure references from Local Published, FigureYa, bundled Open Figure Modules, frozen explicit-only Community, and explicitly trusted dynamic Providers.
 ---
 
-# Scientific Figure Library 0.4.0
+# Scientific Figure Library 0.6.1
 
 Use this Skill when a user wants to store an uploaded figure/code pair, review
 or publish a local template, search for a plotting reference, or materialize an
 exact template into a project.
 
-Version 0.4.0 ships the 0.6 Provider and publication work. It keeps
+Version 0.6.1 adds the bundled Open Figure Modules Provider while keeping
 materialization protocol v2, review truthfulness, and the transport image
-adapter while routing Local Published, bundled Community, FigureYa, and
-explicitly trusted personal sources through one Provider registry. The MCP App may request fullscreen or
+adapter. Default search is Local Published, FigureYa, bundled Personal Figure
+Modules, then opted-in dynamic personal sources. Community remains readable
+for an explicit `providerId`, but is frozen and excluded from default search.
+The MCP App may request fullscreen or
 pip when the Host advertises those display modes. Wisp, Codex, and Claude
 plugin packages all ship this Skill beside the same MCP server. Optional
 `scientificQuestion` explains why a figure is worth drawing; it is not
@@ -38,6 +40,9 @@ path.
   template. `codeExecutedBySflClient` must remain `false`.
 - Central curation, a publisher signature, and the recipient's Local review are
   separate facts. Never call a Community/personal template locally approved.
+- `publisherReviewStatus=approved` and `publisherExecutionStatus=passed` are
+  publisher/Gallery facts. They never mean that SFL executed code or reassessed
+  the scientific conclusion; `codeExecutedBySflClient` remains `false`.
 
 ## Terminal outcome discipline
 
@@ -272,9 +277,11 @@ invent a generic query. Otherwise inspect the request first:
 
 Call `figure_library_search` with 2–8 discriminative query terms and compact
 `dataProfile` / `visualProfile`. Do not pass raw datasets. Leave `providerIds`
-at its default so Local Published, bundled Community, FigureYa, and only those
-personal Providers explicitly opted into default search are searched together,
-unless the user explicitly requests a source filter.
+at its default so Local Published, FigureYa, bundled Open Figure Modules,
+and only those dynamic personal Providers explicitly opted into default search
+are searched together. Community stays registered as frozen explicit-only
+compatibility; search it only when the user explicitly supplies its Provider
+ID.
 
 A bundled Community snapshot may be healthy and contain zero current releases
 after an authorized Catalog redaction. Do not report that state as degraded,
@@ -282,6 +289,30 @@ retry redacted selectors from an older plugin, or turn zero Community candidates
 into a terminal failure when other selected Providers are healthy. This pre-0.7
 redaction is not the normal withdrawn lifecycle of a later protocol and does not
 erase Git history or an already materialized, commit-pinned recipient copy.
+
+The built-in Open Figure Modules source is a separate, read-only snapshot
+maintained by the operator. Its Catalog and thumbnails are bundled for offline
+search and exact preview; complete ZIPs are not bundled. Each personal module
+uses the `module-archive.v1` selector kind and binds the Provider ID, module ID, source repository/commit, archive
+repository/commit/path, archive bytes and SHA-256, primary preview identity,
+Catalog SHA-256, and `template` or `full` mode. Publisher/Gallery review and
+execution facts are displayed separately from SFL Local review and execution.
+
+Maintainers use the offline commands below from the SFL checkout. They never
+create a GitHub repository, commit, push, run R, or modify the Gallery:
+
+```text
+npm run modules:validate -- --check --repository <PERSONAL_MODULE_REPOSITORY>
+npm run modules:archive -- --write --repository <PERSONAL_MODULE_REPOSITORY>
+npm run modules:catalog -- --write --repository <PERSONAL_MODULE_REPOSITORY>
+npm run modules:source-pack -- --write --repository <PERSONAL_MODULE_REPOSITORY>
+```
+
+Use `--check` first. `--write` only atomically replaces generated output after
+path, file, privacy, license, preview, ZIP, and fixed-commit checks pass. The
+single personal content repository contains both `modules/` and `archives/`;
+the SFL plugin contains only the derived Catalog, preview manifests, and
+thumbnails.
 
 Ordinary results exclude Working, Capture, and unadopted flat entries. Every
 candidate has a `providerId` and provider-qualified `exactSelector`. Preserve
@@ -366,6 +397,10 @@ Materialize only after the preview/confirmation sequence above.
 1. Call `figure_library_plan_materialize` with the unchanged `providerId`,
    `exactSelector`, the returned `previewReceipt`, an absolute `destination`,
    optional absolute `sourcePackDir`, and the intended `allowNetwork` policy.
+   For bundled Open Figure Modules this directory must contain
+   `module-source-pack.manifest.json`; for FigureYa it must contain the legacy
+   FigureYa Source Pack manifest. A supplied but mismatched Source Pack fails
+   closed and is not silently bypassed with a network download.
    Missing receipt is `preview_required`; do not retry without preview.
 2. Show provider, full exact selector, preview confirmation mode,
    `<destination>/<templateId>` target, and acquisition policy. Wait for
@@ -375,7 +410,10 @@ Materialize only after the preview/confirmation sequence above.
    the confirmation fact sealed into the v2 plan and does not take a receipt.
 
 The output has `TEMPLATE.md`, `template.json`, `template.lock.json`, and
-normalized `assets/`; FigureYa also has untouched `upstream/`. Do not overwrite
+normalized `assets/`; FigureYa and Open Figure Modules also have untouched
+`upstream/`. A Personal selector offers explicit `template` and `full` modes;
+`template` uses only the Catalog's `requiredFiles`, while `full` uses the
+complete cleaned module inventory. Do not overwrite
 an existing target. Keep exact reference files unchanged and create adapted
 project code separately.
 

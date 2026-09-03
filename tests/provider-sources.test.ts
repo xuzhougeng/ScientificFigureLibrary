@@ -24,6 +24,37 @@ import { UnavailableProviderAdapter } from "../src/provider-registry.ts";
 
 const PROVIDER_ID = "io.example.personal.figures";
 
+test("dynamic personal sources cannot shadow SFL built-in Provider identities", async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "sfl-provider-reserved-"));
+  try {
+    const manager = new ProviderSourceManager({
+      paths: {
+        configRoot: path.join(root, "config"),
+        registryFile: path.join(root, "config", "provider-sources.json"),
+        dataRoot: path.join(root, "data"),
+      },
+    });
+    for (const providerId of [
+      "io.github.jarxunlai.scientific-figure-community",
+      "io.github.jarxunlai.personal-figures",
+      "org.figureya.module",
+      "org.scientificfigurelibrary.local",
+    ]) {
+      await assert.rejects(
+        manager.planChange({
+          action: "configure",
+          providerId,
+          includeInDefaultSearch: true,
+        }),
+        /reserved providerId/u,
+        providerId,
+      );
+    }
+  } finally {
+    await fs.rm(root, { recursive: true, force: true });
+  }
+});
+
 function assertChangePlan(
   value: ProviderSourceChangePlanV1 | { status: "already_current" },
 ): asserts value is ProviderSourceChangePlanV1 {

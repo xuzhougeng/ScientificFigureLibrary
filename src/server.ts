@@ -55,7 +55,11 @@ import {
   searchPerImageBudget,
   singlePreviewBudget,
 } from "./transport-image.ts";
-import { assertExactTemplateSelector } from "./providers.ts";
+import { assertExactTemplateSelector, exactSelectorDigest } from "./providers.ts";
+import {
+  PERSONAL_MODULE_PROVIDER_ID,
+} from "./providers.ts";
+import { COMMUNITY_PROVIDER_ID } from "./public-catalog-provider.ts";
 import {
   createDefaultProviderRegistry,
   createProviderContext,
@@ -113,6 +117,7 @@ const PreviewInput = ProviderSelectionInput.extend({
 });
 const SourceStatusInput = z.object({
   sourcePackDir: z.string().min(1).max(4_000).optional(),
+  moduleSourcePackDir: z.string().min(1).max(4_000).optional(),
 });
 const UiDiagnosticInput = z.object({
   event: z.enum(UI_DIAGNOSTIC_EVENTS),
@@ -222,7 +227,7 @@ function validationStateText(state: ValidationStateSummaryV1) {
 
 function candidateText(candidates: TemplateCandidate[]) {
   if (!candidates.length) {
-    return "No matching Local Published or FigureYa templates were found. No tool retry is needed unless the user changes the search intent.";
+    return "No matching templates were found in the selected Providers. No tool retry is needed unless the user changes the search intent.";
   }
   return [
     "Retrieval candidates are now visible in the Scientific Figure Library App. Stop this turn and wait for the user to browse and select a candidate.",
@@ -241,6 +246,9 @@ function candidateText(candidates: TemplateCandidate[]) {
           ]
         : []),
       `   PREVIEW_AVAILABLE: ${candidate.previewAvailable}`,
+      ...(candidate.materializationModes?.length
+        ? [`   MATERIALIZATION_MODES: ${candidate.materializationModes.join(", ")}`]
+        : []),
       `   REASONS: ${candidate.reasons.join("; ") || "catalog metadata match"}`,
       ...(candidate.warnings.length
         ? [`   WARNINGS: ${candidate.warnings.join("; ")}`]
@@ -290,13 +298,26 @@ async function hydrateCandidatePreviews(options: {
   context: CurrentLibraryContext;
   index: CatalogIndex;
   registry: ProviderRegistry;
+  moduleCatalogs?: ReadonlyMap<string, import("./module-catalog.ts").ModuleCatalogIndex>;
 }) {
-  const needed = options.candidates.filter((candidate) => candidate.previewAvailable).length;
+  const needed = options.candidates.filter(
+    (candidate) => candidate.searchPreviewAvailable ?? candidate.previewAvailable,
+  ).length;
   let perImageBudget = searchPerImageBudget(needed);
   const hydrateOnce = (budget: number): Promise<TemplateCandidate[]> =>
     mapPool(options.candidates, SEARCH_CONCURRENCY, async (candidate): Promise<TemplateCandidate> => {
       if (!candidate.previewAvailable) {
-        return { ...candidate, previewStatus: "missing" as const, previewRef: undefined };
+        if (!(candidate.searchPreviewAvailable ?? false)) {
+          return {
+            ...candidate,
+            previewStatus: "missing" as const,
+            searchPreviewStatus: "missing" as const,
+            previewRef: undefined,
+          };
+        }
+      }
+      if (candidate.searchPreviewAvailable === false) {
+        return { ...candidate, searchPreviewStatus: "missing" as const };
       }
       try {
         const preview = await loadProviderPreview({
@@ -305,6 +326,8 @@ async function hydrateCandidatePreviews(options: {
           providerId: candidate.providerId,
           exactSelector: candidate.exactSelector,
           registry: options.registry,
+          moduleCatalogs: options.moduleCatalogs,
+          purpose: "search",
         });
         const transport = await prepareTransportImage({
           sourceBytes: preview.bytes,
@@ -317,14 +340,19 @@ async function hydrateCandidatePreviews(options: {
         if (!transport.ok) {
           return {
             ...candidate,
-            previewAvailable: false,
-            previewRef: undefined,
-            previewStatus: transportPreviewStatus(transport.reason),
+            searchPreviewAvailable: false,
+            searchPreviewStatus: transportPreviewStatus(transport.reason),
+            ...(candidate.searchPreviewAvailable === undefined
+              ? { previewStatus: transportPreviewStatus(transport.reason) }
+              : {}),
           };
         }
         return {
           ...candidate,
-          previewStatus: "ready" as const,
+          ...(candidate.searchPreviewAvailable === undefined
+            ? { previewStatus: "ready" as const }
+            : {}),
+          searchPreviewStatus: "ready" as const,
           previewDataUrl: transport.dataUrl,
           previewMimeType: preview.mimeType,
           previewByteLength: preview.byteLength,
@@ -341,9 +369,9 @@ async function hydrateCandidatePreviews(options: {
             : "unreadable";
         return {
           ...candidate,
-          previewAvailable: false,
-          previewRef: undefined,
-          previewStatus,
+          searchPreviewAvailable: false,
+          searchPreviewStatus: previewStatus,
+          ...(candidate.searchPreviewAvailable === undefined ? { previewStatus } : {}),
         };
       }
     });
@@ -364,9 +392,11 @@ async function hydrateCandidatePreviews(options: {
       remaining -= candidate.previewDataUrl.length;
       output[index] = {
         ...candidate,
-        previewAvailable: false,
-        previewRef: undefined,
-        previewStatus: "too_large" as const,
+        searchPreviewAvailable: false,
+        searchPreviewStatus: "too_large" as const,
+        ...(candidate.searchPreviewAvailable === undefined
+          ? { previewStatus: "too_large" as const }
+          : {}),
         previewDataUrl: undefined,
       };
     }
@@ -478,14 +508,19 @@ interface SearchSessionState {
 export async function createServer(options: {
   registry?: ProviderRegistry;
   providerSourceManager?: ProviderSourceManager;
+  personalModuleRoot?: string;
 } = {}) {
   const index = await CatalogIndex.load();
   const providerController = options.registry
     ? undefined
-    : await createRuntimeProviderController({ manager: options.providerSourceManager });
+    : await createRuntimeProviderController({
+        manager: options.providerSourceManager,
+        personalModuleRoot: options.personalModuleRoot,
+      });
   const registry = options.registry ?? providerController?.registry ?? createDefaultProviderRegistry();
   const providerSourceManager =
     options.providerSourceManager ?? providerController?.manager ?? new ProviderSourceManager();
+  const moduleCatalogs = providerController?.moduleCatalogs;
   const runtime = new LibraryRuntime();
   const workspaceRuntime = new WorkspaceRuntime();
   const previewConfirmations = new PreviewConfirmationStore();
@@ -505,9 +540,14 @@ export async function createServer(options: {
     if (contexts.size > 8) contexts.delete(contexts.keys().next().value as string);
     return context;
   };
-  const currentProviderContext = async (sourcePackDir?: string) =>
+  const currentProviderContext = async (
+    sourcePackDir?: string,
+    moduleSourcePackDir?: string,
+  ) =>
     createProviderContext(await currentLibraries(), index, {
+      ...(moduleCatalogs ? { moduleCatalogs } : {}),
       ...(sourcePackDir ? { sourcePackDir } : {}),
+      ...(moduleSourcePackDir ? { moduleSourcePackDir } : {}),
     });
 
   const server = new McpServer({ name: "Scientific Figure Library", version: VERSION });
@@ -567,7 +607,9 @@ export async function createServer(options: {
     const context = await currentLibraries();
     const currentCatalogRevision = await registry.catalogRevision(
       options.state.input.providerIds,
-      createProviderContext(context, index),
+      createProviderContext(context, index, {
+        ...(moduleCatalogs ? { moduleCatalogs } : {}),
+      }),
     );
     const currentBindingDigest = libraryBindingDigest(context);
     previewConfirmations.requireResultSet({
@@ -585,6 +627,7 @@ export async function createServer(options: {
       context,
       index,
       registry,
+      moduleCatalogs,
     });
     const { visibleCandidates, candidatePreviews } = splitCandidatePage(
       options.resultSetId,
@@ -697,7 +740,7 @@ export async function createServer(options: {
     {
       title: "Search all matching scientific figure Providers",
       description:
-        "Search the complete ranked Local Published, bundled Community, FigureYa, and opted-in personal Provider match set, open the candidate App, then stop and wait for the user to choose. Working, Capture, and flat-v1 entries remain excluded.",
+        "Search the complete ranked Local Published, FigureYa, bundled Open Figure Modules, and opted-in dynamic personal Provider match set, open the candidate App, then stop and wait for the user to choose. Community is frozen and excluded from default search; Working, Capture, and flat-v1 entries remain excluded.",
       inputSchema: SearchInput.shape,
       annotations: {
         readOnlyHint: true,
@@ -736,7 +779,9 @@ export async function createServer(options: {
           codeStatus: parsedInput.codeStatus,
         };
         const context = await currentLibraries();
-        const providerContext = createProviderContext(context, index);
+        const providerContext = createProviderContext(context, index, {
+          ...(moduleCatalogs ? { moduleCatalogs } : {}),
+        });
         const queryDigest = searchQueryDigest(parsedInput);
         const catalogRevision = await registry.catalogRevision(
           parsedInput.providerIds,
@@ -806,7 +851,15 @@ export async function createServer(options: {
           catalogRevision,
           libraryBindingDigest: bindingDigest,
           providerIds: parsedInput.providerIds,
-          candidates: normalized,
+          candidates: normalized.map((candidate) => ({
+            providerId: candidate.providerId,
+            exactSelector: candidate.exactSelector,
+            alternateSelectors: Object.values(candidate.materializationSelectors ?? {}).filter(
+              (selector): selector is ExactTemplateSelector =>
+                selector !== undefined &&
+                exactSelectorDigest(selector) !== exactSelectorDigest(candidate.exactSelector),
+            ),
+          })),
         });
         const state: SearchSessionState = {
           input: parsedInput,
@@ -936,7 +989,7 @@ export async function createServer(options: {
     {
       mimeType: RESOURCE_MIME_TYPE,
       title: "Scientific Figure Library candidate workbench",
-      description: "Paginate all Local Published and FigureYa matches, display verified thumbnails, and confirm one exact preview.",
+      description: "Paginate matches from the selected Providers, display verified search thumbnails, and confirm one exact preview.",
     },
     async (): Promise<ReadResourceResult> => ({
       contents: [
@@ -1043,6 +1096,7 @@ export async function createServer(options: {
           providerId,
           exactSelector,
           registry,
+          moduleCatalogs,
         });
         const sha256 = preview.sha256;
         const transport = await prepareTransportImage({
@@ -1142,7 +1196,9 @@ export async function createServer(options: {
       const resultSet = previewConfirmations.getResultSet(options.resultSetId);
       const catalogRevision = await registry.catalogRevision(
         resultSet.providerIds,
-        createProviderContext(context, index),
+        createProviderContext(context, index, {
+          ...(moduleCatalogs ? { moduleCatalogs } : {}),
+        }),
       );
       const bindingDigest = libraryBindingDigest(context);
       previewConfirmations.requireResultSet({
@@ -1156,6 +1212,7 @@ export async function createServer(options: {
         providerId: options.providerId,
         exactSelector: options.exactSelector,
         registry,
+        moduleCatalogs,
       });
       const transport = await prepareTransportImage({
         sourceBytes: preview.bytes,
@@ -1625,7 +1682,7 @@ export async function createServer(options: {
     {
       title: "Inspect global Library and Provider status",
       description:
-        "Return complete text and structured status for the global portable Library, immutable lifecycle, write lock, and every registered Local, Community, FigureYa, or personal Provider. Capture/project-pin status is intentionally absent.",
+        "Return complete text and structured status for the global portable Library, immutable lifecycle, write lock, and every registered Local, Community, FigureYa, or personal Provider. Community is reported as frozen and excluded from default search. Capture/project-pin status is intentionally absent.",
       inputSchema: SourceStatusInput.shape,
       annotations: {
         readOnlyHint: true,
@@ -1634,7 +1691,7 @@ export async function createServer(options: {
         openWorldHint: false,
       },
     },
-    async ({ sourcePackDir }): Promise<CallToolResult> => {
+    async ({ sourcePackDir, moduleSourcePackDir }): Promise<CallToolResult> => {
       try {
         const context = await currentLibraries();
         const workspace = await workspaceRuntime.current();
@@ -1644,7 +1701,9 @@ export async function createServer(options: {
           countLegacyFlat(context.snapshot.root),
           registry.status(
             createProviderContext(context, index, {
+              ...(moduleCatalogs ? { moduleCatalogs } : {}),
               ...(sourcePackDir ? { sourcePackDir } : {}),
+              ...(moduleSourcePackDir ? { moduleSourcePackDir } : {}),
             }),
           ),
           inspectLibraryWriteLock(path.join(context.snapshot.root, "locks", "write")),
@@ -1684,6 +1743,18 @@ export async function createServer(options: {
           providers: {
             local: localProvider?.details,
             figureYa: figureYaProvider?.details,
+            personalModules: providerStatusById[PERSONAL_MODULE_PROVIDER_ID]
+              ? {
+                  health: providerStatusById[PERSONAL_MODULE_PROVIDER_ID]!.health,
+                  ...providerStatusById[PERSONAL_MODULE_PROVIDER_ID]!.details,
+                }
+              : undefined,
+            community: providerStatusById[COMMUNITY_PROVIDER_ID]
+              ? {
+                  health: providerStatusById[COMMUNITY_PROVIDER_ID]!.health,
+                  ...providerStatusById[COMMUNITY_PROVIDER_ID]!.details,
+                }
+              : undefined,
             byId: providerStatusById,
           },
           writeLock,
@@ -1742,6 +1813,24 @@ export async function createServer(options: {
             `FIGUREYA_SOURCE_PACK_READY: ${figureYa.ready}`,
             `FIGUREYA_ARCHIVES_AVAILABLE: ${figureYa.availableTemplates.length}`,
             `FIGUREYA_ARCHIVES_INVALID: ${figureYa.invalidTemplates.length}`,
+            ...(providerStatusById[PERSONAL_MODULE_PROVIDER_ID]?.details
+              ? [
+                  `PERSONAL_MODULES_COUNT: ${providerStatusById[PERSONAL_MODULE_PROVIDER_ID]?.details.moduleCount ?? 0}`,
+                  `PERSONAL_MODULES_PREVIEWS_AVAILABLE: ${providerStatusById[PERSONAL_MODULE_PROVIDER_ID]?.details.previewAvailableCount ?? 0}`,
+                  `PERSONAL_MODULES_THUMBNAILS_AVAILABLE: ${providerStatusById[PERSONAL_MODULE_PROVIDER_ID]?.details.thumbnailAvailableCount ?? 0}`,
+                  `PERSONAL_MODULES_ARCHIVES_AVAILABLE: ${providerStatusById[PERSONAL_MODULE_PROVIDER_ID]?.details.archiveAvailableCount ?? 0}`,
+                  `PERSONAL_MODULES_SOURCE_COMMITS: ${JSON.stringify(providerStatusById[PERSONAL_MODULE_PROVIDER_ID]?.details.sourceCommits ?? [])}`,
+                  `PERSONAL_MODULES_ARCHIVE_COMMITS: ${JSON.stringify(providerStatusById[PERSONAL_MODULE_PROVIDER_ID]?.details.archiveCommits ?? [])}`,
+                  `PERSONAL_MODULES_DEFAULT_SEARCH: ${providerStatusById[PERSONAL_MODULE_PROVIDER_ID]?.details.includeInDefaultSearch ?? true}`,
+                  `PERSONAL_MODULES_SOURCE_PACK_HEALTH: ${providerStatusById[PERSONAL_MODULE_PROVIDER_ID]?.details.sourcePackHealth ?? "not_configured"}`,
+                ]
+              : []),
+            ...(providerStatusById[COMMUNITY_PROVIDER_ID]?.details
+              ? [
+                  `COMMUNITY_DEFAULT_SEARCH: ${providerStatusById[COMMUNITY_PROVIDER_ID]?.details.includeInDefaultSearch ?? false}`,
+                  `COMMUNITY_FROZEN: ${providerStatusById[COMMUNITY_PROVIDER_ID]?.details.frozen ?? false}`,
+                ]
+              : []),
             ...providerStatuses.flatMap((status, providerIndex) => [
               `PROVIDER_${providerIndex + 1}_ID: ${status.providerId}`,
               `PROVIDER_${providerIndex + 1}_HEALTH: ${status.health}`,
@@ -1774,6 +1863,7 @@ export async function createServer(options: {
     server,
     index,
     registry,
+    moduleCatalogs,
     currentLibraries,
     previewConfirmations,
     diagnostics,
@@ -1788,7 +1878,7 @@ export async function createServer(options: {
       const descriptors = registry
         .list()
         .filter((descriptor) =>
-          ["local-published", "figureya"].includes(descriptor.kind) || descriptor.bundled,
+          ["local-published", "figureya", "module-catalog"].includes(descriptor.kind) || descriptor.bundled,
         );
       let statuses: Awaited<ReturnType<ProviderRegistry["status"]>> = [];
       try {
@@ -1813,6 +1903,8 @@ export async function createServer(options: {
           sourceLabel: descriptor.sourceLabel,
           enabled: descriptor.enabled !== false,
           includeInDefaultSearch: descriptor.includeInDefaultSearch !== false,
+          bundled: descriptor.bundled,
+          frozen: descriptor.frozen === true,
           health: status?.health ?? "degraded",
           ...(templateCount !== undefined ? { templateCount } : {}),
           ...(status ? { details: status.details } : { errorCode: "library_context_unavailable" }),

@@ -35,11 +35,15 @@ export interface Candidate {
   packages: string[];
   materializable: boolean;
   previewAvailable: boolean;
+  searchPreviewAvailable?: boolean;
   previewStatus?: "ready" | "missing" | "unreadable" | "unsupported" | "too_large";
+  searchPreviewStatus?: "ready" | "missing" | "unreadable" | "unsupported" | "too_large";
   previewDataUrl?: string;
   previewMimeType?: "image/png" | "image/jpeg" | "image/webp";
   previewByteLength?: number;
   previewSha256?: string;
+  materializationModes?: Array<"template" | "full">;
+  materializationSelectors?: Partial<Record<"template" | "full", Candidate["exactSelector"]>>;
   assetKind: "plot_template" | "visual_reference";
   language: string;
   plotFamily: string;
@@ -48,6 +52,12 @@ export interface Candidate {
   executionStatus: "not_run" | "passed" | "failed" | "unknown";
   validationState?: ValidationStateSummaryV1;
   canonicalPreviewDecision?: CanonicalPreviewDecisionSummary;
+  upstreamStatus?: "published" | "available" | "unavailable" | "unknown";
+  publisherReviewStatus?: "approved" | "not_reviewed";
+  publisherExecutionStatus?: "not_run" | "passed" | "failed";
+  publisherExecutionScope?: "synthetic_data" | "example_data" | "real_data" | "unknown";
+  publisherEvidence?: string[];
+  codeExecutedBySflClient?: false;
   management: {
     templateId: string;
     adapter?: "direct" | "gallery" | "figure-transfer-package";
@@ -194,6 +204,44 @@ function validationSummaryLines(candidate: Candidate) {
   ];
 }
 
+function providerStateLines(candidate: Candidate) {
+  return [
+    `来源：${candidate.sourceLabel}`,
+    ...(candidate.upstreamStatus ? [`上游状态：${candidate.upstreamStatus}`] : []),
+    ...(candidate.publisherReviewStatus
+      ? [`发布者审核状态：${candidate.publisherReviewStatus}`]
+      : []),
+    ...(candidate.publisherExecutionStatus
+      ? [
+          `发布者执行状态：${candidate.publisherExecutionStatus}${
+            candidate.publisherExecutionScope
+              ? `（${candidate.publisherExecutionScope}）`
+              : ""
+          }`,
+        ]
+      : []),
+    `SFL Local review：${candidate.reviewStatus}`,
+    `SFL execution：${candidate.executionStatus}`,
+    ...(candidate.codeExecutedBySflClient !== undefined
+      ? [`SFL code execution：${candidate.codeExecutedBySflClient}`]
+      : []),
+  ];
+}
+
+function moduleIdentityLines(candidate: Candidate) {
+  if (candidate.exactSelector.kind !== "module-archive.v1") return [];
+  const identity = candidate.exactSelector.identity;
+  return [
+    `源码 commit：${String(identity.sourceCommit ?? "unknown")}`,
+    `归档 commit：${String(identity.archiveCommit ?? "unknown")}`,
+    `ZIP SHA-256：${String((identity.archive as Record<string, unknown> | undefined)?.digest ?? "unknown")}`,
+    `物化模式：${String(identity.mode ?? "unknown")}`,
+    ...(candidate.materializationModes?.length
+      ? [`可选物化模式：${candidate.materializationModes.join(", ")}`]
+      : []),
+  ];
+}
+
 function candidateTags(candidate: Candidate) {
   return [
     candidate.assetKind,
@@ -222,7 +270,8 @@ function appendPreviewImage(
   candidate: Candidate,
   size: "thumbnail" | "detail",
 ) {
-  if (candidate.previewStatus === "ready" && candidate.previewDataUrl) {
+  const status = candidate.searchPreviewStatus ?? candidate.previewStatus;
+  if (status === "ready" && candidate.previewDataUrl) {
     const image = element(document, "img");
     image.src = candidate.previewDataUrl;
     image.alt = `${candidate.title} ${size === "thumbnail" ? "候选缩略图" : "候选详情图"}`;
@@ -232,7 +281,7 @@ function appendPreviewImage(
     return;
   }
   container.append(
-    element(document, "span", "preview-status", previewFailureLabel(candidate.previewStatus)),
+    element(document, "span", "preview-status", previewFailureLabel(status)),
   );
 }
 
@@ -357,6 +406,7 @@ export function renderCandidateCards(options: {
     content.append(
       top,
       element(document, "p", "description", description),
+      element(document, "p", "provider-state", providerStateLines(candidate).join(" · ")),
       element(
         document,
         "p",
@@ -440,6 +490,8 @@ export function openCandidateDetail(options: {
     appendDetailSection(document, metadata, "数据特征", [candidate.dataProfile]);
   }
   appendDetailSection(document, metadata, "验证状态", validationSummaryLines(candidate));
+  appendDetailSection(document, metadata, "来源与执行边界", providerStateLines(candidate));
+  appendDetailSection(document, metadata, "固定模块身份", moduleIdentityLines(candidate));
   if (candidate.canonicalPreviewDecision) {
     appendDetailSection(document, metadata, "Canonical 预览", [
       `${candidate.canonicalPreviewDecision.reason}：${
@@ -463,7 +515,10 @@ export function openCandidateDetail(options: {
   const exactPreviewButton = button(document, "exact-preview-action", "查看精确预览");
   const confirmButton = button(document, "confirm-action", "确认并交给 Agent");
   confirmButton.disabled = true;
-  if (!candidate.previewAvailable || candidate.previewStatus !== "ready") {
+  if (
+    !candidate.previewAvailable ||
+    (candidate.previewStatus !== undefined && candidate.previewStatus !== "ready")
+  ) {
     exactPreviewButton.disabled = true;
     status.textContent = "该候选没有通过安全校验的预览，不能进行确认。";
   } else if (!options.serverToolsAvailable) {

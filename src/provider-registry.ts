@@ -1,6 +1,8 @@
 import { createHash } from "node:crypto";
+import fs from "node:fs/promises";
 import path from "node:path";
 import type { CatalogIndex } from "./catalog.ts";
+import { ModuleCatalogIndex } from "./module-catalog.ts";
 import {
   buildSearchIntent,
   normalizeSearchText,
@@ -13,13 +15,21 @@ import {
   materializeFigureYaTemplate,
 } from "./materialize.ts";
 import {
+  inspectModuleSourcePack,
+  materializeModuleTemplate,
+  parseModuleTemplateLock,
+} from "./module-materialize.ts";
+import {
   FIGUREYA_PROVIDER_ID,
   LOCAL_LIBRARY_PROVIDER_ID,
+  PERSONAL_MODULE_PROVIDER_ID,
   assertExactTemplateSelector,
   assertFigureYaExactSelector,
   assertFigureYaSelectorMatches,
   assertFigureYaSourceSelectorMatches,
   assertLocalPublishedExactSelector,
+  assertModuleArchiveExactSelector,
+  assertModuleArchiveSelectorMatches,
   exactSelectorDigest,
   localPublishedExactSelector,
 } from "./providers.ts";
@@ -27,6 +37,8 @@ import type {
   ExactTemplateSelector,
   FigureYaExactSelector,
   FigureYaModule,
+  ModuleArchiveExactSelector,
+  ModuleCatalogEntry,
   SearchRequest,
   TemplateCandidate,
 } from "./types.ts";
@@ -42,17 +54,20 @@ import {
 export interface ProviderDescriptor {
   providerId: string;
   sourceLabel: string;
-  kind: "local-published" | "figureya" | "public-catalog";
+  kind: "local-published" | "figureya" | "module-catalog" | "public-catalog";
   defaultSearchOrder: number;
   bundled: boolean;
   enabled?: boolean;
   includeInDefaultSearch?: boolean;
+  frozen?: boolean;
 }
 
 export interface ProviderContext {
   library: CurrentLibraryContext;
   catalog: CatalogIndex;
+  moduleCatalogs?: ReadonlyMap<string, ModuleCatalogIndex>;
   sourcePackDir?: string;
+  moduleSourcePackDir?: string;
   materialization?: {
     operationId: string;
     planDigest: string;
@@ -72,6 +87,7 @@ export interface ResolvedProviderTemplate {
         review: ReviewSnapshotV1;
       }
     | { kind: "figureya"; module: FigureYaModule }
+    | { kind: "module-catalog"; module: ModuleCatalogEntry; catalog: ModuleCatalogIndex }
     | {
       kind: "public-catalog";
         entry: unknown;
@@ -83,6 +99,7 @@ export interface ProviderDescription {
   code:
     | "local_published_described"
     | "figureya_module_described"
+    | "module_catalog_described"
     | "public_template_described";
   summary: string;
   detail: Record<string, unknown>;
@@ -144,6 +161,11 @@ export interface ProviderAdapter {
     resolved: ResolvedProviderTemplate,
   ): Promise<ProviderDescription>;
   loadPreview(
+    context: ProviderContext,
+    resolved: ResolvedProviderTemplate,
+  ): Promise<LoadedProviderPreview>;
+  /** Optional lower-cost preview used only for search cards. */
+  loadSearchPreview?(
     context: ProviderContext,
     resolved: ResolvedProviderTemplate,
   ): Promise<LoadedProviderPreview>;
@@ -744,6 +766,340 @@ export class FigureYaProviderAdapter implements ProviderAdapter {
   }
 }
 
+function moduleCatalogFor(
+  context: ProviderContext,
+  providerId: string,
+  fallback?: ModuleCatalogIndex,
+) {
+  const index = context.moduleCatalogs?.get(providerId) ?? fallback;
+  if (!index) throw new Error(`module Catalog is unavailable for ${providerId}`);
+  if (index.catalog.provider.providerId !== providerId) {
+    throw new Error(`module Catalog providerId mismatch for ${providerId}`);
+  }
+  return index;
+}
+
+export class ModuleCatalogProviderAdapter implements ProviderAdapter {
+  readonly descriptor: ProviderDescriptor;
+  readonly moduleCatalog: ModuleCatalogIndex;
+
+  constructor(options: {
+    providerId?: string;
+    sourceLabel?: string;
+    defaultSearchOrder?: number;
+    bundled?: boolean;
+    enabled?: boolean;
+    includeInDefaultSearch?: boolean;
+    catalog?: ModuleCatalogIndex;
+  } = {}) {
+    const catalog = options.catalog ?? ModuleCatalogIndex.empty({
+      providerId: options.providerId ?? PERSONAL_MODULE_PROVIDER_ID,
+      displayName: options.sourceLabel ?? "Open Figure Modules",
+    });
+    this.descriptor = {
+      providerId: options.providerId ?? catalog.catalog.provider.providerId,
+      sourceLabel: options.sourceLabel ?? catalog.catalog.provider.displayName,
+      kind: "module-catalog",
+      defaultSearchOrder: options.defaultSearchOrder ?? 30,
+      bundled: options.bundled ?? true,
+      enabled: options.enabled ?? true,
+      includeInDefaultSearch: options.includeInDefaultSearch ?? true,
+    };
+    if (catalog.catalog.provider.providerId !== this.descriptor.providerId) {
+      throw new Error("module Catalog providerId differs from the Provider descriptor");
+    }
+    this.moduleCatalog = catalog;
+  }
+
+  assertSelector(
+    selector: ExactTemplateSelector,
+    _purpose: "describe" | "preview" | "materialize" | "replay",
+  ) {
+    assertModuleArchiveExactSelector(selector);
+    if (selector.providerId !== this.descriptor.providerId) {
+      throw new Error("module selector providerId differs from this Provider");
+    }
+  }
+
+  async revision(context: ProviderContext) {
+    const index = moduleCatalogFor(context, this.descriptor.providerId, this.moduleCatalog);
+    return {
+      providerId: this.descriptor.providerId,
+      catalogSha256: index.catalogSha256,
+      modules: index.catalog.modules.map((module) => ({
+        moduleId: module.moduleId,
+        sourceCommit: module.source.commit,
+        archiveCommit: module.archive.commit,
+        archiveSha256: module.archive.sha256,
+        previewSha256: module.preview.sha256,
+      })),
+    };
+  }
+
+  async search(context: ProviderContext, request: SearchRequest) {
+    const index = moduleCatalogFor(context, this.descriptor.providerId, this.moduleCatalog);
+    return (await index.searchAll(request)).map((candidate) => ({
+      ...candidate,
+      validationState: legacyValidationStateFromExecutionStatus("not_run"),
+    }));
+  }
+
+  async resolve(
+    context: ProviderContext,
+    selector: ExactTemplateSelector,
+    purpose: "describe" | "preview" | "materialize" | "replay",
+  ): Promise<ResolvedProviderTemplate> {
+    this.assertSelector(selector, purpose);
+    assertModuleArchiveExactSelector(selector);
+    const index = moduleCatalogFor(context, this.descriptor.providerId, this.moduleCatalog);
+    const module = index.get(selector.identity.moduleId);
+    if (!module) throw new Error(`unknown personal module: ${selector.identity.moduleId}`);
+    assertModuleArchiveSelectorMatches(
+      selector,
+      this.descriptor.providerId,
+      module,
+      index.catalogSha256,
+    );
+    return {
+      providerId: this.descriptor.providerId,
+      exactSelector: selector,
+      templateId: module.moduleId,
+      value: { kind: "module-catalog", module, catalog: index },
+    };
+  }
+
+  async describe(_context: ProviderContext, resolved: ResolvedProviderTemplate) {
+    if (resolved.value.kind !== "module-catalog") throw new Error("invalid module Catalog resolution");
+    const { module, catalog } = resolved.value;
+    const validationState = legacyValidationStateFromExecutionStatus("not_run");
+    return {
+      code: "module_catalog_described" as const,
+      summary: `Loaded exact personal module ${module.moduleId} from its pinned source and archive commits.`,
+      detail: {
+        templateId: module.moduleId,
+        title: module.title,
+        titleEn: module.titleEn,
+        description: module.description,
+        application: module.application,
+        dataProfile: module.dataProfile,
+        inputFiles: module.inputFiles,
+        codeFiles: module.codeFiles,
+        packages: module.packages,
+        requiredFiles: module.requiredFiles,
+        fullFiles: module.files,
+        materializationModes: ["template", "full"],
+        source: module.source,
+        archive: module.archive,
+        preview: module.preview,
+        thumbnail: module.thumbnail,
+        licenses: module.licenses,
+        publisherReviewStatus: module.publisher.reviewStatus,
+        publisherExecutionStatus: module.publisher.executionStatus,
+        publisherExecutionScope: module.publisher.executionScope,
+        localReviewStatus: "not_reviewed",
+        executionStatus: "not_run",
+        codeExecutedBySflClient: false,
+        validationState,
+        catalogSha256: catalog.catalogSha256,
+      },
+      lines: [
+        `TITLE: ${module.title}`,
+        `TITLE_EN: ${module.titleEn}`,
+        "UPSTREAM_STATUS: personal_published",
+        `PUBLISHER_REVIEW_STATUS: ${module.publisher.reviewStatus}`,
+        `PUBLISHER_EXECUTION_STATUS: ${module.publisher.executionStatus}`,
+        `PUBLISHER_EXECUTION_SCOPE: ${module.publisher.executionScope}`,
+        "LOCAL_REVIEW_STATUS: not_reviewed",
+        "EXECUTION_STATUS: not_run",
+        "CODE_EXECUTED_BY_SFL_CLIENT: false",
+        `SOURCE_COMMIT: ${module.source.commit}`,
+        `ARCHIVE_COMMIT: ${module.archive.commit}`,
+        `ARCHIVE_SHA256: ${module.archive.sha256}`,
+        `REQUIRED_FILES: ${module.requiredFiles.join(", ")}`,
+      ],
+    };
+  }
+
+  async loadPreview(_context: ProviderContext, resolved: ResolvedProviderTemplate) {
+    if (resolved.value.kind !== "module-catalog") throw new Error("invalid module Catalog resolution");
+    let loaded;
+    try {
+      loaded = await resolved.value.catalog.preview(resolved.value.module, "primary");
+    } catch (error) {
+      throw new Error(
+        `preview_unavailable: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
+    return completePreview(this.descriptor.providerId, resolved, loaded);
+  }
+
+  async loadSearchPreview(_context: ProviderContext, resolved: ResolvedProviderTemplate) {
+    if (resolved.value.kind !== "module-catalog") throw new Error("invalid module Catalog resolution");
+    let loaded;
+    try {
+      loaded = await resolved.value.catalog.preview(resolved.value.module, "thumbnail");
+    } catch (error) {
+      throw new Error(
+        `preview_unavailable: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
+    return completePreview(this.descriptor.providerId, resolved, loaded);
+  }
+
+  async stageMaterialization(
+    context: ProviderContext,
+    resolved: ResolvedProviderTemplate,
+    destination: string,
+    allowNetwork: boolean,
+  ) {
+    const operation = context.materialization;
+    if (!operation) throw new Error("materialization operation binding is required");
+    if (resolved.value.kind !== "module-catalog") throw new Error("invalid module Catalog resolution");
+    assertModuleArchiveExactSelector(resolved.exactSelector);
+    const applied = await materializeModuleTemplate({
+      providerId: this.descriptor.providerId,
+      index: resolved.value.catalog,
+      module: resolved.value.module,
+      destination,
+      mode: resolved.exactSelector.identity.mode,
+      exactSelector: resolved.exactSelector,
+      sourcePackDir: operation.sourcePackDir,
+      allowNetwork,
+      operationId: operation.operationId,
+      planDigest: operation.planDigest,
+    });
+    return {
+      providerId: this.descriptor.providerId,
+      exactSelector: applied.exactSelector,
+      target: applied.target,
+      files: applied.files,
+      materializationSource: applied.archiveSource,
+      archiveSha256: applied.sha256,
+    };
+  }
+
+  async verifyMaterialized(context: ProviderContext, binding: ProviderMaterializedBinding) {
+    assertModuleArchiveExactSelector(binding.plannedSelector);
+    assertModuleArchiveExactSelector(binding.exactSelector);
+    const resolved = await this.resolve(context, binding.plannedSelector, "replay");
+    if (resolved.value.kind !== "module-catalog") throw new Error("invalid module Catalog resolution");
+    if (canonicalJson(binding.plannedSelector) !== canonicalJson(binding.exactSelector)) {
+      throw new Error("personal module exact selector changed during materialization");
+    }
+    const lockPath = path.join(binding.target, "template.lock.json");
+    let lock: ReturnType<typeof parseModuleTemplateLock>;
+    try {
+      lock = parseModuleTemplateLock(
+        JSON.parse(await fs.readFile(lockPath, "utf8")) as unknown,
+      );
+    } catch (error) {
+      throw new Error(
+        `personal module materialization lock is invalid: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+    }
+    if (
+      lock.providerId !== this.descriptor.providerId ||
+      canonicalJson(lock.plannedSelector) !== canonicalJson(binding.plannedSelector) ||
+      canonicalJson(lock.exactSelector) !== canonicalJson(binding.exactSelector) ||
+      canonicalJson(lock.licenses) !== canonicalJson(resolved.value.module.licenses) ||
+      canonicalJson(lock.publisher) !== canonicalJson(resolved.value.module.publisher)
+    ) {
+      throw new Error("personal module materialization lock metadata is stale");
+    }
+    const observedPayload = binding.inventory.filter((entry) => entry.file !== "template.lock.json");
+    if (canonicalJson(lock.files) !== canonicalJson(observedPayload)) {
+      throw new Error("personal module materialization lock inventory is stale");
+    }
+    const expectedFiles = new Set(
+      resolved.value.module.files.map((file) =>
+        path.posix.join("upstream", file.path),
+      ),
+    );
+    const requiredFiles = new Set(
+      resolved.value.module.requiredFiles.map((file) =>
+        path.posix.join("upstream", file),
+      ),
+    );
+    const actualUpstream = binding.inventory
+      .map((entry) => entry.file)
+      .filter((file) => file.startsWith("upstream/"));
+    const expectedUpstream =
+      binding.plannedSelector.identity.mode === "full" ? expectedFiles : requiredFiles;
+    if (
+      actualUpstream.length !== expectedUpstream.size ||
+      actualUpstream.some((file) => !expectedUpstream.has(file))
+    ) {
+      throw new Error("personal module materialization mode inventory is stale");
+    }
+    if (
+      !sameNativePath(
+        binding.target,
+        path.join(path.dirname(binding.target), resolved.value.module.moduleId),
+      )
+    ) {
+      throw new Error("personal module materialization target name is stale");
+    }
+  }
+
+  async status(context: ProviderContext) {
+    const index = moduleCatalogFor(context, this.descriptor.providerId, this.moduleCatalog);
+    const sourcePackDirectory =
+      context.moduleSourcePackDir ??
+      process.env.PERSONAL_MODULE_SOURCE_PACK_DIR?.trim();
+    const sourcePack = await inspectModuleSourcePack(index, sourcePackDirectory);
+    const [previewChecks, thumbnailChecks] = await Promise.all([
+      Promise.all(index.catalog.modules.map(async (module) => index.primaryPreviewAvailable(module))),
+      Promise.all(index.catalog.modules.map(async (module) => index.thumbnailAvailable(module))),
+    ]);
+    const sourceCommits = [...new Set(index.catalog.modules.map((module) => module.source.commit))].sort();
+    const archiveCommits = [...new Set(index.catalog.modules.map((module) => module.archive.commit))].sort();
+    const sourcePackHealth = sourcePack.manifestValid
+      ? sourcePack.invalidTemplates.length
+        ? "degraded"
+        : "ready"
+      : sourcePack.configured
+        ? "corrupt"
+        : "not_configured";
+    return {
+      providerId: this.descriptor.providerId,
+      sourceLabel: this.descriptor.sourceLabel,
+      health: previewChecks.every(Boolean) &&
+        thumbnailChecks.every(Boolean) &&
+        sourcePackHealth !== "corrupt"
+        ? ("ready" as const)
+        : ("degraded" as const),
+      details: {
+        providerId: this.descriptor.providerId,
+        sourceLabel: this.descriptor.sourceLabel,
+        bundled: this.descriptor.bundled,
+        enabled: this.descriptor.enabled !== false,
+        includeInDefaultSearch: this.descriptor.includeInDefaultSearch !== false,
+        moduleCount: index.catalog.modules.length,
+        templateCount: index.catalog.modules.length,
+        previewAvailableCount: previewChecks.filter(Boolean).length,
+        thumbnailAvailableCount: thumbnailChecks.filter(Boolean).length,
+        archiveAvailableCount: index.catalog.modules.length,
+        repository: index.catalog.provider.repository,
+        sourceRepository: index.catalog.provider.repository,
+        archiveRepository: index.catalog.provider.repository,
+        sourceCommits,
+        archiveCommits,
+        ...(sourceCommits.length === 1 ? { sourceCommit: sourceCommits[0] } : {}),
+        ...(archiveCommits.length === 1 ? { archiveCommit: archiveCommits[0] } : {}),
+        catalogSha256: index.catalogSha256,
+        sourcePack,
+        sourcePackConfigured: sourcePack.configured,
+        sourcePackHealth,
+        startupNetworkAccess: false,
+        searchNetworkAccess: false,
+        codeExecutedBySflClient: false,
+      },
+    };
+  }
+}
+
 async function completePreview(
   providerId: string,
   resolved: ResolvedProviderTemplate,
@@ -784,17 +1140,22 @@ export class UnavailableProviderAdapter implements ProviderAdapter {
     sourceLabel: string;
     enabled: boolean;
     includeInDefaultSearch: boolean;
+    kind?: ProviderDescriptor["kind"];
+    defaultSearchOrder?: number;
+    bundled?: boolean;
+    frozen?: boolean;
     errorCode?: string;
     safeMessage: string;
   }) {
     this.descriptor = {
       providerId: options.providerId,
       sourceLabel: options.sourceLabel,
-      kind: "public-catalog",
-      defaultSearchOrder: 100,
-      bundled: false,
+      kind: options.kind ?? "public-catalog",
+      defaultSearchOrder: options.defaultSearchOrder ?? 100,
+      bundled: options.bundled ?? false,
       enabled: options.enabled,
       includeInDefaultSearch: options.includeInDefaultSearch,
+      ...(options.frozen !== undefined ? { frozen: options.frozen } : {}),
     };
     this.errorCode = options.errorCode ?? "provider_snapshot_corrupt";
     this.safeMessage = options.safeMessage;
@@ -845,6 +1206,13 @@ export class UnavailableProviderAdapter implements ProviderAdapter {
     return this.#failure();
   }
 
+  async loadSearchPreview(
+    _context: ProviderContext,
+    _resolved: ResolvedProviderTemplate,
+  ): Promise<LoadedProviderPreview> {
+    return this.#failure();
+  }
+
   async stageMaterialization(
     _context: ProviderContext,
     _resolved: ResolvedProviderTemplate,
@@ -868,6 +1236,12 @@ export class UnavailableProviderAdapter implements ProviderAdapter {
       health: "corrupt",
       details: {
         providerId: this.descriptor.providerId,
+        sourceLabel: this.descriptor.sourceLabel,
+        kind: this.descriptor.kind,
+        bundled: this.descriptor.bundled,
+        enabled: this.descriptor.enabled !== false,
+        includeInDefaultSearch: this.descriptor.includeInDefaultSearch !== false,
+        frozen: this.descriptor.frozen === true,
         errorCode: this.errorCode,
         safeMessage: this.safeMessage,
         startupNetworkAccess: false,
@@ -950,6 +1324,7 @@ export function createDefaultProviderRegistry() {
   return new DefaultProviderRegistry([
     new LocalPublishedProviderAdapter(),
     new FigureYaProviderAdapter(),
+    new ModuleCatalogProviderAdapter(),
   ]);
 }
 

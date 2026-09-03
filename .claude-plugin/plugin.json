@@ -1,7 +1,7 @@
 {
   "name": "figure-library",
-  "version": "0.4.0",
-  "description": "Search Local Published, bundled Community, FigureYa, and explicitly trusted personal Providers, then govern immutable figure references and staged publication.",
+  "version": "0.6.1",
+  "description": "Search Local Published, FigureYa, bundled Open Figure Modules, frozen explicit-only Community, and explicitly trusted dynamic Providers; materialize exact immutable figure references without executing module code.",
   "author": {
     "name": "xuzhougeng and contributors"
   },

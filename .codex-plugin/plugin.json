@@ -1,7 +1,7 @@
 {
   "name": "figure-library",
-  "version": "0.4.0",
-  "description": "Search Local Published, bundled Community, FigureYa, and explicitly trusted personal Providers, then govern immutable figure references and staged publication.",
+  "version": "0.6.1",
+  "description": "Search Local Published, FigureYa, bundled Open Figure Modules, frozen explicit-only Community, and explicitly trusted dynamic Providers; materialize exact immutable figure references without executing module code.",
   "author": {
     "name": "xuzhougeng and contributors",
     "url": "https://github.com/xuzhougeng/ScientificFigureLibrary"
@@ -20,7 +20,7 @@
   "interface": {
     "displayName": "Scientific Figure Library",
     "shortDescription": "Search and materialize reviewed scientific-figure templates",
-    "longDescription": "Search Local Published, bundled Community, FigureYa, and explicitly trusted personal Providers; review exact previews; materialize immutable figure references; and prepare staged public submissions without executing template code. The same Skill and MCP server ship in the Wisp and Claude packages.",
+    "longDescription": "Search Local Published, FigureYa, bundled Open Figure Modules, frozen explicit-only Community, and explicitly trusted dynamic Providers; review exact previews; materialize immutable figure references; and preserve the no-code-execution boundary. The same Skill and MCP server ship in the Wisp and Claude packages.",
     "developerName": "xuzhougeng and contributors",
     "category": "Productivity",
     "capabilities": [

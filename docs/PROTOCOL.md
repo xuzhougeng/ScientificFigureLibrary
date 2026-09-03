@@ -16,10 +16,16 @@ providers are:
   locally reviewed Releases from the global Library.
 - **FigureYa** (`org.figureya.module`) — the bundled 319-module search catalog,
   with commit-pinned source/archive identities.
+- **Open Figure Modules** (`io.github.jarxunlai.personal-figures`) — a
+  bundled operator-maintained module Catalog plus primary previews and search
+  thumbnails. Cleaned module source and deterministic ZIPs live in one
+  separately maintained repository; complete ZIPs never enter the plugin.
 - **SFL Community** (`io.github.jarxunlai.scientific-figure-community`) — a
   centrally curated Catalog and preview snapshot bundled with this SFL build.
   Complete template archives stay outside the plugin and are downloaded only
-  during an explicitly network-enabled materialization.
+  during an explicitly network-enabled materialization. In 0.6.1 this Provider
+  is frozen and excluded from default search, but explicit `providerId` access
+  remains available for compatibility.
 
 Users may also add an independently keyed, Ed25519-signed HTTPS Provider.
 Personal Providers are excluded from default search until the user explicitly
@@ -28,7 +34,15 @@ default Provider set. Results are provider-qualified and carry an
 `exactSelector`; a bare `templateId` is never enough to describe, preview, or
 materialize an exact result.
 
-> **0.6.0 Provider and publication boundary:** bundled Community search and
+> **0.6.1 personal module boundary:** default search order is Local Published,
+> FigureYa, Open Figure Modules, then dynamic personal Providers that opted
+> in. Community remains registered with `enabled: true`,
+> `includeInDefaultSearch: false`, and `frozen: true`. Personal selectors use
+> `kind=module-archive.v1` and bind source/archive commits, ZIP size/SHA-256,
+> primary preview identity, Catalog SHA-256, and `template` or `full` mode.
+
+> **0.6.0 Provider and publication boundary:** bundled Community compatibility
+> remains frozen and explicit-only in 0.6.1; its search and
 > preview are offline. Public materialization verifies a commit-pinned archive
 > and writes `template-lock.v3` with `codeExecutedBySflClient: false`. An exact
 > Local Published Release can be exported only as a sanitized, explicitly
@@ -356,9 +370,10 @@ warnings, `publishEligible`, canonical preview decision, and validation state.
 
 `figure_library_search` searches the complete relevance-matched dynamic
 Provider set unless `providerIds` explicitly narrows it. The default order is
-Local Published, bundled Community, FigureYa, then enabled personal Providers
-whose `includeInDefaultSearch` flag was explicitly set, ordered canonically by
-`providerId`. Working Revisions, Capture records, and unadopted flat entries
+Local Published, FigureYa, bundled Open Figure Modules, then enabled
+dynamic personal Providers whose `includeInDefaultSearch` flag was explicitly
+set, ordered canonically by `providerId`. Community is explicit-only and does
+not enter this list. Working Revisions, Capture records, and unadopted flat entries
 are excluded. The retrieval score is unchanged: it only orders candidates and
 is not visual similarity, confidence, or approval. A broken personal Provider
 is reported as degraded/corrupt while healthy default Providers continue; an
@@ -384,6 +399,9 @@ Each candidate includes `providerId` and `exactSelector`:
   `releaseId`.
 - FigureYa identity: `moduleId`, source commit, archive commit, archive
   integrity identity, and materialization mode when an archive exists.
+- Personal module identity: `providerId`, `moduleId`, one repository's source
+  commit/path, archive commit/path/bytes/SHA-256, primary preview
+  bytes/media/SHA-256, Catalog SHA-256, and `template` or `full` mode.
 - Public Provider identity: `templateId`, semantic `releaseVersion`, public
   content digest, Catalog digest, immutable archive repository/commit/path,
   byte count and SHA-256, plus the preview identity.
@@ -513,10 +531,46 @@ Any materialization failure is terminal. Do not retry the same call, change
 mode/provider/downloader, fetch a full repository, or generate a substitute.
 Report the error and wait for a new user decision.
 
+Personal module materialization uses `figure-library.module-template-lock.v1`.
+Its lock records the Provider/module identity, source and archive repository
+commits, archive path/bytes/SHA-256, primary preview identity, selected mode,
+planned and exact selectors, complete output inventory, per-module licenses,
+publisher facts, and `codeExecutedBySflClient: false`. `template` extracts only
+the manifest's exact `requiredFiles`; `full` extracts every declared file from
+the cleaned ZIP. The single personal content repository is the source for both
+`modules/<moduleId>/` and `archives/<moduleId>.zip`; no second archive
+repository is consulted.
+
+The personal Source Pack uses
+`figure-library.module-source-pack.v1`, contains only selected archive ZIPs and
+its manifest, and is never bundled into an SFL plugin. With a supplied Source
+Pack, Provider/module/commit/path/byte/hash mismatch is a hard failure; SFL
+does not silently switch to a network source. Without a Source Pack, network
+materialization uses only the Catalog-derived
+`raw.githubusercontent.com/<owner>/<repo>/<archiveCommit>/<archivePath>` URL,
+rejects redirects away from that origin, verifies the response size and
+SHA-256, validates the complete ZIP inventory, and executes no module file.
+
+Maintainer commands are offline and support `--check` and `--write`:
+
+```text
+npm run modules:validate
+npm run modules:archive
+npm run modules:catalog
+npm run modules:source-pack
+```
+
+`--check` is read-only and reports include/exclude and generated-tree
+differences. `--write` stages and atomically replaces only generated output;
+it never creates a commit, pushes, creates a GitHub repository, runs R, installs
+dependencies, modifies the Gallery, or modifies the Local Published
+Library.
+
 ## Provider source management
 
 `figure_library_list_provider_sources` is completely read-only and offline. It
-reports Local, bundled Community, FigureYa, and configured personal Providers,
+reports Local, bundled FigureYa, bundled Open Figure Modules, frozen
+Community compatibility, and configured dynamic personal Providers,
 including enabled/default-search state, active sequence/digest/key, verified
 snapshot status, template count, and the last safe error.
 
@@ -756,9 +810,9 @@ npm run package:plugins
 
 This writes three artifacts into `release/`:
 
-- `scientific-figure-library-wisp-0.4.0.zip` — install from Wisp **Settings → Plugins**
-- `scientific-figure-library-codex-0.4.0.zip` — Codex plugin with `.codex-plugin/plugin.json`, `.codex-plugin/mcp.json`, and `skills/figure-library`
-- `scientific-figure-library-claude-0.4.0.zip` — Claude Code plugin with `.claude-plugin/plugin.json`, `.claude-plugin/mcp.json`, and auto-discovered `skills/`
+- `scientific-figure-library-wisp-0.6.1.zip` — install from Wisp **Settings → Plugins**
+- `scientific-figure-library-codex-0.6.1.zip` — Codex plugin with `.codex-plugin/plugin.json`, `.codex-plugin/mcp.json`, and `skills/figure-library`
+- `scientific-figure-library-claude-0.6.1.zip` — Claude Code plugin with `.claude-plugin/plugin.json`, `.claude-plugin/mcp.json`, and auto-discovered `skills/`
 
 Each package uses its Host's plugin-root contract. Codex resolves `cwd: "."`
 from the installed plugin root, Claude expands `${CLAUDE_PLUGIN_ROOT}`, and Wisp
@@ -780,7 +834,7 @@ Build a standalone npm package:
 
 ```bash
 npm run package:npm
-npm install --global ./release/scientific-figure-library-0.4.0.tgz
+npm install --global ./release/scientific-figure-library-0.6.1.tgz
 ```
 
 Use `scientific-figure-library` as the MCP command after installation.
@@ -816,7 +870,7 @@ npm run package:source-pack -- \
 
 The helper verifies selected ZIP identities and caps a transport pack at 200
 MiB. Extract the resulting
-`release/figure-library-source-pack-volcano-0.4.0.zip` before use.
+`release/figure-library-source-pack-volcano-0.6.1.zip` before use.
 
 ## Catalog development
 
@@ -855,7 +909,7 @@ and exact inventory before atomically replacing `assets/community`. The source
 checkout and target must be separate directory trees. Packaging has an
 additional final-release gate that requires the three reviewed 1.0.0 seed
 releases; the empty bootstrap snapshot is valid for development tests but
-cannot be packaged as the 0.4.0 release.
+cannot be packaged as the 0.6.1 release.
 
 ## License
 

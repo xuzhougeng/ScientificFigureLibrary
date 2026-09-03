@@ -69,6 +69,156 @@ export type FigureYaSourceExactSelector = ExactTemplateSelector<
   FigureYaSourceSelectorIdentity
 >;
 
+export interface ModuleArchiveIdentity extends Record<string, unknown> {
+  algorithm: "sha256";
+  repository: string;
+  commit: string;
+  path: string;
+  digest: string;
+  bytes: number;
+}
+
+export interface ModulePreviewIdentity extends Record<string, unknown> {
+  algorithm: "sha256";
+  digest: string;
+  bytes: number;
+  mediaType: "image/png" | "image/jpeg" | "image/webp";
+}
+
+export interface ModuleArchiveSelectorIdentity extends Record<string, unknown> {
+  moduleId: string;
+  sourceRepository: string;
+  sourceCommit: string;
+  sourcePath: string;
+  archiveCommit: string;
+  archive: ModuleArchiveIdentity;
+  preview: ModulePreviewIdentity;
+  catalogSha256: string;
+  mode: MaterializeMode;
+}
+
+export type ModuleArchiveExactSelector = ExactTemplateSelector<
+  "module-archive.v1",
+  ModuleArchiveSelectorIdentity
+>;
+
+export interface ModuleCatalogFile {
+  path: string;
+  bytes: number;
+  sha256: string;
+}
+
+export interface ModuleCatalogPreview {
+  path: string;
+  bytes: number;
+  sha256: string;
+  mediaType: "image/png" | "image/jpeg" | "image/webp";
+}
+
+export interface ModuleCatalogEntry {
+  moduleId: string;
+  title: string;
+  titleEn: string;
+  description: string;
+  application: string;
+  dataProfile: string;
+  plotFamily: string;
+  language: string;
+  tags: string[];
+  packages: string[];
+  codeFiles: string[];
+  inputFiles: string[];
+  canonicalCode: string;
+  requiredFiles: string[];
+  files: ModuleCatalogFile[];
+  source: {
+    repository: string;
+    commit: string;
+    path: string;
+  };
+  archive: {
+    repository: string;
+    commit: string;
+    path: string;
+    bytes: number;
+    sha256: string;
+  };
+  preview: ModuleCatalogPreview;
+  thumbnail: ModuleCatalogPreview;
+  licenses: {
+    code: string;
+    content: string;
+    documentation: string;
+  };
+  publisher: {
+    reviewStatus: "approved";
+    executionStatus: "not_run" | "passed" | "failed";
+    executionScope: "synthetic_data" | "example_data" | "real_data" | "unknown";
+    evidence?: string[];
+  };
+  provenance?: Record<string, unknown>[];
+}
+
+export interface ModuleCatalog {
+  schema: "figure-library.module-catalog.v1";
+  generatedAt: string;
+  provider: {
+    providerId: string;
+    displayName: string;
+    repository: string;
+  };
+  modules: ModuleCatalogEntry[];
+}
+
+export interface ModuleProviderStatusDetails {
+  providerId: string;
+  sourceLabel: string;
+  health: "ready" | "degraded" | "corrupt";
+  bundled: boolean;
+  enabled: boolean;
+  includeInDefaultSearch: boolean;
+  moduleCount: number;
+  previewAvailableCount: number;
+  thumbnailAvailableCount?: number;
+  archiveAvailableCount: number;
+  sourceRepository: string;
+  sourceCommits: string[];
+  archiveRepository: string;
+  archiveCommits: string[];
+  sourcePackConfigured: boolean;
+  sourcePackHealth: "ready" | "degraded" | "corrupt" | "not_configured";
+  codeExecutedBySflClient: false;
+}
+
+export interface ModulePreviewManifest {
+  schema: "figure-library.module-preview-manifest.v1";
+  providerId: string;
+  entries: Array<{
+    moduleId: string;
+    role: "primary" | "thumbnail";
+    path: string;
+    bytes: number;
+    sha256: string;
+    mediaType: "image/png" | "image/jpeg" | "image/webp";
+  }>;
+}
+
+export interface ModuleSourcePackManifest {
+  schema: "figure-library.module-source-pack.v1";
+  providerId: string;
+  repository: string;
+  entries: Array<{
+    moduleId: string;
+    sourceRepository: string;
+    sourceCommit: string;
+    archiveRepository: string;
+    archiveCommit: string;
+    file: string;
+    bytes: number;
+    sha256: string;
+  }>;
+}
+
 export interface LocalPublishedSelectorIdentity extends Record<string, unknown> {
   templateId: string;
   revisionId: string;
@@ -233,6 +383,8 @@ export interface TemplateCandidate {
   templateId: string;
   providerId: string;
   exactSelector: ExactTemplateSelector;
+  materializationModes?: MaterializeMode[];
+  materializationSelectors?: Partial<Record<MaterializeMode, ExactTemplateSelector>>;
   sourceLabel: string;
   title: string;
   retrievalScore: number;
@@ -249,6 +401,10 @@ export interface TemplateCandidate {
   packages: string[];
   materializable: boolean;
   previewAvailable: boolean;
+  /** Search-card thumbnail availability; exact preview availability remains `previewAvailable`. */
+  searchPreviewAvailable?: boolean;
+  /** Search-card thumbnail transport state; `previewStatus` remains the exact-preview state. */
+  searchPreviewStatus?: PreviewStatus;
   previewRef?: ProviderPreviewRef;
   previewStatus?: PreviewStatus;
   previewDataUrl?: string;
@@ -261,6 +417,11 @@ export interface TemplateCandidate {
   reviewStatus: ReviewStatus;
   codeStatus: CodeStatus;
   executionStatus: ExecutionStatus;
+  publisherReviewStatus?: "approved" | "not_reviewed";
+  publisherExecutionStatus?: "not_run" | "passed" | "failed";
+  publisherExecutionScope?: "synthetic_data" | "example_data" | "real_data" | "unknown";
+  publisherEvidence?: string[];
+  codeExecutedBySflClient?: false;
   validationState?: ValidationStateSummaryV1;
   canonicalPreviewDecision?: CanonicalPreviewDecisionSummary;
   upstreamStatus?: "published" | "available" | "unavailable" | "unknown";

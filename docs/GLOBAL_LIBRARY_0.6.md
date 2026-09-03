@@ -15,8 +15,9 @@ Providers. It is not a project database and it is not a web-capture system.
 - deterministic plan/apply writes with stale-state and replay checks;
 - portable backup, restore, fork, and template exchange boundaries;
 - extension points for explicit intake adapters such as CiteBox;
-- unified search across Local Published, bundled Community, FigureYa, and
-  explicitly trusted personal Providers without mixing their authority.
+- unified search across Local Published, FigureYa, bundled Personal Figure
+  Modules, and opted-in dynamic personal Providers without mixing their
+  authority; frozen Community remains explicit-only compatibility.
 
 ### Non-goals
 
@@ -259,16 +260,21 @@ The built-in Provider IDs are:
 - `org.scientificfigurelibrary.local`
 - `io.github.jarxunlai.scientific-figure-community`
 - `org.figureya.module`
+- `io.github.jarxunlai.personal-figures`
 
 `ProviderRegistry` routes search, revision, source status, description, exact
 preview, materialization, and replay through `ProviderAdapter`. Local and
-FigureYa use dedicated adapters. Bundled Community and every signed personal
-source use the same `PublicCatalogProviderAdapter`; only descriptor, snapshot,
-and trust state differ.
+FigureYa use dedicated adapters. The built-in personal source uses
+`ModuleCatalogProviderAdapter`; bundled Community and every signed dynamic
+personal source use `PublicCatalogProviderAdapter` with separate descriptor,
+snapshot, and trust state.
 
-When a caller omits `providerIds`, the order is Local, bundled Community,
-FigureYa, then enabled personal Providers whose owners explicitly selected
-`includeInDefaultSearch=true`, sorted by canonical `providerId`. A damaged
+When a caller omits `providerIds`, the order is Local, FigureYa, bundled
+Open Figure Modules, then enabled dynamic personal Providers whose owners
+explicitly selected `includeInDefaultSearch=true`, sorted by canonical
+`providerId`. Community remains registered with `enabled=true`,
+`includeInDefaultSearch=false`, and `frozen=true`, and is reachable only when
+explicitly selected. A damaged
 personal Provider degrades a multi-source default search and remains visible in
 `sources[]`; selecting only that damaged Provider fails terminally rather than
 pretending that it returned zero results.
@@ -279,6 +285,13 @@ hash/size identity, and materialization mode. Public selectors bind semantic
 release version, content and Catalog digests, archive repository/commit/path,
 archive size/hash, preview size/hash, and template mode. Same `templateId`
 values may coexist because identity always includes the Provider.
+
+Personal module selectors use `kind=module-archive.v1` and bind one repository's
+source commit/path and archive commit/path, archive bytes/SHA-256, primary
+preview identity, Catalog SHA-256, and `template` or `full` mode. Search cards
+use an independently pinned bundled thumbnail; exact preview uses the primary
+preview. Publisher/Gallery review and execution facts do not alter the
+recipient's Local review/execution state.
 
 Bundled Community Catalog, preview manifest, thumbnails, licenses, and source
 lock ship with the plugin and are never refreshed during startup, search, or

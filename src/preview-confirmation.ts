@@ -73,7 +73,11 @@ export class PreviewConfirmationStore {
     catalogRevision: string;
     libraryBindingDigest: string;
     providerIds: string[];
-    candidates: Array<{ providerId: string; exactSelector: ExactTemplateSelector }>;
+    candidates: Array<{
+      providerId: string;
+      exactSelector: ExactTemplateSelector;
+      alternateSelectors?: ExactTemplateSelector[];
+    }>;
   }) {
     const resultSetId = token("result");
     this.resultSets.set(resultSetId, {
@@ -83,8 +87,16 @@ export class PreviewConfirmationStore {
       libraryBindingDigest: input.libraryBindingDigest,
       providerIds: [...input.providerIds],
       candidateKeys: new Set(
-        input.candidates.map((candidate) =>
-          candidateKey(candidate.providerId, exactSelectorDigest(candidate.exactSelector)),
+        input.candidates.flatMap((candidate) =>
+          [candidate.exactSelector, ...(candidate.alternateSelectors ?? [])].map((selector) => {
+            if (selector.providerId !== candidate.providerId) {
+              throw new PreviewProtocolError(
+                "preview_selection_mismatch",
+                "A result-set alternate selector does not belong to its Provider.",
+              );
+            }
+            return candidateKey(candidate.providerId, exactSelectorDigest(selector));
+          }),
         ),
       ),
     });

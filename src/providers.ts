@@ -8,6 +8,12 @@ import type {
   FigureYaModule,
   FigureYaPreviewIdentity,
   FigureYaSourceExactSelector,
+  ModuleArchiveExactSelector,
+  ModuleArchiveIdentity,
+  ModuleArchiveSelectorIdentity,
+  ModuleCatalogEntry,
+  ModuleCatalogPreview,
+  ModulePreviewIdentity,
   LocalPublishedExactSelector,
   LocalPublishedSelectorIdentity,
   MaterializeMode,
@@ -15,6 +21,7 @@ import type {
 
 export const FIGUREYA_PROVIDER_ID = "org.figureya.module";
 export const LOCAL_LIBRARY_PROVIDER_ID = "org.scientificfigurelibrary.local";
+export const PERSONAL_MODULE_PROVIDER_ID = "io.github.jarxunlai.personal-figures";
 
 const PROVIDER_ID = /^[a-z0-9](?:[a-z0-9._-]{1,126}[a-z0-9])?$/u;
 const HEX_SHA1 = /^[a-f0-9]{40}$/u;
@@ -36,6 +43,16 @@ function positiveSafeInteger(value: unknown, name: string): number {
     throw new Error(`${name} must be a positive safe integer`);
   }
   return Number(value);
+}
+
+function exactObjectKeys(value: Record<string, unknown>, allowed: string[], label: string) {
+  const keys = new Set(allowed);
+  for (const key of Object.keys(value)) {
+    if (!keys.has(key)) throw new Error(`${label}.${key} is unsupported`);
+  }
+  for (const key of allowed) {
+    if (!Object.hasOwn(value, key)) throw new Error(`${label}.${key} is required`);
+  }
 }
 
 function validateJsonValue(value: unknown, pointer: string): void {
@@ -319,6 +336,239 @@ export function assertFigureYaSelectorMatches(
   if (canonicalSelectorJson(selector) !== canonicalSelectorJson(expected)) {
     throw new Error(
       `stale FigureYa selector: expected ${exactSelectorDigest(expected)}, got ${exactSelectorDigest(selector)}`,
+    );
+  }
+}
+
+function assertCommit(value: unknown, label: string): asserts value is string {
+  const commit = nonEmpty(value, label);
+  if (commit !== commit.toLocaleLowerCase("en-US") || !/^[a-f0-9]{40}$/u.test(commit)) {
+    throw new Error(`${label} must be a lowercase 40-hex commit`);
+  }
+}
+
+const RESERVED_MODULE_WINDOWS_NAME =
+  /^(?:con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\..*)?$/iu;
+
+function assertPortablePath(value: unknown, label: string): asserts value is string {
+  const raw = nonEmpty(value, label);
+  if (raw.length > 1_000) throw new Error(`${label} is too long`);
+  const parts = raw.split("/");
+  if (
+    raw.normalize("NFC") !== raw ||
+    raw.includes("\\") ||
+    raw.includes("\0") ||
+    raw.startsWith("/") ||
+    raw.endsWith("/") ||
+    /^[A-Za-z]:/u.test(raw) ||
+    parts.some(
+      (part) =>
+        !part ||
+        part === "." ||
+        part === ".." ||
+        part.startsWith(".") ||
+        part.endsWith(".") ||
+        part.endsWith(" ") ||
+        /[<>:"|?*]/u.test(part) ||
+        /[\u0000-\u001f]/u.test(part) ||
+        RESERVED_MODULE_WINDOWS_NAME.test(part),
+    )
+  ) {
+    throw new Error(`${label} is not a portable relative path`);
+  }
+}
+
+function assertModulePreviewIdentity(value: unknown, label: string): asserts value is ModulePreviewIdentity {
+  if (!isRecord(value)) {
+    throw new Error(`${label} is not a SHA-256 preview identity`);
+  }
+  exactObjectKeys(value, ["algorithm", "digest", "bytes", "mediaType"], label);
+  if (value.algorithm !== "sha256") {
+    throw new Error(`${label} is not a SHA-256 preview identity`);
+  }
+  const digest = nonEmpty(value.digest, `${label}.digest`);
+  if (digest !== digest.toLocaleLowerCase("en-US") || !HEX_SHA256.test(digest)) {
+    throw new Error(`${label}.digest must be lowercase SHA-256`);
+  }
+  const bytes = positiveSafeInteger(value.bytes, `${label}.bytes`);
+  if (bytes > 64 * 1024 * 1024) throw new Error(`${label}.bytes exceeds the preview limit`);
+  if (
+    value.mediaType !== "image/png" &&
+    value.mediaType !== "image/jpeg" &&
+    value.mediaType !== "image/webp"
+  ) {
+    throw new Error(`${label}.mediaType is unsupported`);
+  }
+}
+
+function assertModuleArchiveIdentity(value: unknown, label: string): asserts value is ModuleArchiveIdentity {
+  if (!isRecord(value)) {
+    throw new Error(`${label} is not a SHA-256 archive identity`);
+  }
+  exactObjectKeys(value, ["algorithm", "repository", "commit", "path", "digest", "bytes"], label);
+  if (value.algorithm !== "sha256") {
+    throw new Error(`${label} is not a SHA-256 archive identity`);
+  }
+  const repository = nonEmpty(value.repository, `${label}.repository`);
+  if (!/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/u.test(repository)) {
+    throw new Error(`${label}.repository must be owner/repository`);
+  }
+  assertCommit(value.commit, `${label}.commit`);
+  assertPortablePath(value.path, `${label}.path`);
+  const digest = nonEmpty(value.digest, `${label}.digest`);
+  if (digest !== digest.toLocaleLowerCase("en-US") || !HEX_SHA256.test(digest)) {
+    throw new Error(`${label}.digest must be lowercase SHA-256`);
+  }
+  const bytes = positiveSafeInteger(value.bytes, `${label}.bytes`);
+  if (bytes > 100 * 1024 * 1024) throw new Error(`${label}.bytes exceeds the archive limit`);
+}
+
+export function moduleArchiveExactSelector(
+  providerId: string,
+  module: ModuleCatalogEntry,
+  catalogSha256: string,
+  mode: "template" | "full",
+): ModuleArchiveExactSelector {
+  assertProviderId(providerId);
+  if (mode !== "template" && mode !== "full") throw new Error(`unsupported materialization mode: ${mode}`);
+  if (
+    typeof catalogSha256 !== "string" ||
+    catalogSha256 !== catalogSha256.toLocaleLowerCase("en-US") ||
+    !HEX_SHA256.test(catalogSha256)
+  ) {
+    throw new Error("catalogSha256 must be a SHA-256 digest");
+  }
+  if (!/^[a-z0-9](?:[a-z0-9._-]{0,126}[a-z0-9])?$/u.test(module.moduleId)) {
+    throw new Error("module moduleId is invalid");
+  }
+  if (!/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/u.test(module.source.repository)) {
+    throw new Error("module source repository is invalid");
+  }
+  assertCommit(module.source.commit, "module source commit");
+  assertPortablePath(module.source.path, "module source path");
+  assertCommit(module.archive.commit, "module archive commit");
+  assertPortablePath(module.archive.path, "module archive path");
+  if (module.source.repository !== module.archive.repository) {
+    throw new Error("module source and archive repositories must match");
+  }
+  if (module.source.path !== `modules/${module.moduleId}`) {
+    throw new Error("module source path is not canonical");
+  }
+  if (module.archive.path !== `archives/${module.moduleId}.zip`) {
+    throw new Error("module archive path is not canonical");
+  }
+  const preview: ModulePreviewIdentity = {
+    algorithm: "sha256",
+    digest: module.preview.sha256,
+    bytes: module.preview.bytes,
+    mediaType: module.preview.mediaType,
+  };
+  const archive: ModuleArchiveIdentity = {
+    algorithm: "sha256",
+    repository: module.archive.repository,
+    commit: module.archive.commit,
+    path: module.archive.path,
+    digest: module.archive.sha256,
+    bytes: module.archive.bytes,
+  };
+  assertModuleArchiveIdentity(archive, "module archive");
+  assertModulePreviewIdentity(preview, "module preview");
+  return {
+    schema: "figure-library.provider-selector.v1",
+    providerId,
+    kind: "module-archive.v1",
+    identity: {
+      moduleId: module.moduleId,
+      sourceRepository: module.source.repository,
+      sourceCommit: module.source.commit,
+      sourcePath: module.source.path,
+      archiveCommit: module.archive.commit,
+      archive,
+      preview,
+      catalogSha256,
+      mode,
+    },
+  };
+}
+
+export function assertModuleArchiveExactSelector(
+  value: unknown,
+): asserts value is ModuleArchiveExactSelector {
+  assertExactTemplateSelector(value);
+  exactObjectKeys(
+    value as unknown as Record<string, unknown>,
+    ["schema", "providerId", "kind", "identity"],
+    "exactSelector",
+  );
+  if (value.kind !== "module-archive.v1") throw new Error("exact selector is not a module archive selector");
+  const identity = value.identity as ModuleArchiveSelectorIdentity;
+  exactObjectKeys(
+    identity,
+    [
+      "moduleId",
+      "sourceRepository",
+      "sourceCommit",
+      "sourcePath",
+      "archiveCommit",
+      "archive",
+      "preview",
+      "catalogSha256",
+      "mode",
+    ],
+    "exactSelector.identity",
+  );
+  const moduleId = nonEmpty(identity.moduleId, "exactSelector.identity.moduleId");
+  if (!/^[a-z0-9](?:[a-z0-9._-]{0,126}[a-z0-9])?$/u.test(moduleId)) {
+    throw new Error("exactSelector.identity.moduleId is invalid");
+  }
+  const sourceRepository = nonEmpty(
+    identity.sourceRepository,
+    "exactSelector.identity.sourceRepository",
+  );
+  if (!/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/u.test(sourceRepository)) {
+    throw new Error("exactSelector.identity.sourceRepository must be owner/repository");
+  }
+  assertCommit(identity.sourceCommit, "exactSelector.identity.sourceCommit");
+  assertPortablePath(identity.sourcePath, "exactSelector.identity.sourcePath");
+  if (identity.sourcePath !== `modules/${moduleId}`) {
+    throw new Error("exactSelector.identity.sourcePath is not canonical for the module");
+  }
+  assertCommit(identity.archiveCommit, "exactSelector.identity.archiveCommit");
+  assertModuleArchiveIdentity(identity.archive, "exactSelector.identity.archive");
+  if (identity.archiveCommit !== identity.archive.commit) {
+    throw new Error("module selector archiveCommit differs from archive.commit");
+  }
+  if (identity.sourceRepository !== identity.archive.repository) {
+    throw new Error("module selector source and archive repositories differ");
+  }
+  if (identity.archive.path !== `archives/${moduleId}.zip`) {
+    throw new Error("exactSelector.identity.archive.path is not canonical for the module");
+  }
+  assertModulePreviewIdentity(identity.preview, "exactSelector.identity.preview");
+  const catalogSha256 = nonEmpty(identity.catalogSha256, "exactSelector.identity.catalogSha256");
+  if (
+    !HEX_SHA256.test(catalogSha256) ||
+    catalogSha256 !== catalogSha256.toLocaleLowerCase("en-US")
+  ) {
+    throw new Error("module selector catalogSha256 must be lowercase SHA-256");
+  }
+  if (identity.mode !== "template" && identity.mode !== "full") {
+    throw new Error("module selector mode must be template or full");
+  }
+}
+
+export function assertModuleArchiveSelectorMatches(
+  selector: unknown,
+  providerId: string,
+  module: ModuleCatalogEntry,
+  catalogSha256: string,
+): asserts selector is ModuleArchiveExactSelector {
+  assertModuleArchiveExactSelector(selector);
+  if (selector.providerId !== providerId) throw new Error("module selector providerId mismatch");
+  const expected = moduleArchiveExactSelector(providerId, module, catalogSha256, selector.identity.mode);
+  if (canonicalSelectorJson(selector) !== canonicalSelectorJson(expected)) {
+    throw new Error(
+      `stale module selector: expected ${exactSelectorDigest(expected)}, got ${exactSelectorDigest(selector)}`,
     );
   }
 }

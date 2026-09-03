@@ -3,6 +3,8 @@ import fs from "node:fs";
 import path from "node:path";
 import test from "node:test";
 import { VERSION } from "../src/version.ts";
+// @ts-expect-error -- the packaging helper is an intentionally untyped .mjs module.
+const { assertPersonalSnapshotInventory, commonPluginFiles } = await import("../scripts/plugin-package-lib.mjs");
 
 const root = path.resolve(import.meta.dirname, "..");
 
@@ -63,4 +65,56 @@ test("host plugin manifests share version, skill, and MCP identity", () => {
 
   const hostConfigs = JSON.stringify({ codexMcp, claudeMcp, wisp });
   assert.doesNotMatch(hostConfigs, /[A-Za-z]:[\\/](?:Users|home|scientific-figure-dev)[\\/]/u);
+});
+
+test("bundled personal module snapshot is declared without archive ZIPs", () => {
+  const snapshot = path.join(root, "assets", "personal-modules");
+  for (const relative of [
+    "module-catalog.json",
+    "module-preview.manifest.json",
+    "module-source-pack.manifest.json",
+    "PERSONAL_MODULES_LICENSE.txt",
+  ]) {
+    assert.equal(fs.existsSync(path.join(snapshot, relative)), true, relative);
+  }
+  const walk = (directory: string): string[] =>
+    fs.readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
+      const absolute = path.join(directory, entry.name);
+      return entry.isDirectory() ? walk(absolute) : [absolute];
+    });
+  assert.equal(
+    walk(snapshot).some((file) => file.toLocaleLowerCase("en-US").endsWith(".zip")),
+    false,
+  );
+});
+
+test("plugin packaging rejects personal archives and undeclared snapshot files", async () => {
+  const files = await commonPluginFiles();
+  assert.ok(files.includes("assets/personal-modules/module-catalog.json"));
+  assert.ok(files.includes("assets/personal-modules/PERSONAL_MODULES_LICENSE.txt"));
+  assert.equal(files.some((file: string) => file.endsWith(".zip")), false);
+  assert.throws(
+    () =>
+      assertPersonalSnapshotInventory(
+        ["assets/personal-modules/archives/example.zip"],
+        files,
+      ),
+    /must not enter a plugin/u,
+  );
+  assert.throws(
+    () =>
+      assertPersonalSnapshotInventory(
+        ["assets/personal-modules/private-state.json"],
+        files,
+      ),
+    /unexpected personal module snapshot file/u,
+  );
+  assert.throws(
+    () =>
+      assertPersonalSnapshotInventory(
+        [],
+        ["assets/personal-modules/previews/example/preview.png"],
+      ),
+    /missing declared personal module snapshot file/u,
+  );
 });

@@ -1018,7 +1018,7 @@ export const defaultPublicArchiveFetcher: PublicArchiveFetcher = async (request)
     throw new Error("public archive URL must be credential-free fixed GitHub raw HTTPS");
   }
   if (request.timeoutMs !== 60_000 || request.maxBytes !== MAX_ARCHIVE_BYTES) {
-    throw new Error("public archive fetch policy differs from the fixed 0.6.0 security limits");
+      throw new Error("public archive fetch policy differs from the fixed 0.6.0 security limits");
   }
   const response = await secureArchiveFetcher.fetch(url.href, {
     maxBytes: request.maxBytes,
@@ -2053,6 +2053,7 @@ export class PublicCatalogProviderAdapter implements ProviderAdapter {
     bundled?: boolean;
     enabled?: boolean;
     includeInDefaultSearch?: boolean;
+    frozen?: boolean;
     archiveFetcher?: PublicArchiveFetcher;
   }) {
     this.snapshot = options.snapshot;
@@ -2066,6 +2067,7 @@ export class PublicCatalogProviderAdapter implements ProviderAdapter {
       ...(options.includeInDefaultSearch !== undefined
         ? { includeInDefaultSearch: options.includeInDefaultSearch }
         : {}),
+      ...(options.frozen !== undefined ? { frozen: options.frozen } : {}),
     };
     this.#archiveFetcher = options.archiveFetcher ?? defaultPublicArchiveFetcher;
     this.#entries = new Map(
@@ -2483,6 +2485,10 @@ export class PublicCatalogProviderAdapter implements ProviderAdapter {
       health: "ready",
       details: {
         providerId: this.descriptor.providerId,
+        bundled: this.descriptor.bundled,
+        enabled: this.descriptor.enabled !== false,
+        includeInDefaultSearch: this.descriptor.includeInDefaultSearch !== false,
+        frozen: this.descriptor.frozen === true,
         templateCount: this.snapshot.catalog.entries.length,
         catalogSha256: this.snapshot.catalogSha256,
         previewManifestSha256: this.snapshot.previewManifestSha256,

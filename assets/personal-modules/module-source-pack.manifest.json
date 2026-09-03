@@ -1,0 +1,367 @@
+{
+  "entries": [
+    {
+      "archiveCommit": "1e5cdfe188b59d5d425426d2fe32df21257d3591",
+      "archiveRepository": "jarxunlai/ScientificFigureLibrary-personal",
+      "bytes": 293426,
+      "file": "archives/cancercell-pathway-nes-heatmap.zip",
+      "moduleId": "cancercell-pathway-nes-heatmap",
+      "sha256": "c77c8c1b992b52faf6c36b47ddc45ba2455629094f2f671d4b916e34c322ff19",
+      "sourceCommit": "644ab1034ca358f1584c2ec8666f1036f495f38e",
+      "sourceRepository": "jarxunlai/ScientificFigureLibrary-personal"
+    },
+    {
+      "archiveCommit": "1e5cdfe188b59d5d425426d2fe32df21257d3591",
+      "archiveRepository": "jarxunlai/ScientificFigureLibrary-personal",
+      "bytes": 473878,
+      "file": "archives/cell-fig2h-volcano-go-combo.zip",
+      "moduleId": "cell-fig2h-volcano-go-combo",
+      "sha256": "8dc01e59c527db3cc0e1802d29dc0e02e167789c3964f0830e4ee197faa62679",
+      "sourceCommit": "644ab1034ca358f1584c2ec8666f1036f495f38e",
+      "sourceRepository": "jarxunlai/ScientificFigureLibrary-personal"
+    },
+    {
+      "archiveCommit": "1e5cdfe188b59d5d425426d2fe32df21257d3591",
+      "archiveRepository": "jarxunlai/ScientificFigureLibrary-personal",
+      "bytes": 543955,
+      "file": "archives/clustergvis-deg-go-kegg-combo.zip",
+      "moduleId": "clustergvis-deg-go-kegg-combo",
+      "sha256": "0727e202b251faad7c6858a1b1de2e018d58d827a40c04ebeabf63da1374f08e",
+      "sourceCommit": "644ab1034ca358f1584c2ec8666f1036f495f38e",
+      "sourceRepository": "jarxunlai/ScientificFigureLibrary-personal"
+    },
+    {
+      "archiveCommit": "1e5cdfe188b59d5d425426d2fe32df21257d3591",
+      "archiveRepository": "jarxunlai/ScientificFigureLibrary-personal",
+      "bytes": 579598,
+      "file": "archives/deg-heatmap-go-panel.zip",
+      "moduleId": "deg-heatmap-go-panel",
+      "sha256": "4c34970f9b44715aeb8682af576356dc130f35fcbc0f1dab68b3b8a81b223907",
+      "sourceCommit": "644ab1034ca358f1584c2ec8666f1036f495f38e",
+      "sourceRepository": "jarxunlai/ScientificFigureLibrary-personal"
+    },
+    {
+      "archiveCommit": "1e5cdfe188b59d5d425426d2fe32df21257d3591",
+      "archiveRepository": "jarxunlai/ScientificFigureLibrary-personal",
+      "bytes": 603884,
+      "file": "archives/ggsankeyfier-layout-color-combo.zip",
+      "moduleId": "ggsankeyfier-layout-color-combo",
+      "sha256": "4e72d136b0d4d603fa0973ce217d6b3a36749eda02a8ec1521874008f295bd59",
+      "sourceCommit": "7fa4e210e3283efea0250e73b43e139c941b478b",
+      "sourceRepository": "jarxunlai/ScientificFigureLibrary-personal"
+    },
+    {
+      "archiveCommit": "1e5cdfe188b59d5d425426d2fe32df21257d3591",
+      "archiveRepository": "jarxunlai/ScientificFigureLibrary-personal",
+      "bytes": 959042,
+      "file": "archives/go-enrichment-comet-combined.zip",
+      "moduleId": "go-enrichment-comet-combined",
+      "sha256": "718966238e237af74ee7d453ac091570de46f80481ee8857e44b354a0faf0480",
+      "sourceCommit": "644ab1034ca358f1584c2ec8666f1036f495f38e",
+      "sourceRepository": "jarxunlai/ScientificFigureLibrary-personal"
+    },
+    {
+      "archiveCommit": "1e5cdfe188b59d5d425426d2fe32df21257d3591",
+      "archiveRepository": "jarxunlai/ScientificFigureLibrary-personal",
+      "bytes": 840532,
+      "file": "archives/go-enrichment-comet-facet.zip",
+      "moduleId": "go-enrichment-comet-facet",
+      "sha256": "03b410e9fb5d43813fff18fb78661e46cfabce5a97a4b1c1642af4c7e897d1a0",
+      "sourceCommit": "644ab1034ca358f1584c2ec8666f1036f495f38e",
+      "sourceRepository": "jarxunlai/ScientificFigureLibrary-personal"
+    },
+    {
+      "archiveCommit": "1e5cdfe188b59d5d425426d2fe32df21257d3591",
+      "archiveRepository": "jarxunlai/ScientificFigureLibrary-personal",
+      "bytes": 274242,
+      "file": "archives/hallmark-gsea-nes-ranked-scatter.zip",
+      "moduleId": "hallmark-gsea-nes-ranked-scatter",
+      "sha256": "aa49d503dceb1895d0e39da6d1bc5ccc6a1a010775debfe0132d33813f02531a",
+      "sourceCommit": "644ab1034ca358f1584c2ec8666f1036f495f38e",
+      "sourceRepository": "jarxunlai/ScientificFigureLibrary-personal"
+    },
+    {
+      "archiveCommit": "1e5cdfe188b59d5d425426d2fe32df21257d3591",
+      "archiveRepository": "jarxunlai/ScientificFigureLibrary-personal",
+      "bytes": 1348439,
+      "file": "archives/hlca-scib-integration-benchmark-matrix.zip",
+      "moduleId": "hlca-scib-integration-benchmark-matrix",
+      "sha256": "2b5e002fbbb28fba4a1e93dcd4193394532cfb4ecf9cb46defff6a4d6d9ac6f2",
+      "sourceCommit": "644ab1034ca358f1584c2ec8666f1036f495f38e",
+      "sourceRepository": "jarxunlai/ScientificFigureLibrary-personal"
+    },
+    {
+      "archiveCommit": "1e5cdfe188b59d5d425426d2fe32df21257d3591",
+      "archiveRepository": "jarxunlai/ScientificFigureLibrary-personal",
+      "bytes": 212138,
+      "file": "archives/kegg-variant-blue-inside-label.zip",
+      "moduleId": "kegg-variant-blue-inside-label",
+      "sha256": "eff0568061ff6ffc48054ec46d57fce423e4a3b7672a6ea7b7f3ed5eb202e322",
+      "sourceCommit": "644ab1034ca358f1584c2ec8666f1036f495f38e",
+      "sourceRepository": "jarxunlai/ScientificFigureLibrary-personal"
+    },
+    {
+      "archiveCommit": "1e5cdfe188b59d5d425426d2fe32df21257d3591",
+      "archiveRepository": "jarxunlai/ScientificFigureLibrary-personal",
+      "bytes": 213662,
+      "file": "archives/kegg-variant-bw-text-classic.zip",
+      "moduleId": "kegg-variant-bw-text-classic",
+      "sha256": "eb3b07d3f21a54dcfc04f410a60af362902f779d45b97a30f2e9157cac70ded4",
+      "sourceCommit": "644ab1034ca358f1584c2ec8666f1036f495f38e",
+      "sourceRepository": "jarxunlai/ScientificFigureLibrary-personal"
+    },
+    {
+      "archiveCommit": "1e5cdfe188b59d5d425426d2fe32df21257d3591",
+      "archiveRepository": "jarxunlai/ScientificFigureLibrary-personal",
+      "bytes": 214654,
+      "file": "archives/kegg-variant-inside-label-bar.zip",
+      "moduleId": "kegg-variant-inside-label-bar",
+      "sha256": "4cf7ce8112558e35daf6ff78b77c0ef0b61c06adce62426ecc56642dc7070ecf",
+      "sourceCommit": "644ab1034ca358f1584c2ec8666f1036f495f38e",
+      "sourceRepository": "jarxunlai/ScientificFigureLibrary-personal"
+    },
+    {
+      "archiveCommit": "1e5cdfe188b59d5d425426d2fe32df21257d3591",
+      "archiveRepository": "jarxunlai/ScientificFigureLibrary-personal",
+      "bytes": 274780,
+      "file": "archives/nature-deg-grouped-barplot.zip",
+      "moduleId": "nature-deg-grouped-barplot",
+      "sha256": "a17128f54563e00a152f1e5359d267bbcb97eb7ddb22e12800b469d1024b90c7",
+      "sourceCommit": "644ab1034ca358f1584c2ec8666f1036f495f38e",
+      "sourceRepository": "jarxunlai/ScientificFigureLibrary-personal"
+    },
+    {
+      "archiveCommit": "1e5cdfe188b59d5d425426d2fe32df21257d3591",
+      "archiveRepository": "jarxunlai/ScientificFigureLibrary-personal",
+      "bytes": 226365,
+      "file": "archives/nature-metabolome-style-pca.zip",
+      "moduleId": "nature-metabolome-style-pca",
+      "sha256": "feee90578412474076c95b8e56499d4953c421a742e89bacfde995a8d678e563",
+      "sourceCommit": "644ab1034ca358f1584c2ec8666f1036f495f38e",
+      "sourceRepository": "jarxunlai/ScientificFigureLibrary-personal"
+    },
+    {
+      "archiveCommit": "1e5cdfe188b59d5d425426d2fe32df21257d3591",
+      "archiveRepository": "jarxunlai/ScientificFigureLibrary-personal",
+      "bytes": 177432,
+      "file": "archives/nature-spatial-niche-stacked-bar.zip",
+      "moduleId": "nature-spatial-niche-stacked-bar",
+      "sha256": "088ecc9d58645a8acd5ab6c87a3152c02b0971f7599d1320e9127bf99e765f28",
+      "sourceCommit": "644ab1034ca358f1584c2ec8666f1036f495f38e",
+      "sourceRepository": "jarxunlai/ScientificFigureLibrary-personal"
+    },
+    {
+      "archiveCommit": "1e5cdfe188b59d5d425426d2fe32df21257d3591",
+      "archiveRepository": "jarxunlai/ScientificFigureLibrary-personal",
+      "bytes": 161341,
+      "file": "archives/nc-backtoback-lollipop.zip",
+      "moduleId": "nc-backtoback-lollipop",
+      "sha256": "e3df7de37334f70215e0d14c2ad21fe18a784c3d6a9a1e0c9abf7bee27bf960d",
+      "sourceCommit": "644ab1034ca358f1584c2ec8666f1036f495f38e",
+      "sourceRepository": "jarxunlai/ScientificFigureLibrary-personal"
+    },
+    {
+      "archiveCommit": "1e5cdfe188b59d5d425426d2fe32df21257d3591",
+      "archiveRepository": "jarxunlai/ScientificFigureLibrary-personal",
+      "bytes": 367411,
+      "file": "archives/ncb-fig2d-hox-ridge-heatmap.zip",
+      "moduleId": "ncb-fig2d-hox-ridge-heatmap",
+      "sha256": "afed3eaf11c9dee71f7d4c809a8e95f2f3f4f9cdbc823b094610a676812b437a",
+      "sourceCommit": "644ab1034ca358f1584c2ec8666f1036f495f38e",
+      "sourceRepository": "jarxunlai/ScientificFigureLibrary-personal"
+    },
+    {
+      "archiveCommit": "1e5cdfe188b59d5d425426d2fe32df21257d3591",
+      "archiveRepository": "jarxunlai/ScientificFigureLibrary-personal",
+      "bytes": 185312,
+      "file": "archives/sc-celltype-grouped-dodge-count.zip",
+      "moduleId": "sc-celltype-grouped-dodge-count",
+      "sha256": "0a972a161f6fcaa02b9b61a205860b7c3d171f9d93e942f30e1698a32e187a13",
+      "sourceCommit": "87c2f52459db24cb78af73ddbbadc1bc6ce0f3ea",
+      "sourceRepository": "jarxunlai/ScientificFigureLibrary-personal"
+    },
+    {
+      "archiveCommit": "1e5cdfe188b59d5d425426d2fe32df21257d3591",
+      "archiveRepository": "jarxunlai/ScientificFigureLibrary-personal",
+      "bytes": 110730,
+      "file": "archives/sc-celltype-grouped-horizontal-bar.zip",
+      "moduleId": "sc-celltype-grouped-horizontal-bar",
+      "sha256": "02bce790d1a3012a70703b46308a292ec3d657418e41e63445139ac8b10feb85",
+      "sourceCommit": "87c2f52459db24cb78af73ddbbadc1bc6ce0f3ea",
+      "sourceRepository": "jarxunlai/ScientificFigureLibrary-personal"
+    },
+    {
+      "archiveCommit": "1e5cdfe188b59d5d425426d2fe32df21257d3591",
+      "archiveRepository": "jarxunlai/ScientificFigureLibrary-personal",
+      "bytes": 93069,
+      "file": "archives/sc-celltype-grouped-stacked-bar.zip",
+      "moduleId": "sc-celltype-grouped-stacked-bar",
+      "sha256": "8b4aea88bdd34cf5167b6c97d30f08c2e82b49c92a58bc96fbcd8d99e620c251",
+      "sourceCommit": "87c2f52459db24cb78af73ddbbadc1bc6ce0f3ea",
+      "sourceRepository": "jarxunlai/ScientificFigureLibrary-personal"
+    },
+    {
+      "archiveCommit": "1e5cdfe188b59d5d425426d2fe32df21257d3591",
+      "archiveRepository": "jarxunlai/ScientificFigureLibrary-personal",
+      "bytes": 810981,
+      "file": "archives/sc-celltype-nightingale-rose.zip",
+      "moduleId": "sc-celltype-nightingale-rose",
+      "sha256": "906812b54900cc0ea325f017d3147c5c24c51eadd28c3f5b41eda75d476646c5",
+      "sourceCommit": "87c2f52459db24cb78af73ddbbadc1bc6ce0f3ea",
+      "sourceRepository": "jarxunlai/ScientificFigureLibrary-personal"
+    },
+    {
+      "archiveCommit": "1e5cdfe188b59d5d425426d2fe32df21257d3591",
+      "archiveRepository": "jarxunlai/ScientificFigureLibrary-personal",
+      "bytes": 231487,
+      "file": "archives/sc-celltype-sample-dodge-count.zip",
+      "moduleId": "sc-celltype-sample-dodge-count",
+      "sha256": "f30e74f9b8da5e5b393b22ccd9a411ff74bf6261b3bde3cf8a7a85d3456fccdf",
+      "sourceCommit": "87c2f52459db24cb78af73ddbbadc1bc6ce0f3ea",
+      "sourceRepository": "jarxunlai/ScientificFigureLibrary-personal"
+    },
+    {
+      "archiveCommit": "1e5cdfe188b59d5d425426d2fe32df21257d3591",
+      "archiveRepository": "jarxunlai/ScientificFigureLibrary-personal",
+      "bytes": 230723,
+      "file": "archives/sc-celltype-sample-stacked-proportion.zip",
+      "moduleId": "sc-celltype-sample-stacked-proportion",
+      "sha256": "3d333d2192aff8c059c40adb576326d20ec8c6f057c49ae7b40bdd3243822c74",
+      "sourceCommit": "87c2f52459db24cb78af73ddbbadc1bc6ce0f3ea",
+      "sourceRepository": "jarxunlai/ScientificFigureLibrary-personal"
+    },
+    {
+      "archiveCommit": "1e5cdfe188b59d5d425426d2fe32df21257d3591",
+      "archiveRepository": "jarxunlai/ScientificFigureLibrary-personal",
+      "bytes": 362344,
+      "file": "archives/sc-celltype-sankey.zip",
+      "moduleId": "sc-celltype-sankey",
+      "sha256": "1f61232ab88cd778743940e7bdb9d41884f195bd743aea17cf96c10f7ac10414",
+      "sourceCommit": "87c2f52459db24cb78af73ddbbadc1bc6ce0f3ea",
+      "sourceRepository": "jarxunlai/ScientificFigureLibrary-personal"
+    },
+    {
+      "archiveCommit": "1e5cdfe188b59d5d425426d2fe32df21257d3591",
+      "archiveRepository": "jarxunlai/ScientificFigureLibrary-personal",
+      "bytes": 208687,
+      "file": "archives/sc-celltype-stacked-area.zip",
+      "moduleId": "sc-celltype-stacked-area",
+      "sha256": "05d99642b53f728764a94febe53c25bd9b807a1661ce1e5d40fcbacfb36951e8",
+      "sourceCommit": "87c2f52459db24cb78af73ddbbadc1bc6ce0f3ea",
+      "sourceRepository": "jarxunlai/ScientificFigureLibrary-personal"
+    },
+    {
+      "archiveCommit": "1e5cdfe188b59d5d425426d2fe32df21257d3591",
+      "archiveRepository": "jarxunlai/ScientificFigureLibrary-personal",
+      "bytes": 547688,
+      "file": "archives/sc-marker-dotplot-highlight-boxes.zip",
+      "moduleId": "sc-marker-dotplot-highlight-boxes",
+      "sha256": "b06cd653c9153ddc0492e06e543eba655a7a0972db89b0abadfe478bee1ef198",
+      "sourceCommit": "644ab1034ca358f1584c2ec8666f1036f495f38e",
+      "sourceRepository": "jarxunlai/ScientificFigureLibrary-personal"
+    },
+    {
+      "archiveCommit": "1e5cdfe188b59d5d425426d2fe32df21257d3591",
+      "archiveRepository": "jarxunlai/ScientificFigureLibrary-personal",
+      "bytes": 723800,
+      "file": "archives/science-mantel-corrplot.zip",
+      "moduleId": "science-mantel-corrplot",
+      "sha256": "d5869fb7c09156f11c22ead3954ce633fc4f96d8ab1ecb638d8d8de0acfd434c",
+      "sourceCommit": "644ab1034ca358f1584c2ec8666f1036f495f38e",
+      "sourceRepository": "jarxunlai/ScientificFigureLibrary-personal"
+    },
+    {
+      "archiveCommit": "1e5cdfe188b59d5d425426d2fe32df21257d3591",
+      "archiveRepository": "jarxunlai/ScientificFigureLibrary-personal",
+      "bytes": 349971,
+      "file": "archives/single-cell-enrichment-bar-pathway-genes.zip",
+      "moduleId": "single-cell-enrichment-bar-pathway-genes",
+      "sha256": "2c23ab2f33e63c63ac0860c8f5424da15bccc6d1c5a3a3c4daee7409bdcbb928",
+      "sourceCommit": "644ab1034ca358f1584c2ec8666f1036f495f38e",
+      "sourceRepository": "jarxunlai/ScientificFigureLibrary-personal"
+    },
+    {
+      "archiveCommit": "1e5cdfe188b59d5d425426d2fe32df21257d3591",
+      "archiveRepository": "jarxunlai/ScientificFigureLibrary-personal",
+      "bytes": 2768711,
+      "file": "archives/umap-style-density-heatmap.zip",
+      "moduleId": "umap-style-density-heatmap",
+      "sha256": "3c13ae55288828304a9c7832348701bac6f39a28d775dc8b7aeeee379e19b0ab",
+      "sourceCommit": "644ab1034ca358f1584c2ec8666f1036f495f38e",
+      "sourceRepository": "jarxunlai/ScientificFigureLibrary-personal"
+    },
+    {
+      "archiveCommit": "1e5cdfe188b59d5d425426d2fe32df21257d3591",
+      "archiveRepository": "jarxunlai/ScientificFigureLibrary-personal",
+      "bytes": 1663413,
+      "file": "archives/umap-style-ellipse-labels.zip",
+      "moduleId": "umap-style-ellipse-labels",
+      "sha256": "89b243436c2e759f23fb0d8460a0e9a8a30f81743c4b0484f405cc501ff96503",
+      "sourceCommit": "644ab1034ca358f1584c2ec8666f1036f495f38e",
+      "sourceRepository": "jarxunlai/ScientificFigureLibrary-personal"
+    },
+    {
+      "archiveCommit": "1e5cdfe188b59d5d425426d2fe32df21257d3591",
+      "archiveRepository": "jarxunlai/ScientificFigureLibrary-personal",
+      "bytes": 567974,
+      "file": "archives/umap-style-plot1cell-circlize.zip",
+      "moduleId": "umap-style-plot1cell-circlize",
+      "sha256": "0d053408e227d84165690ea9a19e3821b19b84f8932a00118d47ae663fd90164",
+      "sourceCommit": "644ab1034ca358f1584c2ec8666f1036f495f38e",
+      "sourceRepository": "jarxunlai/ScientificFigureLibrary-personal"
+    },
+    {
+      "archiveCommit": "1e5cdfe188b59d5d425426d2fe32df21257d3591",
+      "archiveRepository": "jarxunlai/ScientificFigureLibrary-personal",
+      "bytes": 1369938,
+      "file": "archives/umap-style-scp-numbered-legend.zip",
+      "moduleId": "umap-style-scp-numbered-legend",
+      "sha256": "2ccdde09af8189e03912c54a11aa5863001c9d6f99b5042432fdb519ac2f7810",
+      "sourceCommit": "644ab1034ca358f1584c2ec8666f1036f495f38e",
+      "sourceRepository": "jarxunlai/ScientificFigureLibrary-personal"
+    },
+    {
+      "archiveCommit": "1e5cdfe188b59d5d425426d2fe32df21257d3591",
+      "archiveRepository": "jarxunlai/ScientificFigureLibrary-personal",
+      "bytes": 1394696,
+      "file": "archives/umap-style-scp-square-axes.zip",
+      "moduleId": "umap-style-scp-square-axes",
+      "sha256": "f244afae6b5d529005fffa6db893e5493dcb876f162c30c67766bd10443c3766",
+      "sourceCommit": "644ab1034ca358f1584c2ec8666f1036f495f38e",
+      "sourceRepository": "jarxunlai/ScientificFigureLibrary-personal"
+    },
+    {
+      "archiveCommit": "1e5cdfe188b59d5d425426d2fe32df21257d3591",
+      "archiveRepository": "jarxunlai/ScientificFigureLibrary-personal",
+      "bytes": 3423409,
+      "file": "archives/umap-style-scpubr-stroke.zip",
+      "moduleId": "umap-style-scpubr-stroke",
+      "sha256": "398f1d1d3f8bda7cd243000e49c05d94abb83131e173c17b08d5660674f333c4",
+      "sourceCommit": "644ab1034ca358f1584c2ec8666f1036f495f38e",
+      "sourceRepository": "jarxunlai/ScientificFigureLibrary-personal"
+    },
+    {
+      "archiveCommit": "1e5cdfe188b59d5d425426d2fe32df21257d3591",
+      "archiveRepository": "jarxunlai/ScientificFigureLibrary-personal",
+      "bytes": 1334023,
+      "file": "archives/umap-style-scrnatoolvis-insitu.zip",
+      "moduleId": "umap-style-scrnatoolvis-insitu",
+      "sha256": "40a2066bb9fbaa21871ebb1bfa78fc5ab5c2d02ca5ba6d36e1e295c98a7697f1",
+      "sourceCommit": "644ab1034ca358f1584c2ec8666f1036f495f38e",
+      "sourceRepository": "jarxunlai/ScientificFigureLibrary-personal"
+    },
+    {
+      "archiveCommit": "1e5cdfe188b59d5d425426d2fe32df21257d3591",
+      "archiveRepository": "jarxunlai/ScientificFigureLibrary-personal",
+      "bytes": 458101,
+      "file": "archives/umap-unchull-main-type-circles.zip",
+      "moduleId": "umap-unchull-main-type-circles",
+      "sha256": "15ae043cfae66e48e74748fe5d8793f6b99303dbcdea064e36f48180a7465967",
+      "sourceCommit": "644ab1034ca358f1584c2ec8666f1036f495f38e",
+      "sourceRepository": "jarxunlai/ScientificFigureLibrary-personal"
+    }
+  ],
+  "providerId": "io.github.jarxunlai.personal-figures",
+  "repository": "jarxunlai/ScientificFigureLibrary-personal",
+  "schema": "figure-library.module-source-pack.v1"
+}

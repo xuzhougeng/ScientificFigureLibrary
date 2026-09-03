@@ -22,8 +22,11 @@ until you confirm a materialization. The server does **not** execute plotting
 code and does not contain a second model: the host agent inspects files; SFL
 hashes, versions, gates, and publishes them.
 
-Optional extra catalogs can be enabled later. They are supplements. The source
-of truth is always **Local Published**.
+The default retrieval order is **Local Published → FigureYa → Personal Figure
+Modules → enabled dynamic personal Providers**. The bundled Community snapshot
+is retained for explicit compatibility, but is frozen and excluded from default
+search (`includeInDefaultSearch: false`). The source of truth for your own
+figures is always **Local Published**.
 
 A bundled extra catalog may currently contain zero releases after an authorized
 redaction; that is a healthy empty source, not a failure, and default search
@@ -64,6 +67,10 @@ Manual steps: [docs/QUICKSTART.md](docs/QUICKSTART.md).
 - Search, describe, preview, then **materialize** an exact confirmed template
 - Portable backup / restore / fork of the Library
 - Optional extra search providers; they do not replace local review
+- **Open Figure Modules** — an openly collaborative, bundled offline Catalog
+  and thumbnail snapshot. Complete module ZIPs are fetched only for one exact
+  user-selected commit-pinned materialization and are never bundled in the
+  plugin.
 
 ## First success
 
@@ -117,6 +124,40 @@ The Library locator is machine-local (`locator.json` under AppData / XDG).
 
 The server never runs notebooks, installers, or plot scripts. See
 [SECURITY.md](SECURITY.md).
+
+## Open Figure Modules
+
+Personal modules use one content repository for both cleaned source modules and
+deterministic archives (no second archive repository):
+
+```text
+<PERSONAL_MODULE_REPOSITORY>
+├── modules/<moduleId>/       # reviewed, cleaned public module
+├── archives/<moduleId>.zip  # deterministic ZIP from a pinned source commit
+└── catalog/                  # archive manifest and admission records
+```
+
+The SFL checkout contains only the derived snapshot under
+`assets/personal-modules/`: Catalog, primary-preview/thumbnail manifests,
+preview images, thumbnails, and the per-module license notice. It does not
+contain complete personal ZIPs, Gallery source/reference images, private data,
+credentials, or repository state.
+
+The maintainer commands are offline and deliberately separate from GitHub
+operations:
+
+```bash
+npm run modules:validate -- --check --repository <PERSONAL_MODULE_REPOSITORY>
+npm run modules:archive -- --write --repository <PERSONAL_MODULE_REPOSITORY>
+npm run modules:catalog -- --write --repository <PERSONAL_MODULE_REPOSITORY>
+npm run modules:source-pack -- --write --repository <PERSONAL_MODULE_REPOSITORY>
+```
+
+They do not create commits, push, create repositories, run R, install
+dependencies, or modify the Gallery. SFL materialization only downloads
+or reads the selected ZIP, validates its bytes and safe paths, extracts the
+requested `template`/`full` file set, and writes a lock with
+`codeExecutedBySflClient: false`.
 
 ## License
 
