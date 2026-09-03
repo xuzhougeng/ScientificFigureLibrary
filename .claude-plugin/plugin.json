@@ -3,7 +3,9 @@
   "version": "0.6.1",
   "description": "Search Local Published, FigureYa, bundled Open Figure Modules, frozen explicit-only Community, and explicitly trusted dynamic Providers; materialize exact immutable figure references without executing module code.",
   "author": {
-    "name": "xuzhougeng and contributors"
+    "name": "xuzhougeng and jarxunlai"
   },
-  "mcpServers": "./.claude-plugin/mcp.json"
+  "mcpServers": "./.claude-plugin/mcp.json",
+  "homepage": "https://xuzhougeng.github.io/ScientificFigureLibrary/",
+  "repository": "https://github.com/xuzhougeng/ScientificFigureLibrary"
 }

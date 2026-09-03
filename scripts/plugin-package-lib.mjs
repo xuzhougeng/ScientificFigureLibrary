@@ -82,6 +82,8 @@ export async function commonPluginFiles() {
     "docs/GLOBAL_LIBRARY_0.6.md",
     "docs/PROTOCOL.md",
     "skills/figure-library/SKILL.md",
+    "skills/figure-library/agents/openai.yaml",
+    "skills/figure-library/assets/sfl-logo.svg",
     "assets/catalog.json",
     "assets/FIGUREYA_LICENSE.txt",
     "assets/figureya-preview.manifest.json",
@@ -95,6 +97,7 @@ export async function commonPluginFiles() {
     "THIRD_PARTY_NOTICES.md",
   ];
   files.push(...(await walk(path.join(root, "assets", "thumbs"), "assets/thumbs")));
+  files.push(...(await walk(path.join(root, "assets", "brand"), "assets/brand")));
   const personalPreviewManifest = await readJson(
     "assets/personal-modules/module-preview.manifest.json",
   );
@@ -195,6 +198,8 @@ export function assertPackagedGuidance({ packagedReadme, packagedProtocol, packa
     "Open Figure Modules",
     "transport-image-v1",
     "requestDisplayMode",
+    "https://xuzhougeng.github.io/ScientificFigureLibrary/",
+    "data:image/svg+xml;base64",
   ]) {
     if (!packagedServer.includes(marker) && !packagedApp.includes(marker)) {
       throw new Error(`packaged server omitted ${marker}`);
@@ -209,6 +214,8 @@ export function assertPackagedGuidance({ packagedReadme, packagedProtocol, packa
     "展开浏览",
     "保持可见",
     "data-display-mode",
+    "brand-logo",
+    "sfl-icon",
   ]) {
     if (!packagedApp.includes(marker)) {
       throw new Error(`packaged MCP App omitted ${marker}`);

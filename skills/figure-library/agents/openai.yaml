@@ -1,0 +1,7 @@
+interface:
+  display_name: "Scientific Figure Library"
+  short_description: "Search and materialize reviewed scientific figures"
+  icon_small: "./assets/sfl-logo.svg"
+  icon_large: "./assets/sfl-logo.svg"
+  brand_color: "#246C4E"
+  default_prompt: "Use $figure-library to search reviewed scientific-figure templates, inspect an exact preview, and prepare a safe materialization plan."

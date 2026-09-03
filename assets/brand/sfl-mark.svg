@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="214 207 620 1095">
+  <defs>
+    <linearGradient id="grad-upper-blue" x1="654" y1="228" x2="342" y2="827" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#3197FF"/>
+      <stop offset="0.32" stop-color="#0578F2"/>
+      <stop offset="0.66" stop-color="#0057C9"/>
+      <stop offset="1" stop-color="#082C8E"/>
+    </linearGradient>
+    <linearGradient id="grad-upper-fold" x1="228" y1="622" x2="542" y2="886" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#0DB9D4"/>
+      <stop offset="0.48" stop-color="#16B1D5"/>
+      <stop offset="1" stop-color="#008DDF"/>
+    </linearGradient>
+    <linearGradient id="grad-lower-ribbon" x1="245" y1="1298" x2="835" y2="830" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#06A0CF"/>
+      <stop offset="0.52" stop-color="#00BFCA"/>
+      <stop offset="1" stop-color="#20E8BD"/>
+    </linearGradient>
+    <linearGradient id="grad-cyan-node" x1="585" y1="608" x2="712" y2="516" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#00B2DA"/>
+      <stop offset="0.56" stop-color="#10D8D1"/>
+      <stop offset="1" stop-color="#24E6C9"/>
+    </linearGradient>
+    <linearGradient id="grad-orange-node" x1="272" y1="907" x2="417" y2="1009" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFB600"/>
+      <stop offset="0.50" stop-color="#FFA000"/>
+      <stop offset="1" stop-color="#FF8500"/>
+    </linearGradient>
+  </defs>
+  <g id="upper-ribbon" data-layer="Upper gradient ribbon face">
+    <path d="M746 207 C759 303 724 374 650 424 C600 458 529 484 474 508 C418 532 384 558 389 607 C395 672 463 736 521 804 C558 847 570 890 536 927 C464 896 365 859 297 819 C240 786 214 733 214 658 L214 548 C214 474 258 416 334 371 C410 327 518 295 622 260 C679 241 721 221 746 207 Z" fill="url(#grad-upper-blue)"/>
+  </g>
+  <g id="blue-underlay" data-layer="Blue and cyan ribbon underlay">
+    <path d="M214 548 C219 624 270 676 355 717 C425 751 501 777 531 804 C560 830 568 883 536 927 C464 896 365 859 297 819 C240 786 214 733 214 658 Z" fill="url(#grad-upper-fold)"/>
+  </g>
+  <g id="lower-ribbon" data-layer="Lower turquoise sweeping ribbon">
+    <path d="M531 615 C652 638 779 704 820 786 C865 877 831 981 750 1059 C680 1126 585 1163 477 1199 C376 1233 291 1270 251 1302 C223 1193 265 1105 352 1059 C418 1024 503 1002 571 967 C632 936 664 891 668 842 C673 772 619 684 531 615 Z" fill="url(#grad-lower-ribbon)"/>
+  </g>
+  <g id="teal-accent" data-layer="Upper cyan orbit node and stem">
+    <polygon points="576,609 604,617 665,565 645,547" fill="url(#grad-cyan-node)"/>
+    <circle cx="679" cy="547" r="38" fill="url(#grad-cyan-node)"/>
+  </g>
+  <g id="orange-accent" data-layer="Lower orange orbit node and stem">
+    <polygon points="313,959 423,1001 397,1014 303,969" fill="url(#grad-orange-node)"/>
+    <circle cx="301" cy="941" r="38" fill="url(#grad-orange-node)"/>
+  </g>
+</svg>

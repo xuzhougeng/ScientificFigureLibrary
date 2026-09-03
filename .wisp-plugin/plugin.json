@@ -4,7 +4,7 @@
   "display_name": "Scientific Figure Library",
   "version": "0.6.1",
   "description": "Local-first scientific figure library: import, review, publish, search, and materialize exact templates; includes the openly collaborative Open Figure Modules snapshot and frozen explicit-only Community compatibility.",
-  "author": "xuzhougeng and contributors",
+  "author": "xuzhougeng and jarxunlai",
   "license": "MIT (SFL and Community code); CC BY 4.0 (Community synthetic content); CC BY-NC-SA 4.0 (FigureYa assets)",
   "source_format": "wisp-plugin",
   "skills": [

@@ -3,10 +3,10 @@
   "version": "0.6.1",
   "description": "Search Local Published, FigureYa, bundled Open Figure Modules, frozen explicit-only Community, and explicitly trusted dynamic Providers; materialize exact immutable figure references without executing module code.",
   "author": {
-    "name": "xuzhougeng and contributors",
+    "name": "xuzhougeng and jarxunlai",
     "url": "https://github.com/xuzhougeng/ScientificFigureLibrary"
   },
-  "homepage": "https://github.com/xuzhougeng/ScientificFigureLibrary",
+  "homepage": "https://xuzhougeng.github.io/ScientificFigureLibrary/",
   "repository": "https://github.com/xuzhougeng/ScientificFigureLibrary",
   "license": "MIT",
   "keywords": [
@@ -21,7 +21,7 @@
     "displayName": "Scientific Figure Library",
     "shortDescription": "Search and materialize reviewed scientific-figure templates",
     "longDescription": "Search Local Published, FigureYa, bundled Open Figure Modules, frozen explicit-only Community, and explicitly trusted dynamic Providers; review exact previews; materialize immutable figure references; and preserve the no-code-execution boundary. The same Skill and MCP server ship in the Wisp and Claude packages.",
-    "developerName": "xuzhougeng and contributors",
+    "developerName": "xuzhougeng and jarxunlai",
     "category": "Productivity",
     "capabilities": [
       "Interactive",
@@ -33,6 +33,11 @@
       "Find a grouped bar chart template I can materialize",
       "Show Local Published figure templates matching this plot"
     ],
-    "brandColor": "#246C4E"
+    "brandColor": "#246C4E",
+    "websiteURL": "https://xuzhougeng.github.io/ScientificFigureLibrary/",
+    "composerIcon": "./assets/brand/sfl-logo.svg",
+    "logo": "./assets/brand/sfl-logo.svg",
+    "logoDark": "./assets/brand/sfl-logo.svg",
+    "screenshots": []
   }
 }

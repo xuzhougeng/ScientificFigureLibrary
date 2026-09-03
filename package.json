@@ -15,7 +15,7 @@
     "publication-figures",
     "reproducible-research"
   ],
-  "homepage": "https://github.com/xuzhougeng/ScientificFigureLibrary",
+  "homepage": "https://xuzhougeng.github.io/ScientificFigureLibrary/",
   "type": "module",
   "bin": {
     "scientific-figure-library": "dist/index.js"
@@ -80,5 +80,6 @@
     "jpeg-js": "^0.4.4",
     "pngjs": "^7.0.0",
     "yaml": "^2.9.0"
-  }
+  },
+  "author": "xuzhougeng and jarxunlai"
 }
