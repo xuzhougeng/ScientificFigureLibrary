@@ -22,7 +22,7 @@ test("host plugin manifests share version, skill, and MCP identity", () => {
   const wisp = readJson(".wisp-plugin/plugin.json");
   const codex = readJson(".codex-plugin/plugin.json");
   const claude = readJson(".claude-plugin/plugin.json");
-  const codexMcp = readJson(".mcp.json");
+  const codexMcp = readJson(".codex-plugin/mcp.json");
   const claudeMcp = readJson(".claude-plugin/mcp.json");
   assert.equal(pkg.version, VERSION);
   assert.equal(wisp.version, VERSION);
@@ -31,14 +31,14 @@ test("host plugin manifests share version, skill, and MCP identity", () => {
   assert.equal(wisp.id, "figure-library");
   assert.equal(codex.name, "figure-library");
   assert.equal(claude.name, "figure-library");
-  assert.equal((pkg.files as string[]).includes(".mcp.json"), true);
+  assert.equal((pkg.files as string[]).includes(".mcp.json"), false);
   assert.equal((pkg.files as string[]).includes(".codex-plugin"), true);
   assert.equal((pkg.files as string[]).includes(".claude-plugin"), true);
   assert.equal(codex.skills, "./skills/");
-  assert.equal(codex.mcpServers, "./.mcp.json");
+  assert.equal(codex.mcpServers, "./.codex-plugin/mcp.json");
   assert.equal(claude.mcpServers, "./.claude-plugin/mcp.json");
   assert.deepEqual(wisp.skills, ["skills/figure-library"]);
-  assert.equal(fs.existsSync(path.join(root, ".mcp.json")), true);
+  assert.equal(fs.existsSync(path.join(root, ".mcp.json")), false);
 
   assert.equal(pkg.homepage, WEBSITE);
   assert.equal(pkg.author, DEVELOPERS);

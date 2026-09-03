@@ -21,7 +21,6 @@
     "scientific-figure-library": "dist/index.js"
   },
   "files": [
-    ".mcp.json",
     ".wisp-plugin",
     ".codex-plugin",
     ".claude-plugin",
