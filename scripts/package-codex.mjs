@@ -22,7 +22,7 @@ if (manifest.version !== packageJson.version) {
 
 const files = [
   ".codex-plugin/plugin.json",
-  ".codex-plugin/mcp.json",
+  ".mcp.json",
   ...(await commonPluginFiles()),
 ];
 const archive = await buildArchive(files);
@@ -35,10 +35,10 @@ const packagedManifest = JSON.parse(utf8(unpacked[".codex-plugin/plugin.json"]))
 if (packagedManifest.name !== "figure-library" || packagedManifest.version !== packageJson.version) {
   throw new Error("packaged Codex manifest identity/version is inconsistent");
 }
-const packagedMcp = JSON.parse(utf8(unpacked[".codex-plugin/mcp.json"]));
+const packagedMcp = JSON.parse(utf8(unpacked[".mcp.json"]));
 const packagedServer = packagedMcp.mcpServers?.["figure-library"];
 if (
-  packagedManifest.mcpServers !== "./.codex-plugin/mcp.json" ||
+  packagedManifest.mcpServers !== "./.mcp.json" ||
   packagedServer?.command !== "node" ||
   JSON.stringify(packagedServer?.args) !== JSON.stringify(["dist/index.js"]) ||
   packagedServer?.cwd !== "."

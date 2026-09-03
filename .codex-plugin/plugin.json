@@ -16,7 +16,7 @@
     "figureya"
   ],
   "skills": "./skills/",
-  "mcpServers": "./.codex-plugin/mcp.json",
+  "mcpServers": "./.mcp.json",
   "interface": {
     "displayName": "Scientific Figure Library",
     "shortDescription": "Search and materialize reviewed scientific-figure templates",

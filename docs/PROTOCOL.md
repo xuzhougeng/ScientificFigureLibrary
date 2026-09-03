@@ -811,7 +811,7 @@ npm run package:plugins
 This writes three artifacts into `release/`:
 
 - `scientific-figure-library-wisp-0.6.1.zip` — install from Wisp **Settings → Plugins**
-- `scientific-figure-library-codex-0.6.1.zip` — Codex plugin with `.codex-plugin/plugin.json`, `.codex-plugin/mcp.json`, and `skills/figure-library`
+- `scientific-figure-library-codex-0.6.1.zip` — Codex plugin with `.codex-plugin/plugin.json`, `.mcp.json`, and `skills/figure-library`
 - `scientific-figure-library-claude-0.6.1.zip` — Claude Code plugin with `.claude-plugin/plugin.json`, `.claude-plugin/mcp.json`, and auto-discovered `skills/`
 
 Each package uses its Host's plugin-root contract. Codex resolves `cwd: "."`
