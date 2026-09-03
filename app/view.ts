@@ -2,6 +2,7 @@ import type {
   CanonicalPreviewDecisionSummary,
   ValidationStateSummaryV1,
 } from "../src/types.ts";
+import { createIcon, setButtonContent, type SflIconName } from "./icons.ts";
 
 export interface CandidatePreviewMeta {
   previewDataUrl: string;
@@ -142,9 +143,28 @@ function element<K extends keyof HTMLElementTagNameMap>(
   return node;
 }
 
-function button(document: Document, className: string, text: string) {
-  const node = element(document, "button", className, text);
+function button(
+  document: Document,
+  className: string,
+  text: string,
+  icon?: SflIconName,
+  options: { iconOnly?: boolean; title?: string } = {},
+) {
+  const node = element(document, "button", className);
   node.type = "button";
+  if (icon) setButtonContent(node, icon, text, options);
+  else node.textContent = text;
+  return node;
+}
+
+function inlineMessage(
+  document: Document,
+  className: string,
+  text: string,
+  icon: SflIconName,
+) {
+  const node = element(document, "p", className);
+  node.append(createIcon(document, icon), element(document, "span", "message-label", text));
   return node;
 }
 
@@ -382,7 +402,11 @@ export function renderCandidateCards(options: {
       "",
     );
     previewButton.setAttribute("aria-label", `查看 ${candidate.title} 详情`);
+    previewButton.title = `查看 ${candidate.title} 详情`;
     appendPreviewImage(document, previewButton, candidate, "thumbnail");
+    const previewIndicator = element(document, "span", "preview-open-indicator");
+    previewIndicator.append(createIcon(document, "eye"));
+    previewButton.append(previewIndicator);
 
     const content = element(document, "div", "content");
     const top = element(document, "div", "topline");
@@ -418,9 +442,11 @@ export function renderCandidateCards(options: {
     const tags = candidateTags(candidate);
     if (tags.length) content.append(chips(document, tags, 6));
     if (candidate.reasons[0]) content.append(element(document, "p", "reason", candidate.reasons[0]));
-    if (candidate.warnings[0]) content.append(element(document, "p", "warning", candidate.warnings[0]));
+    if (candidate.warnings[0]) {
+      content.append(inlineMessage(document, "warning", candidate.warnings[0], "warning"));
+    }
 
-    const detailButton = button(document, "candidate-action", "查看详情");
+    const detailButton = button(document, "candidate-action", "查看详情", "details");
     const elements = { card, previewButton, titleButton, detailButton };
     const open = (opener: HTMLButtonElement) => options.onDetail(candidate, elements, opener);
     previewButton.addEventListener("click", () => open(previewButton));
@@ -462,7 +488,10 @@ export function openCandidateDetail(options: {
   const dialog = element(document, "dialog", "candidate-dialog");
   dialog.setAttribute("aria-labelledby", `detail-title-${candidate.candidateId}`);
   const panel = element(document, "div", "detail-panel");
-  const closeButton = button(document, "dialog-close", "关闭详情");
+  const closeButton = button(document, "dialog-close", "关闭详情", "close", {
+    iconOnly: true,
+    title: `关闭 ${candidate.title} 详情`,
+  });
   closeButton.setAttribute("aria-label", `关闭 ${candidate.title} 详情`);
   const title = element(document, "h2", "detail-title", candidate.title);
   title.id = `detail-title-${candidate.candidateId}`;
@@ -512,8 +541,13 @@ export function openCandidateDetail(options: {
   const status = element(document, "p", "detail-status");
   status.setAttribute("aria-live", "polite");
   const controls = element(document, "div", "detail-controls");
-  const exactPreviewButton = button(document, "exact-preview-action", "查看精确预览");
-  const confirmButton = button(document, "confirm-action", "确认并交给 Agent");
+  const exactPreviewButton = button(
+    document,
+    "exact-preview-action",
+    "查看精确预览",
+    "scan",
+  );
+  const confirmButton = button(document, "confirm-action", "确认并交给 Agent", "send");
   confirmButton.disabled = true;
   if (
     !candidate.previewAvailable ||
@@ -525,11 +559,11 @@ export function openCandidateDetail(options: {
     exactPreviewButton.disabled = true;
     if (options.updateModelContextAvailable) {
       confirmButton.disabled = false;
-      confirmButton.textContent = "选择并交给 Agent 审核";
+      setButtonContent(confirmButton, "send", "选择并交给 Agent 审核");
       status.textContent =
         "当前 Host 未提供 App→Server Tool；可把这个候选交给 Agent 进行一次 headless 精确审核。该路径不能证明精确图片已在 App 内加载。";
     } else {
-      confirmButton.textContent = "Host 不支持选择交接";
+      setButtonContent(confirmButton, "warning", "Host 不支持选择交接");
       status.textContent =
         "当前 Host 既未提供 App→Server Tool，也未提供 updateModelContext；只能查看基础详情，不能加载精确预览或交接选择。";
     }
@@ -584,6 +618,9 @@ export function renderPlotSetBar(options: {
   bar.hidden = false;
   countLabel.textContent = `已选 ${selectedCount} 个模板`;
   submit.disabled = !canSubmit || selectedCount < 1 || selectedCount > 8;
-  submit.textContent =
-    selectedCount > 8 ? "最多选择 8 个模板" : `交给 Agent 绘制（${selectedCount}）`;
+  setButtonContent(
+    submit,
+    selectedCount > 8 ? "warning" : "send",
+    selectedCount > 8 ? "最多选择 8 个模板" : `交给 Agent 绘制（${selectedCount}）`,
+  );
 }

@@ -8,10 +8,13 @@
   <body>
     <main id="app">
       <header>
-        <div>
-          <p class="eyebrow">SCIENTIFIC FIGURE LIBRARY</p>
-          <h1>选择科学绘图模板</h1>
-          <p id="query" class="query">正在等待候选结果…</p>
+        <div class="brand-heading">
+          <img id="brand-logo" class="brand-logo" alt="Scientific Figure Library" />
+          <div class="brand-copy">
+            <p class="eyebrow">SCIENTIFIC FIGURE LIBRARY</p>
+            <h1>选择科学绘图模板</h1>
+            <p id="query" class="query">正在等待候选结果…</p>
+          </div>
         </div>
         <div class="header-side">
           <p class="hint">先在这里浏览详情并选择；Agent 会等待你的决定</p>
@@ -25,7 +28,8 @@
       <p id="pip-summary" class="pip-summary" hidden></p>
 
       <section id="empty" class="empty" aria-live="polite">
-        请在对话中上传图片或数据，也可以直接描述想画的图。
+        <span id="empty-icon" class="state-icon" aria-hidden="true"></span>
+        <span>请在对话中上传图片或数据，也可以直接描述想画的图。</span>
       </section>
       <section id="cards" class="cards" aria-label="Scientific figure template candidates"></section>
       <section id="plot-set-bar" class="plot-set-bar" aria-label="多选绘图模板">
@@ -38,7 +42,8 @@
         <button id="next-page" type="button" disabled>下一页</button>
       </nav>
       <footer id="status" aria-live="polite">
-        分数只表示召回顺序。打开基础详情不会调用 Agent；可勾选 1 到 8 个模板后点“交给 Agent 绘制”。打开详情不会调用 Agent。
+        <span id="status-icon" class="status-icon" aria-hidden="true"></span>
+        <span id="status-text">分数只表示召回顺序。打开基础详情不会调用 Agent；可勾选 1 到 8 个模板后点“交给 Agent 绘制”。打开详情不会调用 Agent。</span>
       </footer>
     </main>
     <script type="module" src="/main.ts"></script>

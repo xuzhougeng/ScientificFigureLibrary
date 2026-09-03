@@ -10,6 +10,12 @@ import {
   updateModelContextForPlotSet,
 } from "./handoff.ts";
 import {
+  SFL_APP_DESCRIPTION,
+  SFL_BRAND_ICON_DATA_URI,
+  SFL_WEBSITE_URL,
+} from "./brand.ts";
+import { createIcon, setButtonContent } from "./icons.ts";
+import {
   openCandidateDetail,
   parseSearchResult,
   renderCandidateCards,
@@ -33,7 +39,7 @@ const root = document.getElementById("app")!;
 const cards = document.getElementById("cards")!;
 const empty = document.getElementById("empty")!;
 const query = document.getElementById("query")!;
-const status = document.getElementById("status")!;
+const status = document.getElementById("status-text")!;
 const previous = document.getElementById("previous-page") as HTMLButtonElement;
 const next = document.getElementById("next-page") as HTMLButtonElement;
 const pageStatus = document.getElementById("page-status")!;
@@ -45,6 +51,9 @@ const expandBrowse = document.getElementById("expand-browse") as HTMLButtonEleme
 const keepVisible = document.getElementById("keep-visible") as HTMLButtonElement;
 const reexpand = document.getElementById("reexpand") as HTMLButtonElement;
 const pipSummary = document.getElementById("pip-summary")!;
+const brandLogo = document.getElementById("brand-logo") as HTMLImageElement;
+const emptyIcon = document.getElementById("empty-icon")!;
+const statusIcon = document.getElementById("status-icon")!;
 const displayElements = {
   root,
   controls: displayControls,
@@ -54,9 +63,38 @@ const displayElements = {
   pipSummary,
 };
 const app = new App(
-  { name: "Scientific Figure Library", version: VERSION },
+  {
+    name: "Scientific Figure Library",
+    title: "Scientific Figure Library",
+    version: VERSION,
+    description: SFL_APP_DESCRIPTION,
+    websiteUrl: SFL_WEBSITE_URL,
+    icons: [
+      {
+        src: SFL_BRAND_ICON_DATA_URI,
+        mimeType: "image/svg+xml",
+        sizes: ["any"],
+      },
+    ],
+  },
   { availableDisplayModes: ["inline", "fullscreen", "pip"] },
 );
+
+brandLogo.src = SFL_BRAND_ICON_DATA_URI;
+emptyIcon.replaceChildren(createIcon(document, "image", "sfl-icon state-icon-svg"));
+statusIcon.replaceChildren(createIcon(document, "layers", "sfl-icon"));
+setButtonContent(previous, "chevron-left", "上一页");
+setButtonContent(next, "chevron-right", "下一页");
+setButtonContent(plotSetSubmit, "send", "交给 Agent 绘制（0）");
+setButtonContent(expandBrowse, "expand", "展开浏览", {
+  title: "以全屏模式展开候选工作台",
+});
+setButtonContent(keepVisible, "pip", "保持可见", {
+  title: "将候选工作台保持为画中画窗口",
+});
+setButtonContent(reexpand, "expand", "重新展开", {
+  title: "从画中画重新展开候选工作台",
+});
 
 let activeResult: SearchResult | undefined;
 let activeResultSetId: string | undefined;
@@ -218,7 +256,7 @@ async function submitPlotSet() {
     return;
   }
   plotSetSubmit.disabled = true;
-  plotSetSubmit.textContent = "正在交给 Agent…";
+  setButtonContent(plotSetSubmit, "loader", "正在交给 Agent…", { spinning: true });
   try {
     await updateModelContextForPlotSet({
       resultSetId: activeResult.resultSetId,
@@ -226,7 +264,7 @@ async function submitPlotSet() {
       updateModelContext: (input) => app.updateModelContext(input),
     });
     status.textContent = `已把 ${chosen.length} 个模板交给 Agent 绘制；请在当前课题项目中逐张出图。`;
-    plotSetSubmit.textContent = `已交给 Agent（${chosen.length}）`;
+    setButtonContent(plotSetSubmit, "check", `已交给 Agent（${chosen.length}）`);
   } catch (error) {
     console.error(error);
     status.textContent = "多选交接失败；请重试或在对话中列出要画的模板。";
@@ -246,7 +284,7 @@ async function handoffForHeadlessReview(
   }
   const resultSetId = activeResult.resultSetId;
   elements.confirmButton.disabled = true;
-  elements.confirmButton.textContent = "正在交给 Agent…";
+  setButtonContent(elements.confirmButton, "loader", "正在交给 Agent…", { spinning: true });
   elements.status.textContent =
     "正在交接这个候选；不会在 App 内伪装精确预览，也不会授权 Apply。";
   try {
@@ -255,7 +293,7 @@ async function handoffForHeadlessReview(
       candidate,
       updateModelContext: (input) => app.updateModelContext(input),
     });
-    elements.confirmButton.textContent = "已选择并交给 Agent";
+    setButtonContent(elements.confirmButton, "check", "已选择并交给 Agent");
     elements.confirmButton.setAttribute("aria-pressed", "true");
     elements.status.textContent =
       "已交给 Agent 对这个候选执行一次 headless 精确审核；该路径不代表精确图片已在 App 内加载。";
@@ -263,7 +301,7 @@ async function handoffForHeadlessReview(
   } catch (error) {
     console.error(error);
     elements.confirmButton.disabled = false;
-    elements.confirmButton.textContent = "重试交给 Agent 审核";
+    setButtonContent(elements.confirmButton, "retry", "重试交给 Agent 审核");
     elements.status.textContent = "Host 上下文更新失败；没有启动 Agent 审核。";
     status.textContent = "选择交接失败；请重试或在对话中明确指定候选。";
   }
@@ -308,7 +346,7 @@ async function confirmCandidate(
   previewSha256: string,
 ) {
   elements.confirmButton.disabled = true;
-  elements.confirmButton.textContent = "正在确认…";
+  setButtonContent(elements.confirmButton, "loader", "正在确认…", { spinning: true });
   let previewReceipt: string;
   let confirmationMode: string;
   try {
@@ -327,12 +365,12 @@ async function confirmCandidate(
   } catch (error) {
     console.error(error);
     elements.confirmButton.disabled = false;
-    elements.confirmButton.textContent = "重新确认并交给 Agent";
+    setButtonContent(elements.confirmButton, "retry", "重新确认并交给 Agent");
     elements.status.textContent = "确认失败；未签发 materialize 凭证，请重新加载精确预览。";
     status.textContent = "确认失败；未签发 materialize 凭证。";
     return;
   }
-  elements.confirmButton.textContent = "已确认并交给 Agent";
+  setButtonContent(elements.confirmButton, "check", "已确认并交给 Agent");
   elements.confirmButton.setAttribute("aria-pressed", "true");
   try {
     const handedOff = await publishSelection(
@@ -360,7 +398,9 @@ async function loadExactPreview(candidate: Candidate, elements: DetailViewElemen
   const operationStartedAt = performance.now();
   elements.exactPreviewButton.disabled = true;
   elements.confirmButton.disabled = true;
-  elements.exactPreviewButton.textContent = "正在加载精确预览…";
+  setButtonContent(elements.exactPreviewButton, "loader", "正在加载精确预览…", {
+    spinning: true,
+  });
   elements.status.textContent = `正在读取 ${candidate.templateId} 的精确预览；不会写文件或下载模板。`;
   status.textContent = `正在 App 内读取 ${candidate.templateId} 的精确预览。`;
   try {
@@ -396,8 +436,8 @@ async function loadExactPreview(candidate: Candidate, elements: DetailViewElemen
           durationMs: performance.now() - operationStartedAt,
           previewBytes,
         });
-        elements.exactPreviewButton.textContent = "精确预览已加载";
-        elements.confirmButton.textContent = "确认并交给 Agent";
+        setButtonContent(elements.exactPreviewButton, "check", "精确预览已加载");
+        setButtonContent(elements.confirmButton, "send", "确认并交给 Agent");
         elements.confirmButton.onclick = () =>
           void confirmCandidate(candidate, elements, exact.previewChallenge, previewSha256);
         elements.status.textContent = `精确预览已在侧栏加载。检查图像后再确认 ${candidate.templateId}。`;
@@ -409,7 +449,7 @@ async function loadExactPreview(candidate: Candidate, elements: DetailViewElemen
           durationMs: performance.now() - operationStartedAt,
           previewBytes,
         });
-        elements.exactPreviewButton.textContent = "精确预览加载失败";
+        setButtonContent(elements.exactPreviewButton, "warning", "精确预览加载失败");
         elements.status.textContent = "精确预览未在侧栏加载成功，因此不能确认或 materialize。";
         status.textContent = "精确预览加载失败；未形成确认。";
       },
@@ -417,7 +457,7 @@ async function loadExactPreview(candidate: Candidate, elements: DetailViewElemen
   } catch (error) {
     console.error(error);
     elements.confirmButton.disabled = true;
-    elements.exactPreviewButton.textContent = "精确预览不可用";
+    setButtonContent(elements.exactPreviewButton, "warning", "精确预览不可用");
     elements.status.textContent = "精确预览读取或校验失败；该候选不能确认或 materialize。";
     status.textContent = "精确预览读取失败；未形成确认。";
   }

@@ -1,4 +1,6 @@
 import assert from "node:assert/strict";
+import fs from "node:fs";
+import path from "node:path";
 import test from "node:test";
 import { Window } from "happy-dom";
 import {
@@ -15,6 +17,7 @@ import {
   type SearchResult,
 } from "../app/view.ts";
 import { VERSION } from "../src/version.ts";
+import { createIcon, setButtonContent } from "../app/icons.ts";
 
 function candidate(
   providerId: string,
@@ -105,6 +108,42 @@ function searchResult(candidates: Candidate[]): SearchResult {
   };
 }
 
+test("UI icons use accessible inline SVG and preserve visible button labels", () => {
+  const window = new Window();
+  const document = window.document as unknown as Document;
+  const icon = createIcon(document, "details");
+  assert.equal(icon.getAttribute("viewBox"), "0 0 24 24");
+  assert.equal(icon.getAttribute("aria-hidden"), "true");
+  assert.equal(icon.getAttribute("focusable"), "false");
+  assert.equal(icon.querySelector("script"), null);
+  assert.equal(icon.querySelector("image"), null);
+
+  const primary = document.createElement("button");
+  setButtonContent(primary, "send", "确认并交给 Agent");
+  assert.equal(primary.textContent, "确认并交给 Agent");
+  assert.ok(primary.querySelector("svg.sfl-icon"));
+  assert.equal(primary.querySelector(".button-label")?.textContent, "确认并交给 Agent");
+
+  const compact = document.createElement("button");
+  setButtonContent(compact, "close", "关闭详情", { iconOnly: true });
+  assert.equal(compact.getAttribute("aria-label"), "关闭详情");
+  assert.equal(compact.title, "关闭详情");
+  assert.equal(compact.querySelector(".visually-hidden")?.textContent, "关闭详情");
+});
+
+test("App shell includes the shared brand, responsive UI, dark mode, and reduced motion", () => {
+  const root = path.resolve(import.meta.dirname, "..");
+  const html = fs.readFileSync(path.join(root, "app", "mcp-app.html"), "utf8");
+  const source = fs.readFileSync(path.join(root, "app", "main.ts"), "utf8");
+  const styles = fs.readFileSync(path.join(root, "app", "styles.css"), "utf8");
+  assert.match(html, /id="brand-logo"/u);
+  assert.match(source, /SFL_BRAND_ICON_DATA_URI/u);
+  assert.match(styles, /prefers-reduced-motion/u);
+  assert.match(styles, /html\[data-theme="dark"\]/u);
+  assert.match(styles, /@media \(max-width: 420px\)/u);
+  assert.doesNotMatch(`${html}\n${source}\n${styles}`, /unpkg|jsdelivr|cdnjs/u);
+});
+
 test("search result hydrates App thumbnails from component-only metadata", () => {
   const rawCandidate = candidate(
     "org.figureya.module",
@@ -187,6 +226,10 @@ test("personal module cards keep publisher state, Local state, and thumbnail sta
   assert.match(detail.dialog.textContent ?? "", /归档 commit：bbbbbbbb/u);
   assert.match(detail.dialog.textContent ?? "", /ZIP SHA-256：cccccccc/u);
   assert.equal(detail.exactPreviewButton.disabled, false);
+  assert.ok(detail.exactPreviewButton.querySelector("svg.sfl-icon"));
+  assert.ok(detail.confirmButton.querySelector("svg.sfl-icon"));
+  assert.equal(detail.closeButton.getAttribute("aria-label"), `关闭 ${personal.title} 详情`);
+  assert.equal(detail.closeButton.title, `关闭 ${personal.title} 详情`);
   detail.closeButton.click();
 });
 
@@ -215,6 +258,8 @@ test("thumbnail, title, and explicit action open candidate details without exact
   assert.equal(images.length, 2);
   assert.ok(images.every((image) => image.src === dataUrl));
   assert.ok(images.every((image) => image.loading === "lazy"));
+  assert.equal(cards.querySelectorAll(".candidate-action .sfl-icon").length, 2);
+  assert.equal(cards.querySelectorAll(".preview-open-indicator .sfl-icon").length, 2);
   assert.deepEqual(
     Array.from(cards.querySelectorAll(".source")).map((node) => node.textContent),
     ["Local Published", "FigureYa"],
