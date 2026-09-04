@@ -120,6 +120,7 @@ The Library locator is machine-local (`locator.json` under AppData / XDG).
 | `figure_library_search` | Search Local Published (and any enabled extras) |
 | `figure_library_plan_working_revision` / `apply_working_revision` | Import a figure+code unit |
 | `figure_library_plan_publish_working_revision` / `apply_publish_working_revision` | Publish a Release |
+| `figure_library_plan_open_figure_module_pr` / `apply_open_figure_module_pr` | Optional Open Figure Modules GitHub PR |
 | `figure_library_plan_materialize` / `apply_materialize` | Copy a confirmed template into a project |
 
 The server never runs notebooks, installers, or plot scripts. See

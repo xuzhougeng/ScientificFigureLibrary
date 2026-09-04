@@ -3,7 +3,7 @@ name: figure-library
 description: Build, review, search, select, and materialize immutable scientific-figure references from Local Published, FigureYa, bundled Open Figure Modules, frozen explicit-only Community, and explicitly trusted dynamic Providers.
 ---
 
-# Scientific Figure Library 0.6.1
+# Scientific Figure Library 0.6.2
 
 Use this Skill when a user wants to store an uploaded figure/code pair, review
 or publish a local template, search for a plotting reference, or materialize an
@@ -251,6 +251,33 @@ Every mutation is plan/apply:
 - atomic approval/publication:
   `figure_library_plan_publish_working_revision` then
   `figure_library_apply_publish_working_revision`;
+
+After `figure_library_apply_publish_working_revision` succeeds, ask once whether
+to submit that exact Local Published Release to Open Figure Modules. Explain
+that source/reference images, PDFs, evidence, receipts, and Local Library
+state stay out of the PR; included bytes are portable code, example/synthetic
+data, a generated PNG preview, and documentation, licensed MIT / CC BY 4.0.
+If the user declines, stop. If the user agrees, call
+`figure_library_github_auth_status` then
+`figure_library_plan_open_figure_module_pr` with the just-published
+`providerId` and `exactSelector`.
+
+- If the Plan returns `NEXT_ACTION: ask_user` and similar candidates, call
+  `figure_library_search` with the Plan's `similarSearch.query`,
+  `providerIds`, `plotFamily`, `language`, and `limit` so the SFL window
+  shows FigureYa and Open Figure Modules hits. Do not include Local
+  Published. Stop and wait. Retrieval scores are ranking only.
+- After the user confirms the hits are not duplicates, call
+  `figure_library_apply_open_figure_module_pr` with the Plan digest, a
+  stable `operationId`, `similarReviewConfirmed: true`, and the
+  `resultSetId` from that search.
+- If the Plan returns `NEXT_ACTION: apply_confirmed_plan` because there were
+  no similar hits, apply immediately in the same turn without a second
+  question.
+- Path collisions on `modules/<moduleId>/` fail closed. The tool creates a
+  two-commit PR and never merges. Do not present an open PR as already in
+  default search.
+
 - discard Working Head: `figure_library_plan_discard_working_revision` then
   `figure_library_apply_discard_working_revision`;
 - restore a historical Release as a new Working candidate:

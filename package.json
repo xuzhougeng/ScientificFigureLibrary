@@ -1,6 +1,6 @@
 {
   "name": "scientific-figure-library",
-  "version": "0.6.1",
+  "version": "0.6.2",
   "description": "Local-first MCP server and MCP App for your scientific figures: import, review, and publish a global library on disk, then reuse exact templates in Claude Science and Wisp Science.",
   "keywords": [
     "scientific-figures",

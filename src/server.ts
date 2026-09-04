@@ -25,6 +25,7 @@ import { WorkspaceRuntime } from "./workspace-runtime.ts";
 import { registerLifecycleTools } from "./lifecycle-tools.ts";
 import { registerMaterializationTools } from "./materialization-tools.ts";
 import { registerGitHubPublicationTools } from "./github-publication-tools.ts";
+import { registerOpenFigurePrTools } from "./open-figure-pr-tools.ts";
 import { registerPublicationExportTools } from "./publication-export-tools.ts";
 import { registerProviderSourceTools } from "./provider-source-tools.ts";
 import { ProviderSourceManager } from "./provider-sources.ts";
@@ -58,6 +59,7 @@ import {
 import { assertExactTemplateSelector, exactSelectorDigest } from "./providers.ts";
 import {
   PERSONAL_MODULE_PROVIDER_ID,
+  LOCAL_LIBRARY_PROVIDER_ID,
 } from "./providers.ts";
 import { COMMUNITY_PROVIDER_ID } from "./public-catalog-provider.ts";
 import {
@@ -1871,6 +1873,61 @@ export async function createServer(options: {
   });
   registerBundleTools({ server, currentLibraries });
   registerGitHubPublicationTools({ server });
+  registerOpenFigurePrTools({
+    server,
+    currentLibraries,
+    figureYa: async () => index,
+    openFigure: async () => moduleCatalogs?.get(PERSONAL_MODULE_PROVIDER_ID),
+    lookupSearchSession: (resultSetId) => {
+      const state = searchSessions.get(resultSetId);
+      if (!state) return undefined;
+      return { queryDigest: state.queryDigest, providerIds: state.input.providerIds };
+    },
+    searchSimilar: async (request) => {
+      if (request.providerIds.includes(LOCAL_LIBRARY_PROVIDER_ID)) {
+        throw new Error("Open Figure similar search cannot include Local Published");
+      }
+      const parsedInput: ParsedSearchInput = {
+        query: request.query,
+        plotFamily: request.plotFamily,
+        language: request.language,
+        providerIds: [...request.providerIds],
+        limit: request.limit,
+      };
+      const searchRequest: SearchRequest = {
+        query: request.query,
+        plotFamily: request.plotFamily,
+        language: request.language,
+      };
+      const context = await currentLibraries();
+      const providerContext = createProviderContext(context, index, {
+        ...(moduleCatalogs ? { moduleCatalogs } : {}),
+      });
+      const searched: TemplateCandidate[] = [];
+      for (const providerId of parsedInput.providerIds) {
+        searched.push(...await registry.get(providerId).search(providerContext, searchRequest));
+      }
+      const order = new Map(registry.list().map(({ providerId }, providerIndex) => [providerId, providerIndex]));
+      const ranked = searched.sort((left, right) => {
+        const score = right.retrievalScore - left.retrievalScore;
+        if (score) return score;
+        if (left.providerId !== right.providerId) {
+          return (order.get(left.providerId) ?? Number.MAX_SAFE_INTEGER) -
+            (order.get(right.providerId) ?? Number.MAX_SAFE_INTEGER);
+        }
+        return left.templateId.localeCompare(right.templateId);
+      });
+      const top = Math.max(ranked[0]?.retrievalScore ?? 1, 0.0001);
+      const normalized = ranked.map((candidate) => ({
+        ...candidate,
+        retrievalScore: Math.round((candidate.retrievalScore / top) * 100),
+      }));
+      return {
+        candidates: normalized.slice(0, parsedInput.limit),
+        queryDigest: searchQueryDigest(parsedInput),
+      };
+    },
+  });
   registerPublicationExportTools({ server, currentLibraries });
   registerProviderSourceTools({
     server,

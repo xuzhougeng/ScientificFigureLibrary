@@ -136,6 +136,8 @@ try {
     "figure_library_github_auth_instructions",
     "figure_library_plan_publication_pr",
     "figure_library_apply_publication_pr",
+    "figure_library_plan_open_figure_module_pr",
+    "figure_library_apply_open_figure_module_pr",
   ].sort();
   if (JSON.stringify(names) !== JSON.stringify(required)) {
     const missing = required.filter((name) => !names.includes(name));
