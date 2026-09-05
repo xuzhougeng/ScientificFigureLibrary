@@ -10,6 +10,7 @@ import { z } from "zod";
 import { canonicalJson, compareCanonicalStrings } from "./canonical-json.ts";
 import type { ToolOutcomeEnvelope } from "./library-binding-tools.ts";
 import { parsePublicProviderCatalog } from "./public-catalog-provider.ts";
+import { PERSONAL_MODULE_REPOSITORY } from "./module-catalog.ts";
 import { STRICT_SEMVER } from "./semver.ts";
 
 export const CENTRAL_ARCHIVE_REPOSITORY =
@@ -1988,7 +1989,7 @@ export class GitHubPublicationService {
         status: authFailureStatus(kind),
         login: null,
         host: HOST,
-        repositories: [CENTRAL_ARCHIVE_REPOSITORY, CENTRAL_CATALOG_REPOSITORY].map((repository) => ({
+        repositories: [CENTRAL_ARCHIVE_REPOSITORY, CENTRAL_CATALOG_REPOSITORY, PERSONAL_MODULE_REPOSITORY].map((repository) => ({
           repository, permission: "unavailable", archived: null, disabled: null,
         })),
         credentialStorage: "managed_by_github_cli",
@@ -1998,7 +1999,7 @@ export class GitHubPublicationService {
     }
     const repositories: GitHubAuthRepositoryStatus[] = [];
     try {
-      for (const repository of [CENTRAL_ARCHIVE_REPOSITORY, CENTRAL_CATALOG_REPOSITORY]) {
+      for (const repository of [CENTRAL_ARCHIVE_REPOSITORY, CENTRAL_CATALOG_REPOSITORY, PERSONAL_MODULE_REPOSITORY]) {
         const metadata = await getRepository(this.#runner, repository);
         repositories.push({ repository, permission: repositoryPermission(metadata), archived: metadata.archived, disabled: metadata.disabled });
       }
@@ -2019,7 +2020,7 @@ export class GitHubPublicationService {
         status: authFailureStatus(kind),
         login: account.login,
         host: HOST,
-        repositories: [CENTRAL_ARCHIVE_REPOSITORY, CENTRAL_CATALOG_REPOSITORY].map((repository) => ({
+        repositories: [CENTRAL_ARCHIVE_REPOSITORY, CENTRAL_CATALOG_REPOSITORY, PERSONAL_MODULE_REPOSITORY].map((repository) => ({
           repository,
           permission: "unavailable",
           archived: null,

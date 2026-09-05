@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import test from "node:test";
-import { Window } from "happy-dom";
+import { createTestWindow } from "./helpers/dom.ts";
 import {
   buildHeadlessReviewHandoff,
   buildPlotSetHandoff,
@@ -109,7 +109,7 @@ function searchResult(candidates: Candidate[]): SearchResult {
 }
 
 test("UI icons use accessible inline SVG and preserve visible button labels", () => {
-  const window = new Window();
+  const window = createTestWindow();
   const document = window.document as unknown as Document;
   const icon = createIcon(document, "details");
   assert.equal(icon.getAttribute("viewBox"), "0 0 24 24");
@@ -168,7 +168,7 @@ test("search result hydrates App thumbnails from component-only metadata", () =>
 });
 
 test("personal module cards keep publisher state, Local state, and thumbnail status separate", () => {
-  const window = new Window();
+  const window = createTestWindow();
   const document = window.document as unknown as Document;
   const cards = document.createElement("section");
   const empty = document.createElement("section");
@@ -225,6 +225,7 @@ test("personal module cards keep publisher state, Local state, and thumbnail sta
   assert.match(detail.dialog.textContent ?? "", /源码 commit：aaaaaaaa/u);
   assert.match(detail.dialog.textContent ?? "", /归档 commit：bbbbbbbb/u);
   assert.match(detail.dialog.textContent ?? "", /ZIP SHA-256：cccccccc/u);
+  assert.equal(detail.dialog.querySelector<HTMLDetailsElement>(".detail-technical")?.open, false);
   assert.equal(detail.exactPreviewButton.disabled, false);
   assert.ok(detail.exactPreviewButton.querySelector("svg.sfl-icon"));
   assert.ok(detail.confirmButton.querySelector("svg.sfl-icon"));
@@ -234,7 +235,7 @@ test("personal module cards keep publisher state, Local state, and thumbnail sta
 });
 
 test("thumbnail, title, and explicit action open candidate details without exact preview", () => {
-  const window = new Window();
+  const window = createTestWindow();
   const document = window.document as unknown as Document;
   const cards = document.createElement("section");
   const empty = document.createElement("section");
@@ -288,7 +289,7 @@ test("thumbnail, title, and explicit action open candidate details without exact
 });
 
 test("basic detail remains available without serverTools and exposes complete metadata", async () => {
-  const window = new Window();
+  const window = createTestWindow();
   const document = window.document as unknown as Document;
   const opener = document.createElement("button");
   document.body.append(opener);
@@ -320,7 +321,7 @@ test("basic detail remains available without serverTools and exposes complete me
   await Promise.resolve();
 
   assert.equal(detail.dialog.open, true);
-  assert.equal(detail.dialog.querySelector(".detail-description")?.textContent, selected.description);
+  assert.equal(detail.dialog.querySelector(".detail-description")?.textContent?.trim(), selected.description);
   assert.match(detail.dialog.textContent ?? "", /Grouped bar-chart comparisons/u);
   assert.match(detail.dialog.textContent ?? "", /One category and one numeric value/u);
   assert.match(detail.dialog.textContent ?? "", /bar chart match/u);
@@ -345,7 +346,7 @@ test("basic detail remains available without serverTools and exposes complete me
 });
 
 test("legacy candidates without validationState render a conservative three-part projection", () => {
-  const window = new Window();
+  const window = createTestWindow();
   const document = window.document as unknown as Document;
   const opener = document.createElement("button");
   document.body.append(opener);
@@ -380,7 +381,7 @@ test("legacy candidates without validationState render a conservative three-part
 });
 
 test("unavailable previews still open details but keep exact preview and confirmation disabled", () => {
-  const window = new Window();
+  const window = createTestWindow();
   const document = window.document as unknown as Document;
   const cards = document.createElement("section");
   const empty = document.createElement("section");
@@ -434,7 +435,7 @@ test("unavailable previews still open details but keep exact preview and confirm
 });
 
 test("opening a usable detail does not request exact preview until the user clicks", () => {
-  const window = new Window();
+  const window = createTestWindow();
   const document = window.document as unknown as Document;
   const opener = document.createElement("button");
   document.body.append(opener);
@@ -466,7 +467,7 @@ test("opening a usable detail does not request exact preview until the user clic
 });
 
 test("updateModelContext fallback starts only after the user clicks one candidate", async () => {
-  const window = new Window();
+  const window = createTestWindow();
   const document = window.document as unknown as Document;
   const opener = document.createElement("button");
   document.body.append(opener);
@@ -557,7 +558,7 @@ test("headless review handoff contains one compact candidate and no image or cre
 });
 
 test("exact preview load enables confirmation while image error keeps it disabled", () => {
-  const window = new Window();
+  const window = createTestWindow();
   const document = window.document as unknown as Document;
   const selected = candidate(
     "org.scientificfigurelibrary.local",
@@ -643,4 +644,50 @@ test("plot-set handoff includes every selected template and requires plotting al
   assert.match(text, /Plot every selected template/u);
   assert.doesNotMatch(text, /Review only this one selected candidate/u);
   assert.doesNotMatch(JSON.stringify(selection), /data:image|previewDataUrl/u);
+});
+
+test("all Providers render the same Markdown detail while technical metadata stays collapsed", () => {
+  for (const providerId of ["org.scientificfigurelibrary.local", "org.figureya.module", "io.github.jarxunlai.personal-figures"]) {
+    const document = createTestWindow().document as unknown as Document;
+    const selected = candidate(providerId, "markdown-detail", "missing");
+    selected.description = "Compare **immune composition** across conditions.";
+    selected.application = "### 免疫微环境\n\n- Compare treatment-associated cell fractions.\n- Prioritize follow-up.";
+    selected.dataProfile = "| Sample | Group |\n|---|---|\n| s1 | control |";
+    const opener = document.createElement("button");
+    document.body.append(opener);
+    const detail = openCandidateDetail({ document, candidate: selected, opener, serverToolsAvailable: false, updateModelContextAvailable: false, onRequestExactPreview() {}, onRequestAgentReview() {} });
+    assert.equal(detail.dialog.querySelectorAll(".detail-description").length, 1);
+    assert.equal(detail.dialog.querySelector(".detail-description strong")?.textContent, "immune composition");
+    assert.ok(detail.dialog.querySelector(".markdown-body h3"));
+    assert.ok(detail.dialog.querySelector(".markdown-body li"));
+    assert.ok(detail.dialog.querySelector(".markdown-table-scroll table"));
+    const technical = detail.dialog.querySelector<HTMLDetailsElement>("details")!;
+    assert.equal(technical.open, false);
+    assert.match(technical.textContent ?? "", /验证状态/u);
+    for (const label of ["输入文件", "代码文件", "依赖包", "数据特征"]) {
+      const heading = Array.from(detail.dialog.querySelectorAll("h3")).find((h) => h.textContent === label)!;
+      assert.ok(heading, label);
+      assert.equal(heading.closest("details"), null, label);
+    }
+    detail.closeButton.click();
+  }
+});
+
+test("legacy scenarios render once and absent scenarios never use visualProfile", () => {
+  const document = createTestWindow().document as unknown as Document;
+  const selected = candidate("org.scientificfigurelibrary.local", "old", "missing");
+  selected.description = "Background\n\n## 适用场景\n\n- Legacy case";
+  selected.application = undefined;
+  selected.visualProfile = "Red points and a black axis";
+  const opener = document.createElement("button"); document.body.append(opener);
+  const show = () => openCandidateDetail({ document, candidate: selected, opener, serverToolsAvailable: false, updateModelContextAvailable: false, onRequestExactPreview() {}, onRequestAgentReview() {} });
+  let detail = show();
+  assert.equal((detail.dialog.textContent?.match(/Legacy case/gu) ?? []).length, 1);
+  assert.doesNotMatch(detail.dialog.textContent ?? "", /Red points/u);
+  detail.closeButton.click();
+  selected.description = "A description without scenarios.";
+  detail = show();
+  assert.match(detail.dialog.textContent ?? "", /未单独记录/u);
+  assert.doesNotMatch(detail.dialog.textContent ?? "", /Red points/u);
+  detail.closeButton.click();
 });

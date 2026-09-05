@@ -1,3 +1,4 @@
+import { markdownPlainText } from "./figure-description.ts";
 import { createHash } from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
@@ -285,6 +286,7 @@ export interface SearchableTemplate {
   title: string;
   description: string;
   scientificQuestion?: string;
+  visualProfile?: string;
   application: string;
   dataProfile: string;
   inputFiles: string[];
@@ -401,7 +403,7 @@ export function scoreSearchableTemplate(
     },
     {
       name: "主要说明",
-      value: normalizeSearchText(template.description),
+      value: normalizeSearchText(markdownPlainText(template.description)),
       weight: 5,
       embedded: false,
     },
@@ -412,15 +414,15 @@ export function scoreSearchableTemplate(
       embedded: false,
     },
     {
-      name: "视觉特征",
-      value: normalizeSearchText(template.application),
+      name: "应用场景",
+      value: normalizeSearchText(markdownPlainText(template.application)),
       weight: 3,
       embedded: false,
     },
     {
       name: "数据需求",
       value: normalizeSearchText(
-        `${template.dataProfile} ${template.inputFiles.join(" ")} ${template.codeFiles.join(" ")}`,
+        `${markdownPlainText(template.dataProfile)} ${template.inputFiles.join(" ")} ${template.codeFiles.join(" ")}`,
       ),
       weight: 3,
       embedded: false,
@@ -429,6 +431,12 @@ export function scoreSearchableTemplate(
       name: "依赖包",
       value: normalizeSearchText(template.packages.join(" ")),
       weight: 1,
+      embedded: false,
+    },
+    {
+      name: "视觉特征",
+      value: normalizeSearchText(markdownPlainText(template.visualProfile ?? "")),
+      weight: 3,
       embedded: false,
     },
   ] as const;
@@ -451,7 +459,7 @@ export function scoreSearchableTemplate(
   const identifier = fields[0].value;
   const compactTemplateId = normalizeSearchText(template.templateId).replace(/[^a-z0-9]+/gu, "");
   const description = fields[2].value;
-  const application = fields[4].value;
+  const application = `${fields[4].value} ${fields[7].value}`;
   const familyMatches = [];
   for (const familyId of intent.families) {
     const family = FIGURE_FAMILIES.find((item) => item.id === familyId);

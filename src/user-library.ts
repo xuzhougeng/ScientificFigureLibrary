@@ -1,3 +1,4 @@
+import { resolveFigureDescription } from "./figure-description.ts";
 import { createHash, randomUUID } from "node:crypto";
 import fs from "node:fs/promises";
 import os from "node:os";
@@ -104,6 +105,7 @@ function isUserTemplate(value: unknown): value is UserTemplate {
     typeof item.description === "string" &&
     typeof item.visualProfile === "string" &&
     typeof item.dataProfile === "string" &&
+    (item.application === undefined || typeof item.application === "string") &&
     (item.scientificQuestion === undefined || typeof item.scientificQuestion === "string") &&
     typeof item.license === "string" &&
     typeof item.importedAt === "string" &&
@@ -221,9 +223,9 @@ function userCandidate(
     reasons: evidence.reasons,
     warnings,
     excerpt: template.description.slice(0, 420),
-    description: template.description,
+    ...resolveFigureDescription(template.description, template.application),
+    visualProfile: template.visualProfile,
     ...(template.scientificQuestion ? { scientificQuestion: template.scientificQuestion } : {}),
-    application: template.visualProfile,
     dataProfile: template.dataProfile,
     inputFiles: (template.references ?? [])
       .filter((file) => file.role === "data")
@@ -418,6 +420,7 @@ function templateSummary(template: UserTemplate) {
     visualProfile: template.visualProfile,
     dataProfile: template.dataProfile,
     scientificQuestion: template.scientificQuestion ?? "",
+    application: template.application ?? "",
     packages: [...template.packages].sort(),
     license: template.license,
     assetKind: templateAssetKind(template),
@@ -443,6 +446,7 @@ function preparedSummary(prepared: PreparedTemplate) {
     visualProfile: prepared.visualProfile,
     dataProfile: prepared.dataProfile,
     scientificQuestion: prepared.scientificQuestion ?? "",
+    application: prepared.application ?? "",
     packages: [...prepared.packages].sort(),
     license: prepared.license,
     assetKind: prepared.assetKind,
@@ -1202,6 +1206,7 @@ export class UserTemplateLibrary {
       tags: prepared.tags,
       visualProfile: prepared.visualProfile,
       dataProfile: prepared.dataProfile,
+      ...(prepared.application ? { application: prepared.application } : {}),
       ...(prepared.scientificQuestion ? { scientificQuestion: prepared.scientificQuestion } : {}),
       packages: prepared.packages,
       license: prepared.license,
@@ -2028,9 +2033,9 @@ export class UserTemplateLibrary {
           {
             templateId: template.templateId,
             title: template.title,
-            description: template.description,
+            ...resolveFigureDescription(template.description, template.application),
+            visualProfile: template.visualProfile,
             scientificQuestion: template.scientificQuestion,
-            application: template.visualProfile,
             dataProfile: template.dataProfile,
             inputFiles: (template.references ?? [])
               .filter((file) => file.role === "data")

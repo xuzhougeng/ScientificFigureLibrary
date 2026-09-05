@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { Window } from "happy-dom";
+import { createTestWindow } from "./helpers/dom.ts";
 import {
   applyWorkbenchDisplayMode,
   compactWorkbenchSummary,
@@ -10,7 +10,7 @@ import {
 } from "../app/display-mode.ts";
 
 function mount(): WorkbenchDisplayElements {
-  const window = new Window();
+  const window = createTestWindow();
   const document = window.document as unknown as Document;
   const root = document.createElement("main");
   const controls = document.createElement("div");

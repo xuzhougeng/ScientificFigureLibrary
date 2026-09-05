@@ -1,0 +1,7 @@
+interface:
+  display_name: "figure organization"
+  short_description: "SFL readable figure adaptation scripts"
+  icon_small: "./assets/sfl-logo.svg"
+  icon_large: "./assets/sfl-logo.svg"
+  brand_color: "#246C4E"
+  default_prompt: "Use $figure-organization from this SFL plugin for the selected figure; preserve user intent and project rules."

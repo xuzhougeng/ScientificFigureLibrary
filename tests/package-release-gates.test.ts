@@ -342,9 +342,9 @@ test("npm tar parser accepts only exact regular package inventory", () => {
   assert.throws(() => readNpmTarball(gzipSync(symlinkTar)), /non-regular entry type/u);
 });
 
-test("release smoke inventory remains exactly 51 tools", () => {
-  assert.equal(STANDARD_TOOL_NAMES.length, 51);
-  assert.equal(new Set(STANDARD_TOOL_NAMES).size, 51);
+test("release smoke inventory remains exactly 53 tools", () => {
+  assert.equal(STANDARD_TOOL_NAMES.length, 53);
+  assert.equal(new Set(STANDARD_TOOL_NAMES).size, 53);
 });
 
 test("every public package entrypoint is gated by the final Community snapshot", async () => {

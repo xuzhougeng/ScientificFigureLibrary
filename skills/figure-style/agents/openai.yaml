@@ -1,0 +1,7 @@
+interface:
+  display_name: "figure style"
+  short_description: "SFL faithful R and Python figure QA"
+  icon_small: "./assets/sfl-logo.svg"
+  icon_large: "./assets/sfl-logo.svg"
+  brand_color: "#246C4E"
+  default_prompt: "Use $figure-style from this SFL plugin for the selected figure; preserve user intent and project rules."

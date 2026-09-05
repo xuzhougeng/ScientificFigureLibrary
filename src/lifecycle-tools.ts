@@ -258,6 +258,7 @@ const WorkingPlanInput = z.object({
   visualProfile: z.string().max(4_000).optional(),
   dataProfile: z.string().max(4_000).optional(),
   scientificQuestion: z.string().max(2_000).optional(),
+  application: z.string().max(8_000).optional().describe("FigureYa-style biological use cases as Markdown; required for new or updated Working revisions. Not visual encodings."),
   packages: z.array(z.string().min(1).max(200)).max(100).optional(),
   license: z.string().max(2_000).optional(),
   assetKind: z.enum(["plot_template", "visual_reference"]).optional(),
@@ -376,6 +377,7 @@ function missingWorkingConfirmations(input: WorkingPlanRequest) {
   if (!input.mode) missing.push("mode:create_or_update");
   if (input.mode === "update" && !input.templateId) missing.push("templateId_for_update");
   if (!input.title?.trim()) missing.push("title");
+  if (confirmations?.duplicateDecision !== "reuse_existing" && !input.application?.trim()) missing.push("application");
   if (!input.assetKind) missing.push("assetKind:plot_template_or_visual_reference");
   if (!input.visualAssets.length) missing.push("visualAssets");
   for (const asset of input.visualAssets) {
@@ -785,6 +787,7 @@ async function directCandidate(input: WorkingPlanRequest): Promise<VersionedTemp
     visualProfile: input.visualProfile,
     dataProfile: input.dataProfile,
     scientificQuestion: input.scientificQuestion,
+    application: input.application,
     packages: input.packages,
     license: input.license ?? "unspecified",
     assetKind: input.assetKind!,
@@ -1477,7 +1480,14 @@ export function registerLifecycleTools(options: {
         }
         const candidate = await directCandidate(input);
         const library = await currentLibrary();
-        const assessment = input.assessment as ReviewAssessmentInput | undefined;
+        const assessment: ReviewAssessmentInput = { ...input.assessment };
+        if (input.description?.trim() && input.description.trim() === input.application?.trim()) {
+          assessment.warnings = [...(assessment.warnings ?? []), {
+            code: "description_application_repeated",
+            message: "需求描述与应用场景完全重复；建议分别说明绘图需求与生物学使用情境。",
+            path: "application", source: "rule",
+          }];
+        }
         let backendPlan;
         if (input.mode === "create") {
           backendPlan = await library.planCreateWorking({

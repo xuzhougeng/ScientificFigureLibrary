@@ -37,7 +37,7 @@ test("host plugin manifests share version, skill, and MCP identity", () => {
   assert.equal(codex.skills, "./skills/");
   assert.equal(codex.mcpServers, "./.codex-plugin/mcp.json");
   assert.equal(claude.mcpServers, "./.claude-plugin/mcp.json");
-  assert.deepEqual(wisp.skills, ["skills/figure-library"]);
+  assert.deepEqual(wisp.skills, ["figure-library", "figure-description", "figure-organization", "figure-style"].map((name) => `skills/${name}`));
   assert.equal(fs.existsSync(path.join(root, ".mcp.json")), false);
 
   assert.equal(pkg.homepage, WEBSITE);
@@ -116,6 +116,10 @@ test("brand and Skill UI assets are self-contained, portable, and consistent", a
   for (const skillName of skillDirectories) {
     const skillRoot = path.join(root, "skills", skillName);
     if (!fs.existsSync(path.join(skillRoot, "SKILL.md"))) continue;
+    const source = fs.readFileSync(path.join(skillRoot, "SKILL.md"), "utf8");
+    const frontmatter = YAML.parse(source.match(/^---\r?\n([\s\S]*?)\r?\n---/u)![1]!);
+    assert.equal(frontmatter.name, skillName);
+    assert.ok(typeof frontmatter.description === "string" && frontmatter.description.trim());
     const metadataPath = path.join(skillRoot, "agents", "openai.yaml");
     const logoPath = path.join(skillRoot, "assets", "sfl-logo.svg");
     assert.equal(fs.existsSync(metadataPath), true, `${skillName} openai.yaml`);
@@ -127,7 +131,7 @@ test("brand and Skill UI assets are self-contained, portable, and consistent", a
     assert.equal(metadata.interface?.brand_color, "#246C4E");
     assert.equal(metadata.interface?.icon_small, "./assets/sfl-logo.svg");
     assert.equal(metadata.interface?.icon_large, "./assets/sfl-logo.svg");
-    assert.match(String(metadata.interface?.default_prompt ?? ""), /\$figure-library/u);
+    assert.ok(String(metadata.interface?.default_prompt ?? "").includes(skillName === "figure-library" ? skillName : `${skillName}`));
   }
 
   const codex = readJson(".codex-plugin/plugin.json");
@@ -142,10 +146,20 @@ test("brand and Skill UI assets are self-contained, portable, and consistent", a
   }
 
   const files = await commonPluginFiles();
+  assert.ok(files.every((file: string) => !file.includes("__pycache__") && !file.endsWith(".pyc")));
   for (const required of [
     BRAND_ASSET,
     "skills/figure-library/agents/openai.yaml",
     "skills/figure-library/assets/sfl-logo.svg",
+    "skills/figure-description/SKILL.md",
+    "skills/figure-organization/SKILL.md",
+    "skills/figure-organization/NOTICE.md",
+    "skills/figure-style/SKILL.md",
+    "skills/figure-style/kernel.py",
+    "skills/figure-style/LICENSE",
+    "skills/figure-style/NOTICE.md",
+    "assets/licenses/markdown-it.txt",
+    "assets/licenses/dompurify.txt",
   ]) {
     assert.ok(files.includes(required), required);
   }

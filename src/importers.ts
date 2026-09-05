@@ -74,6 +74,7 @@ export interface PreparedTemplate {
   visualProfile: string;
   dataProfile: string;
   scientificQuestion?: string;
+  application?: string;
   packages: string[];
   license: string;
   assetKind: AssetKind;
@@ -96,6 +97,7 @@ interface PreparedMetadata {
   visualProfile: string;
   dataProfile: string;
   scientificQuestion?: string;
+  application?: string;
   packages: string[];
   license: string;
   assetKind: AssetKind;
@@ -336,10 +338,10 @@ export async function prepareDirectImport(input: UserTemplateImport): Promise<Pr
 
   const legacyMetadata = {
     title: input.title.replace(/\s+/gu, " ").trim(),
-    description: input.description?.replace(/\s+/gu, " ").trim() ?? "",
+    description: input.description?.trim() ?? "",
     tags: compactList(input.tags),
-    visualProfile: input.visualProfile?.replace(/\s+/gu, " ").trim() ?? "",
-    dataProfile: input.dataProfile?.replace(/\s+/gu, " ").trim() ?? "",
+    visualProfile: input.visualProfile?.trim() ?? "",
+    dataProfile: input.dataProfile?.trim() ?? "",
     packages: compactList(input.packages),
     license: input.license?.replace(/\s+/gu, " ").trim() || "User supplied; rights not asserted",
     preview: preview?.stored,
@@ -353,6 +355,8 @@ export async function prepareDirectImport(input: UserTemplateImport): Promise<Pr
   const metadata: PreparedMetadata = {
     title: legacyMetadata.title,
     description: legacyMetadata.description,
+    ...(input.application?.trim() ? { application: input.application.trim() } : {}),
+    ...(input.scientificQuestion?.trim() ? { scientificQuestion: input.scientificQuestion.trim() } : {}),
     tags: legacyMetadata.tags,
     visualProfile: legacyMetadata.visualProfile,
     dataProfile: legacyMetadata.dataProfile,
@@ -666,6 +670,8 @@ const GalleryManifestSchema = z
     description: z.string().max(20_000).optional(),
     description_file: z.string().min(1).max(300).optional().default("description.md"),
     tags: z.array(z.string().min(1).max(100)).max(40).optional().default([]),
+    application: z.string().max(8_000).optional(),
+    scientific_question: z.string().max(2_000).optional(),
     visual_profile: z.string().max(4_000).optional().default(""),
     data_profile: z.string().max(4_000).optional().default(""),
     packages: z.array(z.string().min(1).max(100)).max(40).optional().default([]),
@@ -918,6 +924,8 @@ export async function prepareGalleryEntry(
   const metadata: PreparedMetadata = {
     title: manifest.title.replace(/\s+/gu, " ").trim(),
     description,
+    ...(manifest.application?.trim() ? { application: manifest.application.trim() } : {}),
+    ...(manifest.scientific_question?.trim() ? { scientificQuestion: manifest.scientific_question.trim() } : {}),
     tags: compactList(manifest.tags),
     visualProfile: manifest.visual_profile.trim(),
     dataProfile: manifest.data_profile.trim(),

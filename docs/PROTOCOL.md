@@ -810,9 +810,9 @@ npm run package:plugins
 
 This writes three artifacts into `release/`:
 
-- `scientific-figure-library-wisp-0.6.1.zip` — install from Wisp **Settings → Plugins**
-- `scientific-figure-library-codex-0.6.1.zip` — Codex plugin with `.codex-plugin/plugin.json`, `.codex-plugin/mcp.json`, and `skills/figure-library`
-- `scientific-figure-library-claude-0.6.1.zip` — Claude Code plugin with `.claude-plugin/plugin.json`, `.claude-plugin/mcp.json`, and auto-discovered `skills/`
+- `scientific-figure-library-wisp-0.6.3.zip` — install from Wisp **Settings → Plugins**
+- `scientific-figure-library-codex-0.6.3.zip` — Codex plugin with `.codex-plugin/plugin.json`, `.codex-plugin/mcp.json`, and `skills/figure-library`
+- `scientific-figure-library-claude-0.6.3.zip` — Claude Code plugin with `.claude-plugin/plugin.json`, `.claude-plugin/mcp.json`, and auto-discovered `skills/`
 
 Each package uses its Host's plugin-root contract. Codex resolves `cwd: "."`
 from the installed plugin root, Claude expands `${CLAUDE_PLUGIN_ROOT}`, and Wisp
@@ -834,7 +834,7 @@ Build a standalone npm package:
 
 ```bash
 npm run package:npm
-npm install --global ./release/scientific-figure-library-0.6.1.tgz
+npm install --global ./release/scientific-figure-library-0.6.3.tgz
 ```
 
 Use `scientific-figure-library` as the MCP command after installation.
@@ -870,7 +870,7 @@ npm run package:source-pack -- \
 
 The helper verifies selected ZIP identities and caps a transport pack at 200
 MiB. Extract the resulting
-`release/figure-library-source-pack-volcano-0.6.1.zip` before use.
+`release/figure-library-source-pack-volcano-0.6.3.zip` before use.
 
 ## Catalog development
 
@@ -909,7 +909,45 @@ and exact inventory before atomically replacing `assets/community`. The source
 checkout and target must be separate directory trees. Packaging has an
 additional final-release gate that requires the three reviewed 1.0.0 seed
 releases; the empty bootstrap snapshot is valid for development tests but
-cannot be packaged as the 0.6.1 release.
+cannot be packaged as the 0.6.3 release.
+
+## Markdown descriptions and bundled Skills
+
+The four bundled Skills have separate responsibilities: figure-library owns the
+lifecycle, figure-description drafts evidence-grounded biological use cases,
+figure-organization keeps adapted R/Python code readable, and figure-style
+checks faithful rendering. The server never executes their code or contains a
+model. Host execution/viewer tools and project runtime approval are still needed.
+
+New or updated direct Working plans require a non-empty application (up to
+8,000 characters). description (8,000), application and dataProfile (4,000)
+retain Markdown; search uses a separate plain-text projection. Duplicated
+description/application text emits a warning, not a scientific judgment.
+Older immutable JSON does not require application. At read time, an explicit
+application wins; otherwise a recognizable scenario section may be extracted
+from description. Missing scenarios are not synthesized from visualProfile.
+
+The detail view renders headings, paragraphs, lists, tables, quotations,
+emphasis and code. Raw HTML and remote images are disabled; DOMPurify applies
+an allowlist before insertion. Only explicit clicks request http/https links
+through the Host. Unsupported links remain copyable. Inputs, code files and
+packages stay visible; provenance, validation and identities are collapsed.
+
+New Open Figure Modules preserve the same Markdown fields in module.yml and
+generate description.md from those fields. scientificQuestion is optional in
+v1 module metadata. Existing modules and FigureYa catalog files are unchanged.
+
+Open Figure PR Plan returns similarSearch.resultSetId. Call figure_library_search
+with that resultSetId and its unchanged query/providers/filters/limit to present
+the exact cached candidates. Apply requires that same expectedResultSetId,
+server-confirmed presentation, and similarReviewConfirmed=true when candidates
+exist. Text-only Hosts use the same result set and explicit human confirmation;
+server presentation is not proof that a human has looked at the image.
+Identity labels mean exact normalized titles, preview SHA or OFM canonical-code
+SHA matches; other hits are similar. Neither is a scientific duplication verdict.
+Path conflicts on main or open PRs still block before GitHub writes. Existing
+archive manifests must be readable and valid; they are never replaced with an
+empty inventory after a read error. Only a two-commit PR is created, never merged.
 
 ## License
 

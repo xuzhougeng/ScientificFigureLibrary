@@ -12,11 +12,13 @@ import {
   CENTRAL_ARCHIVE_REPOSITORY,
   CENTRAL_CATALOG_REPOSITORY,
   CENTRAL_PUBLIC_PROVIDER_ID,
+  // personal repo is reported by auth status
   GitHubPublicationService,
   registerGitHubPublicationTools,
   type GhCommandResult,
   type GhRunner,
 } from "../src/github-publication-tools.ts";
+import { PERSONAL_MODULE_REPOSITORY } from "../src/module-catalog.ts";
 
 const BASE_COMMIT = "a".repeat(40);
 const BASE_TREE = "b".repeat(40);
@@ -478,7 +480,7 @@ class MockGhRunner implements GhRunner {
     if (method === "POST") this.writes.push({ endpoint, body });
 
     if (this.login !== "jarxunlai") {
-      for (const target of [CENTRAL_ARCHIVE_REPOSITORY, CENTRAL_CATALOG_REPOSITORY]) {
+      for (const target of [CENTRAL_ARCHIVE_REPOSITORY, CENTRAL_CATALOG_REPOSITORY, PERSONAL_MODULE_REPOSITORY]) {
         const repositoryName = target.split("/")[1]!;
         const fork = `${this.login}/${repositoryName}`;
         if (endpoint === `repos/${fork}`) {
@@ -500,7 +502,7 @@ class MockGhRunner implements GhRunner {
       }
     }
 
-    for (const repository of [CENTRAL_ARCHIVE_REPOSITORY, CENTRAL_CATALOG_REPOSITORY]) {
+    for (const repository of [CENTRAL_ARCHIVE_REPOSITORY, CENTRAL_CATALOG_REPOSITORY, PERSONAL_MODULE_REPOSITORY]) {
       if (endpoint === `repos/${repository}`) {
         return this.#ok({
           full_name: repository,

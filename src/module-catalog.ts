@@ -250,7 +250,7 @@ function parseEntry(
       "licenses",
       "publisher",
     ],
-    ["provenance"],
+    ["provenance", "scientificQuestion"],
     label,
   );
   assertPortableMetadata(value, label);
@@ -403,6 +403,7 @@ function parseEntry(
     title: text(value.title, `${label}.title`, 300),
     titleEn: text(value.titleEn, `${label}.titleEn`, 300),
     description: text(value.description, `${label}.description`, 8_000),
+    ...(value.scientificQuestion !== undefined ? { scientificQuestion: text(value.scientificQuestion, `${label}.scientificQuestion`, 2_000) } : {}),
     application: text(value.application, `${label}.application`, 8_000),
     dataProfile: text(value.dataProfile, `${label}.dataProfile`, 8_000),
     plotFamily: text(value.plotFamily, `${label}.plotFamily`, 200),
@@ -916,6 +917,7 @@ export class ModuleCatalogIndex {
             templateId: module.moduleId,
             title: `${module.title} ${module.titleEn}`,
             description: module.description,
+            ...(module.scientificQuestion ? { scientificQuestion: module.scientificQuestion } : {}),
             application: module.application,
             dataProfile: module.dataProfile,
             inputFiles: module.inputFiles,
@@ -965,6 +967,7 @@ export class ModuleCatalogIndex {
           warnings,
           excerpt: module.description.slice(0, 420),
           description: module.description,
+          ...(module.scientificQuestion ? { scientificQuestion: module.scientificQuestion } : {}),
           application: module.application,
           dataProfile: module.dataProfile,
           inputFiles: [...module.inputFiles],

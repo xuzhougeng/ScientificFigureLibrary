@@ -2,13 +2,16 @@
   "schema": "wisp.plugin.v1",
   "id": "figure-library",
   "display_name": "Scientific Figure Library",
-  "version": "0.6.1",
+  "version": "0.6.3",
   "description": "Local-first scientific figure library: import, review, publish, search, and materialize exact templates; includes the openly collaborative Open Figure Modules snapshot and frozen explicit-only Community compatibility.",
   "author": "xuzhougeng and jarxunlai",
-  "license": "MIT (SFL and Community code); CC BY 4.0 (Community synthetic content); CC BY-NC-SA 4.0 (FigureYa assets)",
+  "license": "MIT (SFL and Community code); Apache-2.0 (figure-style and DOMPurify); see bundled third-party/Skill notices; CC BY 4.0 (Community synthetic content); CC BY-NC-SA 4.0 (FigureYa assets)",
   "source_format": "wisp-plugin",
   "skills": [
-    "skills/figure-library"
+    "skills/figure-library",
+    "skills/figure-description",
+    "skills/figure-organization",
+    "skills/figure-style"
   ],
   "mcp_servers": [
     {

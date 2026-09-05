@@ -556,8 +556,26 @@ footer {
   color: var(--color-text-primary, #27342d);
   font-size: 0.92rem;
   line-height: 1.65;
-  white-space: pre-wrap;
+  white-space: normal;
 }
+
+.markdown-body { min-width: 0; line-height: 1.65; overflow-wrap: anywhere; }
+.markdown-body > :first-child { margin-top: 0; }
+.markdown-body > :last-child { margin-bottom: 0; }
+.markdown-body h1, .markdown-body h2, .markdown-body h3,
+.markdown-body h4, .markdown-body h5, .markdown-body h6 {
+  font-size: 1em; line-height: 1.4; margin: 1em 0 0.5em;
+}
+.markdown-body p, .markdown-body ul, .markdown-body ol { margin: 0.55em 0; }
+.markdown-body ul, .markdown-body ol { padding-inline-start: 1.5em; }
+.markdown-body blockquote { margin: 0.75em 0; padding: 0.1em 0.9em; border-inline-start: 3px solid #91b4a0; }
+.markdown-body code { font-size: 0.9em; background: var(--color-background-tertiary, #eef0ed); padding: 0.1em 0.25em; border-radius: 3px; }
+.markdown-body pre { max-width: 100%; overflow-x: auto; padding: 0.8em; background: var(--color-background-tertiary, #eef0ed); border-radius: 6px; }
+.markdown-body pre code { padding: 0; white-space: pre; overflow-wrap: normal; }
+.markdown-body a { color: var(--color-text-link, #246c4e); text-decoration: underline; }
+.markdown-table-scroll { max-width: 100%; overflow-x: auto; }
+.markdown-body table { border-collapse: collapse; font-size: 0.92em; }
+.markdown-body th, .markdown-body td { padding: 0.45em 0.65em; text-align: start; border: 1px solid var(--color-border-primary, #d9ddd8); }
 
 .detail-metadata {
   display: grid;
@@ -756,6 +774,7 @@ footer {
     --color-background-secondary: #18221c;
     --color-background-tertiary: #202d26;
     --color-border-primary: #3b5145;
+    --color-text-link: #8ae0b5;
     --color-text-primary: #eef5f0;
     --color-text-secondary: #b4c5bb;
     background: var(--color-background-primary, #111814);
@@ -801,6 +820,7 @@ footer {
 }
 
 html[data-theme="dark"] {
+  --color-text-link: #8ae0b5;
   --color-background-primary: #111814;
   --color-background-secondary: #18221c;
   --color-background-tertiary: #202d26;

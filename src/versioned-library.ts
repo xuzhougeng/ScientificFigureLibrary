@@ -202,6 +202,7 @@ export interface VersionedTemplateCandidate {
   visualProfile?: string;
   dataProfile?: string;
   scientificQuestion?: string;
+  application?: string;
   packages?: string[];
   license?: string;
   assetKind: VersionedAssetKind;
@@ -297,6 +298,7 @@ export interface TemplateContentV1 {
   visualProfile: string;
   dataProfile: string;
   scientificQuestion?: string;
+  application?: string;
   packages: string[];
   license: string;
   assetKind: VersionedAssetKind;
@@ -1121,6 +1123,9 @@ async function prepareCandidate(options: {
   assessment?: ReviewAssessmentInput;
 }): Promise<PreparedCandidate> {
   const { candidate } = options;
+  if (candidate.application !== undefined && (typeof candidate.application !== "string" || candidate.application.length > 8_000)) {
+    throw new Error("invalid candidate application (maximum 8000 characters)");
+  }
   const title = normalizedText(candidate.title);
   if (!title) throw new Error("template title is required");
   if (candidate.assetKind !== "plot_template" && candidate.assetKind !== "visual_reference") {
@@ -1335,6 +1340,7 @@ async function prepareCandidate(options: {
     tags: uniqueStrings(candidate.tags, "tags"),
     visualProfile: normalizedText(candidate.visualProfile),
     dataProfile: normalizedText(candidate.dataProfile),
+    ...(normalizedText(candidate.application) ? { application: normalizedText(candidate.application) } : {}),
     ...(normalizedText(candidate.scientificQuestion)
       ? { scientificQuestion: normalizedText(candidate.scientificQuestion) }
       : {}),
@@ -1769,6 +1775,7 @@ export interface PublishedVersionedTemplateCandidate {
   visualProfile: string;
   dataProfile: string;
   scientificQuestion?: string;
+  application?: string;
   packages: string[];
   license: string;
   assetKind: VersionedAssetKind;
@@ -1881,6 +1888,7 @@ interface LegacyTemplateV1 {
   visualProfile: string;
   dataProfile: string;
   scientificQuestion?: string;
+  application?: string;
   packages: string[];
   license: string;
   importedAt: string;
@@ -1998,6 +2006,9 @@ function validateContentValue(
   assertString(value.title, "content title");
   for (const field of ["description", "visualProfile", "dataProfile", "license", "language", "plotFamily"] as const) {
     if (typeof value[field] !== "string") throw new Error(`invalid content ${field}`);
+  }
+  if (value.application !== undefined && (typeof value.application !== "string" || value.application.length > 8_000)) {
+    throw new Error("invalid content application (maximum 8000 characters)");
   }
   if (value.scientificQuestion !== undefined) {
     if (typeof value.scientificQuestion !== "string") throw new Error("invalid content scientificQuestion");
@@ -2383,6 +2394,9 @@ function parseLegacyTemplate(value: unknown, expectedTemplateId: string): Legacy
   if (value.scientificQuestion !== undefined && typeof value.scientificQuestion !== "string") {
     throw new Error("invalid legacy scientificQuestion");
   }
+  if (value.application !== undefined && (typeof value.application !== "string" || value.application.length > 8_000)) {
+    throw new Error("invalid legacy application");
+  }
   assertStringArray(value.tags, "legacy tags");
   assertStringArray(value.packages, "legacy packages");
   if (!Array.isArray(value.code)) throw new Error("invalid legacy code files");
@@ -2759,6 +2773,7 @@ export class VersionedTemplateLibrary {
         tags: [...content.tags],
         visualProfile: content.visualProfile,
         dataProfile: content.dataProfile,
+        ...(content.application ? { application: content.application } : {}),
         ...(content.scientificQuestion ? { scientificQuestion: content.scientificQuestion } : {}),
         packages: [...content.packages],
         license: content.license,
@@ -3648,6 +3663,7 @@ export class VersionedTemplateLibrary {
       tags: legacy.tags,
       visualProfile: legacy.visualProfile,
       dataProfile: legacy.dataProfile,
+      ...(legacy.application ? { application: legacy.application } : {}),
       ...(legacy.scientificQuestion ? { scientificQuestion: legacy.scientificQuestion } : {}),
       packages: legacy.packages,
       license: legacy.license,

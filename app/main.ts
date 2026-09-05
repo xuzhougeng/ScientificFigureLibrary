@@ -220,6 +220,10 @@ function render(result: SearchResult) {
         opener,
         serverToolsAvailable: serverToolsAvailable(),
         updateModelContextAvailable: updateModelContextAvailable(),
+        onOpenLink: async (url) => {
+          const result = await app.openLink({ url });
+          if (result.isError) throw new Error("Host could not open documentation link");
+        },
         onClosed: () => {
           void recordUiEvent("candidate.detail_closed", candidate);
           activeDetail = undefined;

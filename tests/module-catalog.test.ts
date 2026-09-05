@@ -240,3 +240,13 @@ test("ModuleCatalogIndex loads a healthy empty snapshot and rejects preview tamp
     /undeclared file/u,
   );
 });
+
+test("OFM v1 retains Markdown and optional scientificQuestion; legacy catalog needs no migration", () => {
+  const module = { ...entry(), description: "**背景**\n\n第二段", application: "### 场景\n\n- 比较处理组", dataProfile: "sample × group", scientificQuestion: "处理组组成是否不同？" };
+  const parsed = parseModuleCatalog(catalog(module));
+  assert.equal(parsed.modules[0]?.description, module.description);
+  assert.equal(parsed.modules[0]?.application, module.application);
+  assert.equal(parsed.modules[0]?.dataProfile, module.dataProfile);
+  assert.equal(parsed.modules[0]?.scientificQuestion, module.scientificQuestion);
+  assert.equal(parseModuleCatalog(catalog()).modules[0]?.scientificQuestion, undefined);
+});

@@ -51,6 +51,7 @@ const STANDARD_TOOLS = [
   "figure_library_apply_discard_working_revision",
   "figure_library_apply_full_restore",
   "figure_library_apply_materialize",
+  "figure_library_apply_open_figure_module_pr",
   "figure_library_apply_provider_source_change",
   "figure_library_apply_publication_export",
   "figure_library_apply_publication_pr",
@@ -76,6 +77,7 @@ const STANDARD_TOOLS = [
   "figure_library_plan_discard_working_revision",
   "figure_library_plan_full_restore",
   "figure_library_plan_materialize",
+  "figure_library_plan_open_figure_module_pr",
   "figure_library_plan_provider_source_change",
   "figure_library_plan_publication_export",
   "figure_library_plan_publication_pr",
@@ -256,7 +258,7 @@ test("standard server unifies Local Published and FigureYa while hiding Working/
       const listed = await client.listTools();
       const names = listed.tools.map((tool) => tool.name).sort();
       const nameSet = new Set<string>(names);
-      assert.deepEqual(names, [...STANDARD_TOOLS]);
+      assert.deepEqual(names, [...STANDARD_TOOLS].sort());
       assert.ok(listed.tools.every((tool) => !("icons" in tool)));
       assert.ok(names.includes("figure_library_search"));
       assert.ok(names.includes("figure_library_plan_materialize"));
@@ -337,6 +339,19 @@ test("standard server unifies Local Published and FigureYa while hiding Working/
       const localOnlyStructured = record(localOnlySearch.structuredContent);
       const localOnlyCandidates = records(localOnlyStructured.candidates);
       assert.ok(localOnlyCandidates.length > 0);
+      const sameSet = await client.callTool({
+        name: "figure_library_search", arguments: {
+          resultSetId: localOnlyStructured.resultSetId, query: "crossprovideruniquemarker volcano differential expression",
+          providerIds: [LOCAL_LIBRARY_PROVIDER_ID], limit: 6,
+        },
+      });
+      const sameStructured = record(sameSet.structuredContent);
+      assert.equal(sameStructured.resultSetId, localOnlyStructured.resultSetId);
+      assert.deepEqual(records(sameStructured.candidates).map((c) => c.exactSelector), localOnlyCandidates.map((c) => c.exactSelector));
+      const wrongSet = await client.callTool({
+        name: "figure_library_search", arguments: { resultSetId: localOnlyStructured.resultSetId, query: "a changed query", providerIds: [LOCAL_LIBRARY_PROVIDER_ID], limit: 6 },
+      });
+      assert.notEqual(record(record(wrongSet.structuredContent).envelope).outcome, "ok");
       assert.ok(
         localOnlyCandidates.every(
           (item) => item.providerId === LOCAL_LIBRARY_PROVIDER_ID,
@@ -929,6 +944,8 @@ test("standard server unifies Local Published and FigureYa while hiding Working/
         "figure_library_open",
         "figure_library_apply_publication_pr",
         "figure_library_plan_publication_pr",
+        "figure_library_apply_open_figure_module_pr",
+        "figure_library_plan_open_figure_module_pr",
         "figure_library_preview",
         "figure_library_preview_exact",
         "figure_library_preview_exact_headless",
@@ -939,7 +956,7 @@ test("standard server unifies Local Published and FigureYa while hiding Working/
       ]);
       assert.deepEqual(
         [...new Set([...alreadyAudited, ...Object.keys(auditArguments)])].sort(),
-        [...STANDARD_TOOLS],
+        [...STANDARD_TOOLS].sort(),
       );
       for (const [toolName, arguments_] of Object.entries(auditArguments)) {
         const result = await client.callTool({ name: toolName, arguments: arguments_ });
