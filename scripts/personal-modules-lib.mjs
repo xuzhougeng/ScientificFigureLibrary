@@ -259,7 +259,7 @@ export async function loadModule(moduleDirectory) {
     "schema", "moduleId", "title", "titleEn", "description", "application", "dataProfile",
     "plotFamily", "language", "tags", "packages", "codeFiles", "inputFiles", "canonicalCode",
     "requiredFiles", "files", "preview", "thumbnail", "licenses", "publisher",
-  ], ["provenance"], `${moduleId}/module.yml`);
+  ], ["provenance", "scientificQuestion"], `${moduleId}/module.yml`);
   assert(raw.schema === MODULE_SCHEMA && raw.moduleId === moduleId, `${moduleId}/module.yml schema or moduleId is invalid`);
 
   const files = await walkFiles(root);
@@ -326,6 +326,7 @@ export async function loadModule(moduleDirectory) {
     title: text(raw.title, `${moduleId}.title`, 300),
     titleEn: text(raw.titleEn, `${moduleId}.titleEn`, 300),
     description: text(raw.description, `${moduleId}.description`),
+    ...(raw.scientificQuestion !== undefined ? { scientificQuestion: text(raw.scientificQuestion, `${moduleId}.scientificQuestion`, 2_000) } : {}),
     application: text(raw.application, `${moduleId}.application`),
     dataProfile: text(raw.dataProfile, `${moduleId}.dataProfile`),
     plotFamily: text(raw.plotFamily, `${moduleId}.plotFamily`, 200),
@@ -377,6 +378,7 @@ export function moduleCatalogEntry(loaded, sourceCommit, archiveCommit, reposito
     title: loaded.metadata.title,
     titleEn: loaded.metadata.titleEn,
     description: loaded.metadata.description,
+    ...(loaded.metadata.scientificQuestion ? { scientificQuestion: loaded.metadata.scientificQuestion } : {}),
     application: loaded.metadata.application,
     dataProfile: loaded.metadata.dataProfile,
     plotFamily: loaded.metadata.plotFamily,

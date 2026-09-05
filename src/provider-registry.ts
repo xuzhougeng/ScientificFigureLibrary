@@ -1,3 +1,4 @@
+import { resolveFigureDescription } from "./figure-description.ts";
 import { createHash } from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
@@ -338,9 +339,9 @@ export class LocalPublishedProviderAdapter implements ProviderAdapter {
           {
             templateId: item.templateId,
             title: item.title,
-            description: item.description,
+            ...resolveFigureDescription(item.description, item.application),
+            visualProfile: item.visualProfile,
             scientificQuestion: item.scientificQuestion,
-            application: item.visualProfile,
             dataProfile: item.dataProfile,
             inputFiles: [],
             codeFiles: [],
@@ -379,9 +380,9 @@ export class LocalPublishedProviderAdapter implements ProviderAdapter {
           reasons: evidence.reasons,
           warnings: [...new Set(review.warnings.map((warning) => warning.message))],
           excerpt: item.description.slice(0, 420),
-          description: item.description,
+          ...resolveFigureDescription(item.description, item.application),
+          visualProfile: item.visualProfile,
           ...(item.scientificQuestion ? { scientificQuestion: item.scientificQuestion } : {}),
-          application: item.visualProfile,
           dataProfile: item.dataProfile,
           inputFiles: content.assets
             .filter((asset) => asset.role === "reference")
@@ -880,6 +881,7 @@ export class ModuleCatalogProviderAdapter implements ProviderAdapter {
         title: module.title,
         titleEn: module.titleEn,
         description: module.description,
+        ...(module.scientificQuestion ? { scientificQuestion: module.scientificQuestion } : {}),
         application: module.application,
         dataProfile: module.dataProfile,
         inputFiles: module.inputFiles,

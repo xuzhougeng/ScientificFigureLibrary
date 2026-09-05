@@ -116,6 +116,7 @@ export interface ModuleCatalogPreview {
 }
 
 export interface ModuleCatalogEntry {
+  scientificQuestion?: string;
   moduleId: string;
   title: string;
   titleEn: string;
@@ -380,6 +381,7 @@ export interface ManagementReference {
 }
 
 export interface TemplateCandidate {
+  matchKind?: "identity" | "similar";
   templateId: string;
   providerId: string;
   exactSelector: ExactTemplateSelector;
@@ -394,6 +396,8 @@ export interface TemplateCandidate {
   excerpt: string;
   description: string;
   scientificQuestion?: string;
+  visualProfile?: string;
+  applicationOrigin?: "explicit" | "legacy_description" | "missing";
   application: string;
   dataProfile: string;
   inputFiles: string[];
@@ -487,6 +491,7 @@ export interface UserTemplate {
   visualProfile: string;
   dataProfile: string;
   scientificQuestion?: string;
+  application?: string;
   packages: string[];
   license: string;
   importedAt: string;
@@ -511,6 +516,7 @@ export interface UserTemplateImport {
   visualProfile?: string;
   dataProfile?: string;
   scientificQuestion?: string;
+  application?: string;
   packages?: string[];
   license?: string;
   assetKind?: AssetKind;

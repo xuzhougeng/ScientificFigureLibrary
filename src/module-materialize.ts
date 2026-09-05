@@ -1169,6 +1169,7 @@ export async function materializeModuleTemplate(options: {
       title: module.title,
       titleEn: module.titleEn,
       description: module.description,
+      ...(module.scientificQuestion ? { scientificQuestion: module.scientificQuestion } : {}),
       application: module.application,
       dataProfile: module.dataProfile,
       language: module.language,

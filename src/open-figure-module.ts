@@ -1,3 +1,4 @@
+import { figureDescriptionMarkdown, markdownPlainText, resolveFigureDescription } from "./figure-description.ts";
 import { createHash } from "node:crypto";
 import { stringify as stringifyYaml } from "yaml";
 import { zipSync, unzipSync } from "fflate";
@@ -21,6 +22,7 @@ const PRIVATE_PATH =
   /(?:\b[A-Za-z]:[\\/]|\\\\[^\\\s]+\\[^\\\s]+|(?:^|[\s"'`(=])\/(?:Users|home|mnt\/[A-Za-z]|private|var|tmp|etc|opt|root|srv|Volumes)\/)/mu;
 const FORBIDDEN_PUBLIC_FILE =
   /(?:^|\/)(?:\.git|source|validation)(?:\/|$)|(?:^|\/)original\.r$|\.(?:pdf|rds|rda|rdata|log|tiff?)$/iu;
+const PRIVATE_SUPPORTING_FILE = /(?:^|\/)(?:source|evidence|validation|receipts?|private_reference)(?:[._-][^/]*)?(?:\/|$)/iu;
 const SOURCE_DATE_EPOCH = new Date("2000-01-01T00:00:00.000Z");
 const MAX_ARCHIVE_BYTES = 100 * 1024 * 1024;
 const MAX_FILE_BYTES = 64 * 1024 * 1024;
@@ -40,6 +42,7 @@ export interface OpenFigureModuleBuild {
   titleEnDerived: boolean;
   description: string;
   application: string;
+  scientificQuestion?: string;
   dataProfile: string;
   plotFamily: string;
   language: string;
@@ -187,6 +190,7 @@ function yamlModule(options: {
   titleEn: string;
   description: string;
   application: string;
+  scientificQuestion?: string;
   dataProfile: string;
   plotFamily: string;
   language: string;
@@ -213,6 +217,7 @@ function yamlModule(options: {
     titleEn: options.titleEn,
     description: options.description,
     application: options.application,
+    ...(options.scientificQuestion ? { scientificQuestion: options.scientificQuestion } : {}),
     dataProfile: options.dataProfile,
     plotFamily: options.plotFamily,
     language: options.language,
@@ -255,7 +260,7 @@ export function buildSearchQuery(content: TemplateContentV1) {
     content.plotFamily,
     content.language,
     ...content.tags,
-    ...content.description.split(/\s+/u).slice(0, 8),
+    ...markdownPlainText(content.description).split(/\s+/u).slice(0, 8),
   ]);
   const query = parts.join(" ").trim();
   if (!query) throw new Error("Open Figure search query could not be derived from the Local Published metadata");
@@ -294,6 +299,10 @@ export async function buildOpenFigureModule(options: {
   };
 
   for (const asset of options.content.assets) {
+    if (asset.role === "reference" && PRIVATE_SUPPORTING_FILE.test(asset.logicalPath)) {
+      excludedLogicalPaths.push(asset.logicalPath);
+      continue;
+    }
     const includeCode =
       asset.role === "code" &&
       (asset.logicalPath === canonicalPath ||
@@ -308,6 +317,10 @@ export async function buildOpenFigureModule(options: {
       /\.(?:md|txt)$/iu.test(asset.logicalPath) &&
       !includeData;
     const includePreview = asset.logicalPath === previewAsset.logicalPath;
+    if (includeDocs && basename(asset.logicalPath).toLocaleLowerCase("en-US") === "description.md") {
+      excludedLogicalPaths.push(asset.logicalPath);
+      continue; // The public description is regenerated from confirmed fields.
+    }
     if (asset.role === "evidence" || asset.visualRole === "source_reference" || asset.codeOrigin === "author_provided" && asset.logicalPath !== canonicalPath) {
       excludedLogicalPaths.push(asset.logicalPath);
       continue;
@@ -359,8 +372,10 @@ export async function buildOpenFigureModule(options: {
   const title = options.content.title.trim();
   if (!title) throw new Error("Open Figure publication requires a title");
   const titleEnInfo = deriveTitleEn(title, moduleId);
-  const description = options.content.description.trim() || title;
-  const application = options.content.visualProfile.trim() || description;
+  const projection = resolveFigureDescription(options.content.description, options.content.application);
+  const description = projection.description.trim() || title;
+  const application = projection.application.trim() || "未单独记录。此历史模板尚未提供独立应用场景。";
+  const scientificQuestion = options.content.scientificQuestion?.trim();
   const dataProfile = options.content.dataProfile.trim() || "Example or synthetic plotting inputs.";
   const tags = uniqueSorted(options.content.tags.length ? options.content.tags : [moduleId, options.content.plotFamily]);
   const packages = uniqueSorted(options.content.packages);
@@ -371,9 +386,11 @@ export async function buildOpenFigureModule(options: {
       "text/markdown",
     );
   }
-  if (!fileMap.has("description.md")) {
-    addFile("description.md", utf8(`${description}\n`), "text/markdown");
-  }
+  // This generated public document uses the same confirmed fields as module.yml.
+  // Never retain a divergent uploaded description as a second source of truth.
+  fileMap.delete("description.md");
+  usedPaths.delete("description.md");
+  addFile("description.md", utf8(figureDescriptionMarkdown({ title, description, application, dataProfile })), "text/markdown");
   if (!fileMap.has("provenance.md")) {
     addFile(
       "provenance.md",
@@ -405,6 +422,7 @@ export async function buildOpenFigureModule(options: {
     titleEn: titleEnInfo.titleEn,
     description,
     application,
+    ...(scientificQuestion ? { scientificQuestion } : {}),
     dataProfile,
     plotFamily: options.content.plotFamily,
     language: options.content.language,
@@ -434,6 +452,7 @@ export async function buildOpenFigureModule(options: {
     titleEnDerived: titleEnInfo.derived,
     description,
     application,
+    ...(scientificQuestion ? { scientificQuestion } : {}),
     dataProfile,
     plotFamily: options.content.plotFamily,
     language: options.content.language,

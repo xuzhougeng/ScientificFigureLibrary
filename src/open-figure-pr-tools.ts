@@ -72,16 +72,19 @@ export interface SimilarSearchRequest extends SearchRequest {
 }
 
 export interface SimilarSearchSession {
+  presented: boolean;
   queryDigest: string;
   providerIds: string[];
 }
 
 export interface SimilarSearchResult {
+  resultSetId: string;
   candidates: TemplateCandidate[];
   queryDigest: string;
 }
 
 export interface OpenFigureSimilarCandidate {
+  exactSelector: TemplateCandidate["exactSelector"];
   providerId: string;
   templateId: string;
   title: string;
@@ -112,6 +115,7 @@ export interface OpenFigurePrPlan {
     forkWillBeCreated: boolean;
   };
   similarSearch: {
+    resultSetId: string;
     query: string;
     providerIds: string[];
     plotFamily?: string;
@@ -135,6 +139,7 @@ interface PreparedPlan {
   archiveZip: Uint8Array;
   archiveFileList: string[];
   generatedAt: string;
+  priorArchiveEntries: Array<Record<string, unknown>>;
   build: OpenFigureModuleBuild;
 }
 
@@ -309,6 +314,9 @@ async function readAuthAccount(runner: GhRunner) {
   if (!/^[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?$/u.test(login)) {
     throw new GhInvocationError("credential_invalid", "api user");
   }
+  if (typeof active.login === "string" && active.login.toLowerCase() !== login.toLowerCase()) {
+    throw new GhInvocationError("credential_invalid", "account identity mismatch");
+  }
   return login;
 }
 
@@ -355,13 +363,48 @@ async function repositoryPathExists(runner: GhRunner, repository: string, ref: s
 async function getRepositoryFile(runner: GhRunner, repository: string, ref: string, filePath: string) {
   validatePortablePath(filePath);
   const endpoint = `repos/${repository}/contents/${encodeRepositoryPath(filePath)}?ref=${encodeURIComponent(ref)}`;
-  const metadata = await ghJson<Record<string, unknown>>(runner, endpoint);
+  const metadata = await optionalGhJson<Record<string, unknown>>(runner, endpoint);
+  if (!metadata) return undefined;
   if (metadata.type !== "file" || typeof metadata.sha !== "string" || !GIT_HASH.test(metadata.sha)) {
     throw new Error(`GitHub content identity is invalid for ${filePath}`);
   }
   const blob = await ghJson<Record<string, unknown>>(runner, `repos/${repository}/git/blobs/${metadata.sha}`, { timeoutMs: 120_000 });
   if (blob.encoding !== "base64" || typeof blob.content !== "string") throw new Error(`GitHub blob is not base64: ${filePath}`);
-  return new Uint8Array(Buffer.from(blob.content.replace(/\s/gu, ""), "base64"));
+  const bytes = new Uint8Array(Buffer.from(blob.content.replace(/\s/gu, ""), "base64"));
+  if (gitBlobSha(bytes) !== metadata.sha) throw new Error(`GitHub blob identity mismatch: ${filePath}`);
+  return bytes;
+}
+
+// Read the immutable base manifest before any GitHub mutation. Only a confirmed
+// missing file may start an empty inventory; malformed data or network/auth
+// errors must never silently erase existing modules.
+const MODULE_ID = /^[a-z0-9](?:[a-z0-9._-]{0,126}[a-z0-9])?$/u;
+
+async function readPriorArchiveEntries(
+  runner: GhRunner,
+  baseCommit: string,
+): Promise<Array<Record<string, unknown>>> {
+  const bytes = await getRepositoryFile(runner, OPEN_FIGURE_REPOSITORY, baseCommit, "catalog/archive-manifest.json");
+  if (bytes === undefined) return [];
+  let value: unknown;
+  try { value = JSON.parse(Buffer.from(bytes).toString("utf8")); }
+  catch { throw new Error("Open Figure archive manifest is invalid JSON"); }
+  if (!isRecord(value) || value.schema !== OPEN_FIGURE_ARCHIVE_MANIFEST_SCHEMA || value.providerId !== OPEN_FIGURE_PROVIDER_ID || value.repository !== OPEN_FIGURE_REPOSITORY || !Array.isArray(value.entries)) {
+    throw new Error("Open Figure archive manifest identity is invalid");
+  }
+  const ids = new Set<string>();
+  let previous = "";
+  return value.entries.map((entry) => {
+    if (!isRecord(entry) || typeof entry.moduleId !== "string" || !MODULE_ID.test(entry.moduleId) || (previous && previous >= entry.moduleId) || ids.has(entry.moduleId) || entry.file !== `archives/${entry.moduleId}.zip` || !Number.isSafeInteger(entry.bytes) || Number(entry.bytes) <= 0 || Number(entry.bytes) > 100 * 1024 * 1024 || typeof entry.sha256 !== "string" || !HASH.test(entry.sha256) || typeof entry.sourceCommit !== "string" || !GIT_HASH.test(entry.sourceCommit) || !Array.isArray(entry.files) || entry.files.some((file) => typeof file !== "string")) {
+      throw new Error("Open Figure archive manifest entry is invalid");
+    }
+    validatePortablePath(entry.file);
+    const files = entry.files.map((file) => String(file));
+    if (new Set(files).size !== files.length || canonicalJson(files) !== canonicalJson([...files].sort(compareCanonicalStrings))) throw new Error("Open Figure archive manifest file inventory is invalid");
+    files.forEach((file) => validatePortablePath(file));
+    ids.add(entry.moduleId); previous = entry.moduleId;
+    return { ...entry, files };
+  });
 }
 
 function expectedHeadRepository(login: string, targetRepository: string) {
@@ -461,7 +504,7 @@ async function createCommit(
 function titlesOverlap(candidateTitle: string, moduleTitle: string, moduleTitleEn: string) {
   const haystack = normalizeComparableText(candidateTitle);
   const titles = [moduleTitle, moduleTitleEn].map(normalizeComparableText).filter(Boolean);
-  return titles.some((title) => haystack === title || haystack.includes(title) || title.includes(haystack));
+  return Boolean(haystack) && titles.some((title) => haystack === title);
 }
 
 export function annotateSimilarMatchKind(options: {
@@ -471,12 +514,12 @@ export function annotateSimilarMatchKind(options: {
   openFigure?: ModuleCatalogIndex;
 }): "identity" | "similar" {
   const { candidate, build } = options;
-  if (candidate.templateId === build.moduleId) return "identity";
   if (titlesOverlap(candidate.title, build.title, build.titleEn)) return "identity";
   if (candidate.previewSha256 && candidate.previewSha256 === build.previewSha256) return "identity";
   if (candidate.providerId === PERSONAL_MODULE_PROVIDER_ID && options.openFigure) {
     const module = options.openFigure.get(candidate.templateId);
     const code = module?.files.find((file) => file.path === module.canonicalCode);
+    if (module?.preview.sha256 === build.previewSha256) return "identity";
     if (code?.sha256 === build.canonicalCodeSha256) return "identity";
   }
   if (candidate.providerId === FIGUREYA_PROVIDER_ID && options.figureYa) {
@@ -494,15 +537,23 @@ async function assertModulePathAvailable(runner: GhRunner, moduleId: string, bas
   if (await repositoryPathExists(runner, OPEN_FIGURE_REPOSITORY, baseCommit, `modules/${moduleId}/module.yml`)) {
     throw new Error(`Open Figure Modules already contains modules/${moduleId}/module.yml on main`);
   }
-  const pulls = await ghJson<unknown[]>(runner, `repos/${OPEN_FIGURE_REPOSITORY}/pulls?state=open&per_page=100`);
-  if (!Array.isArray(pulls)) throw new Error("GitHub open pull request list is invalid");
-  for (const pull of pulls) {
-    if (!isRecord(pull) || typeof pull.number !== "number") continue;
-    const files = await ghJson<unknown[]>(runner, `repos/${OPEN_FIGURE_REPOSITORY}/pulls/${pull.number}/files?per_page=100`);
-    if (!Array.isArray(files)) continue;
-    if (files.some((file) => isRecord(file) && typeof file.filename === "string" && file.filename.startsWith(`modules/${moduleId}/`))) {
-      throw new Error(`An open Open Figure Modules PR already contains modules/${moduleId}/: https://github.com/${OPEN_FIGURE_REPOSITORY}/pull/${pull.number}`);
+  for (let page = 1; ; page += 1) {
+    if (page > 100) throw new Error("Open Figure PR inventory exceeds the safe inspection limit");
+    const pulls = await ghJson<unknown[]>(runner, `repos/${OPEN_FIGURE_REPOSITORY}/pulls?state=open&per_page=100&page=${page}`);
+    if (!Array.isArray(pulls)) throw new Error("GitHub open pull request list is invalid");
+    for (const pull of pulls) {
+      if (!isRecord(pull) || !Number.isSafeInteger(pull.number) || Number(pull.number) <= 0) throw new Error("GitHub open PR identity is invalid");
+      for (let filePage = 1; ; filePage += 1) {
+        if (filePage > 30) throw new Error("Open Figure PR file inventory may be truncated; path availability cannot be proved");
+        const files = await ghJson<unknown[]>(runner, `repos/${OPEN_FIGURE_REPOSITORY}/pulls/${pull.number}/files?per_page=100&page=${filePage}`);
+        if (!Array.isArray(files)) throw new Error("GitHub open PR files response is invalid");
+        if (files.some((file) => isRecord(file) && typeof file.filename === "string" && (file.filename === `modules/${moduleId}` || file.filename.startsWith(`modules/${moduleId}/`)))) {
+          throw new Error(`An open Open Figure Modules PR already contains modules/${moduleId}/: https://github.com/${OPEN_FIGURE_REPOSITORY}/pull/${pull.number}`);
+        }
+        if (files.length < 100) break;
+      }
     }
+    if (pulls.length < 100) break;
   }
 }
 
@@ -583,7 +634,7 @@ export class OpenFigurePublicationService {
   readonly #runner: GhRunner;
   readonly #receiptDirectory: string;
   readonly #now: () => Date;
-  readonly #searchSimilar: (request: SimilarSearchRequest) => Promise<SimilarSearchResult>;
+  readonly #searchSimilar: (request: SimilarSearchRequest, matchKind: (candidate: TemplateCandidate) => "identity" | "similar") => Promise<SimilarSearchResult>;
   readonly #lookupSearchSession: (resultSetId: string) => SimilarSearchSession | undefined;
   readonly #figureYa: () => Promise<CatalogIndex | undefined>;
   readonly #openFigure: () => Promise<ModuleCatalogIndex | undefined>;
@@ -591,7 +642,7 @@ export class OpenFigurePublicationService {
 
   constructor(options: {
     currentLibraries: () => Promise<CurrentLibraryContext>;
-    searchSimilar: (request: SimilarSearchRequest) => Promise<SimilarSearchResult>;
+    searchSimilar: (request: SimilarSearchRequest, matchKind: (candidate: TemplateCandidate) => "identity" | "similar") => Promise<SimilarSearchResult>;
     lookupSearchSession: (resultSetId: string) => SimilarSearchSession | undefined;
     figureYa?: () => Promise<CatalogIndex | undefined>;
     openFigure?: () => Promise<ModuleCatalogIndex | undefined>;
@@ -633,14 +684,19 @@ export class OpenFigurePublicationService {
     }
     const base = await getBaseIdentity(this.#runner, OPEN_FIGURE_REPOSITORY);
     await assertModulePathAvailable(this.#runner, build.moduleId, base.baseCommit);
+    const priorArchiveEntries = await readPriorArchiveEntries(this.#runner, base.baseCommit);
+    if (priorArchiveEntries.some((entry) => entry.moduleId === build.moduleId)) {
+      throw new Error(`Open Figure archive manifest already contains ${build.moduleId}`);
+    }
     const head = await prepareHead(this.#runner, login, OPEN_FIGURE_REPOSITORY);
     const archive = archiveOpenFigureModule(build.files);
     const searchInput = similarSearchInput(build);
-    const similar = await this.#searchSimilar(searchInput);
     const figureYa = await this.#figureYa();
     const openFigure = await this.#openFigure();
+    const similar = await this.#searchSimilar(searchInput, (candidate) => annotateSimilarMatchKind({ candidate, build, figureYa, openFigure }));
     const similarCandidates = similar.candidates.slice(0, 6).map((candidate) => ({
       providerId: candidate.providerId,
+      exactSelector: candidate.exactSelector,
       templateId: candidate.templateId,
       title: candidate.title,
       sourceLabel: candidate.sourceLabel,
@@ -693,6 +749,7 @@ export class OpenFigurePublicationService {
         forkWillBeCreated: head.forkWillBeCreated,
       },
       similarSearch: {
+        resultSetId: similar.resultSetId,
         query: searchInput.query,
         providerIds: searchInput.providerIds,
         plotFamily: searchInput.plotFamily,
@@ -731,6 +788,7 @@ export class OpenFigurePublicationService {
       archiveZip: archive.bytes,
       archiveFileList: archive.files,
       generatedAt,
+      priorArchiveEntries,
       build,
     };
   }
@@ -763,8 +821,12 @@ export class OpenFigurePublicationService {
       if (options.similarReviewConfirmed !== true || !options.expectedResultSetId) {
         throw new Error("similar Open Figure candidates must be reviewed in the SFL window before Apply");
       }
+      if (options.expectedResultSetId !== cached.prepared.plan.similarSearch.resultSetId) {
+        throw new Error("expectedResultSetId does not match the Open Figure Plan");
+      }
       const session = this.#lookupSearchSession(options.expectedResultSetId);
       if (!session) throw new Error("expectedResultSetId is not a current similar-search result set");
+      if (!session.presented) throw new Error("similar candidates have not been returned to the SFL window or text Host");
       if (session.queryDigest !== cached.prepared.plan.similarSearch.queryDigest) {
         throw new Error("similar-search result set does not match the reviewed Open Figure Plan");
       }
@@ -780,6 +842,7 @@ export class OpenFigurePublicationService {
     const rebuilt = await this.#prepare(cached.prepared.plan.exactSelector);
     const comparable = (plan: OpenFigurePrPlan) => canonicalJson({
       ...plan,
+      similarSearch: { ...plan.similarSearch, resultSetId: "" },
       head: { ...plan.head, forkWillBeCreated: false },
       planDigest: "",
     });
@@ -808,7 +871,7 @@ export class OpenFigurePublicationService {
   }
 
   async #createPullRequest(cached: PreparedPlan, rebuilt: PreparedPlan) {
-    const plan = rebuilt.plan;
+    const plan = cached.plan;
     const currentBase = await getBaseIdentity(this.#runner, OPEN_FIGURE_REPOSITORY);
     if (currentBase.baseCommit !== plan.target.baseCommit || currentBase.baseTree !== plan.target.baseTree) {
       throw new Error("GitHub target base changed after planning");
@@ -833,26 +896,7 @@ export class OpenFigurePublicationService {
       sourceTree,
       [plan.target.baseCommit],
     );
-    let priorManifest: {
-      schema: string;
-      providerId: string;
-      repository: string;
-      generatedAt: string;
-      entries: Array<Record<string, unknown>>;
-    } | undefined;
-    try {
-      const bytes = await getRepositoryFile(this.#runner, OPEN_FIGURE_REPOSITORY, plan.target.baseCommit, "catalog/archive-manifest.json");
-      priorManifest = JSON.parse(Buffer.from(bytes).toString("utf8")) as typeof priorManifest;
-    } catch (error) {
-      if (!(error instanceof GhInvocationError) || error.kind !== "not_found") {
-        if (!(error instanceof Error && /invalid for catalog\/archive-manifest|not found|GitHub content identity/iu.test(error.message))) {
-          // Missing manifest is allowed for an empty repository; any other parse error is fatal after a successful read.
-        }
-      }
-    }
-    const preserved = Array.isArray(priorManifest?.entries)
-      ? priorManifest.entries.filter((entry) => isRecord(entry) && entry.moduleId !== plan.moduleId)
-      : [];
+    const preserved = rebuilt.priorArchiveEntries;
     const manifest = {
       schema: OPEN_FIGURE_ARCHIVE_MANIFEST_SCHEMA,
       providerId: OPEN_FIGURE_PROVIDER_ID,
@@ -959,7 +1003,7 @@ const ApplyInput = z.object({
 export function registerOpenFigurePrTools(options: {
   server: McpServer;
   currentLibraries: () => Promise<CurrentLibraryContext>;
-  searchSimilar: (request: SimilarSearchRequest) => Promise<SimilarSearchResult>;
+  searchSimilar: (request: SimilarSearchRequest, matchKind: (candidate: TemplateCandidate) => "identity" | "similar") => Promise<SimilarSearchResult>;
   lookupSearchSession: (resultSetId: string) => SimilarSearchSession | undefined;
   figureYa?: () => Promise<CatalogIndex | undefined>;
   openFigure?: () => Promise<ModuleCatalogIndex | undefined>;
@@ -1000,6 +1044,9 @@ export function registerOpenFigurePrTools(options: {
             `TARGET: ${plan.target.repository}`,
             `SIMILAR_COUNT: ${plan.similarCandidates.length}`,
             `SIMILAR_QUERY: ${plan.similarSearch.query}`,
+            `SIMILAR_RESULT_SET_ID: ${plan.similarSearch.resultSetId}`,
+            `SIMILAR_SEARCH: ${JSON.stringify(plan.similarSearch)}`,
+            `SIMILAR_CANDIDATES: ${JSON.stringify(plan.similarCandidates)}`,
             `SIMILAR_PROVIDERS: ${plan.similarSearch.providerIds.join(",")}`,
             `EXCLUDED: ${plan.excludedLogicalPaths.join(", ") || "none"}`,
             "WRITTEN: false",

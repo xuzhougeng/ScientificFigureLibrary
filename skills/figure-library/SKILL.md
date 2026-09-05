@@ -3,7 +3,7 @@ name: figure-library
 description: Build, review, search, select, and materialize immutable scientific-figure references from Local Published, FigureYa, bundled Open Figure Modules, frozen explicit-only Community, and explicitly trusted dynamic Providers.
 ---
 
-# Scientific Figure Library 0.6.2
+# Scientific Figure Library 0.6.3
 
 Use this Skill when a user wants to store an uploaded figure/code pair, review
 or publish a local template, search for a plotting reference, or materialize an
@@ -20,6 +20,19 @@ plugin packages all ship this Skill beside the same MCP server. Optional
 `scientificQuestion` explains why a figure is worth drawing; it is not
 `description` or `visualProfile`. There is no receipt-free materialization
 path.
+
+## Bundled companion Skills
+
+Use the copies shipped beside this Skill, not similarly named Host installations.
+- Before creating/updating template prose use [figure-description](../figure-description/SKILL.md).
+  Pass independent Markdown description/application/dataProfile, with a non-empty application
+  for every new/updated Working revision. Never put scenarios into visualProfile.
+- When the user actually requests adapting/replicating a selected template, use
+  [figure-organization](../figure-organization/SKILL.md), then
+  [figure-style](../figure-style/SKILL.md). Preserve reference fidelity by default.
+- Pure search/preview/materialization does not start prose writing or plotting.
+- Host execution tools and the project R/Python environment are still needed. A
+  plugin installation is not approval to execute code or install packages.
 
 ## Non-negotiable boundaries
 
@@ -264,13 +277,17 @@ If the user declines, stop. If the user agrees, call
 
 - If the Plan returns `NEXT_ACTION: ask_user` and similar candidates, call
   `figure_library_search` with the Plan's `similarSearch.query`,
-  `providerIds`, `plotFamily`, `language`, and `limit` so the SFL window
+  `providerIds`, `plotFamily`, `language`, `limit`, and `resultSetId` from
+  `plan.similarSearch` so the SFL window
   shows FigureYa and Open Figure Modules hits. Do not include Local
   Published. Stop and wait. Retrieval scores are ranking only.
 - After the user confirms the hits are not duplicates, call
   `figure_library_apply_open_figure_module_pr` with the Plan digest, a
   stable `operationId`, `similarReviewConfirmed: true`, and the
-  `resultSetId` from that search.
+  `expectedResultSetId` equal to `plan.similarSearch.resultSetId`. The search
+  must return that exact set before confirmation. A newly repeated query is
+  not the reviewed set. On a text-only Host, show the same result set as a text
+  list and wait for the same explicit confirmation.
 - If the Plan returns `NEXT_ACTION: apply_confirmed_plan` because there were
   no similar hits, apply immediately in the same turn without a second
   question.
@@ -347,8 +364,9 @@ both unchanged. Never resolve by bare `templateId` or let a same-named provider
 shadow another.
 
 The retrieval score is ranking only. It is not confidence, approval, or visual
-similarity. Local Published cards/details show Release-bound warnings and
-separate plot, upstream, and scientific summaries. A legacy plot `passed`
+similarity. Local Published structured results preserve Release-bound warnings and
+separate plot, upstream, and scientific summaries; the browse UI focuses on
+requirements, use cases, data profile and actual resource lists. A legacy plot `passed`
 means upstream unknown and scientific not assessed. FigureYa is
 upstream-published but locally `not_reviewed`, code `provided`, plot
 `not_run`, upstream `unknown`, and scientific `not_assessed`; do not call it

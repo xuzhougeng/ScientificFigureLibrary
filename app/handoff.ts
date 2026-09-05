@@ -70,6 +70,15 @@ export function compactPlotCandidate(candidate: Candidate) {
       ? { materializationModes: candidate.materializationModes }
       : {}),
     title: candidate.title,
+    description: candidate.description,
+    application: candidate.application ?? "",
+    dataProfile: candidate.dataProfile ?? "",
+    ...(candidate.visualProfile ? { visualProfile: candidate.visualProfile } : {}),
+    validationState: candidate.validationState,
+    warnings: candidate.warnings,
+    inputFiles: candidate.inputFiles,
+    codeFiles: candidate.codeFiles ?? [],
+    packages: candidate.packages,
     ...(candidate.scientificQuestion ? { scientificQuestion: candidate.scientificQuestion } : {}),
     ...(candidate.previewSha256 ? { candidateThumbnailSha256: candidate.previewSha256 } : {}),
   };
@@ -104,6 +113,8 @@ export function buildPlotSetHandoff(options: {
     "Plot every selected template in the current science project. Keep each providerId and exactSelector unchanged.",
     "Do not drop items, do not plot only the first template, and do not publish or bind a new Library.",
     "Materialize or load each selected template separately, then draw it. Ask for a destination if one is required.",
+    "Use this plugin's figure-organization and figure-style Skills for adapted code and render QA. Preserve the selected template's visual identity unless the user asks for restyling. Do not substitute same-named Host Skills.",
+    "Respect project runtime approvals. Materialization is not permission to execute arbitrary downloaded code or installers. Keep the immutable reference unchanged; create adapted project code separately.",
   ].join("\n");
 }
 

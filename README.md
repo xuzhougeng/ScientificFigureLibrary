@@ -22,7 +22,7 @@ until you confirm a materialization. The server does **not** execute plotting
 code and does not contain a second model: the host agent inspects files; SFL
 hashes, versions, gates, and publishes them.
 
-The default retrieval order is **Local Published → FigureYa → Personal Figure
+The default retrieval order is **Local Published → FigureYa → Open Figure
 Modules → enabled dynamic personal Providers**. The bundled Community snapshot
 is retained for explicit compatibility, but is frozen and excluded from default
 search (`includeInDefaultSearch: false`). The source of truth for your own
@@ -71,6 +71,19 @@ Manual steps: [docs/QUICKSTART.md](docs/QUICKSTART.md).
   and thumbnail snapshot. Complete module ZIPs are fetched only for one exact
   user-selected commit-pinned materialization and are never bundled in the
   plugin.
+
+## Bundled figure workflow
+
+All three plugin packages include figure-library, figure-description,
+figure-organization and figure-style. The host does not need its own copies
+of these Skills. Approved R/Python runtimes and host execution/image tools
+are still required when the user asks to draw.
+
+Template details render safe Markdown for the requirement, biological use
+cases and data profile, with actual input/code/package lists visible.
+Technical identities and validation state are available in a collapsed area.
+Historical Local Published/OFM entries remain readable; this update does not
+rewrite their content or the bundled FigureYa catalog.
 
 ## First success
 

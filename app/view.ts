@@ -1,3 +1,5 @@
+import { markdownPlainText, resolveFigureDescription } from "../src/figure-description.ts";
+import { renderMarkdown } from "./markdown.ts";
 import type {
   CanonicalPreviewDecisionSummary,
   ValidationStateSummaryV1,
@@ -12,6 +14,7 @@ export interface CandidatePreviewMeta {
 }
 
 export interface Candidate {
+  matchKind?: "identity" | "similar";
   candidateId: string;
   templateId: string;
   providerId: string;
@@ -29,6 +32,8 @@ export interface Candidate {
   excerpt: string;
   description: string;
   scientificQuestion?: string;
+  visualProfile?: string;
+  applicationOrigin?: "explicit" | "legacy_description" | "missing";
   application?: string;
   dataProfile?: string;
   inputFiles: string[];
@@ -157,17 +162,6 @@ function button(
   return node;
 }
 
-function inlineMessage(
-  document: Document,
-  className: string,
-  text: string,
-  icon: SflIconName,
-) {
-  const node = element(document, "p", className);
-  node.append(createIcon(document, icon), element(document, "span", "message-label", text));
-  return node;
-}
-
 function chips(document: Document, values: string[], maximum = 6) {
   const container = element(document, "div", "chips");
   for (const value of values.slice(0, maximum)) {
@@ -260,28 +254,6 @@ function moduleIdentityLines(candidate: Candidate) {
       ? [`可选物化模式：${candidate.materializationModes.join(", ")}`]
       : []),
   ];
-}
-
-function candidateTags(candidate: Candidate) {
-  return [
-    candidate.assetKind,
-    candidate.language,
-    candidate.plotFamily,
-    candidate.reviewStatus,
-    candidate.codeStatus,
-    candidate.canonicalPreviewDecision
-      ? `canonical:${candidate.canonicalPreviewDecision.reason}`
-      : "",
-    candidate.exactSelector.kind,
-    candidate.management.adapter,
-    candidate.management.galleryId ? `gallery:${candidate.management.galleryId}` : "",
-    candidate.management.registrySourceId
-      ? `source:${candidate.management.registrySourceId}`
-      : "",
-    ...candidate.inputFiles.map((name) => `input:${name}`),
-    ...(candidate.codeFiles ?? []).map((name) => `code:${name}`),
-    ...candidate.packages.map((name) => `pkg:${name}`),
-  ].filter((value): value is string => Boolean(value));
 }
 
 function appendPreviewImage(
@@ -426,26 +398,21 @@ export function renderCandidateCards(options: {
       ),
     );
     top.append(heading, element(document, "span", "score", `召回 ${candidate.retrievalScore}`));
-    const description = candidate.description || candidate.excerpt || "查看模板详情以确认输入要求。";
+    const description = markdownPlainText(candidate.description || candidate.application || candidate.excerpt || "查看模板详情以确认输入要求。");
+    if (candidate.matchKind) {
+      top.append(element(document, "span", "chip", candidate.matchKind === "identity" ? "身份字段匹配（待确认）" : "相似候选（待确认）"));
+    }
     content.append(
       top,
       element(document, "p", "description", description),
       element(document, "p", "provider-state", providerStateLines(candidate).join(" · ")),
-      element(
-        document,
-        "p",
-        "validation-summary",
-        validationSummaryLines(candidate).join(" · "),
-      ),
+      element(document, "p", "validation-summary", validationSummaryLines(candidate).join(" · ")),
     );
 
-    const tags = candidateTags(candidate);
+    const tags = [candidate.assetKind, candidate.language, candidate.plotFamily].filter(Boolean);
     if (tags.length) content.append(chips(document, tags, 6));
-    if (candidate.reasons[0]) content.append(element(document, "p", "reason", candidate.reasons[0]));
-    if (candidate.warnings[0]) {
-      content.append(inlineMessage(document, "warning", candidate.warnings[0], "warning"));
-    }
 
+    if (candidate.matchKind) content.append(element(document, "p", "description", "检索分不是重复证明，请对照预览人工确认。"));
     const detailButton = button(document, "candidate-action", "查看详情", "details");
     const elements = { card, previewButton, titleButton, detailButton };
     const open = (opener: HTMLButtonElement) => options.onDetail(candidate, elements, opener);
@@ -481,6 +448,7 @@ export function openCandidateDetail(options: {
   serverToolsAvailable: boolean;
   updateModelContextAvailable: boolean;
   onClosed?: () => void;
+  onOpenLink?: (url: string) => Promise<void>;
   onRequestExactPreview: (elements: DetailViewElements) => void;
   onRequestAgentReview: (elements: DetailViewElements) => void;
 }): DetailViewElements {
@@ -499,44 +467,52 @@ export function openCandidateDetail(options: {
   identity.append(
     element(document, "span", "source", candidate.sourceLabel),
     element(document, "code", "template-id", candidate.templateId),
-    element(document, "code", "provider-id", candidate.providerId),
   );
   const preview = element(document, "div", "detail-preview");
   appendPreviewImage(document, preview, candidate, "detail");
-  const description = element(
+  const projection = candidate.providerId === "org.scientificfigurelibrary.local"
+    ? resolveFigureDescription(candidate.description, candidate.application)
+    : { description: candidate.description, application: candidate.application ?? "" };
+  const descriptionSection = element(document, "section", "detail-section");
+  const description = renderMarkdown(
     document,
-    "p",
-    "detail-description",
-    candidate.description || candidate.excerpt || "没有可用描述。",
+    projection.description || (projection.application ? "" : candidate.excerpt || "没有可用描述。"),
+    options.onOpenLink,
   );
+  description.classList.add("detail-description");
+  if (description.textContent?.trim()) {
+    descriptionSection.append(element(document, "h3", "detail-section-title", "需求描述"));
+    descriptionSection.append(description);
+  }
   const metadata = element(document, "div", "detail-metadata");
-  const tags = candidateTags(candidate);
-  if (tags.length) metadata.append(chips(document, tags, Number.POSITIVE_INFINITY));
-  if (candidate.application) {
-    appendDetailSection(document, metadata, "适用场景", [candidate.application]);
-  }
+  metadata.append(chips(document, [candidate.assetKind, candidate.language, candidate.plotFamily].filter(Boolean), 3));
+  const scenario = element(document, "section", "detail-section");
+  scenario.append(element(document, "h3", "detail-section-title", "应用场景"));
+  scenario.append(renderMarkdown(document, projection.application || "未单独记录。", options.onOpenLink));
+  metadata.append(scenario);
   if (candidate.dataProfile) {
-    appendDetailSection(document, metadata, "数据特征", [candidate.dataProfile]);
+    const data = element(document, "section", "detail-section");
+    data.append(element(document, "h3", "detail-section-title", "数据特征"));
+    data.append(renderMarkdown(document, candidate.dataProfile, options.onOpenLink));
+    metadata.append(data);
   }
-  appendDetailSection(document, metadata, "验证状态", validationSummaryLines(candidate));
-  appendDetailSection(document, metadata, "来源与执行边界", providerStateLines(candidate));
-  appendDetailSection(document, metadata, "固定模块身份", moduleIdentityLines(candidate));
+  // Keep audit information available without putting it in the main prose.
+  const technical = element(document, "details", "detail-technical");
+  technical.append(element(document, "summary", "detail-technical-summary", "查看技术与验证信息"));
+  appendDetailSection(document, technical, "来源与执行边界", providerStateLines(candidate));
+  appendDetailSection(document, technical, "固定模块身份", moduleIdentityLines(candidate));
+  appendDetailSection(document, technical, "验证状态", validationSummaryLines(candidate));
+  appendDetailSection(document, technical, "检索原因", candidate.reasons);
+  appendDetailSection(document, technical, "警告", candidate.warnings, "detail-list warning-list");
   if (candidate.canonicalPreviewDecision) {
-    appendDetailSection(document, metadata, "Canonical 预览", [
-      `${candidate.canonicalPreviewDecision.reason}：${
-        candidate.canonicalPreviewDecision.assetPath
-      }${
-        candidate.canonicalPreviewDecision.reason === "user_override_rendered"
-          ? `（${candidate.canonicalPreviewDecision.note}）`
-          : ""
-      }`,
+    appendDetailSection(document, technical, "Canonical 预览", [
+      `${candidate.canonicalPreviewDecision.reason}：${candidate.canonicalPreviewDecision.assetPath}${candidate.canonicalPreviewDecision.reason === "user_override_rendered" ? `（${candidate.canonicalPreviewDecision.note}）` : ""}`,
     ]);
   }
-  appendDetailSection(document, metadata, "检索原因", candidate.reasons);
-  appendDetailSection(document, metadata, "警告", candidate.warnings, "detail-list warning-list");
   appendDetailSection(document, metadata, "输入文件", candidate.inputFiles);
   appendDetailSection(document, metadata, "代码文件", candidate.codeFiles ?? []);
   appendDetailSection(document, metadata, "依赖包", candidate.packages);
+  metadata.append(technical);
 
   const status = element(document, "p", "detail-status");
   status.setAttribute("aria-live", "polite");
@@ -598,7 +574,7 @@ export function openCandidateDetail(options: {
     dialog.remove();
   });
   controls.append(exactPreviewButton, confirmButton);
-  panel.append(closeButton, title, identity, preview, description, metadata, status, controls);
+  panel.append(closeButton, title, identity, preview, descriptionSection, metadata, status, controls);
   dialog.append(panel);
   document.body.append(dialog);
   if (typeof dialog.showModal === "function") dialog.showModal();

@@ -81,9 +81,7 @@ export async function commonPluginFiles() {
     "dist/mcp-app.html",
     "docs/GLOBAL_LIBRARY_0.6.md",
     "docs/PROTOCOL.md",
-    "skills/figure-library/SKILL.md",
-    "skills/figure-library/agents/openai.yaml",
-    "skills/figure-library/assets/sfl-logo.svg",
+
     "assets/catalog.json",
     "assets/FIGUREYA_LICENSE.txt",
     "assets/figureya-preview.manifest.json",
@@ -94,10 +92,17 @@ export async function commonPluginFiles() {
     "assets/personal-modules/PERSONAL_MODULES_LICENSE.txt",
     "LICENSE",
     "README.md",
+    "README.zh-CN.md",
     "THIRD_PARTY_NOTICES.md",
   ];
+  for (const skill of ["figure-library", "figure-description", "figure-organization", "figure-style"]) {
+    const skillRoot = path.join(root, "skills", skill);
+    for (const relative of ["SKILL.md", "agents/openai.yaml", "assets/sfl-logo.svg"]) await fs.access(path.join(skillRoot, relative));
+    files.push(...(await walk(skillRoot, "skills/" + skill)).filter((file) => !file.includes("/__pycache__/") && !file.endsWith(".pyc")));
+  }
   files.push(...(await walk(path.join(root, "assets", "thumbs"), "assets/thumbs")));
   files.push(...(await walk(path.join(root, "assets", "brand"), "assets/brand")));
+  files.push(...(await walk(path.join(root, "assets", "licenses"), "assets/licenses")));
   const personalPreviewManifest = await readJson(
     "assets/personal-modules/module-preview.manifest.json",
   );

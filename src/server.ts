@@ -90,6 +90,7 @@ const ProviderSelectionInput = z.object({
   exactSelector: ExactSelectorSchema,
 });
 const SearchInput = z.object({
+  resultSetId: z.string().min(1).max(256).optional().describe("Present the exact cached result set returned by an Open Figure PR Plan; keep its query, filters, providers and limit unchanged."),
   query: z.string().min(1).max(2_000),
   dataProfile: z.string().max(2_000).optional(),
   visualProfile: z.string().max(2_000).optional(),
@@ -232,7 +233,9 @@ function candidateText(candidates: TemplateCandidate[]) {
   if (!candidates.length) {
     return "No matching templates were found in the selected Providers. No tool retry is needed unless the user changes the search intent.";
   }
+  const publicationReview = candidates.some((candidate) => candidate.matchKind);
   return [
+    ...(publicationReview ? ["PUBLICATION_REVIEW: compare these exact candidates and wait for explicit user confirmation; do not materialize or plot them. Retrieval scores are not duplication proof."] : []),
     "Retrieval candidates are now visible in the Scientific Figure Library App. Stop this turn and wait for the user to browse and select a candidate.",
     ...candidates.flatMap((candidate, index) => [
       `${index + 1}. ${candidate.title}`,
@@ -240,6 +243,9 @@ function candidateText(candidates: TemplateCandidate[]) {
       `   TEMPLATE_ID: ${candidate.templateId}`,
       `   EXACT_SELECTOR: ${JSON.stringify(candidate.exactSelector)}`,
       `   RETRIEVAL_SCORE: ${candidate.retrievalScore}/100`,
+      ...(candidate.matchKind
+        ? [`   MATCH_KIND: ${candidate.matchKind}; retrieval score is ranking evidence, not proof of duplication.`]
+        : []),
       `   STATE: review=${candidate.reviewStatus}; code=${candidate.codeStatus}; ${validationStateText(
         candidateValidationState(candidate),
       ).join("; ")}`,
@@ -257,11 +263,11 @@ function candidateText(candidates: TemplateCandidate[]) {
         ? [`   WARNINGS: ${candidate.warnings.join("; ")}`]
         : []),
     ]),
-    "NEXT_STEP: wait for App updateModelContext. If it reports handoffMode=agent_plot_set, plot every selected candidate in the current project. If it reports handoffMode=headless_exact_review, review only that one candidate. Otherwise do not call an exact-preview tool unless the user explicitly delegates headless visual review.",
+    publicationReview ? "NEXT_STEP: wait for the user to confirm whether these publication candidates are duplicates. No Apply before confirmation." : "NEXT_STEP: wait for App updateModelContext. If it reports handoffMode=agent_plot_set, plot every selected candidate in the current project. If it reports handoffMode=headless_exact_review, review only that one candidate. Otherwise do not call an exact-preview tool unless the user explicitly delegates headless visual review.",
   ].join("\n");
 }
 
-type ParsedSearchInput = Omit<z.infer<typeof SearchInput>, "providerIds"> & {
+type ParsedSearchInput = Omit<z.infer<typeof SearchInput>, "providerIds" | "resultSetId"> & {
   providerIds: string[];
 };
 
@@ -494,6 +500,7 @@ async function countLegacyFlat(root: string) {
 }
 
 interface SearchSessionState {
+  presented?: boolean;
   input: ParsedSearchInput;
   request: SearchRequest;
   candidates: TemplateCandidate[];
@@ -512,6 +519,8 @@ export async function createServer(options: {
   registry?: ProviderRegistry;
   providerSourceManager?: ProviderSourceManager;
   personalModuleRoot?: string;
+  /** Internal transport injection for deterministic publication integration tests. */
+  openFigurePr?: { ghRunner: import("./github-publication-tools.ts").GhRunner; receiptDirectory: string };
 } = {}) {
   const index = await CatalogIndex.load();
   const providerController = options.registry
@@ -734,6 +743,7 @@ export async function createServer(options: {
       catalogRevision: currentCatalogRevision,
       libraryRevision: currentBindingDigest,
     });
+    options.state.presented = true;
     return result;
   };
 
@@ -771,6 +781,11 @@ export async function createServer(options: {
           ...input,
           providerIds: input.providerIds ?? registry.defaultProviderIds(),
         };
+        if (input.resultSetId) {
+          const state = searchSessions.get(input.resultSetId);
+          if (!state || state.queryDigest !== searchQueryDigest(parsedInput)) throw new Error("The cached publication search is missing or its query/filters changed; create a new Plan.");
+          return await buildSearchPage({ resultSetId: input.resultSetId, state, offset: 0, limit: parsedInput.limit, correlationId, invocationSource: "agent", toolName: "figure_library_search", operationStartedAt });
+        }
         const request: SearchRequest = {
           query: parsedInput.query,
           dataProfile: parsedInput.dataProfile,
@@ -1874,16 +1889,18 @@ export async function createServer(options: {
   registerBundleTools({ server, currentLibraries });
   registerGitHubPublicationTools({ server });
   registerOpenFigurePrTools({
+    ...options.openFigurePr,
     server,
     currentLibraries,
     figureYa: async () => index,
     openFigure: async () => moduleCatalogs?.get(PERSONAL_MODULE_PROVIDER_ID),
     lookupSearchSession: (resultSetId) => {
+      try { previewConfirmations.getResultSet(resultSetId); } catch { return undefined; }
       const state = searchSessions.get(resultSetId);
       if (!state) return undefined;
-      return { queryDigest: state.queryDigest, providerIds: state.input.providerIds };
+      return { queryDigest: state.queryDigest, providerIds: state.input.providerIds, presented: state.presented === true };
     },
-    searchSimilar: async (request) => {
+    searchSimilar: async (request, matchKind) => {
       if (request.providerIds.includes(LOCAL_LIBRARY_PROVIDER_ID)) {
         throw new Error("Open Figure similar search cannot include Local Published");
       }
@@ -1922,10 +1939,22 @@ export async function createServer(options: {
         ...candidate,
         retrievalScore: Math.round((candidate.retrievalScore / top) * 100),
       }));
-      return {
-        candidates: normalized.slice(0, parsedInput.limit),
-        queryDigest: searchQueryDigest(parsedInput),
-      };
+      const candidates = normalized.slice(0, parsedInput.limit).map((candidate) => ({ ...candidate, matchKind: matchKind(candidate) }));
+      const queryDigest = searchQueryDigest(parsedInput);
+      const catalogRevision = await registry.catalogRevision(parsedInput.providerIds, providerContext);
+      const bindingDigest = libraryBindingDigest(context);
+      const resultSetId = previewConfirmations.registerResultSet({
+        queryDigest, catalogRevision, libraryBindingDigest: bindingDigest, providerIds: parsedInput.providerIds,
+        candidates: candidates.map((candidate) => ({ providerId: candidate.providerId, exactSelector: candidate.exactSelector })),
+      });
+      searchSessions.set(resultSetId, {
+        input: parsedInput, request: searchRequest, candidates, queryDigest, catalogRevision, libraryBindingDigest: bindingDigest,
+        providerMatches: Object.fromEntries(parsedInput.providerIds.map((id) => [id, candidates.filter((c) => c.providerId === id).length])),
+        providerFailures: {}, candidateIds: new Set(candidates.map((candidate) => scopedCandidateId(resultSetId, candidate))),
+        presented: false,
+      });
+      while (searchSessions.size > 128) searchSessions.delete(searchSessions.keys().next().value!);
+      return { candidates, queryDigest, resultSetId };
     },
   });
   registerPublicationExportTools({ server, currentLibraries });

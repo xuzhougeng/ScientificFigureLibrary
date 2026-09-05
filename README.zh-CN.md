@@ -34,6 +34,16 @@ docs/QUICKSTART.md。需要 Node.js 22+。stdio MCP 名称 figure-library，
 
 完整工具契约见 [docs/PROTOCOL.md](docs/PROTOCOL.md)。
 
+## 模板说明与内置 Skills
+
+Wisp、Codex、Claude 插件均包含四个 Skills：figure-library、figure-description、
+figure-organization、figure-style，不要求宿主另外安装同名 Skills。复刻默认保持
+参考模板的风格；真正绘图仍需要项目批准的 R/Python 环境和宿主执行/看图工具。
+
+详情页以安全 Markdown 渲染需求描述、应用场景和数据特征，实际输入文件、代码文件、
+依赖包默认可见；技术与验证信息保留在折叠区。旧模板只做兼容读取，不批量重写。
+缺少论文背景时不会自动补造生物学结论。
+
 ## 许可证
 
 本仓库代码 MIT。用户导入的图保留导入时记录的许可证。

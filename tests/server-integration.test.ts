@@ -339,6 +339,19 @@ test("standard server unifies Local Published and FigureYa while hiding Working/
       const localOnlyStructured = record(localOnlySearch.structuredContent);
       const localOnlyCandidates = records(localOnlyStructured.candidates);
       assert.ok(localOnlyCandidates.length > 0);
+      const sameSet = await client.callTool({
+        name: "figure_library_search", arguments: {
+          resultSetId: localOnlyStructured.resultSetId, query: "crossprovideruniquemarker volcano differential expression",
+          providerIds: [LOCAL_LIBRARY_PROVIDER_ID], limit: 6,
+        },
+      });
+      const sameStructured = record(sameSet.structuredContent);
+      assert.equal(sameStructured.resultSetId, localOnlyStructured.resultSetId);
+      assert.deepEqual(records(sameStructured.candidates).map((c) => c.exactSelector), localOnlyCandidates.map((c) => c.exactSelector));
+      const wrongSet = await client.callTool({
+        name: "figure_library_search", arguments: { resultSetId: localOnlyStructured.resultSetId, query: "a changed query", providerIds: [LOCAL_LIBRARY_PROVIDER_ID], limit: 6 },
+      });
+      assert.notEqual(record(record(wrongSet.structuredContent).envelope).outcome, "ok");
       assert.ok(
         localOnlyCandidates.every(
           (item) => item.providerId === LOCAL_LIBRARY_PROVIDER_ID,

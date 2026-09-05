@@ -164,6 +164,7 @@ class MockGhRunner implements GhRunner {
   openPullFiles: string[] = [];
   blobs = new Map<string, Uint8Array>();
   createdPulls = 0;
+  overrides = new Map<string, GhCommandResult>();
 
   #ok(value: unknown): GhCommandResult {
     return { exitCode: 0, stdout: typeof value === "string" ? value : JSON.stringify(value), stderr: "" };
@@ -179,6 +180,8 @@ class MockGhRunner implements GhRunner {
     }
     const endpoint = String(args[1]);
     if (endpoint === "user") return this.#ok(`${this.login}\n`);
+    const override = this.overrides.get(endpoint);
+    if (override) return override;
     const method = args.includes("--method") ? args[args.indexOf("--method") + 1] : "GET";
     const body = options.stdin ? JSON.parse(options.stdin) as Record<string, unknown> : {};
     if (method === "POST") this.writes.push({ endpoint, body });
@@ -203,7 +206,8 @@ class MockGhRunner implements GhRunner {
       return this.#ok(this.openPullFiles.length ? [{ number: 9, html_url: `https://github.com/${OPEN_FIGURE_REPOSITORY}/pull/9` }] : []);
     }
     if (endpoint.startsWith(`repos/${OPEN_FIGURE_REPOSITORY}/pulls/9/files`)) {
-      return this.#ok(this.openPullFiles.map((filename) => ({ filename, status: "added" })));
+      const page = Number(new URL("https://api.github.com/" + endpoint).searchParams.get("page") ?? "1");
+      return this.#ok(this.openPullFiles.slice((page - 1) * 100, page * 100).map((filename) => ({ filename, status: "added" })));
     }
     if (endpoint.startsWith(`repos/${OPEN_FIGURE_REPOSITORY}/git/ref/heads/`)) return this.#notFound();
     if (endpoint.endsWith("/git/blobs") && method === "POST") {
@@ -230,7 +234,7 @@ class MockGhRunner implements GhRunner {
 }
 
 function emptySearch(): SimilarSearchResult {
-  return { candidates: [], queryDigest: sha256("empty") };
+  return { candidates: [], queryDigest: sha256("empty"), resultSetId: "empty-result" };
 }
 
 function similarCandidate(): TemplateCandidate {
@@ -320,9 +324,9 @@ test("Open Figure PR Apply requires similar-review confirmation when hits exist"
   const digest = sha256("similar-query");
   const service = new OpenFigurePublicationService({
     currentLibraries: async () => published.context,
-    searchSimilar: async () => ({ candidates: [similarCandidate()], queryDigest: digest }),
+    searchSimilar: async () => ({ candidates: [similarCandidate()], queryDigest: digest, resultSetId: "result-1" }),
     lookupSearchSession: (resultSetId) => resultSetId === "result-1"
-      ? { queryDigest: digest, providerIds: [FIGUREYA_PROVIDER_ID, PERSONAL_MODULE_PROVIDER_ID] }
+      ? { presented: true, queryDigest: digest, providerIds: [FIGUREYA_PROVIDER_ID, PERSONAL_MODULE_PROVIDER_ID] }
       : undefined,
     ghRunner: runner,
     receiptDirectory: path.join(published.root, "receipts"),
@@ -403,6 +407,155 @@ test("Open Figure PR tools register on an MCP server", async () => {
     ]);
   } finally {
     await client.close();
+    await fs.rm(published.root, { recursive: true, force: true });
+  }
+});
+
+test("Open Figure Apply rejects unpresented, mismatched, stale and wrong-provider result sets without writes", async () => {
+  const published = await publishedContext();
+  const runner = new MockGhRunner();
+  const digest = sha256("gated-search");
+  let session: { presented: boolean; queryDigest: string; providerIds: string[] } | undefined;
+  let invocation = 0;
+  const service = new OpenFigurePublicationService({
+    currentLibraries: async () => published.context,
+    searchSimilar: async () => ({ candidates: [similarCandidate()], queryDigest: digest, resultSetId: ++invocation === 1 ? "planned-results" : "revalidation-results" }),
+    lookupSearchSession: () => session,
+    ghRunner: runner, receiptDirectory: path.join(published.root, "receipts"),
+  });
+  try {
+    const plan = await service.plan(published.selector);
+    assert.equal(plan.similarSearch.resultSetId, "planned-results");
+    const apply = (expectedResultSetId = "planned-results") => service.apply({ planDigest: plan.planDigest, operationId: "gated-operation", similarReviewConfirmed: true, expectedResultSetId });
+    await assert.rejects(apply("another-result"), /does not match/u);
+    await assert.rejects(apply(), /not a current/u);
+    session = { presented: false, queryDigest: digest, providerIds: [FIGUREYA_PROVIDER_ID, PERSONAL_MODULE_PROVIDER_ID] };
+    await assert.rejects(apply(), /have not been returned/u);
+    session = { ...session, presented: true, queryDigest: "f".repeat(64) };
+    await assert.rejects(apply(), /does not match/u);
+    session = { ...session, queryDigest: digest, providerIds: [LOCAL_LIBRARY_PROVIDER_ID] };
+    await assert.rejects(apply(), /providers do not match/u);
+    assert.equal(runner.writes.length, 0);
+    session.providerIds = [FIGUREYA_PROVIDER_ID, PERSONAL_MODULE_PROVIDER_ID];
+    const result = await apply();
+    assert.equal(result.outcome, "applied");
+    assert.equal(runner.writes.filter((w) => w.endpoint.endsWith("/git/commits")).length, 2);
+    assert.ok(runner.writes.filter((w) => w.endpoint.endsWith("/git/commits")).every((w) => String(w.body.message).includes(plan.planDigest)));
+    assert.equal(runner.writes.some((w) => w.endpoint.includes("/merge")), false);
+  } finally { await fs.rm(published.root, { recursive: true, force: true }); }
+});
+
+test("Open Figure path conflicts on later PR file pages fail before any mutation", async () => {
+  const published = await publishedContext();
+  const runner = new MockGhRunner();
+  runner.openPullFiles = [...Array.from({ length: 100 }, (_, i) => "docs/file-" + i + ".md"), "modules/clean-room-bars/module.yml"];
+  const service = new OpenFigurePublicationService({ currentLibraries: async () => published.context, searchSimilar: async () => emptySearch(), lookupSearchSession: () => undefined, ghRunner: runner, receiptDirectory: path.join(published.root, "receipts") });
+  try {
+    await assert.rejects(service.plan(published.selector), /open Open Figure Modules PR already contains/u);
+    assert.ok(runner.calls.some((call) => call[1]?.endsWith("files?per_page=100&page=2")));
+    assert.equal(runner.writes.length, 0);
+  } finally { await fs.rm(published.root, { recursive: true, force: true }); }
+});
+
+test("unreadable or malformed existing archive manifests cannot erase inventory", async () => {
+  const published = await publishedContext();
+  const endpoint = "repos/" + OPEN_FIGURE_REPOSITORY + "/contents/catalog/archive-manifest.json?ref=" + BASE_COMMIT;
+  try {
+    for (const failure of ["network", "json", "schema", "blob-missing"]) {
+      const runner = new MockGhRunner();
+      if (failure === "network") runner.overrides.set(endpoint, { exitCode: 1, stdout: "", stderr: "gh: HTTP 503 Service Unavailable" });
+      else {
+        const bytes = Buffer.from(failure === "json" ? "{broken json" : "{}");
+        const blob = gitBlobSha(bytes);
+        runner.overrides.set(endpoint, { exitCode: 0, stdout: JSON.stringify({ type: "file", sha: blob }), stderr: "" });
+        if (failure !== "blob-missing") runner.overrides.set("repos/" + OPEN_FIGURE_REPOSITORY + "/git/blobs/" + blob, { exitCode: 0, stdout: JSON.stringify({ encoding: "base64", content: bytes.toString("base64") }), stderr: "" });
+      }
+      const service = new OpenFigurePublicationService({ currentLibraries: async () => published.context, searchSimilar: async () => emptySearch(), lookupSearchSession: () => undefined, ghRunner: runner, receiptDirectory: path.join(published.root, failure) });
+      await assert.rejects(service.plan(published.selector), /github_unreachable|invalid JSON|identity is invalid|not_found/u);
+      assert.equal(runner.writes.length, 0);
+    }
+  } finally { await fs.rm(published.root, { recursive: true, force: true }); }
+});
+
+test("a valid base archive manifest is preserved and the new entry points to Commit A", async () => {
+  const published = await publishedContext();
+  const runner = new MockGhRunner();
+  const old = { moduleId: "existing-module", file: "archives/existing-module.zip", bytes: 100, sha256: "1".repeat(64), files: ["module.yml"], sourceCommit: "2".repeat(40) };
+  const bytes = Buffer.from(JSON.stringify({ schema: "figure-library.personal-archive-manifest.v1", providerId: PERSONAL_MODULE_PROVIDER_ID, repository: OPEN_FIGURE_REPOSITORY, generatedAt: "2000-01-01T00:00:00.000Z", entries: [old] }));
+  const blob = gitBlobSha(bytes);
+  runner.overrides.set("repos/" + OPEN_FIGURE_REPOSITORY + "/contents/catalog/archive-manifest.json?ref=" + BASE_COMMIT, { exitCode: 0, stdout: JSON.stringify({ type: "file", sha: blob }), stderr: "" });
+  runner.overrides.set("repos/" + OPEN_FIGURE_REPOSITORY + "/git/blobs/" + blob, { exitCode: 0, stdout: JSON.stringify({ encoding: "base64", content: bytes.toString("base64") }), stderr: "" });
+  const service = new OpenFigurePublicationService({ currentLibraries: async () => published.context, searchSimilar: async () => emptySearch(), lookupSearchSession: () => undefined, ghRunner: runner, receiptDirectory: path.join(published.root, "receipts") });
+  try {
+    const plan = await service.plan(published.selector);
+    await service.apply({ planDigest: plan.planDigest, operationId: "preserve" });
+    const manifestBytes = [...runner.blobs.values()].find((value) => Buffer.from(value).toString("utf8").includes('"schema": "figure-library.personal-archive-manifest.v1"'))!;
+    assert.ok(manifestBytes);
+    const manifest = JSON.parse(Buffer.from(manifestBytes).toString("utf8"));
+    assert.deepEqual(manifest.entries.find((entry: { moduleId: string }) => entry.moduleId === old.moduleId), old);
+    assert.equal(manifest.entries.find((entry: { moduleId: string }) => entry.moduleId === "clean-room-bars").sourceCommit, SOURCE_COMMIT);
+  } finally { await fs.rm(published.root, { recursive: true, force: true }); }
+});
+
+test("identity requires exact normalized title or preview/code identity, never substring or cross-provider ID", async () => {
+  const published = await publishedContext();
+  try {
+    const { buildOpenFigureModule } = await import("../src/open-figure-module.ts");
+    const { ModuleCatalogIndex } = await import("../src/module-catalog.ts");
+    const id = published.selector.identity;
+    const content = await published.context.versionedLibrary.getContent(id.templateId, id.revisionId, id.contentDigest);
+    const build = await buildOpenFigureModule({ library: published.context.versionedLibrary, content: content! });
+    const similar = similarCandidate();
+    assert.equal(annotateSimilarMatchKind({ candidate: { ...similar, title: "  CLEAN   ROOM bars " }, build }), "identity");
+    assert.equal(annotateSimilarMatchKind({ candidate: { ...similar, title: "Clean room bars with error bars" }, build }), "similar");
+    assert.equal(annotateSimilarMatchKind({ candidate: { ...similar, templateId: build.moduleId }, build }), "similar");
+    assert.equal(annotateSimilarMatchKind({ candidate: { ...similar, previewSha256: build.previewSha256 }, build }), "identity");
+    const openFigure = await ModuleCatalogIndex.load(path.resolve(import.meta.dirname, "../assets/personal-modules"));
+    const module = openFigure.catalog.modules[0]!;
+    const personal = { ...similar, providerId: PERSONAL_MODULE_PROVIDER_ID, templateId: module.moduleId, title: "unrelated fixture title", previewSha256: undefined };
+    const code = module.files.find((f) => f.path === module.canonicalCode)!;
+    assert.equal(annotateSimilarMatchKind({ candidate: personal, build: { ...build, canonicalCodeSha256: code.sha256 }, openFigure }), "identity");
+    assert.equal(annotateSimilarMatchKind({ candidate: personal, build: { ...build, previewSha256: module.preview.sha256 }, openFigure }), "identity");
+  } finally { await fs.rm(published.root, { recursive: true, force: true }); }
+});
+
+test("real MCP Plan -> exact cached search -> confirmed Apply binds the same six-candidate set", async () => {
+  const published = await publishedContext();
+  const runner = new MockGhRunner();
+  const prior = process.env.FIGURE_LIBRARY_DIR;
+  process.env.FIGURE_LIBRARY_DIR = published.root;
+  const { createServer } = await import("../src/server.ts");
+  const server = await createServer({ openFigurePr: { ghRunner: runner, receiptDirectory: path.join(published.root, "receipts") } });
+  const client = new Client({ name: "ofm-review-integration", version: "0.6.3" });
+  const [transport, serverTransport] = InMemoryTransport.createLinkedPair();
+  const structured = (value: unknown) => (value as { structuredContent: Record<string, any> }).structuredContent;
+  try {
+    await server.connect(serverTransport); await client.connect(transport);
+    const planned = structured(await client.callTool({ name: "figure_library_plan_open_figure_module_pr", arguments: { providerId: LOCAL_LIBRARY_PROVIDER_ID, exactSelector: published.selector } }));
+    const plan = planned.plan;
+    assert.ok(plan, JSON.stringify(planned));
+    assert.equal(plan.similarReviewRequired, true);
+    assert.equal(plan.similarSearch.limit, 6);
+    assert.deepEqual(plan.similarSearch.providerIds, [FIGUREYA_PROVIDER_ID, PERSONAL_MODULE_PROVIDER_ID]);
+    assert.ok(plan.similarCandidates.length <= 6);
+    const apply = () => client.callTool({ name: "figure_library_apply_open_figure_module_pr", arguments: { planDigest: plan.planDigest, operationId: "mcp-reviewed", similarReviewConfirmed: true, expectedResultSetId: plan.similarSearch.resultSetId } });
+    const before = structured(await apply());
+    assert.notEqual(before.envelope.outcome, "applied");
+    assert.equal(runner.writes.length, 0);
+    const { queryDigest: _digest, ...searchArgs } = plan.similarSearch;
+    const search = structured(await client.callTool({ name: "figure_library_search", arguments: searchArgs }));
+    assert.equal(search.resultSetId, plan.similarSearch.resultSetId);
+    assert.deepEqual(search.candidates.map((c: TemplateCandidate) => c.exactSelector), plan.similarCandidates.map((c: TemplateCandidate) => c.exactSelector));
+    assert.deepEqual(search.candidates.map((c: TemplateCandidate) => c.matchKind), plan.similarCandidates.map((c: TemplateCandidate) => c.matchKind));
+    assert.ok(search.candidates.every((c: TemplateCandidate) => c.providerId !== LOCAL_LIBRARY_PROVIDER_ID));
+    const applied = structured(await apply());
+    assert.equal(applied.envelope.outcome, "applied", JSON.stringify(applied));
+    assert.equal(runner.createdPulls, 1);
+    assert.equal(runner.writes.filter((w) => w.endpoint.endsWith("/git/commits")).length, 2);
+    assert.equal(runner.writes.some((w) => w.endpoint.includes("/merge")), false);
+  } finally {
+    await client.close(); await server.close();
+    if (prior === undefined) delete process.env.FIGURE_LIBRARY_DIR; else process.env.FIGURE_LIBRARY_DIR = prior;
     await fs.rm(published.root, { recursive: true, force: true });
   }
 });

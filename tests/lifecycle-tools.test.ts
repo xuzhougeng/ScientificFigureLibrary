@@ -101,6 +101,7 @@ test("core lifecycle registration omits Capture/project pins and missing confirm
     assert.equal(outcome.retrySameCall, false);
     assert.ok(Array.isArray(outcome.missingConfirmations));
     assert.ok(outcome.missingConfirmations.length > 0);
+    assert.ok(outcome.missingConfirmations.includes("application"));
     assert.match(toolText(missing), /^OUTCOME: needs_user_input\nTERMINAL: true\nRETRY_SAME_CALL: false/mu);
   } finally {
     await connection.client.close();
@@ -118,6 +119,7 @@ test("unbound lifecycle Apply is terminal and directs the Agent to bind the Libr
     const planned = await connection.client.callTool({
       name: "figure_library_plan_working_revision",
       arguments: {
+        application: "Compare the biological patterns represented by this fixture.",
         mode: "create",
         templateId: "unbound-reference",
         title: "Unbound reference",
@@ -177,6 +179,7 @@ test("direct visual intake plans, applies, replays, and never publishes source p
     const planned = await connection.client.callTool({
       name: "figure_library_plan_working_revision",
       arguments: {
+        application: "Compare the biological patterns represented by this fixture.",
         mode: "create",
         templateId: "direct-visual-reference",
         title: "Direct visual reference",
@@ -332,6 +335,7 @@ test("direct plot-template intake preserves the user-confirmed code origin", asy
     const planned = await connection.client.callTool({
       name: "figure_library_plan_working_revision",
       arguments: {
+        application: "Compare the biological patterns represented by this fixture.",
         mode: "create",
         templateId: "direct-user-plot",
         title: "Direct user plot",
@@ -423,6 +427,7 @@ test("visual inference cannot be mislabeled as executed reproduction", async () 
     const response = await connection.client.callTool({
       name: "figure_library_plan_working_revision",
       arguments: {
+        application: "Compare the biological patterns represented by this fixture.",
         mode: "create",
         templateId: "invalid-inference-claim",
         title: "Invalid inference claim",
@@ -494,6 +499,7 @@ test("Working plan preview, Apply, Publish, and Review preserve one truthful sum
   ) => ({
     mode,
     templateId: "truthful-plot",
+    application: "Compare patterns from this synthetic plotting fixture.",
     title,
     assetKind: "plot_template",
     language: "R",
@@ -798,6 +804,7 @@ test("Working preview returns stable not-found and invalid-image outcomes", asyn
     const planned = await connection.client.callTool({
       name: "figure_library_plan_working_revision",
       arguments: {
+        application: "Compare the biological patterns represented by this fixture.",
         mode: "create",
         templateId,
         title: templateId,
@@ -920,6 +927,7 @@ test("pending Working preview becomes stale after the bound Library changes", as
     const planned = await connection.client.callTool({
       name: "figure_library_plan_working_revision",
       arguments: {
+        application: "Compare the biological patterns represented by this fixture.",
         mode: "create",
         templateId: "rebound-preview",
         title: "Rebound preview",

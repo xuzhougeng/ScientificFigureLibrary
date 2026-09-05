@@ -1585,6 +1585,7 @@ export class PortableBundleManager {
       tags: content.tags,
       visualProfile: content.visualProfile,
       dataProfile: content.dataProfile,
+      ...(content.application ? { application: content.application } : {}),
       ...(content.scientificQuestion ? { scientificQuestion: content.scientificQuestion } : {}),
       packages: content.packages,
       license: content.license,

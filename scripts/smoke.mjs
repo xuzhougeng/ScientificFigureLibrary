@@ -287,6 +287,7 @@ try {
       templateId: "smoke-direct-volcano",
       title: "smoke-direct-unique volcano reference",
       description: `A user-confirmed image/code Figure Unit for the ${VERSION} stdio smoke.`,
+      application: "### Group comparison\n\n- Explore already-computed differential expression in this synthetic smoke fixture.",
       tags: ["smoke-direct-unique", "volcano"],
       visualProfile: "volcano scatter x log2FC y negative log10 adjusted p value",
       dataProfile: "gene log2FC pvalue padj",

@@ -234,3 +234,59 @@ test("Open Figure sanitizer rejects private machine paths in code", async () => 
     await fs.rm(root, { recursive: true, force: true });
   }
 });
+
+test("new OFM YAML and description.md retain one authoritative Markdown description", async () => {
+  const description = "A **group comparison**.\n\nSecond paragraph.";
+  const application = "### 免疫微环境\n\n- 比较处理组与对照组的细胞比例。";
+  const dataProfile = "Long table with a sample column.";
+  const original = candidate();
+  const { root, versionedLibrary, content } = await publishedLibrary("markdown-module", {
+    description, application, dataProfile, scientificQuestion: "处理前后群体组成是否不同？",
+    assets: [...original.assets, { logicalPath: "references/description.md", role: "reference", mediaType: "text/markdown", text: "DIVERGENT OLD DOCUMENT" }],
+  });
+  try {
+    const { parse } = await import("yaml");
+    const { figureDescriptionMarkdown } = await import("../src/figure-description.ts");
+    const built = await buildOpenFigureModule({ library: versionedLibrary, content });
+    const read = (file: string) => new TextDecoder().decode(built.files.find((f) => f.path === file)!.bytes);
+    const yaml = parse(read("module.yml"));
+    assert.equal(yaml.description, description);
+    assert.equal(yaml.application, application);
+    assert.equal(yaml.dataProfile, dataProfile);
+    assert.equal(yaml.scientificQuestion, "处理前后群体组成是否不同？");
+    assert.equal(read("description.md"), figureDescriptionMarkdown({ title: content.title, description, application, dataProfile }));
+    assert.deepEqual(yaml.files, built.files.map((f) => f.path));
+    assert.equal(built.files.filter((f) => f.path === "description.md").length, 1);
+    assert.ok(!built.files.some((f) => new TextDecoder().decode(f.bytes).includes("DIVERGENT OLD DOCUMENT")));
+    assert.ok(built.excludedLogicalPaths.includes("references/description.md"));
+  } finally { await fs.rm(root, { recursive: true, force: true }); }
+});
+
+test("legacy OFM export extracts scenarios or marks missing without copying visualProfile", async () => {
+  for (const description of ["Background\n\n## 使用场景\n\n- Compare response groups.", "Background only"]) {
+    const { root, versionedLibrary, content } = await publishedLibrary("legacy-markdown", { description, visualProfile: "RED POINTS ONLY" });
+    try {
+      const built = await buildOpenFigureModule({ library: versionedLibrary, content });
+      assert.doesNotMatch(built.application, /RED POINTS/u);
+      assert.equal(built.application, description.includes("使用场景") ? "- Compare response groups." : "未单独记录。此历史模板尚未提供独立应用场景。");
+      assert.equal(content.description, description);
+      assert.equal(content.application, undefined);
+    } finally { await fs.rm(root, { recursive: true, force: true }); }
+  }
+});
+
+test("public modules exclude private supporting notes even if misclassified as references", async () => {
+  const original = candidate();
+  const { root, versionedLibrary, content } = await publishedLibrary("private-docs", {
+    assets: [...original.assets,
+      { logicalPath: "references/receipt.md", role: "reference", mediaType: "text/markdown", text: "PRIVATE NOTE" },
+      { logicalPath: "references/private_reference.txt", role: "reference", mediaType: "text/plain", text: "PRIVATE NOTE" },
+      { logicalPath: "references/paper.pdf", role: "reference", mediaType: "application/pdf", text: "PRIVATE NOTE" },
+    ],
+  });
+  try {
+    const built = await buildOpenFigureModule({ library: versionedLibrary, content });
+    assert.ok(["references/receipt.md", "references/private_reference.txt", "references/paper.pdf"].every((file) => built.excludedLogicalPaths.includes(file)));
+    assert.ok(!built.files.some((file) => new TextDecoder().decode(file.bytes).includes("PRIVATE NOTE")));
+  } finally { await fs.rm(root, { recursive: true, force: true }); }
+});

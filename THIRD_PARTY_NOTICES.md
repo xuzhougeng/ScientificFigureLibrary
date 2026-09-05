@@ -38,3 +38,11 @@ The bundled JavaScript includes MIT-licensed Model Context Protocol SDK,
 MCP Apps SDK, Zod, fflate, ISC-licensed YAML, and Apache-2.0-licensed Fuse.js
 code. Their source packages and exact versions are recorded in
 `package-lock.json`.
+
+## Bundled figure workflow Skills
+
+The figure-style Skill and its Python sidecar derive from Wisp Science figure-style (Apache-2.0). Its license text, attribution and adaptation notice ship at skills/figure-style/LICENSE and NOTICE.md. No Python/R runtime or plotting packages are bundled.
+
+figure-organization adapts the user-provided Code Organization Skill under explicit permission to copy, adapt and distribute with SFL. No upstream open-source license was supplied; this component is not silently relicensed MIT. See skills/figure-organization/NOTICE.md.
+
+The Markdown UI bundles markdown-it (MIT) and DOMPurify (available under Apache-2.0 OR MPL-2.0; this distribution uses Apache-2.0). Their license texts and those of the added parser dependencies (argparse, entities, linkify-it, mdurl, punycode.js and uc.micro) ship in assets/licenses/. Exact versions are in package-lock.json. Raw documentation HTML and remote images are disabled.
