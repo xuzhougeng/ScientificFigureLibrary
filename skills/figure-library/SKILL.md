@@ -3,7 +3,7 @@ name: figure-library
 description: Build, review, search, select, and materialize immutable scientific-figure references from Local Published, FigureYa, bundled Open Figure Modules, frozen explicit-only Community, and explicitly trusted dynamic Providers.
 ---
 
-# Scientific Figure Library 0.6.3
+# Scientific Figure Library 0.6.4
 
 Use this Skill when a user wants to store an uploaded figure/code pair, review
 or publish a local template, search for a plotting reference, or materialize an

@@ -171,12 +171,14 @@ const ReviewAssessmentSchema = z.object({
 });
 
 const AssetOriginSchema = z.record(z.string(), z.unknown()).optional();
+const AssetRightsSchema = z.object({license:z.string().min(1).max(2000),distribution:z.enum(["local_only","public"]),attribution:z.string().max(4000).optional()});
 const VisualAssetSchema = z.object({
   assetId: z.string().regex(SAFE_ID),
   sourcePath: z.string().min(1).max(4_000),
   visualRole: z.enum(["source_reference", "rendered_output"]).optional(),
   mediaType: z.string().min(1).max(200).optional(),
   origin: AssetOriginSchema,
+  rights: AssetRightsSchema.optional(),
 });
 const CodeAssetSchema = z.object({
   assetId: z.string().regex(SAFE_ID),
@@ -187,12 +189,14 @@ const CodeAssetSchema = z.object({
     .optional(),
   mediaType: z.string().min(1).max(200).optional(),
   origin: AssetOriginSchema,
+  rights: AssetRightsSchema.optional(),
 });
 const SupportingAssetSchema = z.object({
   assetId: z.string().regex(SAFE_ID),
   sourcePath: z.string().min(1).max(4_000),
   mediaType: z.string().min(1).max(200).optional(),
   origin: AssetOriginSchema,
+  rights: AssetRightsSchema.optional(),
 });
 const FigureCodeLinkSchema = z.object({
   visualAssetId: z.string().regex(SAFE_ID),
@@ -280,6 +284,18 @@ const WorkingPlanInput = z.object({
   agentAssessment: z.record(z.string(), z.unknown()).optional(),
   validationState: ValidationStateSchema.optional(),
   provenance: z.record(z.string(), z.unknown()).optional(),
+  runtime: z.object({
+    schema: z.literal("figure-library.runtime-closure.v1"),
+    entrypoint: z.string().min(1).max(1_000),
+    dependencies: z.array(z.object({codePath:z.string().min(1),assetPath:z.string().min(1)})).max(100).optional(),
+    inputs: z.array(z.object({
+      codePath: z.string().min(1).max(1_000),
+      assetPath: z.string().min(1).max(1_000),
+      required: z.literal(true),
+      role: z.enum(["example_data", "source_data", "private_reference"]),
+    })).max(1_000),
+    output: z.object({ previewPath: z.string().min(1).max(1_000), mediaType: z.literal("image/png") }),
+  }).optional(),
 });
 
 const WorkingApplyInput = z.object({
@@ -607,6 +623,7 @@ async function directCandidate(input: WorkingPlanRequest): Promise<VersionedTemp
       visualPaths.set(asset.assetId, logicalPath);
       assets.push({
         logicalPath,
+        ...(asset.rights ? {rights:asset.rights}: {}),
         role: "visual",
         visualRole: asset.visualRole!,
         sourcePath: asset.sourcePath,
@@ -618,6 +635,7 @@ async function directCandidate(input: WorkingPlanRequest): Promise<VersionedTemp
       codePaths.set(asset.assetId, logicalPath);
       assets.push({
         logicalPath,
+        ...(asset.rights ? {rights:asset.rights}: {}),
         role: "code",
         codeOrigin: asset.codeOrigin!,
         sourcePath: asset.sourcePath,
@@ -629,6 +647,7 @@ async function directCandidate(input: WorkingPlanRequest): Promise<VersionedTemp
       logicalPath = `${asset.category === "reference" ? "references" : "evidence"}/${asset.assetId}${extension}`;
       assets.push({
         logicalPath,
+        ...(asset.rights ? {rights:asset.rights}: {}),
         role: asset.category,
         sourcePath: asset.sourcePath,
         ...(asset.mediaType ? { mediaType: asset.mediaType } : {}),
@@ -810,6 +829,7 @@ async function directCandidate(input: WorkingPlanRequest): Promise<VersionedTemp
     },
     figureCodeLinks,
     provenance: input.provenance ? jsonValue(input.provenance) : undefined,
+    runtime: input.runtime,
     annotations: jsonValue({
       schema: "figure-library.direct-intake-decision.v1",
       executionClaim: visualInference ? "inspired_by_not_reproduced" : executionStatus,

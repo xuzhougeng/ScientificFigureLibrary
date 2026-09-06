@@ -1580,6 +1580,7 @@ export class PortableBundleManager {
     const requiredAssetSha256 = content.assets.map((asset) => asset.sha256).sort();
     const importId = `bundle-${sha256(`${bundle.bundleId}:${targetTemplateId}`).slice(0, 24)}`;
     const candidate: VersionedTemplateCandidate = {
+      ...(content.runtime ? {runtime:content.runtime}: {}),
       title: content.title,
       description: content.description,
       tags: content.tags,
@@ -1617,6 +1618,7 @@ export class PortableBundleManager {
       },
       assets: content.assets.map((asset: StoredRevisionAsset) => ({
         logicalPath: asset.logicalPath,
+        ...(asset.rights ? {rights:asset.rights}: {}),
         role: asset.role,
         ...(asset.visualRole ? { visualRole: asset.visualRole } : {}),
         ...(asset.codeOrigin ? { codeOrigin: asset.codeOrigin } : {}),

@@ -60,6 +60,7 @@ function safeCandidate(): VersionedTemplateCandidate {
       reason: "The public-safe generated output is the canonical preview; the private source reference remains excluded.",
     },
     canonicalImplementation: { assetPath: "code/render.R", selectedBy: "user" },
+    runtime: {schema:"figure-library.runtime-closure.v1",entrypoint:"code/render.R",inputs:[{codePath:"data/data.csv",assetPath:"references/data.csv",required:true,role:"example_data"}],output:{previewPath:"visuals/rendered/preview.png",mediaType:"image/png"}},
     visualGrouping: {
       visualAssetPaths: ["visuals/source/private-reference.png", "visuals/rendered/preview.png"],
       confirmedBy: "user",
@@ -93,7 +94,7 @@ function safeCandidate(): VersionedTemplateCandidate {
         mediaType: "text/x-r-source",
         text: [
           "args <- commandArgs(trailingOnly = TRUE)",
-          "input_dir <- args[[2]]",
+          "input_dir <- 'data'",
           "output <- args[[4]]",
           "dat <- read.csv(file.path(input_dir, 'data.csv'))",
           "png(output, width = 1, height = 1)",
