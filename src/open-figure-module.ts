@@ -105,6 +105,10 @@ function scanText(pathValue: string, text: string) {
   }
 }
 
+function containsPrivateText(text: string) {
+  return PRIVATE_PATH.test(text) || TOKEN.test(text) || PRIVATE_KEY.test(text);
+}
+
 function scanBytes(pathValue: string, bytes: Uint8Array, mediaType: string) {
   if (bytes.byteLength > MAX_FILE_BYTES) throw new Error(`public asset exceeds the file size limit: ${pathValue}`);
   if (FORBIDDEN_PUBLIC_FILE.test(pathValue)) throw new Error(`forbidden public path: ${pathValue}`);
@@ -120,18 +124,29 @@ function uniqueSorted(values: string[]) {
   return [...new Set(values.map((item) => item.trim()).filter(Boolean))].sort(compareCanonicalStrings);
 }
 
-function codePublicPath(asset: StoredRevisionAsset, canonicalPath: string) {
-  if (asset.logicalPath === canonicalPath) {
-    const ext = extension(asset.logicalPath) === ".py" ? ".py" : ".R";
-    return `code/organized${ext === ".py" ? ".py" : ".R"}`;
+const PUBLIC_DATA_EXTENSIONS = /\.(?:csv|tsv|txt|nwk|newick|fasta|fa|fas|aln|phy|trees?|xlsx|xls)$/iu;
+
+function referencedDataNames(sourceCode: string) {
+  const names = new Map<string, string>();
+  const pattern = /["']([A-Za-z0-9][A-Za-z0-9._-]*\.(?:csv|tsv|txt|nwk|newick|fasta|fa|fas|aln|phy|trees?|xlsx|xls))["']/giu;
+  for (const match of sourceCode.matchAll(pattern)) {
+    const original = match[1]!;
+    names.set(original.toLocaleLowerCase("en-US"), original);
   }
-  const ext = extension(asset.logicalPath);
-  if (ext === ".py") return "code/example.py";
-  return "code/example.R";
+  return names;
 }
 
-function dataPublicPath(logicalPath: string, used: Set<string>) {
-  const name = basename(logicalPath).replace(/[^A-Za-z0-9._-]/gu, "-");
+function publicDataPath(logicalPath: string, used: Set<string>, referencedNames: Map<string, string>) {
+  const sourceName = basename(logicalPath).replace(/[^A-Za-z0-9._-]/gu, "-");
+  const sourceKey = sourceName.toLocaleLowerCase("en-US");
+  const candidates = [...referencedNames.entries()]
+    .filter(([name]) => extension(name) === extension(sourceName));
+  const tokenMatch = candidates.find((name) => {
+    const sourceTokens = sourceKey.split(/[-_.]+/u).filter((token) => token.length >= 4);
+    return sourceTokens.some((token) => name[0].includes(token));
+  });
+  const exact = referencedNames.get(sourceKey) ?? tokenMatch?.[1];
+  const name = exact ?? (candidates.length === 1 ? candidates[0]![1] : sourceName);
   let pathValue = `data/${name || "input.csv"}`;
   let index = 2;
   while (used.has(pathValue)) {
@@ -242,8 +257,8 @@ function yamlModule(options: {
         note: `Prepared from the reviewed Local Published entry ${options.moduleId}; internal Library state is not distributed.`,
       },
       {
-        type: "synthetic_data",
-        note: "Example inputs were generated for portable execution and do not represent real samples or scientific conclusions.",
+        type: "public_input_scope",
+        note: "Only explicitly selected public input assets are distributed; Local Published execution and scientific-validation claims are not inherited.",
       },
       {
         type: "clean_room_transformation",
@@ -291,6 +306,13 @@ export async function buildOpenFigureModule(options: {
   const usedPaths = new Set<string>();
   const fileMap = new Map<string, Uint8Array>();
   const excludedLogicalPaths: string[] = [];
+  const canonicalLoaded = await options.library.readAsset({
+    templateId: options.content.templateId,
+    revisionId: options.content.revisionId,
+    contentDigest: options.content.contentDigest,
+    logicalPath: canonicalPath,
+  });
+  const referencedNames = referencedDataNames(Buffer.from(canonicalLoaded.bytes).toString("utf8"));
   const addFile = (pathValue: string, bytes: Uint8Array, mediaType: string) => {
     if (usedPaths.has(pathValue)) throw new Error(`Open Figure module path collision: ${pathValue}`);
     scanBytes(pathValue, bytes, mediaType);
@@ -303,15 +325,10 @@ export async function buildOpenFigureModule(options: {
       excludedLogicalPaths.push(asset.logicalPath);
       continue;
     }
-    const includeCode =
-      asset.role === "code" &&
-      (asset.logicalPath === canonicalPath ||
-        asset.codeOrigin === "user_supplied" ||
-        asset.codeOrigin === "adapted" ||
-        asset.codeOrigin === "agent_generated");
+    const includeCode = asset.role === "code" && asset.logicalPath === canonicalPath;
     const includeData =
       asset.role === "reference" &&
-      /\.(?:csv|tsv|txt)$/iu.test(asset.logicalPath);
+      PUBLIC_DATA_EXTENSIONS.test(asset.logicalPath);
     const includeDocs =
       asset.role === "reference" &&
       /\.(?:md|txt)$/iu.test(asset.logicalPath) &&
@@ -339,16 +356,20 @@ export async function buildOpenFigureModule(options: {
       contentDigest: options.content.contentDigest,
       logicalPath: asset.logicalPath,
     });
+    if (includeDocs && containsPrivateText(Buffer.from(loaded.bytes).toString("utf8"))) {
+      excludedLogicalPaths.push(asset.logicalPath);
+      continue;
+    }
     if (includePreview) {
       addFile("preview.png", loaded.bytes, "image/png");
       continue;
     }
     if (includeCode) {
-      addFile(codePublicPath(asset, canonicalPath), loaded.bytes, asset.mediaType);
+      addFile("code/organized.R", loaded.bytes, asset.mediaType);
       continue;
     }
     if (includeData) {
-      addFile(dataPublicPath(asset.logicalPath, usedPaths), loaded.bytes, asset.mediaType);
+      addFile(publicDataPath(asset.logicalPath, usedPaths, referencedNames), loaded.bytes, asset.mediaType);
       continue;
     }
     if (includeDocs) {
@@ -361,6 +382,16 @@ export async function buildOpenFigureModule(options: {
   const canonicalCode = [...fileMap.keys()].find((pathValue) => pathValue.startsWith("code/organized.")) ??
     [...fileMap.keys()].find((pathValue) => pathValue.startsWith("code/"));
   if (!canonicalCode) throw new Error("Open Figure publication is missing canonical code");
+  const publicDataNames = new Set(
+    [...fileMap.keys()]
+      .filter((pathValue) => pathValue.startsWith("data/"))
+      .map((pathValue) => basename(pathValue).toLocaleLowerCase("en-US")),
+  );
+  for (const original of referencedNames.values()) {
+    if (!publicDataNames.has(original.toLocaleLowerCase("en-US"))) {
+      throw new Error(`Open Figure module is missing referenced public input: ${original}`);
+    }
+  }
   const thumbnail = jpegThumbnail(fileMap.get("preview.png")!);
   addFile("thumbnail.jpg", thumbnail, "image/jpeg");
 
@@ -400,11 +431,12 @@ export async function buildOpenFigureModule(options: {
   }
   const codeFiles = [...fileMap.keys()].filter((pathValue) => pathValue.startsWith("code/")).sort(compareCanonicalStrings);
   const inputFiles = [...fileMap.keys()].filter((pathValue) => pathValue.startsWith("data/") && pathValue !== "data_schema.yml").sort(compareCanonicalStrings);
-  const executionStatus = options.content.validationState?.plotExecution.status ??
-    (options.content.executionStatus === "passed" || options.content.executionStatus === "failed" || options.content.executionStatus === "not_run"
-      ? options.content.executionStatus
-      : "not_run");
-  const executionScope = options.content.validationState?.plotExecution.scope ?? "synthetic_data";
+  // A Local Published execution claim is not evidence that this sanitized
+  // public module was executed. The host-side render receipt is the only
+  // source of public-package execution status and is attached by the PR
+  // workflow after the clean staging directory has been run.
+  const executionStatus = "not_run" as const;
+  const executionScope = "unknown" as const;
   const files = [...fileMap.keys(), "module.yml"].sort(compareCanonicalStrings);
   if (files.length > MAX_FILES) throw new Error("Open Figure module contains too many files");
   const requiredFiles = files.filter((pathValue) => pathValue !== "provenance.md");
@@ -414,7 +446,6 @@ export async function buildOpenFigureModule(options: {
     reviewStatus: "approved" as const,
     executionStatus,
     executionScope,
-    ...(executionStatus === "passed" ? { evidence: ["preview.png"] } : {}),
   };
   const moduleYaml = yamlModule({
     moduleId,

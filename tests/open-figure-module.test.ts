@@ -158,6 +158,7 @@ test("Open Figure sanitizer keeps generated preview and drops source/original/pr
     const built = await buildOpenFigureModule({ library: versionedLibrary, content });
     const paths = built.files.map((file) => file.path);
     assert.ok(paths.includes("code/organized.R"));
+    assert.ok(!paths.includes("code/example.R"));
     assert.ok(paths.includes("preview.png"));
     assert.ok(paths.includes("thumbnail.jpg"));
     assert.ok(paths.includes("module.yml"));
@@ -168,6 +169,65 @@ test("Open Figure sanitizer keeps generated preview and drops source/original/pr
     assert.match(yaml, /code: MIT/u);
     assert.doesNotMatch(yaml, /private_reference/u);
     assert.equal(built.titleEnDerived, true);
+  } finally {
+    await fs.rm(root, { recursive: true, force: true });
+  }
+});
+
+test("Open Figure sanitizer publishes only the canonical code and maps a sole data input to its referenced name", async () => {
+  const { root, versionedLibrary, content } = await publishedLibrary("portable-ggtree", {
+    canonicalImplementation: { assetPath: "code/code-organized.r", selectedBy: "user" },
+    visualGrouping: {
+      visualAssetPaths: ["visuals/rendered/preview.png"],
+      confirmedBy: "user",
+    },
+    figureCodeLinks: [
+      {
+        visualAssetPath: "visuals/rendered/preview.png",
+        codeAssetPaths: ["code/code-organized.r"],
+        relationship: "generated_output",
+        confirmedBy: "user",
+        evidence: "The organized script generated the rendered preview.",
+      },
+    ],
+    assets: [
+      {
+        logicalPath: "code/code-organized.r",
+        role: "code",
+        codeOrigin: "adapted",
+        language: "R",
+        mediaType: "text/x-r-source",
+        text: 'tree <- read.tree(file.path(root, "data", "HPV58.nwk"))\n',
+      },
+      {
+        logicalPath: "references/tree-nwk.nwk",
+        role: "reference",
+        mediaType: "text/plain",
+        text: "(a:1,b:1);\n",
+      },
+      {
+        logicalPath: "evidence/run.md",
+        role: "evidence",
+        mediaType: "text/markdown",
+        text: "Local-only execution note.\n",
+      },
+      {
+        logicalPath: "visuals/rendered/preview.png",
+        role: "visual",
+        visualRole: "rendered_output",
+        mediaType: "image/png",
+        bytes: new Uint8Array(PNG_BYTES),
+      },
+    ],
+  });
+  try {
+    const built = await buildOpenFigureModule({ library: versionedLibrary, content });
+    const paths = built.files.map((file) => file.path);
+    assert.deepEqual(paths.filter((file) => file.startsWith("code/")), ["code/organized.R"]);
+    assert.ok(paths.includes("data/HPV58.nwk"));
+    const yaml = new TextDecoder().decode(built.files.find((file) => file.path === "module.yml")!.bytes);
+    assert.match(yaml, /executionStatus: not_run/u);
+    assert.match(yaml, /executionScope: unknown/u);
   } finally {
     await fs.rm(root, { recursive: true, force: true });
   }
