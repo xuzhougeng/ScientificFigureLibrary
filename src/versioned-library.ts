@@ -195,6 +195,22 @@ export interface IntakeRevisionBinding {
   requiredAssetSha256: string[];
 }
 
+export type RuntimeInputRole = "example_data" | "source_data" | "private_reference";
+
+export interface RuntimeClosureInputV1 {
+  codePath: string;
+  assetPath: string;
+  required: true;
+  role: RuntimeInputRole;
+}
+
+export interface RuntimeClosureV1 {
+  schema: "figure-library.runtime-closure.v1";
+  entrypoint: string;
+  inputs: RuntimeClosureInputV1[];
+  output: { previewPath: string; mediaType: "image/png" };
+}
+
 export interface VersionedTemplateCandidate {
   title: string;
   description?: string;
@@ -219,6 +235,7 @@ export interface VersionedTemplateCandidate {
   provenance?: JsonValue;
   annotations?: JsonValue;
   intakeBinding?: IntakeRevisionBinding;
+  runtime?: RuntimeClosureV1;
   assets: RevisionAssetInput[];
 }
 
@@ -315,6 +332,7 @@ export interface TemplateContentV1 {
   provenance?: JsonValue;
   annotations?: JsonValue;
   intakeBinding?: IntakeRevisionBinding;
+  runtime?: RuntimeClosureV1;
   assets: StoredRevisionAsset[];
   contentDigest: string;
 }
@@ -894,6 +912,43 @@ function assertNoAbsoluteFilesystemPaths(value: JsonValue, label: string): JsonV
   return jsonClone(value);
 }
 
+function normalizeRuntimeClosure(
+  value: unknown,
+  assetsByPath: Map<string, StoredRevisionAsset>,
+  canonicalPath?: string,
+  primaryPreview?: string,
+): RuntimeClosureV1 | undefined {
+  if (value === undefined) return undefined;
+  if (!isRecord(value) || value.schema !== "figure-library.runtime-closure.v1") {
+    throw new Error("invalid runtime closure schema");
+  }
+  if (typeof value.entrypoint !== "string" || !value.entrypoint.trim()) throw new Error("runtime.entrypoint is required");
+  const entrypoint = validateRevisionAssetPath(value.entrypoint);
+  if (canonicalPath && entrypoint !== canonicalPath) throw new Error("runtime.entrypoint must equal canonicalImplementation.assetPath");
+  if (!Array.isArray(value.inputs)) throw new Error("runtime.inputs must be an array");
+  const seen = new Set<string>();
+  const inputs = value.inputs.map((raw, index) => {
+    if (!isRecord(raw) || typeof raw.codePath !== "string" || typeof raw.assetPath !== "string" || raw.required !== true ||
+        !["example_data", "source_data", "private_reference"].includes(String(raw.role))) {
+      throw new Error(`invalid runtime input at index ${index}`);
+    }
+    const codePath = validateRevisionAssetPath(raw.codePath);
+    const assetPath = validateRevisionAssetPath(raw.assetPath);
+    const key = `${codePath}\u0000${assetPath}`;
+    if (seen.has(key)) throw new Error(`duplicate runtime input: ${codePath}`);
+    seen.add(key);
+    if (assetsByPath.get(assetPath)?.role !== "reference") throw new Error(`runtime input must reference a reference asset: ${assetPath}`);
+    return { codePath, assetPath, required: true as const, role: raw.role as RuntimeInputRole };
+  });
+  if (!isRecord(value.output) || value.output.mediaType !== "image/png" || typeof value.output.previewPath !== "string") {
+    throw new Error("runtime.output must declare a PNG previewPath");
+  }
+  const previewPath = validateRevisionAssetPath(value.output.previewPath);
+  if (primaryPreview && previewPath !== primaryPreview) throw new Error("runtime.output.previewPath must equal primaryPreview");
+  if (assetsByPath.get(previewPath)?.role !== "visual") throw new Error("runtime.output.previewPath must reference a visual asset");
+  return { schema: "figure-library.runtime-closure.v1", entrypoint, inputs, output: { previewPath, mediaType: "image/png" } };
+}
+
 function assertCanonicalAssetPath(
   logicalPath: string,
   role: RevisionAssetRole,
@@ -1242,6 +1297,12 @@ async function prepareCandidate(options: {
   if (canonicalImplementation && canonicalImplementation.selectedBy !== "user") {
     throw new Error("canonical implementation must be explicitly selected by the user");
   }
+  const runtime = normalizeRuntimeClosure(
+    candidate.runtime,
+    assetsByPath,
+    canonicalImplementation?.assetPath,
+    primaryPreview,
+  );
 
   const figureCodeLinks = (candidate.figureCodeLinks ?? []).map((link) => ({
     visualAssetPath: validateRevisionAssetPath(link.visualAssetPath),
@@ -1364,6 +1425,7 @@ async function prepareCandidate(options: {
       ? { annotations: assertNoAbsoluteFilesystemPaths(candidate.annotations, "annotations") }
       : {}),
     ...(intakeBinding ? { intakeBinding } : {}),
+    ...(runtime ? { runtime } : {}),
     assets: storedAssets,
   };
   const content: TemplateContentV1 = {
@@ -2146,6 +2208,14 @@ function validateContentValue(
   if (value.assetKind === "visual_reference" && value.canonicalImplementation) {
     throw new Error("visual reference content cannot have a canonical implementation");
   }
+  normalizeRuntimeClosure(
+    value.runtime,
+    byPath,
+    isRecord(value.canonicalImplementation) && typeof value.canonicalImplementation.assetPath === "string"
+      ? value.canonicalImplementation.assetPath
+      : undefined,
+    typeof value.primaryPreview === "string" ? value.primaryPreview : undefined,
+  );
   if (!Array.isArray(value.figureCodeLinks)) throw new Error("invalid figureCodeLinks");
   for (const link of value.figureCodeLinks) {
     if (!isRecord(link) || typeof link.evidence !== "string" || !link.evidence.trim()) {

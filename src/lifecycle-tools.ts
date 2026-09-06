@@ -280,6 +280,17 @@ const WorkingPlanInput = z.object({
   agentAssessment: z.record(z.string(), z.unknown()).optional(),
   validationState: ValidationStateSchema.optional(),
   provenance: z.record(z.string(), z.unknown()).optional(),
+  runtime: z.object({
+    schema: z.literal("figure-library.runtime-closure.v1"),
+    entrypoint: z.string().min(1).max(1_000),
+    inputs: z.array(z.object({
+      codePath: z.string().min(1).max(1_000),
+      assetPath: z.string().min(1).max(1_000),
+      required: z.literal(true),
+      role: z.enum(["example_data", "source_data", "private_reference"]),
+    })).max(1_000),
+    output: z.object({ previewPath: z.string().min(1).max(1_000), mediaType: z.literal("image/png") }),
+  }).optional(),
 });
 
 const WorkingApplyInput = z.object({
@@ -810,6 +821,7 @@ async function directCandidate(input: WorkingPlanRequest): Promise<VersionedTemp
     },
     figureCodeLinks,
     provenance: input.provenance ? jsonValue(input.provenance) : undefined,
+    runtime: input.runtime,
     annotations: jsonValue({
       schema: "figure-library.direct-intake-decision.v1",
       executionClaim: visualInference ? "inspired_by_not_reproduced" : executionStatus,

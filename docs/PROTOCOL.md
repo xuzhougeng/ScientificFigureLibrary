@@ -593,6 +593,18 @@ must display and explicitly confirm both the old and new key fingerprints.
 
 ## Sanitized public submission export
 
+### Runtime closure for new plot templates
+
+New or updated Local Published plot templates may declare
+`runtime: figure-library.runtime-closure.v1`. The closure binds the selected
+canonical implementation, each required runtime input, its Local Published
+asset path, the path used by the code, and the generated PNG output. Publish
+planning validates the closure against the immutable revision inventory; it
+never reads a Gallery, inbox, project directory, or user home as an implicit
+fallback. Older Releases without this optional field remain readable, but a
+new public export must either provide a valid closure or use an explicit
+legacy export path with its limitations reported.
+
 Public publication starts from one exact, currently reachable Local Published
 Release; it never accepts a Working Revision, an entire Library, or an
 unreachable historical Release. Use

@@ -156,6 +156,19 @@ function publicDataPath(logicalPath: string, used: Set<string>, referencedNames:
   return pathValue;
 }
 
+function runtimePublicDataPath(logicalPath: string, runtimeInputs: Map<string, string>, used: Set<string>, fallback: string) {
+  const requested = runtimeInputs.get(logicalPath);
+  if (!requested) return fallback;
+  const name = basename(requested).replace(/[^A-Za-z0-9._-]/gu, "-");
+  let pathValue = `data/${name}`;
+  let index = 2;
+  while (used.has(pathValue)) {
+    pathValue = `data/${index}-${name}`;
+    index += 1;
+  }
+  return pathValue;
+}
+
 function jpegThumbnail(pngBytes: Uint8Array) {
   const png = PNG.sync.read(Buffer.from(pngBytes), { checkCRC: true });
   const width = png.width;
@@ -313,6 +326,9 @@ export async function buildOpenFigureModule(options: {
     logicalPath: canonicalPath,
   });
   const referencedNames = referencedDataNames(Buffer.from(canonicalLoaded.bytes).toString("utf8"));
+  const runtimeInputs = new Map(
+    (options.content.runtime?.inputs ?? []).map((input) => [input.assetPath, input.codePath]),
+  );
   const addFile = (pathValue: string, bytes: Uint8Array, mediaType: string) => {
     if (usedPaths.has(pathValue)) throw new Error(`Open Figure module path collision: ${pathValue}`);
     scanBytes(pathValue, bytes, mediaType);
@@ -369,7 +385,8 @@ export async function buildOpenFigureModule(options: {
       continue;
     }
     if (includeData) {
-      addFile(publicDataPath(asset.logicalPath, usedPaths, referencedNames), loaded.bytes, asset.mediaType);
+      const fallback = publicDataPath(asset.logicalPath, usedPaths, referencedNames);
+      addFile(runtimePublicDataPath(asset.logicalPath, runtimeInputs, usedPaths, fallback), loaded.bytes, asset.mediaType);
       continue;
     }
     if (includeDocs) {

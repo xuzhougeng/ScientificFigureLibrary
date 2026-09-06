@@ -177,6 +177,12 @@ test("Open Figure sanitizer keeps generated preview and drops source/original/pr
 test("Open Figure sanitizer publishes only the canonical code and maps a sole data input to its referenced name", async () => {
   const { root, versionedLibrary, content } = await publishedLibrary("portable-ggtree", {
     canonicalImplementation: { assetPath: "code/code-organized.r", selectedBy: "user" },
+    runtime: {
+      schema: "figure-library.runtime-closure.v1",
+      entrypoint: "code/code-organized.r",
+      inputs: [{ codePath: "data/HPV58.nwk", assetPath: "references/tree-nwk.nwk", required: true, role: "example_data" }],
+      output: { previewPath: "visuals/rendered/preview.png", mediaType: "image/png" },
+    },
     visualGrouping: {
       visualAssetPaths: ["visuals/rendered/preview.png"],
       confirmedBy: "user",
