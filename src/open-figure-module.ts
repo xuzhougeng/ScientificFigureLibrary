@@ -120,14 +120,24 @@ function uniqueSorted(values: string[]) {
   return [...new Set(values.map((item) => item.trim()).filter(Boolean))].sort(compareCanonicalStrings);
 }
 
-function codePublicPath(asset: StoredRevisionAsset, canonicalPath: string) {
+function codePublicPath(asset: StoredRevisionAsset, canonicalPath: string, used: Set<string>) {
   if (asset.logicalPath === canonicalPath) {
     const ext = extension(asset.logicalPath) === ".py" ? ".py" : ".R";
     return `code/organized${ext === ".py" ? ".py" : ".R"}`;
   }
-  const ext = extension(asset.logicalPath);
-  if (ext === ".py") return "code/example.py";
-  return "code/example.R";
+  const ext = extension(asset.logicalPath) === ".py" ? ".py" : ".R";
+  // A revision may contain several non-canonical code assets.  Mapping all of
+  // them to code/example.R used to make publication fail deterministically.
+  // Keep the public names portable and derive the suffix from the immutable
+  // asset identity so plans remain reproducible across runs.
+  const digest = typeof asset.sha256 === "string" ? asset.sha256.slice(0, 8) : "asset";
+  let pathValue = `code/example-${digest}${ext}`;
+  let index = 2;
+  while (used.has(pathValue)) {
+    pathValue = `code/example-${digest}-${index}${ext}`;
+    index += 1;
+  }
+  return pathValue;
 }
 
 function dataPublicPath(logicalPath: string, used: Set<string>) {
@@ -344,7 +354,7 @@ export async function buildOpenFigureModule(options: {
       continue;
     }
     if (includeCode) {
-      addFile(codePublicPath(asset, canonicalPath), loaded.bytes, asset.mediaType);
+      addFile(codePublicPath(asset, canonicalPath, usedPaths), loaded.bytes, asset.mediaType);
       continue;
     }
     if (includeData) {
