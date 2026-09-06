@@ -347,6 +347,9 @@ export async function buildOpenFigureModule(options: {
       excludedLogicalPaths.push(asset.logicalPath);
       continue;
     }
+    // Preserve the collision fix from 98176fd without reopening the public
+    // boundary: supplementary Local code is not part of this export contract.
+    // Only the selected canonical implementation gets a public code path.
     const includeCode = asset.role === "code" && asset.logicalPath === canonicalPath;
     const includeData =
       asset.role === "reference" &&

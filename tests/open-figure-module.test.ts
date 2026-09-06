@@ -191,6 +191,30 @@ test("Open Figure sanitizer keeps generated preview and drops source/original/pr
   }
 });
 
+test("98176fd regression: three adapted R assets export without code collisions or preview changes", async () => {
+  const original = candidate();
+  // The real affected revisions classify organized/example/original as adapted,
+  // so the historical author_provided exclusion did not prevent the collision.
+  const { root, versionedLibrary, content } = await publishedLibrary("three-adapted-r-assets", {
+    assets: original.assets.map((asset) => asset.role === "code"
+      ? { ...asset, codeOrigin: "adapted" as const }
+      : asset),
+  });
+  try {
+    const built = await buildOpenFigureModule({ library: versionedLibrary, content });
+    const codePaths = built.files.filter((file) => file.path.startsWith("code/")).map((file) => file.path);
+    assert.deepEqual(codePaths, ["code/organized.R"]);
+    assert.ok(built.excludedLogicalPaths.includes("code/code-example.r"));
+    assert.ok(built.excludedLogicalPaths.includes("code/code-original.r"));
+    assert.equal(new Set(built.files.map((file) => file.path)).size, built.files.length);
+    const preview = built.files.find((file) => file.path === "preview.png");
+    assert.ok(preview);
+    assert.deepEqual(Buffer.from(preview.bytes), PNG_BYTES);
+  } finally {
+    await fs.rm(root, { recursive: true, force: true });
+  }
+});
+
 test("Open Figure sanitizer publishes only the canonical code and maps a sole data input to its referenced name", async () => {
   const { root, versionedLibrary, content } = await publishedLibrary("portable-ggtree", {
     canonicalImplementation: { assetPath: "code/code-organized.r", selectedBy: "user" },
