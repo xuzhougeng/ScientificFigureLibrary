@@ -66,6 +66,7 @@ function candidate(): VersionedTemplateCandidate {
     },
     primaryPreview: "visuals/rendered/preview.png",
     canonicalImplementation: { assetPath: "code/render.R", selectedBy: "user" },
+    runtime: {schema:"figure-library.runtime-closure.v1",entrypoint:"code/render.R",inputs:[{codePath:"data/data.csv",assetPath:"references/data.csv",required:true,role:"example_data"}],output:{previewPath:"visuals/rendered/preview.png",mediaType:"image/png"}},
     figureCodeLinks: [
       {
         visualAssetPath: "visuals/rendered/preview.png",
@@ -89,12 +90,14 @@ function candidate(): VersionedTemplateCandidate {
         codeOrigin: "adapted",
         language: "R",
         mediaType: "text/x-r-source",
-        text: "dat <- read.csv('data.csv')\nplot(dat)\n",
+        rights: { license: "MIT", distribution: "public" },
+        text: "dat <- read.csv('data/data.csv')\nplot(dat)\n",
       },
       {
         logicalPath: "references/data.csv",
         role: "reference",
         mediaType: "text/csv",
+        rights: { license: "CC BY 4.0", distribution: "public" },
         text: "group,value\nA,1\nB,2\n",
       },
       {
@@ -108,6 +111,7 @@ function candidate(): VersionedTemplateCandidate {
         role: "visual",
         visualRole: "rendered_output",
         mediaType: "image/png",
+        rights: { license: "CC BY 4.0", distribution: "public" },
         bytes: new Uint8Array(PNG_BYTES),
       },
       {

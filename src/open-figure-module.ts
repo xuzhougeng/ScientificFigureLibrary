@@ -148,10 +148,8 @@ function publicDataPath(logicalPath: string, used: Set<string>, referencedNames:
   const exact = referencedNames.get(sourceKey) ?? tokenMatch?.[1];
   const name = exact ?? (candidates.length === 1 ? candidates[0]![1] : sourceName);
   let pathValue = `data/${name || "input.csv"}`;
-  let index = 2;
   while (used.has(pathValue)) {
-    pathValue = `data/${index}-${name}`;
-    index += 1;
+    throw new Error(`Open Figure module path collision: ${pathValue}; declare a unique runtime input path instead of renaming the asset`);
   }
   return pathValue;
 }
@@ -159,14 +157,24 @@ function publicDataPath(logicalPath: string, used: Set<string>, referencedNames:
 function runtimePublicDataPath(logicalPath: string, runtimeInputs: Map<string, string>, used: Set<string>, fallback: string) {
   const requested = runtimeInputs.get(logicalPath);
   if (!requested) return fallback;
-  const name = basename(requested).replace(/[^A-Za-z0-9._-]/gu, "-");
-  let pathValue = `data/${name}`;
-  let index = 2;
-  while (used.has(pathValue)) {
-    pathValue = `data/${index}-${name}`;
-    index += 1;
-  }
+  if (!requested.startsWith("data/")) throw new Error(`runtime input public path must be under data/: ${requested}`);
+  const pathValue = requested;
+  if (used.has(pathValue)) throw new Error(`Open Figure module path collision: ${pathValue}; runtime inputs must have unique public paths`);
   return pathValue;
+}
+
+function publicAssetLicense(asset: StoredRevisionAsset, expected: "code" | "content", logicalPath: string) {
+  if (!asset.rights || asset.rights.distribution !== "public" || !asset.rights.license.trim()) {
+    throw new Error(`Open Figure public asset lacks an explicit public redistribution right: ${logicalPath}`);
+  }
+  if (expected === "code" && asset.rights.license.trim().toLocaleLowerCase("en-US") !== "mit") {
+    throw new Error(`Open Figure public code must be licensed MIT: ${logicalPath}`);
+  }
+  const lower = asset.rights.license.toLocaleLowerCase("en-US");
+  if (/(?:unknown|private_reference|unlicensed)/u.test(lower)) {
+    throw new Error(`Open Figure public asset has non-public rights: ${logicalPath}`);
+  }
+  return asset.rights.license.trim();
 }
 
 function jpegThumbnail(pngBytes: Uint8Array) {
@@ -237,6 +245,7 @@ function yamlModule(options: {
     executionScope: "synthetic_data" | "example_data" | "real_data" | "unknown";
     evidence?: string[];
   };
+  licenses: { code: string; content: string; documentation: string };
 }) {
   const document = {
     schema: OPEN_FIGURE_MODULE_SCHEMA,
@@ -258,11 +267,7 @@ function yamlModule(options: {
     files: options.files,
     preview: options.preview,
     thumbnail: options.thumbnail,
-    licenses: {
-      code: "MIT",
-      content: "CC BY 4.0",
-      documentation: "CC BY 4.0",
-    },
+    licenses: options.licenses,
     publisher: options.publisher,
     provenance: [
       {
@@ -329,6 +334,7 @@ export async function buildOpenFigureModule(options: {
   const runtimeInputs = new Map(
     (options.content.runtime?.inputs ?? []).map((input) => [input.assetPath, input.codePath]),
   );
+  const publicContentLicenses = new Set<string>();
   const addFile = (pathValue: string, bytes: Uint8Array, mediaType: string) => {
     if (usedPaths.has(pathValue)) throw new Error(`Open Figure module path collision: ${pathValue}`);
     scanBytes(pathValue, bytes, mediaType);
@@ -344,7 +350,7 @@ export async function buildOpenFigureModule(options: {
     const includeCode = asset.role === "code" && asset.logicalPath === canonicalPath;
     const includeData =
       asset.role === "reference" &&
-      PUBLIC_DATA_EXTENSIONS.test(asset.logicalPath);
+      (PUBLIC_DATA_EXTENSIONS.test(asset.logicalPath) || runtimeInputs.has(asset.logicalPath));
     const includeDocs =
       asset.role === "reference" &&
       /\.(?:md|txt)$/iu.test(asset.logicalPath) &&
@@ -377,19 +383,23 @@ export async function buildOpenFigureModule(options: {
       continue;
     }
     if (includePreview) {
+      publicAssetLicense(asset, "content", asset.logicalPath);
       addFile("preview.png", loaded.bytes, "image/png");
       continue;
     }
     if (includeCode) {
+      publicAssetLicense(asset, "code", asset.logicalPath);
       addFile("code/organized.R", loaded.bytes, asset.mediaType);
       continue;
     }
     if (includeData) {
+      publicContentLicenses.add(publicAssetLicense(asset, "content", asset.logicalPath));
       const fallback = publicDataPath(asset.logicalPath, usedPaths, referencedNames);
       addFile(runtimePublicDataPath(asset.logicalPath, runtimeInputs, usedPaths, fallback), loaded.bytes, asset.mediaType);
       continue;
     }
     if (includeDocs) {
+      publicContentLicenses.add(publicAssetLicense(asset, "content", asset.logicalPath));
       const name = basename(asset.logicalPath).toLocaleLowerCase("en-US") === "readme.md" ? "README.md" : `docs/${basename(asset.logicalPath)}`;
       addFile(name, loaded.bytes, asset.mediaType);
     }
@@ -427,6 +437,12 @@ export async function buildOpenFigureModule(options: {
   const dataProfile = options.content.dataProfile.trim() || "Example or synthetic plotting inputs.";
   const tags = uniqueSorted(options.content.tags.length ? options.content.tags : [moduleId, options.content.plotFamily]);
   const packages = uniqueSorted(options.content.packages);
+  if (!canonicalAsset.rights || canonicalAsset.rights.distribution !== "public") {
+    throw new Error(`Open Figure canonical code requires an explicit public rights declaration: ${canonicalPath}`);
+  }
+  if (!previewAsset.rights || previewAsset.rights.distribution !== "public") {
+    throw new Error(`Open Figure generated preview requires an explicit public rights declaration: ${previewPath}`);
+  }
   if (!fileMap.has("README.md")) {
     addFile(
       "README.md",
@@ -484,6 +500,11 @@ export async function buildOpenFigureModule(options: {
     preview: { path: "preview.png", bytes: previewStat.bytes.byteLength, sha256: previewStat.sha256, mediaType: "image/png" },
     thumbnail: { path: "thumbnail.jpg", bytes: thumbnailStat.bytes.byteLength, sha256: thumbnailStat.sha256, mediaType: "image/jpeg" },
     publisher,
+    licenses: {
+      code: publicAssetLicense(canonicalAsset, "code", canonicalPath),
+      content: [...publicContentLicenses].sort(compareCanonicalStrings).join("; ") || "CC BY 4.0",
+      documentation: "CC BY 4.0",
+    },
   });
   addFile("module.yml", utf8(moduleYaml), "application/yaml");
   const finalFiles = [...fileMap.entries()]

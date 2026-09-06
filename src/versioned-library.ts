@@ -1,3 +1,4 @@
+import { runtimePath, assertUniqueRuntimePaths, inspectRuntimeReads, assertRuntimeReads } from "./runtime-closure.ts";
 import { createHash, randomUUID } from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
@@ -88,7 +89,14 @@ export type CodeAssetOrigin =
   | "adapted";
 export type ReviewSource = "system" | "rule" | "agent" | "user" | "migration";
 
+export interface AssetRights {
+  license: string;
+  distribution: "local_only" | "public";
+  attribution?: string;
+}
+
 export interface RevisionAssetInput {
+  rights?: AssetRights;
   logicalPath: string;
   role: RevisionAssetRole;
   visualRole?: VisualAssetRole;
@@ -102,6 +110,7 @@ export interface RevisionAssetInput {
 }
 
 export interface StoredRevisionAsset {
+  rights?: AssetRights;
   logicalPath: string;
   file: string;
   role: RevisionAssetRole;
@@ -208,6 +217,7 @@ export interface RuntimeClosureV1 {
   schema: "figure-library.runtime-closure.v1";
   entrypoint: string;
   inputs: RuntimeClosureInputV1[];
+  dependencies?: Array<{ codePath: string; assetPath: string }>;
   output: { previewPath: string; mediaType: "image/png" };
 }
 
@@ -912,6 +922,12 @@ function assertNoAbsoluteFilesystemPaths(value: JsonValue, label: string): JsonV
   return jsonClone(value);
 }
 
+function normalizeAssetRights(value: unknown): AssetRights | undefined {
+  if (value === undefined) return undefined;
+  if (!isRecord(value) || typeof value.license !== "string" || !value.license.trim() || !["local_only", "public"].includes(String(value.distribution)) || (value.attribution !== undefined && typeof value.attribution !== "string")) throw new Error("invalid asset rights");
+  return { license: value.license.trim(), distribution: value.distribution as AssetRights["distribution"], ...(value.attribution ? {attribution: value.attribution as string} : {}) };
+}
+
 function normalizeRuntimeClosure(
   value: unknown,
   assetsByPath: Map<string, StoredRevisionAsset>,
@@ -924,6 +940,7 @@ function normalizeRuntimeClosure(
   }
   if (typeof value.entrypoint !== "string" || !value.entrypoint.trim()) throw new Error("runtime.entrypoint is required");
   const entrypoint = validateRevisionAssetPath(value.entrypoint);
+  if (assetsByPath.get(entrypoint)?.role !== "code") throw new Error("runtime.entrypoint must reference code");
   if (canonicalPath && entrypoint !== canonicalPath) throw new Error("runtime.entrypoint must equal canonicalImplementation.assetPath");
   if (!Array.isArray(value.inputs)) throw new Error("runtime.inputs must be an array");
   const seen = new Set<string>();
@@ -932,7 +949,7 @@ function normalizeRuntimeClosure(
         !["example_data", "source_data", "private_reference"].includes(String(raw.role))) {
       throw new Error(`invalid runtime input at index ${index}`);
     }
-    const codePath = validateRevisionAssetPath(raw.codePath);
+    const codePath = runtimePath(raw.codePath);
     const assetPath = validateRevisionAssetPath(raw.assetPath);
     const key = `${codePath}\u0000${assetPath}`;
     if (seen.has(key)) throw new Error(`duplicate runtime input: ${codePath}`);
@@ -940,13 +957,20 @@ function normalizeRuntimeClosure(
     if (assetsByPath.get(assetPath)?.role !== "reference") throw new Error(`runtime input must reference a reference asset: ${assetPath}`);
     return { codePath, assetPath, required: true as const, role: raw.role as RuntimeInputRole };
   });
+  const dependencies = value.dependencies === undefined ? [] : value.dependencies;
+  if (!Array.isArray(dependencies)) throw new Error("invalid runtime dependencies");
+  const codeDependencies = dependencies.map(raw => {
+    if (!isRecord(raw) || typeof raw.codePath !== "string" || typeof raw.assetPath !== "string" || assetsByPath.get(raw.assetPath)?.role !== "code") throw new Error("runtime dependency must reference code");
+    return {codePath: runtimePath(raw.codePath), assetPath: validateRevisionAssetPath(raw.assetPath)};
+  });
+  assertUniqueRuntimePaths(["code/organized.R", "preview.png", ...inputs.map(i=>i.codePath), ...codeDependencies.map(i=>i.codePath)]);
   if (!isRecord(value.output) || value.output.mediaType !== "image/png" || typeof value.output.previewPath !== "string") {
     throw new Error("runtime.output must declare a PNG previewPath");
   }
   const previewPath = validateRevisionAssetPath(value.output.previewPath);
   if (primaryPreview && previewPath !== primaryPreview) throw new Error("runtime.output.previewPath must equal primaryPreview");
   if (assetsByPath.get(previewPath)?.role !== "visual") throw new Error("runtime.output.previewPath must reference a visual asset");
-  return { schema: "figure-library.runtime-closure.v1", entrypoint, inputs, output: { previewPath, mediaType: "image/png" } };
+  return { schema: "figure-library.runtime-closure.v1", entrypoint, inputs: inputs.sort((a,b)=>compareCanonicalStrings(a.codePath,b.codePath)), ...(codeDependencies.length ? {dependencies: codeDependencies.sort((a,b)=>compareCanonicalStrings(a.codePath,b.codePath))} : {}), output: { previewPath, mediaType: "image/png" } };
 }
 
 function assertCanonicalAssetPath(
@@ -1200,6 +1224,7 @@ async function prepareCandidate(options: {
   const caseFoldedPaths = new Set<string>();
   const storedAssets: StoredRevisionAsset[] = [];
   const sources: PreparedAssetSource[] = [];
+  const codeTexts = new Map<string,string>();
   let totalBytes = 0;
   for (const input of candidate.assets) {
     if (!["visual", "code", "reference", "evidence"].includes(input.role)) {
@@ -1234,12 +1259,14 @@ async function prepareCandidate(options: {
     logicalPaths.add(logicalPath);
     caseFoldedPaths.add(folded);
     const { bytes, source } = await readAssetSource({ ...input, logicalPath });
+    if (input.role === "code") codeTexts.set(logicalPath, new TextDecoder().decode(bytes));
     totalBytes += bytes.byteLength;
     if (totalBytes > MAX_REVISION_BYTES) {
       throw new Error(`candidate assets exceed ${MAX_REVISION_BYTES} bytes`);
     }
     storedAssets.push({
       logicalPath,
+      ...(input.rights ? {rights: normalizeAssetRights(input.rights)} : {}),
       file: `assets/${logicalPath}`,
       role: input.role,
       ...(input.visualRole ? { visualRole: input.visualRole } : {}),
@@ -1298,7 +1325,9 @@ async function prepareCandidate(options: {
     throw new Error("canonical implementation must be explicitly selected by the user");
   }
   const runtime = normalizeRuntimeClosure(
-    candidate.runtime,
+    candidate.runtime ?? (candidate.assetKind === "plot_template" && canonicalImplementation && primaryPreview && !inspectRuntimeReads(codeTexts.get(canonicalImplementation.assetPath) ?? "").length ? {
+      schema: "figure-library.runtime-closure.v1", entrypoint: canonicalImplementation.assetPath, inputs: [], output: {previewPath:primaryPreview, mediaType:"image/png"}
+    } : undefined),
     assetsByPath,
     canonicalImplementation?.assetPath,
     primaryPreview,
@@ -1455,6 +1484,15 @@ async function prepareCandidate(options: {
     domainWarnings.push({ id: issueId("warning", base), ...base, source: "rule" });
   };
 
+  if (candidate.assetKind === "plot_template") {
+    if (!runtime) addWarning("runtime_closure_missing", "This legacy revision has no runtime closure; public export requires an explicit closure", "runtime");
+    else {
+      try {
+        const paths = [...runtime.inputs.map(i=>i.codePath), ...(runtime.dependencies ?? []).map(i=>i.codePath)];
+        for (const codePath of [runtime.entrypoint,...(runtime.dependencies ?? []).map(i=>i.assetPath)]) assertRuntimeReads(codeTexts.get(codePath) ?? "", paths, codePath);
+      } catch (e) { addError("runtime_input_incomplete", (e as Error).message, "runtime"); }
+    }
+  }
   if (executionStatusConflict) {
     addError(
       "execution_status_conflicts_with_validation_state",
@@ -2043,6 +2081,7 @@ function validateStoredAsset(value: unknown): StoredRevisionAsset {
     throw new Error(`invalid stored asset language: ${logicalPath}`);
   }
   if (value.origin !== undefined) canonicalJson(value.origin);
+  normalizeAssetRights(value.rights);
   return value as unknown as StoredRevisionAsset;
 }
 
@@ -3533,6 +3572,27 @@ export class VersionedTemplateLibrary {
     });
   }
 
+  async validateRuntimeClosure(content: TemplateContentV1) {
+    if (content.assetKind !== "plot_template") return;
+    const r = normalizeRuntimeClosure(content.runtime, new Map(content.assets.map(a=>[a.logicalPath,a])), content.canonicalImplementation?.assetPath, content.primaryPreview);
+    if (!r) {
+      const canonicalPath = content.canonicalImplementation?.assetPath;
+      if (!canonicalPath) return;
+      const loaded = await this.readAsset({templateId:content.templateId, revisionId:content.revisionId,contentDigest:content.contentDigest,logicalPath:canonicalPath});
+      const reads = inspectRuntimeReads(new TextDecoder().decode(loaded.bytes));
+      if (reads.length) {
+        const first = reads.find((read) => read.kind === "data") ?? reads[0]!;
+        throw new Error(`cannot publish Local Published release: ${content.templateId}/${canonicalPath} requires an explicit runtime closure for ${first.path ?? first.expression} at line ${first.line}`);
+      }
+      return;
+    }
+    const paths = [...r.inputs.map(i=>i.codePath), ...(r.dependencies ?? []).map(i=>i.codePath)];
+    for (const assetPath of [r.entrypoint,...(r.dependencies ?? []).map(i=>i.assetPath)]) {
+      const loaded = await this.readAsset({templateId:content.templateId, revisionId:content.revisionId,contentDigest:content.contentDigest,logicalPath:assetPath});
+      assertRuntimeReads(new TextDecoder().decode(loaded.bytes), paths, `${content.templateId}/${content.revisionId}/${assetPath}`);
+    }
+  }
+
   async planPublish(options: { templateId: string }): Promise<PublishPlan> {
     const series = await this.requireSeries(options.templateId);
     if (series.status === "archived") throw new Error(`template series is archived: ${options.templateId}`);
@@ -3552,6 +3612,7 @@ export class VersionedTemplateLibrary {
     if (openGates.length) {
       throw new Error(`cannot publish with blocking review gates: ${openGates.map((gate) => gate.gateId).join(", ")}`);
     }
+    await this.validateRuntimeClosure(content);
     const publishedAt = nowIso();
     const releaseWithoutDigest: Omit<TemplateReleaseV1, "releaseDigest"> = {
       schema: TEMPLATE_RELEASE_SCHEMA,
@@ -5010,6 +5071,7 @@ export class VersionedTemplateLibrary {
         await atomicWriteJson(this.seriesFile(plan.templateId), nextSeries);
         await this.injectFault("after_series_write", operationIntent);
       } else if (plan.action === "publish") {
+        await this.validateRuntimeClosure(await this.requireContent(plan.templateId,plan.release.revisionId,plan.release.contentDigest));
         if (!current?.workingHead) throw new Error("publish requires a working head");
         const { release } = plan;
         if (

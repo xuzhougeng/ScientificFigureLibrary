@@ -41,6 +41,7 @@ function candidate(overrides: Partial<VersionedTemplateCandidate> = {}): Version
       reason: "Use the generated render as the public preview.",
     },
     canonicalImplementation: { assetPath: "code/code-organized.r", selectedBy: "user" },
+    runtime: {schema:"figure-library.runtime-closure.v1",entrypoint:"code/code-organized.r",inputs:[{codePath:"data/pathway_nes.csv",assetPath:"references/nes-csv.csv",required:true,role:"example_data"}],output:{previewPath:"visuals/rendered/preview.png",mediaType:"image/png"}},
     visualGrouping: {
       visualAssetPaths: ["visuals/source/wechat-heatmap.png", "visuals/rendered/preview.png"],
       confirmedBy: "user",
@@ -75,6 +76,7 @@ function candidate(overrides: Partial<VersionedTemplateCandidate> = {}): Version
         codeOrigin: "adapted",
         language: "R",
         mediaType: "text/x-r-source",
+        rights: { license: "MIT", distribution: "public" },
         text: "input <- read.csv('data/pathway_nes.csv')\nplot(input)\n",
       },
       {
@@ -97,6 +99,7 @@ function candidate(overrides: Partial<VersionedTemplateCandidate> = {}): Version
         logicalPath: "references/nes-csv.csv",
         role: "reference",
         mediaType: "text/csv",
+        rights: { license: "CC BY 4.0", distribution: "public" },
         text: "Pathway,A,B\nGlycolysis,1,2\n",
       },
       {
@@ -110,6 +113,7 @@ function candidate(overrides: Partial<VersionedTemplateCandidate> = {}): Version
         role: "visual",
         visualRole: "rendered_output",
         mediaType: "image/png",
+        rights: { license: "CC BY 4.0", distribution: "public" },
         bytes: new Uint8Array(PNG_BYTES),
       },
       {
@@ -127,7 +131,11 @@ function candidate(overrides: Partial<VersionedTemplateCandidate> = {}): Version
       },
     ],
   };
-  return { ...base, ...overrides, assets: overrides.assets ?? base.assets };
+  const assets = overrides.assets ?? base.assets;
+  const runtime = Object.hasOwn(overrides, "runtime")
+    ? overrides.runtime
+    : (overrides.assets && !base.runtime?.inputs.every((input) => assets.some((asset) => asset.logicalPath === input.assetPath)) ? undefined : base.runtime);
+  return { ...base, ...overrides, runtime, assets };
 }
 
 async function publishedLibrary(templateId: string, overrides: Partial<VersionedTemplateCandidate> = {}) {
@@ -135,10 +143,19 @@ async function publishedLibrary(templateId: string, overrides: Partial<Versioned
   await ensureLibraryRootMarker(root);
   const snapshot = await resolveLibraryRuntimeSnapshot({ root });
   const versionedLibrary = new VersionedTemplateLibrary(snapshot);
+  const prepared = candidate(overrides);
+  prepared.assets = prepared.assets.map((asset) => ({
+    ...asset,
+    rights: asset.rights ?? (asset.role === "code"
+      ? { license: "MIT", distribution: "public" as const }
+      : asset.role === "evidence"
+        ? { license: "local-only", distribution: "local_only" as const }
+        : { license: "CC BY 4.0", distribution: "public" as const }),
+  }));
   await versionedLibrary.applyCreateWorking(
     await versionedLibrary.planCreateWorking({
       templateId,
-      candidate: candidate(overrides),
+      candidate: prepared,
     }),
     `${templateId}-working`,
   );
@@ -203,12 +220,14 @@ test("Open Figure sanitizer publishes only the canonical code and maps a sole da
         codeOrigin: "adapted",
         language: "R",
         mediaType: "text/x-r-source",
+        rights: { license: "MIT", distribution: "public" },
         text: 'tree <- read.tree(file.path(root, "data", "HPV58.nwk"))\n',
       },
       {
         logicalPath: "references/tree-nwk.nwk",
         role: "reference",
         mediaType: "text/plain",
+        rights: { license: "CC BY 4.0", distribution: "public" },
         text: "(a:1,b:1);\n",
       },
       {
@@ -222,6 +241,7 @@ test("Open Figure sanitizer publishes only the canonical code and maps a sole da
         role: "visual",
         visualRole: "rendered_output",
         mediaType: "image/png",
+        rights: { license: "CC BY 4.0", distribution: "public" },
         bytes: new Uint8Array(PNG_BYTES),
       },
     ],
@@ -287,6 +307,7 @@ test("Open Figure sanitizer rejects private machine paths in code", async () => 
         role: "visual",
         visualRole: "rendered_output",
         mediaType: "image/png",
+        rights: { license: "CC BY 4.0", distribution: "public" },
         bytes: new Uint8Array(PNG_BYTES),
       },
     ],
@@ -355,4 +376,43 @@ test("public modules exclude private supporting notes even if misclassified as r
     assert.ok(["references/receipt.md", "references/private_reference.txt", "references/paper.pdf"].every((file) => built.excludedLogicalPaths.includes(file)));
     assert.ok(!built.files.some((file) => new TextDecoder().decode(file.bytes).includes("PRIVATE NOTE")));
   } finally { await fs.rm(root, { recursive: true, force: true }); }
+});
+
+test("Open Figure export blocks a Local Published input without explicit public rights", async () => {
+  const original = candidate();
+  const { root, versionedLibrary, content } = await publishedLibrary("rights-closed-input", {
+    assets: original.assets.map((asset) => asset.logicalPath === "references/nes-csv.csv"
+      ? { ...asset, rights: { license: "CC BY-NC-ND", distribution: "local_only" as const } }
+      : asset),
+  });
+  try {
+    await assert.rejects(
+      () => buildOpenFigureModule({ library: versionedLibrary, content }),
+      /explicit public redistribution right|non-public rights/u,
+    );
+  } finally {
+    await fs.rm(root, { recursive: true, force: true });
+  }
+});
+
+test("Local Published promotion blocks a code input closure that is only implicit", async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "sfl-runtime-closure-promotion-"));
+  await ensureLibraryRootMarker(root);
+  const snapshot = await resolveLibraryRuntimeSnapshot({ root });
+  const versionedLibrary = new VersionedTemplateLibrary(snapshot);
+  await versionedLibrary.applyCreateWorking(
+    await versionedLibrary.planCreateWorking({
+      templateId: "runtime-closure-required",
+      candidate: candidate({ runtime: undefined }),
+    }),
+    "runtime-closure-required-working",
+  );
+  try {
+    await assert.rejects(
+      () => versionedLibrary.planPublish({ templateId: "runtime-closure-required" }),
+      /requires an explicit runtime closure/u,
+    );
+  } finally {
+    await fs.rm(root, { recursive: true, force: true });
+  }
 });
