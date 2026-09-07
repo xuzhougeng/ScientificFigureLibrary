@@ -593,6 +593,18 @@ must display and explicitly confirm both the old and new key fingerprints.
 
 ## Sanitized public submission export
 
+### Runtime closure for new plot templates
+
+New or updated Local Published plot templates may declare
+`runtime: figure-library.runtime-closure.v1`. The closure binds the selected
+canonical implementation, each required runtime input, its Local Published
+asset path, the path used by the code, and the generated PNG output. Publish
+planning validates the closure against the immutable revision inventory; it
+never reads a Gallery, inbox, project directory, or user home as an implicit
+fallback. Older Releases without this optional field remain readable, but a
+new public export must either provide a valid closure or use an explicit
+legacy export path with its limitations reported.
+
 Public publication starts from one exact, currently reachable Local Published
 Release; it never accepts a Working Revision, an entire Library, or an
 unreachable historical Release. Use
@@ -810,9 +822,9 @@ npm run package:plugins
 
 This writes three artifacts into `release/`:
 
-- `scientific-figure-library-wisp-0.6.3.zip` — install from Wisp **Settings → Plugins**
-- `scientific-figure-library-codex-0.6.3.zip` — Codex plugin with `.codex-plugin/plugin.json`, `.codex-plugin/mcp.json`, and `skills/figure-library`
-- `scientific-figure-library-claude-0.6.3.zip` — Claude Code plugin with `.claude-plugin/plugin.json`, `.claude-plugin/mcp.json`, and auto-discovered `skills/`
+- `scientific-figure-library-wisp-0.6.4.zip` — install from Wisp **Settings → Plugins**
+- `scientific-figure-library-codex-0.6.4.zip` — Codex plugin with `.codex-plugin/plugin.json`, `.codex-plugin/mcp.json`, and `skills/figure-library`
+- `scientific-figure-library-claude-0.6.4.zip` — Claude Code plugin with `.claude-plugin/plugin.json`, `.claude-plugin/mcp.json`, and auto-discovered `skills/`
 
 Each package uses its Host's plugin-root contract. Codex resolves `cwd: "."`
 from the installed plugin root, Claude expands `${CLAUDE_PLUGIN_ROOT}`, and Wisp
@@ -834,7 +846,7 @@ Build a standalone npm package:
 
 ```bash
 npm run package:npm
-npm install --global ./release/scientific-figure-library-0.6.3.tgz
+npm install --global ./release/scientific-figure-library-0.6.4.tgz
 ```
 
 Use `scientific-figure-library` as the MCP command after installation.
@@ -870,7 +882,7 @@ npm run package:source-pack -- \
 
 The helper verifies selected ZIP identities and caps a transport pack at 200
 MiB. Extract the resulting
-`release/figure-library-source-pack-volcano-0.6.3.zip` before use.
+`release/figure-library-source-pack-volcano-0.6.4.zip` before use.
 
 ## Catalog development
 
@@ -909,7 +921,7 @@ and exact inventory before atomically replacing `assets/community`. The source
 checkout and target must be separate directory trees. Packaging has an
 additional final-release gate that requires the three reviewed 1.0.0 seed
 releases; the empty bootstrap snapshot is valid for development tests but
-cannot be packaged as the 0.6.3 release.
+cannot be packaged as the 0.6.4 release.
 
 ## Markdown descriptions and bundled Skills
 
