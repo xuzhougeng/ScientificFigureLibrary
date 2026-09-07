@@ -9,6 +9,7 @@ import {
   type ProviderRegistry,
 } from "./provider-registry.ts";
 import type { ModuleCatalogIndex } from "./module-catalog.ts";
+import type { OfficialOpenFigureRuntime } from "./open-figure-official-source.ts";
 import { assertExactTemplateSelector } from "./providers.ts";
 import type { ExactTemplateSelector } from "./types.ts";
 
@@ -22,10 +23,14 @@ export async function searchCatalogRevision(
   providerIds: string[],
   registry: ProviderRegistry = createDefaultProviderRegistry(),
   moduleCatalogs?: ReadonlyMap<string, ModuleCatalogIndex>,
+  officialOpenFigure?: OfficialOpenFigureRuntime,
 ) {
   return registry.catalogRevision(
     providerIds,
-    createProviderContext(context, index, moduleCatalogs ? { moduleCatalogs } : {}),
+    createProviderContext(context, index, {
+      ...(moduleCatalogs ? { moduleCatalogs } : {}),
+      ...(officialOpenFigure ? { officialOpenFigure } : {}),
+    }),
   );
 }
 
@@ -36,6 +41,7 @@ export async function loadProviderPreview(options: {
   exactSelector: ExactTemplateSelector;
   registry?: ProviderRegistry;
   moduleCatalogs?: ReadonlyMap<string, ModuleCatalogIndex>;
+  officialOpenFigure?: OfficialOpenFigureRuntime;
   purpose?: "primary" | "search";
 }): Promise<LoadedProviderPreview> {
   const { context, index, providerId, exactSelector } = options;
@@ -45,11 +51,10 @@ export async function loadProviderPreview(options: {
     throw new Error("providerId does not match exactSelector.providerId");
   }
 
-  const providerContext = createProviderContext(
-    context,
-    index,
-    options.moduleCatalogs ? { moduleCatalogs: options.moduleCatalogs } : {},
-  );
+  const providerContext = createProviderContext(context, index, {
+    ...(options.moduleCatalogs ? { moduleCatalogs: options.moduleCatalogs } : {}),
+    ...(options.officialOpenFigure ? { officialOpenFigure: options.officialOpenFigure } : {}),
+  });
   const adapter = registry.get(providerId);
   const resolved = await adapter.resolve(providerContext, exactSelector, "preview");
   if (options.purpose === "search" && adapter.loadSearchPreview) {

@@ -886,6 +886,74 @@ function inspectZipCentralDirectory(bytes: Uint8Array) {
   return output;
 }
 
+export interface ExactZipFile {
+  path: string;
+  bytes: number;
+  sha256: string;
+  data: Uint8Array;
+}
+
+export function extractExactZipFiles(
+  archiveBytes: Uint8Array,
+  expected: ReadonlyMap<string, { bytes: number; sha256: string }>,
+): ExactZipFile[] {
+  const central = inspectZipCentralDirectory(archiveBytes);
+  const expectedDirectories = new Set<string>();
+  for (const expectedPath of expected.keys()) {
+    const parts = expectedPath.split("/");
+    for (let index = 1; index < parts.length; index += 1) {
+      expectedDirectories.add(parts.slice(0, index).join("/"));
+    }
+  }
+  for (const entry of central.values()) {
+    if (entry.directory && !expectedDirectories.has(entry.name)) {
+      throw new Error(`preview ZIP contains an undeclared directory: ${entry.name}`);
+    }
+    if (!entry.directory && !expected.has(entry.name)) {
+      throw new Error(`preview ZIP contains an undeclared file: ${entry.name}`);
+    }
+  }
+  for (const expectedPath of expected.keys()) {
+    if (!central.has(expectedPath) || central.get(expectedPath)?.directory) {
+      throw new Error(`preview ZIP is missing catalog preview: ${expectedPath}`);
+    }
+  }
+  let expandedBytes = 0;
+  let files = 0;
+  const contents = unzipSync(archiveBytes, {
+    filter(info: UnzipFileInfo) {
+      const directory = info.name.endsWith("/");
+      const name = safePreviewArchivePath(info.name, directory);
+      const observed = central.get(name);
+      if (!observed || observed.directory !== directory || observed.originalSize !== info.originalSize) {
+        throw new Error(`preview ZIP entry metadata mismatch: ${name}`);
+      }
+      if (directory) return false;
+      files += 1;
+      expandedBytes += info.originalSize;
+      if (files > MAX_PREVIEW_FILES) throw new Error("preview ZIP contains too many files");
+      if (info.originalSize > MAX_PREVIEW_FILE_BYTES) throw new Error(`preview ZIP file exceeds 64 MiB: ${name}`);
+      if (expandedBytes > MAX_PREVIEW_EXPANDED_BYTES) throw new Error("expanded preview ZIP exceeds 128 MiB");
+      return true;
+    },
+  });
+  const output: ExactZipFile[] = [];
+  for (const [catalogPath, identity] of expected) {
+    const data = contents[catalogPath];
+    if (!data) throw new Error(`preview ZIP extraction omitted catalog preview: ${catalogPath}`);
+    if (data.byteLength !== identity.bytes || sha256(data) !== identity.sha256) {
+      throw new Error(`preview ZIP file identity mismatch: ${catalogPath}`);
+    }
+    output.push({
+      path: catalogPath,
+      bytes: identity.bytes,
+      sha256: identity.sha256,
+      data: new Uint8Array(data),
+    });
+  }
+  return output.sort((left, right) => left.path.localeCompare(right.path, "en"));
+}
+
 export interface VerifiedPreviewFile extends PublicPreviewIdentityV1 {
   snapshotPath: string;
   data: Uint8Array;

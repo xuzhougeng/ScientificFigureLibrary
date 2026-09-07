@@ -4,6 +4,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import type { CatalogIndex } from "./catalog.ts";
 import { ModuleCatalogIndex } from "./module-catalog.ts";
+import type { OfficialOpenFigureRuntime } from "./open-figure-official-source.ts";
 import {
   buildSearchIntent,
   normalizeSearchText,
@@ -67,6 +68,7 @@ export interface ProviderContext {
   library: CurrentLibraryContext;
   catalog: CatalogIndex;
   moduleCatalogs?: ReadonlyMap<string, ModuleCatalogIndex>;
+  officialOpenFigure?: OfficialOpenFigureRuntime;
   sourcePackDir?: string;
   moduleSourcePackDir?: string;
   materialization?: {
@@ -839,10 +841,13 @@ export class ModuleCatalogProviderAdapter implements ProviderAdapter {
 
   async search(context: ProviderContext, request: SearchRequest) {
     const index = moduleCatalogFor(context, this.descriptor.providerId, this.moduleCatalog);
-    return (await index.searchAll(request)).map((candidate) => ({
-      ...candidate,
-      validationState: legacyValidationStateFromExecutionStatus("not_run"),
-    }));
+    const official = context.officialOpenFigure;
+    return (await index.searchAll(request))
+      .filter((candidate) => !official?.isTombstoned(candidate.templateId))
+      .map((candidate) => ({
+        ...candidate,
+        validationState: legacyValidationStateFromExecutionStatus("not_run"),
+      }));
   }
 
   async resolve(
@@ -852,7 +857,14 @@ export class ModuleCatalogProviderAdapter implements ProviderAdapter {
   ): Promise<ResolvedProviderTemplate> {
     this.assertSelector(selector, purpose);
     assertModuleArchiveExactSelector(selector);
-    const index = moduleCatalogFor(context, this.descriptor.providerId, this.moduleCatalog);
+    const official = context.officialOpenFigure;
+    if (official?.isTombstoned(selector.identity.moduleId) && purpose !== "replay") {
+      throw new Error(`open figure module is withdrawn: ${selector.identity.moduleId}`);
+    }
+    const historical = official
+      ? await official.indexForCatalogSha256(selector.identity.catalogSha256)
+      : undefined;
+    const index = historical ?? moduleCatalogFor(context, this.descriptor.providerId, this.moduleCatalog);
     const module = index.get(selector.identity.moduleId);
     if (!module) throw new Error(`unknown personal module: ${selector.identity.moduleId}`);
     assertModuleArchiveSelectorMatches(
@@ -958,6 +970,9 @@ export class ModuleCatalogProviderAdapter implements ProviderAdapter {
     if (!operation) throw new Error("materialization operation binding is required");
     if (resolved.value.kind !== "module-catalog") throw new Error("invalid module Catalog resolution");
     assertModuleArchiveExactSelector(resolved.exactSelector);
+    if (context.officialOpenFigure?.isTombstoned(resolved.value.module.moduleId)) {
+      throw new Error(`open figure module is withdrawn: ${resolved.value.module.moduleId}`);
+    }
     const applied = await materializeModuleTemplate({
       providerId: this.descriptor.providerId,
       index: resolved.value.catalog,
@@ -1064,15 +1079,19 @@ export class ModuleCatalogProviderAdapter implements ProviderAdapter {
       : sourcePack.configured
         ? "corrupt"
         : "not_configured";
+    const officialDetails = context.officialOpenFigure?.statusDetails() ?? {};
     return {
       providerId: this.descriptor.providerId,
       sourceLabel: this.descriptor.sourceLabel,
-      health: previewChecks.every(Boolean) &&
-        thumbnailChecks.every(Boolean) &&
-        sourcePackHealth !== "corrupt"
-        ? ("ready" as const)
-        : ("degraded" as const),
+      health: context.officialOpenFigure && "failClosed" in officialDetails && officialDetails.failClosed
+        ? ("corrupt" as const)
+        : previewChecks.every(Boolean) &&
+            thumbnailChecks.every(Boolean) &&
+            sourcePackHealth !== "corrupt"
+          ? ("ready" as const)
+          : ("degraded" as const),
       details: {
+        ...officialDetails,
         providerId: this.descriptor.providerId,
         sourceLabel: this.descriptor.sourceLabel,
         bundled: this.descriptor.bundled,

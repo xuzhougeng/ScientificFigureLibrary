@@ -6,6 +6,7 @@ import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 import type { CatalogIndex } from "./catalog.ts";
 import type { ModuleCatalogIndex } from "./module-catalog.ts";
+import type { OfficialOpenFigureRuntime } from "./open-figure-official-source.ts";
 import { parseModuleTemplateLock } from "./module-materialize.ts";
 import { canonicalJson, compareCanonicalStrings } from "./canonical-json.ts";
 import type { DiagnosticsManager } from "./diagnostics.ts";
@@ -1230,6 +1231,7 @@ export function registerMaterializationTools(options: {
   previewConfirmations: PreviewConfirmationStore;
   diagnostics?: DiagnosticsManager;
   moduleCatalogs?: ReadonlyMap<string, ModuleCatalogIndex>;
+  officialOpenFigure?: OfficialOpenFigureRuntime;
   faultInjector?: (
     point: MaterializationFaultPoint,
     operation: { operationId: string; planDigest: string; providerId: string },
@@ -1243,6 +1245,7 @@ export function registerMaterializationTools(options: {
     diagnostics,
     faultInjector,
     moduleCatalogs,
+    officialOpenFigure,
   } = options;
   const registry = options.registry ?? createDefaultProviderRegistry();
   const plans = new Map<string, CachedPlan>();
@@ -1317,6 +1320,7 @@ export function registerMaterializationTools(options: {
         const context = await currentLibraries();
         const providerContext = createProviderContext(context, index, {
           ...(moduleCatalogs ? { moduleCatalogs } : {}),
+          ...(officialOpenFigure ? { officialOpenFigure } : {}),
         });
         const adapter = registry.get(input.providerId);
         const resolved = await adapter.resolve(providerContext, exactSelector, "materialize");
@@ -1518,6 +1522,7 @@ export function registerMaterializationTools(options: {
         }
         const providerContext = createProviderContext(context, index, {
           ...(moduleCatalogs ? { moduleCatalogs } : {}),
+          ...(officialOpenFigure ? { officialOpenFigure } : {}),
           materialization: {
             operationId: input.operationId,
             planDigest: plan.planDigest,

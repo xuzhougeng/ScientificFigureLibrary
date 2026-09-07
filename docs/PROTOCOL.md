@@ -17,9 +17,14 @@ providers are:
 - **FigureYa** (`org.figureya.module`) — the bundled 319-module search catalog,
   with commit-pinned source/archive identities.
 - **Open Figure Modules** (`io.github.jarxunlai.personal-figures`) — a
-  bundled operator-maintained module Catalog plus primary previews and search
-  thumbnails. Cleaned module source and deterministic ZIPs live in one
-  separately maintained repository; complete ZIPs never enter the plugin.
+  `module-catalog` Provider whose bundled snapshot is only the offline
+  bootstrap. While the MCP process is running, SFL asynchronously checks the
+  signed `open-figure-feed` manifest, verifies Ed25519/bytes/ZIP/tombstones,
+  and atomically activates a remote last-known-good overlay. Search keeps the
+  same Provider ID, `module-archive.v1` selectors, and default order. Complete
+  ZIPs never enter the plugin and are still fetched only for one exact
+  selected materialization. 0.6.4 and earlier builds do not contain this
+  updater.
 - **SFL Community** (`io.github.jarxunlai.scientific-figure-community`) — a
   centrally curated Catalog and preview snapshot bundled with this SFL build.
   Complete template archives stay outside the plugin and are downloaded only
@@ -34,6 +39,15 @@ default Provider set. Results are provider-qualified and carry an
 `exactSelector`; a bare `templateId` is never enough to describe, preview, or
 materialize an exact result.
 
+> **Open Figure Modules overlay:** bundled Catalog is bootstrap, not the
+> latest directory. Ordinary search uses stale-while-revalidate and never
+> blocks on GitHub. Provider source tools list this channel as
+> `official-signed-overlay`. `configure` may only set `autoRefresh`; `update`
+> immediately checks the signed feed; add/remove/trust-reset are rejected.
+> Withdrawn moduleIds are cumulative tombstones: they cannot be searched,
+> described, previewed, or newly materialized, but already materialized
+> projects are not deleted.
+>
 > **0.6.1 personal module boundary:** default search order is Local Published,
 > FigureYa, Open Figure Modules, then dynamic personal Providers that opted
 > in. Community remains registered with `enabled: true`,

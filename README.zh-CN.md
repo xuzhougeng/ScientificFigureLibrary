@@ -60,8 +60,7 @@ figure-organization、figure-style，不要求宿主另外安装同名 Skills。
 └── catalog/                  # 归档清单和准入记录
 ```
 
-SFL 核心仓库只内置 `assets/personal-modules/` 下的派生 Catalog、预览清单、主预览、
-缩略图和许可说明，不内置完整个人 ZIP、Gallery 源图、私有数据、凭证或仓库状态。
+SFL 插件仍内置 `assets/personal-modules/` 作为离线 bootstrap Catalog、预览/缩略图和许可说明。安装带更新器的版本后，SFL 会在 MCP 进程运行时异步检查个人仓 `open-figure-feed` 上的 signed feed；验证成功后原子切换本地 overlay。普通模板新增/更新/撤下不再需要重新打包插件。插件不包含完整 ZIP、Gallery 源图、私有数据、凭证或签名私钥。搜索不等待网络；`figure_library_list_provider_sources` 保持离线。官方 channel 只允许 `configure autoRefresh` 和显式 `update`，不允许 add/remove/trust_reset。
 维护命令是离线的，并且不会创建仓库、commit、push、运行 R、安装依赖或修改
 Gallery：
 

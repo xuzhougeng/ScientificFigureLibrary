@@ -25,6 +25,7 @@ import {
   PERSONAL_MODULE_REPOSITORY,
 } from "./module-catalog.ts";
 import { PERSONAL_MODULE_PROVIDER_ID } from "./providers.ts";
+import { OfficialOpenFigureSourceManager } from "./open-figure-official-source.ts";
 
 function safeProviderError(error: unknown) {
   const raw = error instanceof Error ? error.message : String(error);
@@ -86,6 +87,8 @@ async function personalAdapter(
 export interface RuntimeProviderController {
   registry: MutableProviderRegistry;
   manager: ProviderSourceManager;
+  officialOpenFigure?: OfficialOpenFigureSourceManager;
+  getModuleCatalogs(): ReadonlyMap<string, ModuleCatalogIndex>;
   moduleCatalogs: ReadonlyMap<string, ModuleCatalogIndex>;
   refreshPersonalProviders(): Promise<void>;
 }
@@ -94,25 +97,23 @@ export async function createRuntimeProviderController(options: {
   manager?: ProviderSourceManager;
   communityRoot?: string;
   personalModuleRoot?: string;
+  officialOpenFigure?: OfficialOpenFigureSourceManager;
 } = {}): Promise<RuntimeProviderController> {
   const manager = options.manager ?? new ProviderSourceManager();
   const communitySnapshot = await loadBundledCommunitySnapshot(options.communityRoot);
   let personalModuleAdapter: ProviderAdapter;
   const moduleCatalogs = new Map<string, ModuleCatalogIndex>();
+  const officialOpenFigure = options.officialOpenFigure ?? new OfficialOpenFigureSourceManager({
+    bundledRoot: options.personalModuleRoot ??
+      process.env.PERSONAL_MODULE_ASSETS_DIR?.trim() ??
+      DEFAULT_PERSONAL_MODULE_ASSETS_DIR,
+  });
   try {
-    const personalModuleIndex = await ModuleCatalogIndex.load(
-      options.personalModuleRoot ??
-        process.env.PERSONAL_MODULE_ASSETS_DIR?.trim() ??
-        DEFAULT_PERSONAL_MODULE_ASSETS_DIR,
-      {
-        expectedProviderId: PERSONAL_MODULE_PROVIDER_ID,
-        expectedRepository: PERSONAL_MODULE_REPOSITORY,
-        // A missing or corrupt individual preview must degrade only that
-        // module's card/status. The Catalog and selector identities remain
-        // usable, and exact preview still fails closed on access.
-        validatePreviews: false,
-      },
-    );
+    await officialOpenFigure.load();
+    if (officialOpenFigure.failClosed()) {
+      throw new Error(`${officialOpenFigure.failClosed()!.code}: ${officialOpenFigure.failClosed()!.message}`);
+    }
+    const personalModuleIndex = officialOpenFigure.currentIndex();
     personalModuleAdapter = new ModuleCatalogProviderAdapter({ catalog: personalModuleIndex });
     moduleCatalogs.set(PERSONAL_MODULE_PROVIDER_ID, personalModuleIndex);
   } catch (error) {
@@ -157,5 +158,23 @@ export async function createRuntimeProviderController(options: {
   };
 
   await refreshPersonalProviders();
-  return { registry, manager, moduleCatalogs, refreshPersonalProviders };
+  const getModuleCatalogs = () => {
+    const current = new Map<string, ModuleCatalogIndex>();
+    try {
+      current.set(PERSONAL_MODULE_PROVIDER_ID, officialOpenFigure.currentIndex());
+    } catch {
+      for (const [providerId, index] of moduleCatalogs) current.set(providerId, index);
+    }
+    return current;
+  };
+  return {
+    registry,
+    manager,
+    officialOpenFigure,
+    getModuleCatalogs,
+    get moduleCatalogs() {
+      return getModuleCatalogs();
+    },
+    refreshPersonalProviders,
+  };
 }
