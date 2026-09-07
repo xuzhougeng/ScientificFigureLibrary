@@ -352,7 +352,7 @@ test("every public package entrypoint is gated by the final Community snapshot",
   const packageJson = JSON.parse(
     await fs.readFile(path.join(repositoryRoot, "package.json"), "utf8"),
   ) as { scripts: Record<string, string> };
-  for (const host of ["wisp", "codex", "claude"]) {
+  for (const host of ["wisp", "codex", "claude", "cursor"]) {
     assert.match(
       packageJson.scripts[`package:${host}`] ?? "",
       /^node scripts\/release-preflight\.mjs && npm run build && node scripts\/package-[a-z]+\.mjs$/u,

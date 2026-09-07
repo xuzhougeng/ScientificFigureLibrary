@@ -6,7 +6,7 @@
 Scientific Figure Library (SFL) is a standard stdio MCP server and MCP App for
 building, reviewing, finding, and materializing reusable scientific-figure
 references. Version 0.6 keeps one **user-selected global Library** as the durable,
-cross-project source of truth. Wisp, Codex, Claude, and other MCP hosts can use
+cross-project source of truth. Wisp, Codex, Claude, Cursor, and other MCP hosts can use
 the same Library without copying it into every project.
 
 The 0.6 standard core uses one Provider registry. Its built-in retrieval
@@ -812,7 +812,7 @@ archive/reconcile, or one-step materialize tools in the standard 0.6 server.
 
 ## Distribution
 
-The same standard MCP server and Skill are packaged for three hosts. Do not
+The same standard MCP server and Skill are packaged for four hosts. Do not
 register a raw `mcp_servers.figure-library` entry **and** a host plugin at the
 same time; that duplicates tools.
 
@@ -820,16 +820,19 @@ same time; that duplicates tools.
 npm run package:plugins
 ```
 
-This writes three artifacts into `release/`:
+This writes four artifacts into `release/`:
 
 - `scientific-figure-library-wisp-0.6.4.zip` — install from Wisp **Settings → Plugins**
 - `scientific-figure-library-codex-0.6.4.zip` — Codex plugin with `.codex-plugin/plugin.json`, `.codex-plugin/mcp.json`, and `skills/figure-library`
 - `scientific-figure-library-claude-0.6.4.zip` — Claude Code plugin with `.claude-plugin/plugin.json`, `.claude-plugin/mcp.json`, and auto-discovered `skills/`
+- `scientific-figure-library-cursor-0.6.4.zip` — Cursor plugin with `.cursor-plugin/plugin.json`, plugin-root `mcp.json`, and auto-discovered `skills/`
 
 Each package uses its Host's plugin-root contract. Codex resolves `cwd: "."`
-from the installed plugin root, Claude expands `${CLAUDE_PLUGIN_ROOT}`, and Wisp
-continues to expand `${WISP_PLUGIN_ROOT}`. Therefore the server entry does not
-depend on the project directory from which the Host was opened.
+from the installed plugin root, Claude expands `${CLAUDE_PLUGIN_ROOT}`, Cursor
+expands `${PLUGIN_ROOT}`, and Wisp continues to expand `${WISP_PLUGIN_ROOT}`.
+Therefore the server entry does not depend on the project directory from which
+the Host was opened. Cursor's official marketplace is Git-based; the ZIP is the
+local install path (`~/.cursor/plugins/local/figure-library/`).
 
 The automated package smoke extracts each ZIP under a path containing spaces,
 starts the packaged server from an unrelated project cwd, and completes MCP

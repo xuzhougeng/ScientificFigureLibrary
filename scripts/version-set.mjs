@@ -17,6 +17,7 @@ const pluginPaths = [
   path.join(root, ".wisp-plugin", "plugin.json"),
   path.join(root, ".codex-plugin", "plugin.json"),
   path.join(root, ".claude-plugin", "plugin.json"),
+  path.join(root, ".cursor-plugin", "plugin.json"),
 ];
 const skillPath = path.join(root, "skills", "figure-library", "SKILL.md");
 const readmePath = path.join(root, "README.md");
@@ -24,7 +25,7 @@ const protocolPath = path.join(root, "docs", "PROTOCOL.md");
 
 function replaceVersionedArtifacts(text, { required, label }) {
   let next = text;
-  for (const host of ["wisp", "codex", "claude"]) {
+  for (const host of ["wisp", "codex", "claude", "cursor"]) {
     const currentZip = new RegExp(
       `scientific-figure-library-${host}-\\d+\\.\\d+\\.\\d+\\.zip`,
       "gu",

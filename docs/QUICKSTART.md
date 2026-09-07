@@ -11,7 +11,7 @@ Library.
 ## Requirements
 
 - Node.js 22 or newer
-- An MCP host: Wisp Science, Claude Science, Codex, Claude Code, or any stdio client
+- An MCP host: Wisp Science, Claude Science, Codex, Claude Code, Cursor, or any stdio client
 
 ## From source
 
@@ -43,6 +43,20 @@ npm run package:wisp
 
 Install the generated ZIP from `release/` in **Settings → Plugins**, enable it
 for the project, and start a new session.
+
+## Cursor
+
+```bash
+npm run package:cursor
+```
+
+Unzip the generated Cursor ZIP from `release/` so this file exists:
+
+`~/.cursor/plugins/local/figure-library/.cursor-plugin/plugin.json`
+
+The same folder must also contain plugin-root `mcp.json`, `dist/index.js`, and
+`skills/`. Restart Cursor. Cursor's official marketplace is Git-based; this ZIP
+is the local plugin path.
 
 ## First session
 

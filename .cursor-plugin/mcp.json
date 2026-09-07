@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "figure-library": {
+      "type": "stdio",
+      "command": "node",
+      "args": [
+        "${PLUGIN_ROOT}/dist/index.js"
+      ]
+    }
+  }
+}

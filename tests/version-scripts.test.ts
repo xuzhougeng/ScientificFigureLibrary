@@ -16,6 +16,7 @@ const trackedTargets = [
   ".wisp-plugin/plugin.json",
   ".codex-plugin/plugin.json",
   ".claude-plugin/plugin.json",
+  ".cursor-plugin/plugin.json",
   "skills/figure-library/SKILL.md",
   "README.md",
   "docs/PROTOCOL.md",
@@ -47,6 +48,7 @@ async function createFixture(options: { malformedLock?: boolean } = {}) {
     ".wisp-plugin/plugin.json",
     ".codex-plugin/plugin.json",
     ".claude-plugin/plugin.json",
+    ".cursor-plugin/plugin.json",
   ]) {
     await write(root, relative, `${JSON.stringify({ name: relative, version: oldVersion }, null, 2)}\n`);
   }
@@ -55,6 +57,7 @@ async function createFixture(options: { malformedLock?: boolean } = {}) {
     `scientific-figure-library-wisp-${oldVersion}.zip`,
     `scientific-figure-library-codex-${oldVersion}.zip`,
     `scientific-figure-library-claude-${oldVersion}.zip`,
+    `scientific-figure-library-cursor-${oldVersion}.zip`,
     `scientific-figure-library-${oldVersion}.tgz`,
     `figure-library-source-pack-volcano-${oldVersion}.zip`,
   ];
@@ -95,6 +98,7 @@ test("version:set synchronizes every release-facing product version from an arbi
     ".wisp-plugin/plugin.json",
     ".codex-plugin/plugin.json",
     ".claude-plugin/plugin.json",
+    ".cursor-plugin/plugin.json",
   ]) {
     assert.equal(JSON.parse(await fs.readFile(path.join(root, relative), "utf8")).version, targetVersion);
   }
@@ -106,6 +110,7 @@ test("version:set synchronizes every release-facing product version from an arbi
     `scientific-figure-library-wisp-${targetVersion}.zip`,
     `scientific-figure-library-codex-${targetVersion}.zip`,
     `scientific-figure-library-claude-${targetVersion}.zip`,
+    `scientific-figure-library-cursor-${targetVersion}.zip`,
     `scientific-figure-library-${targetVersion}.tgz`,
     `figure-library-source-pack-volcano-${targetVersion}.zip`,
   ];
