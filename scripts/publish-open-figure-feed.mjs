@@ -1,20 +1,19 @@
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { pathToFileURL } from "node:url";
 import fs from "node:fs/promises";
+import os from "node:os";
 import path from "node:path";
 import { createPrivateKey, createPublicKey, sign } from "node:crypto";
-import { zipSync } from "fflate";
 import {
-  CORE_ROOT,
   DEFAULT_REPOSITORY_ROOT,
   PROVIDER_ID,
-  SOURCE_DATE_EPOCH,
   buildPersonalModuleCatalog,
   canonical,
   parseArchiveManifest,
   sha256,
   stableJson,
   validatePersonalModules,
+  zipDeterministic,
 } from "./personal-modules-lib.mjs";
 
 const MANIFEST_SCHEMA = "figure-library.provider-source-manifest.v1";
@@ -62,10 +61,7 @@ export function diffModuleIds(previousIds, nextIds, previousTombstones = []) {
 }
 
 export function buildPreviewZip(files) {
-  const archive = Object.fromEntries(
-    [...Object.entries(files)].sort(([left], [right]) => (left < right ? -1 : left > right ? 1 : 0)),
-  );
-  return zipSync(archive, { level: 6, mtime: new Date(SOURCE_DATE_EPOCH) });
+  return zipDeterministic(files, { level: 6 });
 }
 
 export function buildSourceManifest({
@@ -122,25 +118,33 @@ export async function buildOpenFigureFeedPayload(options = {}) {
   const repositoryRoot = path.resolve(options.repositoryRoot ?? DEFAULT_REPOSITORY_ROOT);
   const generatedAt = options.generatedAt ?? "2000-01-01T00:00:00.000Z";
   await validatePersonalModules({ repositoryRoot, write: false });
-  const first = await buildPersonalModuleCatalog({ repositoryRoot, write: false, generatedAt });
-  const second = await buildPersonalModuleCatalog({ repositoryRoot, write: false, generatedAt });
-  if (first.catalogSha256 !== second.catalogSha256) {
-    throw new Error("Open Figure Catalog generation is not deterministic");
-  }
-  const catalogBytes = Buffer.from(stableJson(first.catalog), "utf8");
-  const previewFiles = {};
-  const catalogRoot = path.resolve(options.catalogRoot ?? path.join(CORE_ROOT, "assets", "personal-modules"));
-  const built = await buildPersonalModuleCatalog({
-    repositoryRoot,
-    outputRoot: options.snapshotStaging ?? catalogRoot,
-    write: Boolean(options.writeSnapshot),
-    generatedAt,
-  });
-  const snapshotRoot = options.snapshotStaging ?? catalogRoot;
-  for (const module of built.catalog.modules) {
-    previewFiles[module.preview.path] = await fs.readFile(path.join(snapshotRoot, ...module.preview.path.split("/")));
-    previewFiles[module.thumbnail.path] = await fs.readFile(path.join(snapshotRoot, ...module.thumbnail.path.split("/")));
-  }
+  const snapshotStaging = path.resolve(options.snapshotStaging ?? path.join(os.tmpdir(), `open-figure-feed-${randomUUID()}`));
+  const createdStaging = !options.snapshotStaging;
+  await fs.mkdir(snapshotStaging, { recursive: true });
+  let first;
+  try {
+    first = await buildPersonalModuleCatalog({
+      repositoryRoot,
+      outputRoot: snapshotStaging,
+      write: true,
+      generatedAt,
+    });
+    const second = await buildPersonalModuleCatalog({
+      repositoryRoot,
+      outputRoot: snapshotStaging,
+      write: false,
+      generatedAt,
+    });
+    if (first.catalogSha256 !== second.catalogSha256) {
+      throw new Error("Open Figure Catalog generation is not deterministic");
+    }
+    const catalogBytes = Buffer.from(stableJson(first.catalog), "utf8");
+    const previewFiles = {};
+    const built = first;
+    for (const module of built.catalog.modules) {
+      previewFiles[module.preview.path] = await fs.readFile(path.join(snapshotStaging, ...module.preview.path.split("/")));
+      previewFiles[module.thumbnail.path] = await fs.readFile(path.join(snapshotStaging, ...module.thumbnail.path.split("/")));
+    }
   const zipFirst = Buffer.from(buildPreviewZip(previewFiles));
   const zipSecond = Buffer.from(buildPreviewZip(previewFiles));
   if (!zipFirst.equals(zipSecond)) throw new Error("Open Figure preview ZIP generation is not deterministic");
@@ -156,17 +160,20 @@ export async function buildOpenFigureFeedPayload(options = {}) {
   const sequence = unchanged
     ? options.previousSequence
     : (options.previousSequence ?? 0) + 1;
-  return {
-    unchanged: Boolean(unchanged),
-    sequence,
-    catalog: built.catalog,
-    catalogBytes,
-    catalogSha256: sha256(catalogBytes),
-    previewsBytes: zipFirst,
-    previewsSha256: sha256(zipFirst),
-    moduleCount: built.catalog.modules.length,
-    diff,
-  };
+    return {
+      unchanged: Boolean(unchanged),
+      sequence,
+      catalog: built.catalog,
+      catalogBytes,
+      catalogSha256: sha256(catalogBytes),
+      previewsBytes: zipFirst,
+      previewsSha256: sha256(zipFirst),
+      moduleCount: built.catalog.modules.length,
+      diff,
+    };
+  } finally {
+    if (createdStaging) await fs.rm(snapshotStaging, { recursive: true, force: true });
+  }
 }
 
 async function readPreviousFeed(feedRoot) {
