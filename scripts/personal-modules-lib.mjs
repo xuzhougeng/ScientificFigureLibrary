@@ -40,7 +40,7 @@ const REPOSITORY_PATTERN = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/u;
 const RESERVED = /^(?:con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\..*)?$/iu;
 const PRIVATE_KEY = /-----BEGIN (?:OPENSSH |EC |RSA )?PRIVATE KEY-----/u;
 const TOKEN = /(?:^|[^A-Za-z0-9_])(?:gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,})/u;
-const ABSOLUTE_WIN = /(?:^|[\s("'=,:])(?:[A-Za-z]:[\\/]|\\\\[^\\/]+[\\/])/u;
+const ABSOLUTE_WIN = /(?:^|[\s("'=,:])(?:[A-Za-z]:[\\/]|\\\\[A-Za-z0-9][A-Za-z0-9._-]{0,62}\\[A-Za-z0-9._`$~-])/u;
 const ABSOLUTE_UNIX = /(?:^|[\s("'=,:])\/(?:home|Users|mnt|tmp)\//u;
 const NON_PUBLIC_LICENSE = /(?:^|[^A-Za-z0-9])(unknown|private_reference|unlicensed)(?:$|[^A-Za-z0-9])/iu;
 const FORBIDDEN_PUBLIC_FILE =
