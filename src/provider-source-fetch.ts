@@ -1,4 +1,5 @@
 import { createHash, createPublicKey, verify } from "node:crypto";
+import type { LookupAddress, LookupOptions } from "node:dns";
 import { lookup as dnsLookup } from "node:dns/promises";
 import https from "node:https";
 import net from "node:net";
@@ -259,6 +260,33 @@ async function defaultLookup(hostname: string) {
   return values.map((value) => ({ address: value.address, family: value.family as 4 | 6 }));
 }
 
+export function pinnedAddressLookup(selected: PinnedAddress): NonNullable<https.RequestOptions["lookup"]> {
+  return ((
+    _hostname: string,
+    options: LookupOptions | ((err: NodeJS.ErrnoException | null, address: string, family: number) => void),
+    callback?: (
+      err: NodeJS.ErrnoException | null,
+      address: string | LookupAddress[],
+      family?: number,
+    ) => void,
+  ) => {
+    const cb = typeof options === "function" ? options : callback;
+    const all = typeof options === "object" && options !== null && Boolean(options.all);
+    if (typeof cb !== "function") throw new Error("provider source DNS lookup callback is missing");
+    if (all) {
+      (cb as unknown as (err: NodeJS.ErrnoException | null, addresses: LookupAddress[]) => void)(null, [
+        { address: selected.address, family: selected.family },
+      ]);
+      return;
+    }
+    (cb as unknown as (err: NodeJS.ErrnoException | null, address: string, family: number) => void)(
+      null,
+      selected.address,
+      selected.family,
+    );
+  }) as NonNullable<https.RequestOptions["lookup"]>;
+}
+
 function headerValue(headers: RawHttpsResponse["headers"], name: string) {
   const found = Object.entries(headers).find(([key]) => key.toLowerCase() === name)?.[1];
   if (Array.isArray(found)) return found[0];
@@ -287,9 +315,7 @@ async function defaultHttpsRequest(url: URL, options: SecureHttpsRequestOptions)
           "Accept-Encoding": "identity",
           "User-Agent": "ScientificFigureLibrary-provider-source/0.6",
         },
-        lookup: (_hostname, _options, callback) => {
-          callback(null, selected.address, selected.family);
-        },
+        lookup: pinnedAddressLookup(selected),
       },
       (response) => {
         const chunks: Buffer[] = [];

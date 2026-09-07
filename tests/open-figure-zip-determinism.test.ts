@@ -27,7 +27,14 @@ const ONE_PIXEL_PNG = Buffer.from(
 );
 
 function readU32(bytes: Uint8Array, offset: number) {
-  return (bytes[offset] | (bytes[offset + 1] << 8) | (bytes[offset + 2] << 16) | (bytes[offset + 3] << 24)) >>> 0;
+  const b0 = bytes[offset];
+  const b1 = bytes[offset + 1];
+  const b2 = bytes[offset + 2];
+  const b3 = bytes[offset + 3];
+  if (b0 === undefined || b1 === undefined || b2 === undefined || b3 === undefined) {
+    throw new Error("ZIP timestamp is truncated");
+  }
+  return (b0 | (b1 << 8) | (b2 << 16) | (b3 << 24)) >>> 0;
 }
 
 test("deterministic ZIP timestamps use UTC rather than the host timezone", () => {
