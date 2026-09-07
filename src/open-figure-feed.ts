@@ -67,6 +67,22 @@ export interface OfficialCatalogDiff {
   tombstones: string[];
 }
 
+export interface OfficialOpenFigureUnchangedCheck {
+  unchanged: true;
+  manifest: ProviderSourceManifestV1;
+  manifestSha256: string;
+  sequence: number;
+  signingKey: Ed25519PublicKeyIdentity;
+}
+
+export type OfficialOpenFigureFetchResult = OfficialOpenFigureUnchangedCheck | VerifiedOfficialOpenFigureSnapshot;
+
+export function isUnchangedOfficialOpenFigureFetch(
+  value: OfficialOpenFigureFetchResult,
+): value is OfficialOpenFigureUnchangedCheck {
+  return "unchanged" in value && value.unchanged === true;
+}
+
 export interface VerifiedOfficialOpenFigureSnapshot {
   manifest: ProviderSourceManifestV1;
   manifestBytes: Uint8Array;
@@ -319,6 +335,7 @@ export async function fetchVerifiedOfficialOpenFigureSnapshot(options: {
   fetcher: SecureProviderSourceFetcher;
   manifestUrl: string;
   trustedKeys: Ed25519PublicKeyIdentity[];
+  skipUnchangedPayload?: boolean;
   previous?: {
     catalog?: ModuleCatalog;
     tombstones?: string[];
@@ -328,7 +345,7 @@ export async function fetchVerifiedOfficialOpenFigureSnapshot(options: {
     authorizedNextKeys?: Ed25519PublicKeyIdentity[];
     observed?: Array<{ sequence: number; manifestSha256: string }>;
   };
-}): Promise<VerifiedOfficialOpenFigureSnapshot> {
+}): Promise<OfficialOpenFigureFetchResult> {
   if (!options.trustedKeys.length) throw new Error("at least one independently trusted public key is required");
   const trustedKeys = new Map<string, Ed25519PublicKeyIdentity>();
   for (const key of options.trustedKeys) {
@@ -372,6 +389,19 @@ export async function fetchVerifiedOfficialOpenFigureSnapshot(options: {
     authorizedNextKeys: options.previous?.authorizedNextKeys,
     nextSigningKey: signingKey,
   });
+  if (
+    options.skipUnchangedPayload &&
+    options.previous?.sequence === manifest.sequence &&
+    options.previous?.manifestSha256 === manifestSha256
+  ) {
+    return {
+      unchanged: true,
+      manifest,
+      manifestSha256,
+      sequence: manifest.sequence,
+      signingKey,
+    };
+  }
   const catalogResponse = await options.fetcher.fetch(manifest.catalog.url, {
     maxBytes: manifest.catalog.bytes,
     mediaTypes: officialMediaTypes(manifest.catalog.url, "json"),

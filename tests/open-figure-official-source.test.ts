@@ -206,6 +206,7 @@ test("auto-refresh env kill switch does not network on load or search", async ()
   await manager.load();
   manager.maybeRefresh();
   manager.scheduleBackgroundRefresh();
+  await manager.refreshOnProcessStart();
   assert.equal(networked, false);
   assert.equal(manager.autoRefreshEffective(), false);
   manager.dispose();
@@ -223,4 +224,65 @@ test("runtime controller exposes official overlay without changing Provider iden
   assert.equal(descriptor.kind, "module-catalog");
   assert.equal(descriptor.providerId, OFFICIAL_OPEN_FIGURE_PROVIDER_ID);
   assert.equal(controller.getModuleCatalogs().get(OFFICIAL_OPEN_FIGURE_PROVIDER_ID)?.catalog.provider.providerId, OFFICIAL_OPEN_FIGURE_PROVIDER_ID);
+});
+
+test("process start refreshes immediately and later checks skip unchanged payloads", async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "sfl-open-figure-startup-"));
+  const key = testKey();
+  const fixture = await officialFixture({ key, sequence: 1 });
+  const hits: string[] = [];
+  const fetcher = new SecureProviderSourceFetcher({
+    lookup: async () => [{ address: "1.1.1.1", family: 4 }],
+    request: async (url) => {
+      hits.push(url.href);
+      const found = fixture.routes.get(url.href);
+      if (!found) throw new Error(`missing fixture route: ${url.href}`);
+      return found;
+    },
+  });
+  const paths = officialOpenFigurePaths({ env: { APPDATA: path.join(root, "cfg"), LOCALAPPDATA: path.join(root, "data") } });
+  const first = new OfficialOpenFigureSourceManager({
+    paths,
+    bundledRoot: DEFAULT_PERSONAL_MODULE_ASSETS_DIR,
+    fetcher,
+    jitterRatio: 0,
+    env: { NODE_TEST_CONTEXT: "1", SFL_OPEN_FIGURE_ALLOW_TEST_NETWORK: "1" },
+    bootstrapPublicKeyBase64: key.publicKey,
+  });
+  await first.load();
+  assert.equal(first.statusDetails().activeOrigin, "bundled");
+  await first.refreshOnProcessStart();
+  assert.equal(first.statusDetails().activeOrigin, "remote-lkg");
+  assert.equal(first.statusDetails().templateCount, fixture.catalog.modules.length);
+  assert.ok(hits.some((url) => url.endsWith("module-catalog.json")));
+  assert.ok(hits.some((url) => url.endsWith("module-previews.zip")));
+  first.dispose();
+
+  const laterHits: string[] = [];
+  const laterFetcher = new SecureProviderSourceFetcher({
+    lookup: async () => [{ address: "1.1.1.1", family: 4 }],
+    request: async (url) => {
+      laterHits.push(url.href);
+      const found = fixture.routes.get(url.href);
+      if (!found) throw new Error(`missing fixture route: ${url.href}`);
+      return found;
+    },
+  });
+  const second = new OfficialOpenFigureSourceManager({
+    paths,
+    bundledRoot: DEFAULT_PERSONAL_MODULE_ASSETS_DIR,
+    fetcher: laterFetcher,
+    jitterRatio: 0,
+    env: { NODE_TEST_CONTEXT: "1", SFL_OPEN_FIGURE_ALLOW_TEST_NETWORK: "1" },
+    bootstrapPublicKeyBase64: key.publicKey,
+  });
+  await second.load();
+  assert.equal(second.statusDetails().activeOrigin, "remote-lkg");
+  await second.refreshOnProcessStart();
+  assert.equal(second.statusDetails().activeOrigin, "remote-lkg");
+  assert.ok(laterHits.some((url) => url.endsWith("source-manifest.json")));
+  assert.ok(laterHits.some((url) => url.endsWith("source-manifest.sig.json")));
+  assert.equal(laterHits.some((url) => url.endsWith("module-catalog.json")), false);
+  assert.equal(laterHits.some((url) => url.endsWith("module-previews.zip")), false);
+  second.dispose();
 });

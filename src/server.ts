@@ -531,7 +531,7 @@ export async function createServer(options: {
         personalModuleRoot: options.personalModuleRoot,
         officialOpenFigure: options.officialOpenFigure,
       });
-  providerController?.officialOpenFigure?.scheduleBackgroundRefresh();
+  providerController?.officialOpenFigure?.refreshOnProcessStart();
   const registry = options.registry ?? providerController?.registry ?? createDefaultProviderRegistry();
   const providerSourceManager =
     options.providerSourceManager ?? providerController?.manager ?? new ProviderSourceManager();

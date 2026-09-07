@@ -29,6 +29,7 @@ import {
 import {
   diffOfficialCatalogs,
   fetchVerifiedOfficialOpenFigureSnapshot,
+  isUnchangedOfficialOpenFigureFetch,
   type OfficialCatalogDiff,
   type VerifiedOfficialOpenFigureSnapshot,
 } from "./open-figure-feed.ts";
@@ -323,6 +324,12 @@ export class OfficialOpenFigureSourceManager implements OfficialOpenFigureRuntim
     void this.refreshInBackground();
   }
 
+  refreshOnProcessStart() {
+    if (!this.#loaded || this.#failClosed) return;
+    if (!this.autoRefreshEffective()) return;
+    return this.refreshInBackground({ ignoreTtl: true });
+  }
+
   scheduleBackgroundRefresh() {
     this.clearTimer();
     if (!this.autoRefreshEffective() || this.#failClosed) return;
@@ -407,6 +414,7 @@ export class OfficialOpenFigureSourceManager implements OfficialOpenFigureRuntim
       return plan;
     }
     const snapshot = await this.fetchSnapshot();
+    if (isUnchangedOfficialOpenFigureFetch(snapshot)) return this.alreadyCurrent("update");
     if (this.#state?.activeManifestSha256 === snapshot.manifestSha256 && this.#state.activeSequence === snapshot.manifest.sequence) {
       return this.alreadyCurrent("update");
     }
@@ -471,6 +479,9 @@ export class OfficialOpenFigureSourceManager implements OfficialOpenFigureRuntim
       };
     }
     const snapshot = await this.fetchSnapshot();
+    if (isUnchangedOfficialOpenFigureFetch(snapshot)) {
+      throw new Error("stale official Open Figure plan: remote snapshot changed after planning");
+    }
     if (
       !prepared.snapshot ||
       snapshot.manifestSha256 !== prepared.snapshot.manifestSha256 ||
@@ -514,9 +525,9 @@ export class OfficialOpenFigureSourceManager implements OfficialOpenFigureRuntim
     this.#plans.set(plan.publicPlan.planDigest, plan);
   }
 
-  private refreshInBackground() {
+  private refreshInBackground(options: { ignoreTtl?: boolean } = {}) {
     if (this.#inFlight) return this.#inFlight;
-    this.#inFlight = this.refreshLocked({ ignoreTtl: false }).catch(() => undefined).finally(() => {
+    this.#inFlight = this.refreshLocked({ ignoreTtl: options.ignoreTtl === true }).catch(() => undefined).finally(() => {
       this.#inFlight = undefined;
       this.scheduleBackgroundRefresh();
     });
@@ -526,7 +537,12 @@ export class OfficialOpenFigureSourceManager implements OfficialOpenFigureRuntim
   private async refreshLocked(options: { ignoreTtl?: boolean }) {
     if (!options.ignoreTtl && this.#state?.nextCheckAt && Date.parse(this.#state.nextCheckAt) > this.now()) return;
     try {
-      const snapshot = await this.fetchSnapshot();
+      const snapshot = await this.fetchSnapshot({ skipUnchangedPayload: true });
+      if (isUnchangedOfficialOpenFigureFetch(snapshot)) {
+        await this.touchCheck({ success: true });
+        this.#networkFailures = 0;
+        return;
+      }
       if (this.#state?.activeManifestSha256 === snapshot.manifestSha256 && this.#state.activeSequence === snapshot.manifest.sequence) {
         await this.touchCheck({ success: true });
         this.#networkFailures = 0;
@@ -550,7 +566,7 @@ export class OfficialOpenFigureSourceManager implements OfficialOpenFigureRuntim
     }
   }
 
-  private async fetchSnapshot() {
+  private async fetchSnapshot(options: { skipUnchangedPayload?: boolean } = {}) {
     const trusted = this.#state
       ? [this.#state.signingKey, ...this.#state.authorizedNextKeys].filter(
           (key, index, values) => values.findIndex((item) => item.keyId === key.keyId) === index,
@@ -560,6 +576,7 @@ export class OfficialOpenFigureSourceManager implements OfficialOpenFigureRuntim
       fetcher: this.fetcher,
       manifestUrl: OFFICIAL_OPEN_FIGURE_MANIFEST_URL,
       trustedKeys: trusted,
+      skipUnchangedPayload: options.skipUnchangedPayload === true,
       previous: {
         catalog: this.#current?.catalog,
         tombstones: this.#state?.tombstones,
@@ -701,7 +718,7 @@ export class OfficialOpenFigureSourceManager implements OfficialOpenFigureRuntim
       }],
       lastCheckAt: null,
       lastSuccessAt: null,
-      nextCheckAt: this.nextCheckIso(false),
+      nextCheckAt: nowIso(this.now),
       lastError: null,
       snapshotCount: 1,
       snapshotBytes: 0,
