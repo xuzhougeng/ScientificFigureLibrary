@@ -1,0 +1,19 @@
+{
+  "name": "figure-library",
+  "version": "0.6.7",
+  "description": "Search Local Published, FigureYa, bundled Open Figure Modules, frozen explicit-only Community, and explicitly trusted dynamic Providers; materialize exact immutable figure references without executing module code.",
+  "author": {
+    "name": "xuzhougeng and jarxunlai"
+  },
+  "homepage": "https://xuzhougeng.github.io/ScientificFigureLibrary/",
+  "repository": "https://github.com/xuzhougeng/ScientificFigureLibrary",
+  "keywords": [
+    "scientific-figure",
+    "mcp",
+    "plot-template",
+    "figureya"
+  ],
+  "logo": "./assets/brand/sfl-logo.svg",
+  "skills": "./skills/",
+  "mcpServers": "./.cursor-plugin/mcp.json"
+}

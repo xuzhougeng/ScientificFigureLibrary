@@ -28,7 +28,7 @@ const temporary = await temporaryDirectory("sfl all plugin release candidates");
 try {
   const staging = path.join(temporary, "all verified host artifacts");
   await fs.mkdir(staging, { recursive: true });
-  for (const host of ["wisp", "codex", "claude"]) {
+  for (const host of ["wisp", "codex", "claude", "cursor"]) {
     const { stdout, stderr } = await execFile(
       process.execPath,
       [path.join(root, "scripts", `package-${host}.mjs`)],
@@ -46,7 +46,7 @@ try {
   }
 
   const expected = [];
-  for (const host of ["wisp", "codex", "claude"]) {
+  for (const host of ["wisp", "codex", "claude", "cursor"]) {
     const zipName = `scientific-figure-library-${host}-${packageJson.version}.zip`;
     expected.push(zipName, `${zipName}.sha256`);
   }
@@ -58,7 +58,7 @@ try {
   }
   const artifacts = new Map();
   for (const relative of observed) artifacts.set(relative, new Uint8Array(await fs.readFile(path.join(staging, relative))));
-  for (const host of ["wisp", "codex", "claude"]) {
+  for (const host of ["wisp", "codex", "claude", "cursor"]) {
     const zipName = `scientific-figure-library-${host}-${packageJson.version}.zip`;
     const bytes = artifacts.get(zipName);
     const digest = createHash("sha256").update(bytes).digest("hex");

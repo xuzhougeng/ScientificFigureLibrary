@@ -357,6 +357,19 @@ async function resolveInstalledMcpServer(host, pluginRoot, foreignProjectDirecto
       observedTaskCwd: foreignProjectDirectory,
     };
   }
+  if (host === "cursor") {
+    const manifest = await readInstalledJson(pluginRoot, ".cursor-plugin/plugin.json");
+    const config = await readInstalledJson(pluginRoot, manifest.mcpServers);
+    const server = config.mcpServers?.["figure-library"];
+    return {
+      ...server,
+      args: server.args.map((argument) =>
+        replacePluginRoot(argument, "${PLUGIN_ROOT}", pluginRoot),
+      ),
+      cwd: foreignProjectDirectory,
+      observedTaskCwd: foreignProjectDirectory,
+    };
+  }
   throw new Error(`unsupported plugin smoke host: ${host}`);
 }
 

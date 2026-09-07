@@ -6,7 +6,7 @@
 Scientific Figure Library (SFL) is a standard stdio MCP server and MCP App for
 building, reviewing, finding, and materializing reusable scientific-figure
 references. Version 0.6 keeps one **user-selected global Library** as the durable,
-cross-project source of truth. Wisp, Codex, Claude, and other MCP hosts can use
+cross-project source of truth. Wisp, Codex, Claude, Cursor, and other MCP hosts can use
 the same Library without copying it into every project.
 
 The 0.6 standard core uses one Provider registry. Its built-in retrieval
@@ -74,7 +74,7 @@ materialize an exact result.
 > and the three-part validation state are exposed consistently across review,
 > planning, search, and details.
 >
-> **0.5.5 host plugins and display modes:** the same Skill and MCP server are packaged for Wisp, Codex, and Claude. The MCP App may request `fullscreen` or `pip` when the Host advertises those modes; there is no docked-sidebar display mode.
+> **0.5.5 host plugins and display modes:** the same Skill and MCP server are packaged for Wisp, Codex, Claude, and Cursor. The MCP App may request `fullscreen` or `pip` when the Host advertises those modes; there is no docked-sidebar display mode.
 >
 > **0.5.4 scientificQuestion:** optional retrieval field for the biological question a figure answers. It is not `description` or `visualProfile`. In that release, ordinary search returned only Local Published heads; 0.6.0 keeps the field while expanding the Provider set.
 
@@ -834,15 +834,16 @@ same time; that duplicates tools.
 npm run package:plugins
 ```
 
-This writes three artifacts into `release/`:
+This writes four artifacts into `release/`:
 
 - `scientific-figure-library-wisp-0.6.7.zip` — install from Wisp **Settings → Plugins**
 - `scientific-figure-library-codex-0.6.7.zip` — Codex plugin with `.codex-plugin/plugin.json`, `.codex-plugin/mcp.json`, and `skills/figure-library`
 - `scientific-figure-library-claude-0.6.7.zip` — Claude Code plugin with `.claude-plugin/plugin.json`, `.claude-plugin/mcp.json`, and auto-discovered `skills/`
+- `scientific-figure-library-cursor-0.6.7.zip` — Cursor plugin with `.cursor-plugin/plugin.json`, plugin-root `mcp.json`, and `skills/`
 
 Each package uses its Host's plugin-root contract. Codex resolves `cwd: "."`
-from the installed plugin root, Claude expands `${CLAUDE_PLUGIN_ROOT}`, and Wisp
-continues to expand `${WISP_PLUGIN_ROOT}`. Therefore the server entry does not
+from the installed plugin root, Claude expands `${CLAUDE_PLUGIN_ROOT}`, Cursor
+expands `${PLUGIN_ROOT}`, and Wisp continues to expand `${WISP_PLUGIN_ROOT}`. Therefore the server entry does not
 depend on the project directory from which the Host was opened.
 
 The automated package smoke extracts each ZIP under a path containing spaces,

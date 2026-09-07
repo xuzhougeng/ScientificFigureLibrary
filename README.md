@@ -15,7 +15,7 @@ Scientific Figure Library (SFL) is a **local-first MCP server and MCP App** for
 **your scientific figures**. You import a figure and its code, review them,
 publish an immutable Release to **one global Library on your machine**, then
 reuse that exact template across projects in **Claude Science**, **Wisp Science**,
-**Codex**, and other stdio MCP hosts.
+**Codex**, **Cursor**, and other stdio MCP hosts.
 
 The Library stays on disk you choose. Nothing is copied into every project
 until you confirm a materialization. The server does **not** execute plotting
