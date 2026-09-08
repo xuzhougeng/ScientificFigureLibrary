@@ -12,7 +12,7 @@
 
 Scientific Figure Library（SFL）是**本机优先**的 MCP 服务和 MCP App：把你自己的
 科学图和代码收入**本机一份全局 Library**，审阅后发布成不可变 Release，再在
-**Claude Science**、**Wisp Science**、**Codex** 等宿主里跨项目复用。
+**Claude Science**、**Wisp Science**、**Codex**、**Cursor** 等宿主里跨项目复用。
 
 图库目录由你指定，不会悄悄写进当前项目。服务器**不执行**绘图代码。默认检索顺序为
 **Local Published → FigureYa → Open Figure Modules → 已启用的动态个人 Provider**。
@@ -28,7 +28,7 @@ Community 代码和旧资产保留用于显式兼容访问，但已冻结，且�
 ```text
 从 https://github.com/xuzhougeng/ScientificFigureLibrary 安装。按
 docs/QUICKSTART.md。需要 Node.js 22+。stdio MCP 名称 figure-library，
-入口 dist/index.js。Wisp Science 用 npm run package:wisp 后安装插件。
+入口 dist/index.js。Wisp Science 用 npm run package:wisp 后安装插件。Cursor 用 npm run package:cursor，解压到 ~/.cursor/plugins/local/figure-library/。
 先绑定一个本机全局 Library 目录。不要运行用户绘图脚本。
 ```
 
@@ -36,7 +36,7 @@ docs/QUICKSTART.md。需要 Node.js 22+。stdio MCP 名称 figure-library，
 
 ## 模板说明与内置 Skills
 
-Wisp、Codex、Claude 插件均包含四个 Skills：figure-library、figure-description、
+Wisp、Codex、Claude、Cursor 插件均包含四个 Skills：figure-library、figure-description、
 figure-organization、figure-style，不要求宿主另外安装同名 Skills。复刻默认保持
 参考模板的风格；真正绘图仍需要项目批准的 R/Python 环境和宿主执行/看图工具。
 

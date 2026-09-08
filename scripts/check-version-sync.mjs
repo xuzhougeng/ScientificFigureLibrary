@@ -30,6 +30,7 @@ const pluginFiles = [
   [".wisp-plugin/plugin.json", "Wisp"],
   [".codex-plugin/plugin.json", "Codex"],
   [".claude-plugin/plugin.json", "Claude"],
+  [".cursor-plugin/plugin.json", "Cursor"],
 ];
 for (const [relative, label] of pluginFiles) {
   const pluginJson = JSON.parse(await fs.readFile(path.join(root, relative), "utf8"));
@@ -44,7 +45,7 @@ if (!skill.split(/\r?\n/).includes(`# Scientific Figure Library ${version}`)) {
 }
 
 const protocol = await fs.readFile(path.join(root, "docs", "PROTOCOL.md"), "utf8");
-for (const host of ["wisp", "codex", "claude"]) {
+for (const host of ["wisp", "codex", "claude", "cursor"]) {
   const zip = `scientific-figure-library-${host}-${version}.zip`;
   if (!protocol.includes(zip)) fail(`PROTOCOL.md does not mention the current ${host} zip ${zip}`);
 }

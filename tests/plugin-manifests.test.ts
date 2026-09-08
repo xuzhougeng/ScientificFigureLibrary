@@ -22,21 +22,29 @@ test("host plugin manifests share version, skill, and MCP identity", () => {
   const wisp = readJson(".wisp-plugin/plugin.json");
   const codex = readJson(".codex-plugin/plugin.json");
   const claude = readJson(".claude-plugin/plugin.json");
+  const cursor = readJson(".cursor-plugin/plugin.json");
   const codexMcp = readJson(".codex-plugin/mcp.json");
   const claudeMcp = readJson(".claude-plugin/mcp.json");
+  const cursorMcp = readJson(".cursor-plugin/mcp.json");
   assert.equal(pkg.version, VERSION);
   assert.equal(wisp.version, VERSION);
   assert.equal(codex.version, VERSION);
   assert.equal(claude.version, VERSION);
+  assert.equal(cursor.version, VERSION);
   assert.equal(wisp.id, "figure-library");
   assert.equal(codex.name, "figure-library");
   assert.equal(claude.name, "figure-library");
+  assert.equal(cursor.name, "figure-library");
   assert.equal((pkg.files as string[]).includes(".mcp.json"), false);
+  assert.equal((pkg.files as string[]).includes("mcp.json"), false);
   assert.equal((pkg.files as string[]).includes(".codex-plugin"), true);
   assert.equal((pkg.files as string[]).includes(".claude-plugin"), true);
+  assert.equal((pkg.files as string[]).includes(".cursor-plugin"), true);
   assert.equal(codex.skills, "./skills/");
+  assert.equal(cursor.skills, "./skills/");
   assert.equal(codex.mcpServers, "./.codex-plugin/mcp.json");
   assert.equal(claude.mcpServers, "./.claude-plugin/mcp.json");
+  assert.equal(cursor.mcpServers, "./.cursor-plugin/mcp.json");
   assert.deepEqual(wisp.skills, ["figure-library", "figure-description", "figure-organization", "figure-style"].map((name) => `skills/${name}`));
   assert.equal(fs.existsSync(path.join(root, ".mcp.json")), false);
 
@@ -61,6 +69,12 @@ test("host plugin manifests share version, skill, and MCP identity", () => {
   assert.equal(claude.homepage, WEBSITE);
   assert.equal(claude.repository, REPOSITORY);
   assert.equal("interface" in claude, false);
+  assert.equal((cursor.author as { name?: string }).name, DEVELOPERS);
+  assert.equal(cursor.homepage, WEBSITE);
+  assert.equal(cursor.repository, REPOSITORY);
+  assert.equal(cursor.logo, `./${BRAND_ASSET}`);
+  assert.equal("interface" in cursor, false);
+  assert.equal("email" in ((cursor.author as { email?: string }) ?? {}), false);
   assert.equal(wisp.author, DEVELOPERS);
   assert.equal("homepage" in wisp, false);
   assert.equal("logo" in wisp, false);
@@ -82,6 +96,15 @@ test("host plugin manifests share version, skill, and MCP identity", () => {
   assert.deepEqual(claudeServer.args, ["${CLAUDE_PLUGIN_ROOT}/dist/index.js"]);
   assert.equal(claudeServer.cwd, undefined);
 
+  const cursorServers = cursorMcp.mcpServers as Record<
+    string,
+    { type?: string; command?: string; args?: string[]; cwd?: string }
+  >;
+  assert.equal(cursorServers["figure-library"]?.type, "stdio");
+  assert.equal(cursorServers["figure-library"]?.command, "node");
+  assert.deepEqual(cursorServers["figure-library"]?.args, ["${PLUGIN_ROOT}/dist/index.js"]);
+  assert.equal(cursorServers["figure-library"]?.cwd, undefined);
+
   const wispServers = wisp.mcp_servers as Array<{
     id?: string;
     command?: string;
@@ -93,8 +116,9 @@ test("host plugin manifests share version, skill, and MCP identity", () => {
   assert.deepEqual(wispServers[0]?.args, ["${WISP_PLUGIN_ROOT}/dist/index.js"]);
   assert.equal(wispServers[0]?.cwd, ".");
 
-  const hostConfigs = JSON.stringify({ codexMcp, claudeMcp, wisp });
+  const hostConfigs = JSON.stringify({ codexMcp, claudeMcp, cursorMcp, wisp });
   assert.doesNotMatch(hostConfigs, /[A-Za-z]:[\\/](?:Users|home|scientific-figure-dev)[\\/]/u);
+  assert.equal(fs.existsSync(path.join(root, "mcp.json")), false);
 });
 
 test("brand and Skill UI assets are self-contained, portable, and consistent", async () => {
