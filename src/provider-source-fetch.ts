@@ -1,4 +1,5 @@
 import { createHash, createPublicKey, verify } from "node:crypto";
+import type { LookupAddress, LookupOptions } from "node:dns";
 import { lookup as dnsLookup } from "node:dns/promises";
 import https from "node:https";
 import net from "node:net";
@@ -259,6 +260,33 @@ async function defaultLookup(hostname: string) {
   return values.map((value) => ({ address: value.address, family: value.family as 4 | 6 }));
 }
 
+export function pinnedAddressLookup(selected: PinnedAddress): NonNullable<https.RequestOptions["lookup"]> {
+  return ((
+    _hostname: string,
+    options: LookupOptions | ((err: NodeJS.ErrnoException | null, address: string, family: number) => void),
+    callback?: (
+      err: NodeJS.ErrnoException | null,
+      address: string | LookupAddress[],
+      family?: number,
+    ) => void,
+  ) => {
+    const cb = typeof options === "function" ? options : callback;
+    const all = typeof options === "object" && options !== null && Boolean(options.all);
+    if (typeof cb !== "function") throw new Error("provider source DNS lookup callback is missing");
+    if (all) {
+      (cb as unknown as (err: NodeJS.ErrnoException | null, addresses: LookupAddress[]) => void)(null, [
+        { address: selected.address, family: selected.family },
+      ]);
+      return;
+    }
+    (cb as unknown as (err: NodeJS.ErrnoException | null, address: string, family: number) => void)(
+      null,
+      selected.address,
+      selected.family,
+    );
+  }) as NonNullable<https.RequestOptions["lookup"]>;
+}
+
 function headerValue(headers: RawHttpsResponse["headers"], name: string) {
   const found = Object.entries(headers).find(([key]) => key.toLowerCase() === name)?.[1];
   if (Array.isArray(found)) return found[0];
@@ -287,9 +315,7 @@ async function defaultHttpsRequest(url: URL, options: SecureHttpsRequestOptions)
           "Accept-Encoding": "identity",
           "User-Agent": "ScientificFigureLibrary-provider-source/0.6",
         },
-        lookup: (_hostname, _options, callback) => {
-          callback(null, selected.address, selected.family);
-        },
+        lookup: pinnedAddressLookup(selected),
       },
       (response) => {
         const chunks: Buffer[] = [];
@@ -884,6 +910,74 @@ function inspectZipCentralDirectory(bytes: Uint8Array) {
     }
   }
   return output;
+}
+
+export interface ExactZipFile {
+  path: string;
+  bytes: number;
+  sha256: string;
+  data: Uint8Array;
+}
+
+export function extractExactZipFiles(
+  archiveBytes: Uint8Array,
+  expected: ReadonlyMap<string, { bytes: number; sha256: string }>,
+): ExactZipFile[] {
+  const central = inspectZipCentralDirectory(archiveBytes);
+  const expectedDirectories = new Set<string>();
+  for (const expectedPath of expected.keys()) {
+    const parts = expectedPath.split("/");
+    for (let index = 1; index < parts.length; index += 1) {
+      expectedDirectories.add(parts.slice(0, index).join("/"));
+    }
+  }
+  for (const entry of central.values()) {
+    if (entry.directory && !expectedDirectories.has(entry.name)) {
+      throw new Error(`preview ZIP contains an undeclared directory: ${entry.name}`);
+    }
+    if (!entry.directory && !expected.has(entry.name)) {
+      throw new Error(`preview ZIP contains an undeclared file: ${entry.name}`);
+    }
+  }
+  for (const expectedPath of expected.keys()) {
+    if (!central.has(expectedPath) || central.get(expectedPath)?.directory) {
+      throw new Error(`preview ZIP is missing catalog preview: ${expectedPath}`);
+    }
+  }
+  let expandedBytes = 0;
+  let files = 0;
+  const contents = unzipSync(archiveBytes, {
+    filter(info: UnzipFileInfo) {
+      const directory = info.name.endsWith("/");
+      const name = safePreviewArchivePath(info.name, directory);
+      const observed = central.get(name);
+      if (!observed || observed.directory !== directory || observed.originalSize !== info.originalSize) {
+        throw new Error(`preview ZIP entry metadata mismatch: ${name}`);
+      }
+      if (directory) return false;
+      files += 1;
+      expandedBytes += info.originalSize;
+      if (files > MAX_PREVIEW_FILES) throw new Error("preview ZIP contains too many files");
+      if (info.originalSize > MAX_PREVIEW_FILE_BYTES) throw new Error(`preview ZIP file exceeds 64 MiB: ${name}`);
+      if (expandedBytes > MAX_PREVIEW_EXPANDED_BYTES) throw new Error("expanded preview ZIP exceeds 128 MiB");
+      return true;
+    },
+  });
+  const output: ExactZipFile[] = [];
+  for (const [catalogPath, identity] of expected) {
+    const data = contents[catalogPath];
+    if (!data) throw new Error(`preview ZIP extraction omitted catalog preview: ${catalogPath}`);
+    if (data.byteLength !== identity.bytes || sha256(data) !== identity.sha256) {
+      throw new Error(`preview ZIP file identity mismatch: ${catalogPath}`);
+    }
+    output.push({
+      path: catalogPath,
+      bytes: identity.bytes,
+      sha256: identity.sha256,
+      data: new Uint8Array(data),
+    });
+  }
+  return output.sort((left, right) => left.path.localeCompare(right.path, "en"));
 }
 
 export interface VerifiedPreviewFile extends PublicPreviewIdentityV1 {

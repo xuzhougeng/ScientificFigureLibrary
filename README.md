@@ -68,10 +68,12 @@ Manual steps: [docs/QUICKSTART.md](docs/QUICKSTART.md).
 - Search, describe, preview, then **materialize** an exact confirmed template
 - Portable backup / restore / fork of the Library
 - Optional extra search providers; they do not replace local review
-- **Open Figure Modules** — an openly collaborative, bundled offline Catalog
-  and thumbnail snapshot. Complete module ZIPs are fetched only for one exact
-  user-selected commit-pinned materialization and are never bundled in the
-  plugin.
+- **Open Figure Modules** — the same `io.github.jarxunlai.personal-figures`
+  Provider. A bundled snapshot is only the offline bootstrap. After install,
+  SFL asynchronously checks a signed GitHub feed and atomically switches the
+  local Catalog overlay. Ordinary template updates no longer require
+  repackaging the plugin. Complete module ZIPs are still fetched only for one
+  exact selected materialization.
 
 ## Bundled figure workflow
 
@@ -152,11 +154,19 @@ deterministic archives (no second archive repository):
 └── catalog/                  # archive manifest and admission records
 ```
 
-The SFL checkout contains only the derived snapshot under
-`assets/personal-modules/`: Catalog, primary-preview/thumbnail manifests,
-preview images, thumbnails, and the per-module license notice. It does not
-contain complete personal ZIPs, Gallery source/reference images, private data,
-credentials, or repository state.
+The plugin still ships `assets/personal-modules/` as a bootstrap Catalog,
+preview/thumbnail snapshot, and license notice. After a successful signed-feed
+refresh, search uses the remote last-known-good overlay instead of that
+bootstrap. The plugin never contains complete personal ZIPs, Gallery
+source/reference images, private data, credentials, or signing keys.
+
+The signed feed lives on the `open-figure-feed` branch of
+`jarxunlai/ScientificFigureLibrary-personal`. SFL checks
+`current/source-manifest.json` over HTTPS, verifies the Ed25519 detached
+signature, then pins Catalog and preview ZIP URLs to a payload commit. Search
+does not wait for the network. `figure_library_list_provider_sources` stays
+offline. Explicit `update` still uses Plan/Apply. `configure` may only change
+`autoRefresh`. Add/remove/trust-reset of this official channel are rejected.
 
 The maintainer commands are offline and deliberately separate from GitHub
 operations:

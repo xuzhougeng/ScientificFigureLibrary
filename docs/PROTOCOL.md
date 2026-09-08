@@ -17,9 +17,14 @@ providers are:
 - **FigureYa** (`org.figureya.module`) — the bundled 319-module search catalog,
   with commit-pinned source/archive identities.
 - **Open Figure Modules** (`io.github.jarxunlai.personal-figures`) — a
-  bundled operator-maintained module Catalog plus primary previews and search
-  thumbnails. Cleaned module source and deterministic ZIPs live in one
-  separately maintained repository; complete ZIPs never enter the plugin.
+  `module-catalog` Provider whose bundled snapshot is only the offline
+  bootstrap. While the MCP process is running, SFL asynchronously checks the
+  signed `open-figure-feed` manifest, verifies Ed25519/bytes/ZIP/tombstones,
+  and atomically activates a remote last-known-good overlay. Search keeps the
+  same Provider ID, `module-archive.v1` selectors, and default order. Complete
+  ZIPs never enter the plugin and are still fetched only for one exact
+  selected materialization. 0.6.4 and earlier builds do not contain this
+  updater.
 - **SFL Community** (`io.github.jarxunlai.scientific-figure-community`) — a
   centrally curated Catalog and preview snapshot bundled with this SFL build.
   Complete template archives stay outside the plugin and are downloaded only
@@ -34,6 +39,15 @@ default Provider set. Results are provider-qualified and carry an
 `exactSelector`; a bare `templateId` is never enough to describe, preview, or
 materialize an exact result.
 
+> **Open Figure Modules overlay:** bundled Catalog is bootstrap, not the
+> latest directory. Ordinary search uses stale-while-revalidate and never
+> blocks on GitHub. Provider source tools list this channel as
+> `official-signed-overlay`. `configure` may only set `autoRefresh`; `update`
+> immediately checks the signed feed; add/remove/trust-reset are rejected.
+> Withdrawn moduleIds are cumulative tombstones: they cannot be searched,
+> described, previewed, or newly materialized, but already materialized
+> projects are not deleted.
+>
 > **0.6.1 personal module boundary:** default search order is Local Published,
 > FigureYa, Open Figure Modules, then dynamic personal Providers that opted
 > in. Community remains registered with `enabled: true`,
@@ -60,7 +74,7 @@ materialize an exact result.
 > and the three-part validation state are exposed consistently across review,
 > planning, search, and details.
 >
-> **0.5.5 host plugins and display modes:** the same Skill and MCP server are packaged for Wisp, Codex, and Claude. The MCP App may request `fullscreen` or `pip` when the Host advertises those modes; there is no docked-sidebar display mode.
+> **0.5.5 host plugins and display modes:** the same Skill and MCP server are packaged for Wisp, Codex, Claude, and Cursor. The MCP App may request `fullscreen` or `pip` when the Host advertises those modes; there is no docked-sidebar display mode.
 >
 > **0.5.4 scientificQuestion:** optional retrieval field for the biological question a figure answers. It is not `description` or `visualProfile`. In that release, ordinary search returned only Local Published heads; 0.6.0 keeps the field while expanding the Provider set.
 
@@ -822,10 +836,10 @@ npm run package:plugins
 
 This writes four artifacts into `release/`:
 
-- `scientific-figure-library-wisp-0.6.4.zip` — install from Wisp **Settings → Plugins**
-- `scientific-figure-library-codex-0.6.4.zip` — Codex plugin with `.codex-plugin/plugin.json`, `.codex-plugin/mcp.json`, and `skills/figure-library`
-- `scientific-figure-library-claude-0.6.4.zip` — Claude Code plugin with `.claude-plugin/plugin.json`, `.claude-plugin/mcp.json`, and auto-discovered `skills/`
-- `scientific-figure-library-cursor-0.6.4.zip` — Cursor plugin with `.cursor-plugin/plugin.json`, plugin-root `mcp.json`, and auto-discovered `skills/`
+- `scientific-figure-library-wisp-0.6.7.zip` — install from Wisp **Settings → Plugins**
+- `scientific-figure-library-codex-0.6.7.zip` — Codex plugin with `.codex-plugin/plugin.json`, `.codex-plugin/mcp.json`, and `skills/figure-library`
+- `scientific-figure-library-claude-0.6.7.zip` — Claude Code plugin with `.claude-plugin/plugin.json`, `.claude-plugin/mcp.json`, and auto-discovered `skills/`
+- `scientific-figure-library-cursor-0.6.7.zip` — Cursor plugin with `.cursor-plugin/plugin.json`, plugin-root `mcp.json`, and auto-discovered `skills/`
 
 Each package uses its Host's plugin-root contract. Codex resolves `cwd: "."`
 from the installed plugin root, Claude expands `${CLAUDE_PLUGIN_ROOT}`, Cursor
@@ -849,7 +863,7 @@ Build a standalone npm package:
 
 ```bash
 npm run package:npm
-npm install --global ./release/scientific-figure-library-0.6.4.tgz
+npm install --global ./release/scientific-figure-library-0.6.7.tgz
 ```
 
 Use `scientific-figure-library` as the MCP command after installation.
@@ -885,7 +899,7 @@ npm run package:source-pack -- \
 
 The helper verifies selected ZIP identities and caps a transport pack at 200
 MiB. Extract the resulting
-`release/figure-library-source-pack-volcano-0.6.4.zip` before use.
+`release/figure-library-source-pack-volcano-0.6.7.zip` before use.
 
 ## Catalog development
 
@@ -924,7 +938,7 @@ and exact inventory before atomically replacing `assets/community`. The source
 checkout and target must be separate directory trees. Packaging has an
 additional final-release gate that requires the three reviewed 1.0.0 seed
 releases; the empty bootstrap snapshot is valid for development tests but
-cannot be packaged as the 0.6.4 release.
+cannot be packaged as the 0.6.7 release.
 
 ## Markdown descriptions and bundled Skills
 

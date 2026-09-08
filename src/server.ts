@@ -519,6 +519,7 @@ export async function createServer(options: {
   registry?: ProviderRegistry;
   providerSourceManager?: ProviderSourceManager;
   personalModuleRoot?: string;
+  officialOpenFigure?: import("./open-figure-official-source.ts").OfficialOpenFigureSourceManager;
   /** Internal transport injection for deterministic publication integration tests. */
   openFigurePr?: { ghRunner: import("./github-publication-tools.ts").GhRunner; receiptDirectory: string };
 } = {}) {
@@ -528,11 +529,13 @@ export async function createServer(options: {
     : await createRuntimeProviderController({
         manager: options.providerSourceManager,
         personalModuleRoot: options.personalModuleRoot,
+        officialOpenFigure: options.officialOpenFigure,
       });
+  providerController?.officialOpenFigure?.refreshOnProcessStart();
   const registry = options.registry ?? providerController?.registry ?? createDefaultProviderRegistry();
   const providerSourceManager =
     options.providerSourceManager ?? providerController?.manager ?? new ProviderSourceManager();
-  const moduleCatalogs = providerController?.moduleCatalogs;
+  const liveModuleCatalogs = () => providerController?.getModuleCatalogs();
   const runtime = new LibraryRuntime();
   const workspaceRuntime = new WorkspaceRuntime();
   const previewConfirmations = new PreviewConfirmationStore();
@@ -557,7 +560,10 @@ export async function createServer(options: {
     moduleSourcePackDir?: string,
   ) =>
     createProviderContext(await currentLibraries(), index, {
-      ...(moduleCatalogs ? { moduleCatalogs } : {}),
+      ...(liveModuleCatalogs() ? { moduleCatalogs: liveModuleCatalogs() } : {}),
+      ...(providerController?.officialOpenFigure
+        ? { officialOpenFigure: providerController.officialOpenFigure }
+        : {}),
       ...(sourcePackDir ? { sourcePackDir } : {}),
       ...(moduleSourcePackDir ? { moduleSourcePackDir } : {}),
     });
@@ -620,7 +626,7 @@ export async function createServer(options: {
     const currentCatalogRevision = await registry.catalogRevision(
       options.state.input.providerIds,
       createProviderContext(context, index, {
-        ...(moduleCatalogs ? { moduleCatalogs } : {}),
+        ...(liveModuleCatalogs() ? { moduleCatalogs: liveModuleCatalogs() } : {}),
       }),
     );
     const currentBindingDigest = libraryBindingDigest(context);
@@ -639,7 +645,7 @@ export async function createServer(options: {
       context,
       index,
       registry,
-      moduleCatalogs,
+      moduleCatalogs: liveModuleCatalogs(),
     });
     const { visibleCandidates, candidatePreviews } = splitCandidatePage(
       options.resultSetId,
@@ -797,8 +803,12 @@ export async function createServer(options: {
           codeStatus: parsedInput.codeStatus,
         };
         const context = await currentLibraries();
+        providerController?.officialOpenFigure?.maybeRefresh();
         const providerContext = createProviderContext(context, index, {
-          ...(moduleCatalogs ? { moduleCatalogs } : {}),
+          ...(liveModuleCatalogs() ? { moduleCatalogs: liveModuleCatalogs() } : {}),
+          ...(providerController?.officialOpenFigure
+            ? { officialOpenFigure: providerController.officialOpenFigure }
+            : {}),
         });
         const queryDigest = searchQueryDigest(parsedInput);
         const catalogRevision = await registry.catalogRevision(
@@ -1114,7 +1124,7 @@ export async function createServer(options: {
           providerId,
           exactSelector,
           registry,
-          moduleCatalogs,
+          moduleCatalogs: liveModuleCatalogs(),
         });
         const sha256 = preview.sha256;
         const transport = await prepareTransportImage({
@@ -1215,7 +1225,7 @@ export async function createServer(options: {
       const catalogRevision = await registry.catalogRevision(
         resultSet.providerIds,
         createProviderContext(context, index, {
-          ...(moduleCatalogs ? { moduleCatalogs } : {}),
+          ...(liveModuleCatalogs() ? { moduleCatalogs: liveModuleCatalogs() } : {}),
         }),
       );
       const bindingDigest = libraryBindingDigest(context);
@@ -1230,7 +1240,7 @@ export async function createServer(options: {
         providerId: options.providerId,
         exactSelector: options.exactSelector,
         registry,
-        moduleCatalogs,
+        moduleCatalogs: liveModuleCatalogs(),
       });
       const transport = await prepareTransportImage({
         sourceBytes: preview.bytes,
@@ -1719,7 +1729,7 @@ export async function createServer(options: {
           countLegacyFlat(context.snapshot.root),
           registry.status(
             createProviderContext(context, index, {
-              ...(moduleCatalogs ? { moduleCatalogs } : {}),
+              ...(liveModuleCatalogs() ? { moduleCatalogs: liveModuleCatalogs() } : {}),
               ...(sourcePackDir ? { sourcePackDir } : {}),
               ...(moduleSourcePackDir ? { moduleSourcePackDir } : {}),
             }),
@@ -1881,7 +1891,8 @@ export async function createServer(options: {
     server,
     index,
     registry,
-    moduleCatalogs,
+    moduleCatalogs: liveModuleCatalogs(),
+    officialOpenFigure: providerController?.officialOpenFigure,
     currentLibraries,
     previewConfirmations,
     diagnostics,
@@ -1893,7 +1904,7 @@ export async function createServer(options: {
     server,
     currentLibraries,
     figureYa: async () => index,
-    openFigure: async () => moduleCatalogs?.get(PERSONAL_MODULE_PROVIDER_ID),
+    openFigure: async () => liveModuleCatalogs()?.get(PERSONAL_MODULE_PROVIDER_ID),
     lookupSearchSession: (resultSetId) => {
       try { previewConfirmations.getResultSet(resultSetId); } catch { return undefined; }
       const state = searchSessions.get(resultSetId);
@@ -1918,7 +1929,7 @@ export async function createServer(options: {
       };
       const context = await currentLibraries();
       const providerContext = createProviderContext(context, index, {
-        ...(moduleCatalogs ? { moduleCatalogs } : {}),
+        ...(liveModuleCatalogs() ? { moduleCatalogs: liveModuleCatalogs() } : {}),
       });
       const searched: TemplateCandidate[] = [];
       for (const providerId of parsedInput.providerIds) {
@@ -1961,6 +1972,7 @@ export async function createServer(options: {
   registerProviderSourceTools({
     server,
     manager: providerSourceManager,
+    officialOpenFigure: providerController?.officialOpenFigure,
     builtInSources: async () => {
       const descriptors = registry
         .list()
@@ -1985,7 +1997,10 @@ export async function createServer(options: {
               ? details.catalogTemplates
               : undefined;
         return {
-          sourceKind: descriptor.kind,
+          sourceKind:
+            descriptor.kind === "module-catalog" && descriptor.providerId === PERSONAL_MODULE_PROVIDER_ID
+              ? "official-signed-overlay"
+              : descriptor.kind,
           providerId: descriptor.providerId,
           sourceLabel: descriptor.sourceLabel,
           enabled: descriptor.enabled !== false,

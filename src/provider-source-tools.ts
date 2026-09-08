@@ -8,6 +8,14 @@ import {
   type ProviderSourceChangePlanV1,
   type ProviderSourceAlreadyCurrentV1,
 } from "./provider-sources.ts";
+import {
+  OfficialOpenFigureSourceManager,
+  isOfficialAlreadyCurrent,
+} from "./open-figure-official-source.ts";
+import {
+  OFFICIAL_OPEN_FIGURE_PROVIDER_ID,
+  isOfficialOpenFigureProviderId,
+} from "./open-figure-official-channel.ts";
 
 const HASH = /^[a-f0-9]{64}$/u;
 const OPERATION_ID = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/u;
@@ -148,6 +156,10 @@ const PlanInput = z.object({
     .boolean()
     .optional()
     .describe("Trust-reset only: explicitly permit a lower sequence under the new trust epoch."),
+  autoRefresh: z
+    .boolean()
+    .optional()
+    .describe("Official Open Figure Modules only: enable or disable signed-feed auto refresh."),
 });
 
 const ApplyInput = z.object({
@@ -256,9 +268,14 @@ interface PersonalProviderRuntimeStatus {
   details?: Record<string, unknown>;
 }
 
+function officialProviderId(input: { action: string; expectedProviderId?: string; providerId?: string }) {
+  return input.action === "add" ? input.expectedProviderId : input.providerId;
+}
+
 export function registerProviderSourceTools(options: {
   server: McpServer;
   manager?: ProviderSourceManager;
+  officialOpenFigure?: OfficialOpenFigureSourceManager;
   builtInSources?: () => Promise<Array<Record<string, unknown>>>;
   personalSourceStatuses?: () => Promise<PersonalProviderRuntimeStatus[]>;
   onApplied?: () => Promise<void>;
@@ -376,6 +393,57 @@ export function registerProviderSourceTools(options: {
     async (rawInput): Promise<CallToolResult> => {
       try {
         const input = checkedPlanInput(rawInput);
+        if (rawInput.autoRefresh !== undefined && !isOfficialOpenFigureProviderId(officialProviderId(input))) {
+          throw new Error("autoRefresh is only valid for the official Open Figure Modules channel");
+        }
+        if (isOfficialOpenFigureProviderId(officialProviderId(input))) {
+          if (!options.officialOpenFigure) throw new Error("official Open Figure Modules manager is unavailable");
+          if (input.action === "add" || input.action === "remove" || input.action === "trust_reset") {
+            throw new Error(`official Open Figure Modules does not support ${input.action}; it is a compiled channel`);
+          }
+          const plan = await options.officialOpenFigure.planChange({
+            action: input.action === "configure" ? "configure" : "update",
+            ...(input.action === "configure" ? { autoRefresh: rawInput.autoRefresh } : {}),
+          });
+          if (isOfficialAlreadyCurrent(plan)) {
+            const outcome = envelope(
+              "ok",
+              "provider_source_already_current",
+              `Provider ${plan.providerId} is already at the verified sequence and manifest identity. No Apply is available or required.`,
+              "none",
+            );
+            return response(outcome, { result: plan }, [
+              `ACTION: ${plan.action}`,
+              `PROVIDER_ID: ${plan.providerId}`,
+              `STATUS: ${plan.status}`,
+              `SEQUENCE: ${plan.sequence ?? "none"}`,
+              `MANIFEST_SHA256: ${plan.manifestSha256 ?? "none"}`,
+              "PLAN_WRITES: none",
+              "APPLY_REQUIRED: false",
+            ]);
+          }
+          const outcome = envelope(
+            "needs_user_confirmation",
+            "provider_source_plan_ready",
+            "No files were written. Review the official Open Figure Modules feed identity before Apply.",
+            "apply_confirmed_plan",
+          );
+          return response(outcome, { plan }, [
+            `ACTION: ${plan.action}`,
+            `PROVIDER_ID: ${plan.providerId}`,
+            `SOURCE_KIND: ${plan.sourceKind}`,
+            `AUTO_REFRESH: ${plan.autoRefresh ?? "unchanged"}`,
+            `SEQUENCE: ${plan.sequence ?? "none"}`,
+            `MANIFEST_SHA256: ${plan.manifestSha256 ?? "none"}`,
+            `CATALOG_SHA256: ${plan.catalogSha256 ?? "none"}`,
+            `TEMPLATES_ADDED: ${plan.templateDiff.added.join(", ") || "none"}`,
+            `TEMPLATES_UPDATED: ${plan.templateDiff.updated.map((item) => item.moduleId).join(", ") || "none"}`,
+            `TEMPLATES_WITHDRAWN: ${plan.templateDiff.withdrawn.join(", ") || "none"}`,
+            `TOMBSTONES: ${plan.templateDiff.tombstones.join(", ") || "none"}`,
+            `PLAN_DIGEST: ${plan.planDigest}`,
+            "PLAN_WRITES: none",
+          ]);
+        }
         const plan = await manager.planChange(input);
         if (isAlreadyCurrent(plan)) {
           const outcome = envelope(

@@ -15,6 +15,7 @@ import {
   ed25519PublicKeyIdentity,
   fetchVerifiedProviderSourceSnapshot,
   isGloballyRoutableAddress,
+  pinnedAddressLookup,
   type ProviderSourceHttpsRequest,
   type ProviderSourceLookup,
   type RawHttpsResponse,
@@ -501,4 +502,24 @@ test("secure fetch enforces redirect, timeout, size, encoding, and MIME limits",
     /timed out after 100ms/u,
   );
   assert.equal(requestAborted, true, "the hard request deadline must abort the underlying transport");
+});
+
+test("pinnedAddressLookup supports Node 24 options.all lookup callbacks", () => {
+  const lookup = pinnedAddressLookup({ address: "185.199.111.133", family: 4 });
+  let allResult: unknown;
+  lookup("raw.githubusercontent.com", { all: true }, ((err: NodeJS.ErrnoException | null, addresses: unknown) => {
+    assert.equal(err, null);
+    allResult = addresses;
+  }) as Parameters<NonNullable<typeof lookup>>[2]);
+  assert.deepEqual(allResult, [{ address: "185.199.111.133", family: 4 }]);
+
+  let address: unknown;
+  let family: unknown;
+  lookup("raw.githubusercontent.com", {}, ((err: NodeJS.ErrnoException | null, value: unknown, fam?: unknown) => {
+    assert.equal(err, null);
+    address = value;
+    family = fam;
+  }) as Parameters<NonNullable<typeof lookup>>[2]);
+  assert.equal(address, "185.199.111.133");
+  assert.equal(family, 4);
 });

@@ -40,7 +40,7 @@ const REPOSITORY_PATTERN = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/u;
 const RESERVED = /^(?:con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\..*)?$/iu;
 const PRIVATE_KEY = /-----BEGIN (?:OPENSSH |EC |RSA )?PRIVATE KEY-----/u;
 const TOKEN = /(?:^|[^A-Za-z0-9_])(?:gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,})/u;
-const ABSOLUTE_WIN = /(?:^|[\s("'=,:])(?:[A-Za-z]:[\\/]|\\\\[^\\/]+[\\/])/u;
+const ABSOLUTE_WIN = /(?:^|[\s("'=,:])(?:[A-Za-z]:[\\/]|\\\\[A-Za-z0-9][A-Za-z0-9._-]{0,62}\\[A-Za-z0-9._`$~-])/u;
 const ABSOLUTE_UNIX = /(?:^|[\s("'=,:])\/(?:home|Users|mnt|tmp)\//u;
 const NON_PUBLIC_LICENSE = /(?:^|[^A-Za-z0-9])(unknown|private_reference|unlicensed)(?:$|[^A-Za-z0-9])/iu;
 const FORBIDDEN_PUBLIC_FILE =
@@ -60,6 +60,80 @@ function assert(condition, message) {
 
 export function sha256(value) {
   return createHash("sha256").update(value).digest("hex");
+}
+
+const ZIP_LOCAL_SIGNATURE = 0x04034b50;
+const ZIP_CENTRAL_SIGNATURE = 0x02014b50;
+const ZIP_END_SIGNATURE = 0x06054b50;
+
+function readU16(bytes, offset) {
+  return bytes[offset] | (bytes[offset + 1] << 8);
+}
+
+function readU32(bytes, offset) {
+  return (bytes[offset] | (bytes[offset + 1] << 8) | (bytes[offset + 2] << 16) | (bytes[offset + 3] << 24)) >>> 0;
+}
+
+function writeU32(bytes, offset, value) {
+  bytes[offset] = value & 255;
+  bytes[offset + 1] = (value >>> 8) & 255;
+  bytes[offset + 2] = (value >>> 16) & 255;
+  bytes[offset + 3] = (value >>> 24) & 255;
+}
+
+export function dosDateTimeUtc(value = SOURCE_DATE_EPOCH) {
+  const dt = new Date(value);
+  const year = dt.getUTCFullYear() - 1980;
+  assert(year >= 0 && year <= 119, "ZIP timestamp is out of DOS range");
+  return (
+    (year << 25) |
+    ((dt.getUTCMonth() + 1) << 21) |
+    (dt.getUTCDate() << 16) |
+    (dt.getUTCHours() << 11) |
+    (dt.getUTCMinutes() << 5) |
+    (dt.getUTCSeconds() >> 1)
+  ) >>> 0;
+}
+
+export function patchZipDosDateTime(input, dos = dosDateTimeUtc()) {
+  const bytes = Uint8Array.from(input);
+  let offset = 0;
+  let files = 0;
+  while (offset + 4 <= bytes.byteLength) {
+    const signature = readU32(bytes, offset);
+    if (signature === ZIP_LOCAL_SIGNATURE) {
+      assert(offset + 30 <= bytes.byteLength, "ZIP local header is truncated");
+      assert((readU16(bytes, offset + 6) & 8) === 0, "ZIP data descriptors are not supported");
+      writeU32(bytes, offset + 10, dos);
+      const nameLength = readU16(bytes, offset + 26);
+      const extraLength = readU16(bytes, offset + 28);
+      const compressedSize = readU32(bytes, offset + 18);
+      offset += 30 + nameLength + extraLength + compressedSize;
+      files += 1;
+    } else if (signature === ZIP_CENTRAL_SIGNATURE) {
+      assert(offset + 46 <= bytes.byteLength, "ZIP central header is truncated");
+      writeU32(bytes, offset + 12, dos);
+      const nameLength = readU16(bytes, offset + 28);
+      const extraLength = readU16(bytes, offset + 30);
+      const commentLength = readU16(bytes, offset + 32);
+      offset += 46 + nameLength + extraLength + commentLength;
+    } else if (signature === ZIP_END_SIGNATURE) {
+      break;
+    } else {
+      throw new Error("ZIP archive contains an unsupported signature");
+    }
+  }
+  assert(files > 0, "ZIP archive contains no local files");
+  return bytes;
+}
+
+export function zipDeterministic(files, options = {}) {
+  const archive = Object.fromEntries([...Object.entries(files)].sort(([left], [right]) => compare(left, right)));
+  const bytes = zipSync(archive, {
+    level: options.level ?? 6,
+    mtime: new Date(SOURCE_DATE_EPOCH),
+  });
+  return patchZipDosDateTime(bytes, dosDateTimeUtc(options.mtime ?? SOURCE_DATE_EPOCH));
 }
 
 /** A stable, compact JSON representation used for digests and comparisons. */
@@ -357,10 +431,7 @@ export async function resolvedModule(moduleDirectory) {
 
 export function archiveBytes(loaded) {
   const archive = Object.fromEntries(loaded.files.map((file) => [file.path, file.data]));
-  const bytes = zipSync(archive, {
-    level: 6,
-    mtime: new Date(SOURCE_DATE_EPOCH),
-  });
+  const bytes = zipDeterministic(archive, { level: 6 });
   const unpacked = unzipSync(bytes);
   const expected = loaded.files.map((file) => file.path).sort(compare);
   const actual = Object.keys(unpacked).sort(compare);
@@ -503,10 +574,29 @@ export async function verifyArchiveCommit(repositoryRoot, loaded, sourceCommit, 
     sourceTree.trim() === archiveTree.trim(),
     `${loaded.moduleId} source tree bytes changed between source and archive commits`,
   );
-  const expected = archiveBytes(loaded);
   const fromCommit = await gitArchiveBlob(repositoryRoot, archive, `archives/${loaded.moduleId}.zip`);
-  assert(Buffer.from(fromCommit).equals(Buffer.from(expected.bytes)), `${loaded.moduleId} archive commit is not generated from source commit ${source}`);
-  return { ...expected, sourceCommit: source, archiveCommit: archive };
+  const unpacked = unzipSync(fromCommit);
+  const expectedFiles = loaded.files.map((file) => file.path).sort(compare);
+  const actualFiles = Object.keys(unpacked).sort(compare);
+  assert(
+    canonical(actualFiles) === canonical(expectedFiles),
+    `${loaded.moduleId} archive commit is not generated from source commit ${source}`,
+  );
+  for (const file of expectedFiles) {
+    const local = loaded.files.find((item) => item.path === file)?.data;
+    assert(
+      local && Buffer.from(unpacked[file]).equals(Buffer.from(local)),
+      `${loaded.moduleId} archive commit is not generated from source commit ${source}`,
+    );
+  }
+  return {
+    bytes: fromCommit,
+    sha256: sha256(fromCommit),
+    bytesLength: fromCommit.byteLength,
+    files: expectedFiles,
+    sourceCommit: source,
+    archiveCommit: archive,
+  };
 }
 
 export async function moduleDirectories(repositoryRoot) {
@@ -992,7 +1082,7 @@ export async function packagePersonalSourcePack(options = {}) {
   files.set("module-source-pack.manifest.json", Buffer.from(stableJson(manifest), "utf8"));
   const output = path.resolve(options.outputRoot ?? path.join(repositoryRoot, "source-pack"));
   if (output.toLowerCase().endsWith(".zip")) {
-    const zip = zipSync(Object.fromEntries([...files].sort(([left], [right]) => compare(left, right))), { level: 0, mtime: new Date(SOURCE_DATE_EPOCH) });
+    const zip = zipDeterministic(Object.fromEntries([...files].sort(([left], [right]) => compare(left, right))), { level: 0 });
     const existing = await fs.readFile(output).catch((error) => {
       if (error?.code === "ENOENT") return undefined;
       throw error;

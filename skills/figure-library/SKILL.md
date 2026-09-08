@@ -3,7 +3,7 @@ name: figure-library
 description: Build, review, search, select, and materialize immutable scientific-figure references from Local Published, FigureYa, bundled Open Figure Modules, frozen explicit-only Community, and explicitly trusted dynamic Providers.
 ---
 
-# Scientific Figure Library 0.6.4
+# Scientific Figure Library 0.6.7
 
 Use this Skill when a user wants to store an uploaded figure/code pair, review
 or publish a local template, search for a plotting reference, or materialize an
@@ -334,9 +334,13 @@ into a terminal failure when other selected Providers are healthy. This pre-0.7
 redaction is not the normal withdrawn lifecycle of a later protocol and does not
 erase Git history or an already materialized, commit-pinned recipient copy.
 
-The built-in Open Figure Modules source is a separate, read-only snapshot
-maintained by the operator. Its Catalog and thumbnails are bundled for offline
-search and exact preview; complete ZIPs are not bundled. Each personal module
+The built-in Open Figure Modules source keeps Provider ID
+`io.github.jarxunlai.personal-figures`. The bundled Catalog is bootstrap only.
+When this SFL process is running, it may asynchronously refresh a signed
+GitHub feed and switch the local overlay; search does not wait for that
+network check. If a feed error appears, inspect Provider status instead of
+repackaging the snapshot. Complete ZIPs are not bundled. 0.6.4 and earlier
+plugins will not auto-update this Catalog. Each personal module
 uses the `module-archive.v1` selector kind and binds the Provider ID, module ID, source repository/commit, archive
 repository/commit/path, archive bytes and SHA-256, primary preview identity,
 Catalog SHA-256, and `template` or `full` mode. Publisher/Gallery review and

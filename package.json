@@ -1,6 +1,6 @@
 {
   "name": "scientific-figure-library",
-  "version": "0.6.4",
+  "version": "0.6.7",
   "description": "Local-first MCP server and MCP App for your scientific figures: import, review, and publish a global library on disk, then reuse exact templates in Claude Science and Wisp Science.",
   "keywords": [
     "scientific-figures",
@@ -55,7 +55,8 @@
     "modules:validate": "node scripts/validate-personal-modules.mjs",
     "modules:archive": "node scripts/archive-personal-modules.mjs",
     "modules:catalog": "node scripts/build-personal-module-catalog.mjs",
-    "modules:source-pack": "node scripts/package-personal-module-source-pack.mjs"
+    "modules:source-pack": "node scripts/package-personal-module-source-pack.mjs",
+    "modules:feed": "node scripts/publish-open-figure-feed.mjs"
   },
   "devDependencies": {
     "@modelcontextprotocol/ext-apps": "^1.7.0",
