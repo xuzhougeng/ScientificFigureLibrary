@@ -103,6 +103,64 @@ const pageCache = new Map<number, SearchResult>();
 const reportedCapabilities = new Set<string>();
 const selectedCandidates = new Map<string, Candidate>();
 
+const DEFAULT_TITLE = "选择科学绘图模板";
+const DEFAULT_HINT = "先在这里浏览详情并选择；Agent 会等待你的决定";
+const DEFAULT_EMPTY =
+  "若尚未绑定本机绘图仓库和工作区，请先在对话中指定两个绝对目录。绑定后可上传图片、数据或描述想画的图。";
+const SETUP_TITLE = "先完成本机绑定";
+const SETUP_HINT = "绑定完成前请先在对话里指定两个绝对目录";
+const SETUP_EMPTY =
+  "新安装需要先指定全局「绘图仓库」和「本地工作区」两个绝对目录。不要使用当前项目目录，除非你明确指定。Agent 会先给出只读 Plan，确认后再写入本机 locator。";
+
+function parseSetup(content: unknown) {
+  if (!content || typeof content !== "object") return undefined;
+  const record = content as Record<string, unknown>;
+  const setup = record.setup;
+  if (setup && typeof setup === "object") {
+    const value = setup as Record<string, unknown>;
+    return {
+      required: value.required === true,
+      missingConfirmations: Array.isArray(value.missingConfirmations)
+        ? value.missingConfirmations.filter((item): item is string => typeof item === "string")
+        : [],
+    };
+  }
+  const envelope = record.envelope;
+  if (envelope && typeof envelope === "object" && (envelope as { code?: string }).code === "setup_required") {
+    const missing = (envelope as { missingConfirmations?: unknown }).missingConfirmations;
+    return {
+      required: true,
+      missingConfirmations: Array.isArray(missing)
+        ? missing.filter((item): item is string => typeof item === "string")
+        : [],
+    };
+  }
+  return undefined;
+}
+
+function applyFirstRunSetup(content: unknown, options: { hasCandidates?: boolean } = {}) {
+  const setup = parseSetup(content);
+  const required = setup?.required === true && !options.hasCandidates;
+  root.dataset.setupRequired = required ? "true" : "false";
+  const title = document.querySelector("#app h1");
+  const hint = document.querySelector(".hint");
+  const emptyText = empty.querySelector("span:last-child");
+  if (required) {
+    if (title) title.textContent = SETUP_TITLE;
+    if (hint) hint.textContent = SETUP_HINT;
+    if (emptyText) emptyText.textContent = SETUP_EMPTY;
+    empty.hidden = false;
+    query.textContent = "等待绑定本机目录";
+    status.textContent = "尚未绑定本机绘图仓库或工作区。请在对话中提供两个绝对目录。";
+    return;
+  }
+  if (!options.hasCandidates) {
+    if (title) title.textContent = DEFAULT_TITLE;
+    if (hint) hint.textContent = DEFAULT_HINT;
+    if (emptyText) emptyText.textContent = DEFAULT_EMPTY;
+  }
+}
+
 function selectedIds() {
   return new Set(selectedCandidates.keys());
 }
@@ -567,6 +625,7 @@ app.ontoolinput = (input) => {
 app.ontoolresult = (result) => {
   const parsed = parseSearchResult(result.structuredContent, result._meta);
   if (parsed) render(parsed);
+  applyFirstRunSetup(result.structuredContent, { hasCandidates: Boolean(parsed?.candidates.length) });
 };
 app.onhostcontextchanged = applyHostContext;
 
@@ -585,7 +644,12 @@ app
     const context = app.getHostContext();
     if (context) applyHostContext(context);
     else refreshDisplayChrome();
-    if (!serverToolsAvailable()) {
+    if (serverToolsAvailable()) {
+      void app
+        .callServerTool({ name: "figure_library_source_status", arguments: {} })
+        .then((result) => applyFirstRunSetup(result.structuredContent))
+        .catch((error: unknown) => console.warn("first-run status failed", error));
+    } else {
       status.textContent = updateModelContextAvailable()
         ? "当前 Host 未授权 serverTools；仍可查看当前页详情并选择一个候选交给 Agent 审核。"
         : "当前 Host 未授权 serverTools 或 updateModelContext；只能查看已返回的基础详情。";

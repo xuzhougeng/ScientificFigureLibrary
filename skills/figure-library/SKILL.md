@@ -78,6 +78,8 @@ Read these fields once and follow `NEXT_ACTION`:
 - `stop_other_writers`: ask the user to stop every Wisp, Codex, Claude, and
   other writer. Never steal a lock automatically.
 - `rebind_library`: inspect status and request an explicit global binding.
+- `rebind_workspace`: inspect status and request an explicit Local workspace
+  binding.
 - `none`: stop; do not make another equivalent call.
 
 Never repeat an identical failed, blocked, not-found, stale, or expired call.
@@ -98,10 +100,23 @@ for user-visible App preview.
 
 ## 1. Inspect or bind the global Library
 
+On first install, plugin startup, or whenever the user only asks to open SFL,
+call `figure_library_open` or `figure_library_source_status` before searching.
+If `CODE` is `setup_required`, stop. Do not invent a plotting query. Ask for
+every listed `MISSING_CONFIRMATIONS` absolute directory:
+
+- `globalLibraryDirectory`: one cross-project Published Library root
+- `localWorkspaceDirectory`: one machine-local inbox/drafts/gallery workspace
+
+Never infer either path from the current project folder unless the user names
+that folder. Plan each bind, show the exact path, then Apply only after
+approval. Later MCP starts reuse those locators silently.
+
 Call `figure_library_source_status` when the effective Library is unknown. It
 reports the global root/source, locator, `libraryId`, write status, lifecycle
 counts, write lock, Local Published provider, FigureYa provider, and Local
-workspace confirmation.
+workspace confirmation. New installs return `setup_required` until both roots
+are bound.
 
 This machine has two roots. They are cross-project and are not inferred from
 the current Wisp cwd:
@@ -313,7 +328,8 @@ the Published pointer backward directly.
 ## 4. Search the dynamic Provider set
 
 If the user only asks to open the workbench, call `figure_library_open`; do not
-invent a generic query. Otherwise inspect the request first:
+invent a generic query. If it returns `setup_required`, bind the missing
+directories first. Otherwise inspect the request first:
 
 - image: view it before searching;
 - data: profile shape, columns/types, semantic roles, and missingness locally;

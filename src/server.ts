@@ -22,6 +22,7 @@ import {
 } from "./library-binding-tools.ts";
 import { LibraryRuntime, readLibraryRootMarker } from "./library-runtime.ts";
 import { WorkspaceRuntime } from "./workspace-runtime.ts";
+import { firstRunSetupLines, firstRunSetupPayload, firstRunSetupStatus } from "./first-run-setup.ts";
 import { registerLifecycleTools } from "./lifecycle-tools.ts";
 import { registerMaterializationTools } from "./materialization-tools.ts";
 import { registerGitHubPublicationTools } from "./github-publication-tools.ts";
@@ -153,6 +154,7 @@ function outcome(
   code: string,
   summary: string,
   nextAction: ToolOutcomeEnvelope["nextAction"] = "none",
+  missingConfirmations?: string[],
 ): ToolOutcomeEnvelope {
   return {
     schema: "figure-library.tool-outcome.v1",
@@ -162,6 +164,7 @@ function outcome(
     code,
     summary,
     nextAction,
+    ...(missingConfirmations?.length ? { missingConfirmations } : {}),
   };
 }
 
@@ -181,6 +184,9 @@ function terminal(
           "RETRY_SAME_CALL: false",
           `CODE: ${envelope.code}`,
           `NEXT_ACTION: ${envelope.nextAction}`,
+          ...(envelope.missingConfirmations?.length
+            ? [`MISSING_CONFIRMATIONS: ${envelope.missingConfirmations.join(",")}`]
+            : []),
           envelope.summary,
           ...lines,
         ].join("\n"),
@@ -576,7 +582,7 @@ export async function createServer(options: {
     {
       title: "Open Scientific Figure Library",
       description:
-        "Open the read-only candidate workbench. Ask for an uploaded reference, data profile, or plotting goal before searching.",
+        "Open the read-only candidate workbench. New installs return setup_required until the global Library and Local workspace are bound; otherwise ask for an uploaded reference, data profile, or plotting goal before searching.",
       inputSchema: {},
       annotations: {
         readOnlyHint: true,
@@ -587,28 +593,44 @@ export async function createServer(options: {
       _meta: { ui: { resourceUri: RESOURCE_URI, visibility: ["model"] } },
     },
     async (): Promise<CallToolResult> => {
-      const responseEnvelope = outcome(
-        "ok",
-        "library_ready",
-        `Scientific Figure Library ${VERSION} is ready. Standard core uses direct user-confirmed image/code intake; Web Capture and project pins are not registered. Ask for a plotting goal before searching.`,
-        "ask_user",
+      const context = await currentLibraries();
+      const workspace = await workspaceRuntime.current();
+      const setup = firstRunSetupStatus({ library: context.snapshot, workspace });
+      const responseEnvelope = setup.required
+        ? outcome(
+            "ok",
+            setup.code,
+            setup.summary,
+            "ask_user",
+            setup.missingConfirmations,
+          )
+        : outcome(
+            "ok",
+            "library_ready",
+            `Scientific Figure Library ${VERSION} is ready. Standard core uses direct user-confirmed image/code intake; Web Capture and project pins are not registered. Ask for a plotting goal before searching.`,
+            "ask_user",
+          );
+      return terminal(
+        responseEnvelope,
+        {
+          query: setup.required ? "等待绑定本机目录" : "等待绘图目标",
+          libraryVersion: VERSION,
+          intentFamilies: [],
+          reviewRequired: false,
+          materializationProtocolVersion: MATERIALIZATION_PROTOCOL_VERSION,
+          resultSetId: null,
+          pagination: { total: 0, pageIndex: 0, pageSize: 6, hasMore: false, nextCursor: null },
+          sources: registry.list().map(({ providerId, sourceLabel }) => ({
+            providerId,
+            sourceLabel,
+            matched: 0,
+          })),
+          candidates: [],
+          diagnosticsDegraded: diagnostics.degraded,
+          setup: firstRunSetupPayload(setup),
+        },
+        firstRunSetupLines(setup),
       );
-      return terminal(responseEnvelope, {
-        query: "等待绘图目标",
-        libraryVersion: VERSION,
-        intentFamilies: [],
-        reviewRequired: false,
-        materializationProtocolVersion: MATERIALIZATION_PROTOCOL_VERSION,
-        resultSetId: null,
-        pagination: { total: 0, pageIndex: 0, pageSize: 6, hasMore: false, nextCursor: null },
-        sources: registry.list().map(({ providerId, sourceLabel }) => ({
-          providerId,
-          sourceLabel,
-          matched: 0,
-        })),
-        candidates: [],
-        diagnosticsDegraded: diagnostics.degraded,
-      });
     },
   );
 
@@ -1710,7 +1732,7 @@ export async function createServer(options: {
     {
       title: "Inspect global Library and Provider status",
       description:
-        "Return complete text and structured status for the global portable Library, immutable lifecycle, write lock, and every registered Local, Community, FigureYa, or personal Provider. Community is reported as frozen and excluded from default search. Capture/project-pin status is intentionally absent.",
+        "Return complete text and structured status for the global portable Library, immutable lifecycle, write lock, and every registered Local, Community, FigureYa, or personal Provider. Community is reported as frozen and excluded from default search. Capture/project-pin status is intentionally absent. New installs report setup_required until both the global Library and Local workspace are bound.",
       inputSchema: SourceStatusInput.shape,
       annotations: {
         readOnlyHint: true,
@@ -1718,6 +1740,7 @@ export async function createServer(options: {
         idempotentHint: true,
         openWorldHint: false,
       },
+      _meta: { ui: { visibility: ["model", "app"] } },
     },
     async ({ sourcePackDir, moduleSourcePackDir }): Promise<CallToolResult> => {
       try {
@@ -1812,9 +1835,17 @@ export async function createServer(options: {
             },
           },
         };
+        const setup = firstRunSetupStatus({ library: context.snapshot, workspace });
+        const structuredWithSetup = { ...structured, setup: firstRunSetupPayload(setup) };
         return terminal(
-          outcome("ok", "source_status_ready", "Complete source status follows; no files were written."),
-          structured,
+          outcome(
+            "ok",
+            setup.required ? setup.code : "source_status_ready",
+            setup.required ? setup.summary : "Complete source status follows; no files were written.",
+            setup.required ? setup.nextAction : "none",
+            setup.required ? setup.missingConfirmations : undefined,
+          ),
+          structuredWithSetup,
           [
             `SERVER_VERSION: ${VERSION}`,
             `LIBRARY_ROOT: ${context.snapshot.root}`,
@@ -1874,6 +1905,7 @@ export async function createServer(options: {
             `WORKSPACE_CONFIRMED: ${workspace.confirmed}`,
             `WORKSPACE_KIND: ${workspace.inspection?.kind ?? "unbound"}`,
             `WORKSPACE_LOCATOR_PATH: ${workspace.locatorPath}`,
+            ...firstRunSetupLines(setup),
           ],
         );
       } catch (error) {

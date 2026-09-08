@@ -353,6 +353,11 @@ button[aria-pressed="true"] {
   overflow-wrap: anywhere;
 }
 
+#app[data-setup-required="true"] .empty {
+  border-color: var(--color-border-primary, #8aa193);
+  color: var(--color-text-primary, #1f2a24);
+}
+
 footer {
   display: flex;
   align-items: flex-start;
