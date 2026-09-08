@@ -105,8 +105,7 @@ const selectedCandidates = new Map<string, Candidate>();
 
 const DEFAULT_TITLE = "选择科学绘图模板";
 const DEFAULT_HINT = "先在这里浏览详情并选择；Agent 会等待你的决定";
-const DEFAULT_EMPTY =
-  "若尚未绑定本机绘图仓库和工作区，请先在对话中指定两个绝对目录。绑定后可上传图片、数据或描述想画的图。";
+const DEFAULT_EMPTY = "请在对话中上传图片或数据，也可以直接描述想画的图。";
 const SETUP_TITLE = "先完成本机绑定";
 const SETUP_HINT = "绑定完成前请先在对话里指定两个绝对目录";
 const SETUP_EMPTY =
