@@ -36,13 +36,14 @@ test("host plugin manifests share version, skill, and MCP identity", () => {
   assert.equal(claude.name, "figure-library");
   assert.equal(cursor.name, "figure-library");
   assert.equal((pkg.files as string[]).includes(".mcp.json"), false);
+  assert.equal((pkg.files as string[]).includes("mcp.json"), false);
   assert.equal((pkg.files as string[]).includes(".codex-plugin"), true);
   assert.equal((pkg.files as string[]).includes(".claude-plugin"), true);
   assert.equal((pkg.files as string[]).includes(".cursor-plugin"), true);
   assert.equal(codex.skills, "./skills/");
+  assert.equal(cursor.skills, "./skills/");
   assert.equal(codex.mcpServers, "./.codex-plugin/mcp.json");
   assert.equal(claude.mcpServers, "./.claude-plugin/mcp.json");
-  assert.equal(cursor.skills, "./skills/");
   assert.equal(cursor.mcpServers, "./.cursor-plugin/mcp.json");
   assert.deepEqual(wisp.skills, ["figure-library", "figure-description", "figure-organization", "figure-style"].map((name) => `skills/${name}`));
   assert.equal(fs.existsSync(path.join(root, ".mcp.json")), false);
@@ -95,6 +96,15 @@ test("host plugin manifests share version, skill, and MCP identity", () => {
   assert.deepEqual(claudeServer.args, ["${CLAUDE_PLUGIN_ROOT}/dist/index.js"]);
   assert.equal(claudeServer.cwd, undefined);
 
+  const cursorServers = cursorMcp.mcpServers as Record<
+    string,
+    { type?: string; command?: string; args?: string[]; cwd?: string }
+  >;
+  assert.equal(cursorServers["figure-library"]?.type, "stdio");
+  assert.equal(cursorServers["figure-library"]?.command, "node");
+  assert.deepEqual(cursorServers["figure-library"]?.args, ["${PLUGIN_ROOT}/dist/index.js"]);
+  assert.equal(cursorServers["figure-library"]?.cwd, undefined);
+
   const wispServers = wisp.mcp_servers as Array<{
     id?: string;
     command?: string;
@@ -106,17 +116,9 @@ test("host plugin manifests share version, skill, and MCP identity", () => {
   assert.deepEqual(wispServers[0]?.args, ["${WISP_PLUGIN_ROOT}/dist/index.js"]);
   assert.equal(wispServers[0]?.cwd, ".");
 
-  const cursorServers = cursorMcp.mcpServers as Record<
-    string,
-    { type?: string; command?: string; args?: string[]; cwd?: string }
-  >;
-  assert.equal(cursorServers["figure-library"]?.type, "stdio");
-  assert.equal(cursorServers["figure-library"]?.command, "node");
-  assert.deepEqual(cursorServers["figure-library"]?.args, ["${PLUGIN_ROOT}/dist/index.js"]);
-  assert.equal(cursorServers["figure-library"]?.cwd, undefined);
-
   const hostConfigs = JSON.stringify({ codexMcp, claudeMcp, cursorMcp, wisp });
   assert.doesNotMatch(hostConfigs, /[A-Za-z]:[\\/](?:Users|home|scientific-figure-dev)[\\/]/u);
+  assert.equal(fs.existsSync(path.join(root, "mcp.json")), false);
 });
 
 test("brand and Skill UI assets are self-contained, portable, and consistent", async () => {

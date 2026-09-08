@@ -28,7 +28,7 @@ Community 代码和旧资产保留用于显式兼容访问，但已冻结，且�
 ```text
 从 https://github.com/xuzhougeng/ScientificFigureLibrary 安装。按
 docs/QUICKSTART.md。需要 Node.js 22+。stdio MCP 名称 figure-library，
-入口 dist/index.js。Wisp Science 用 npm run package:wisp 后安装插件。
+入口 dist/index.js。Wisp Science 用 npm run package:wisp 后安装插件。Cursor 用 npm run package:cursor，解压到 ~/.cursor/plugins/local/figure-library/。
 先绑定一个本机全局 Library 目录。不要运行用户绘图脚本。
 ```
 

@@ -40,7 +40,7 @@ continues across other providers.
 
 ## Install with a coding agent
 
-Give Claude Code, Codex, or another local coding agent with terminal access
+Give Claude Code, Codex, Cursor, or another local coding agent with terminal access
 this repository and the following request:
 
 ```text
@@ -50,7 +50,8 @@ https://github.com/xuzhougeng/ScientificFigureLibrary.
 Follow docs/QUICKSTART.md. Prefer a GitHub Release ZIP when one is published.
 Node.js 22+ is required. Register the stdio MCP server as figure-library
 pointing at dist/index.js. For Wisp Science, use npm run package:wisp and
-install the generated plugin. Bind one global Library directory on disk.
+install the generated plugin. For Cursor, use npm run package:cursor and unzip
+into ~/.cursor/plugins/local/figure-library/. Bind one global Library directory on disk.
 Do not execute user plotting code. First test: source_status, bind if needed,
 open the workbench, search the local published library.
 Tell me when I need to grant folder access or start a new host session.
@@ -76,7 +77,7 @@ Manual steps: [docs/QUICKSTART.md](docs/QUICKSTART.md).
 
 ## Bundled figure workflow
 
-All three plugin packages include figure-library, figure-description,
+All four plugin packages include figure-library, figure-description,
 figure-organization and figure-style. The host does not need its own copies
 of these Skills. Approved R/Python runtimes and host execution/image tools
 are still required when the user asks to draw.
