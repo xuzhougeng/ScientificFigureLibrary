@@ -247,9 +247,12 @@ content. The root marker is `figure-library.root.v1`, storage layout
 
 If neither a locator nor `FIGURE_LIBRARY_DIR` exists, legacy
 `~/.figure-library` may be inspected read-only. Writes fail closed until the
-user explicitly binds a global Library. `figure_library_source_status` reports
-the effective root, source, locator, `libraryId`, write state, counts, lock
-state, and FigureYa source-pack state.
+user explicitly binds a global Library. `figure_library_source_status` and
+`figure_library_open` report `CODE: setup_required` when the global Library
+or Local workspace is unbound. The App empty state and Skill then ask for the
+missing absolute directories instead of a plotting query. `figure_library_source_status`
+also reports the effective root, source, locator, `libraryId`, write state,
+counts, lock state, and FigureYa source-pack state.
 
 ## Direct image/code intake
 
