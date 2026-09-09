@@ -52,7 +52,8 @@ Node.js 22+ is required. Register the stdio MCP server as figure-library
 pointing at dist/index.js. For Wisp Science, use npm run package:wisp and
 install the generated plugin. For Cursor, use npm run package:cursor and unzip
 into ~/.cursor/plugins/local/figure-library/. Bind one global Library directory on disk.
-Do not execute user plotting code. First test: source_status, bind if needed,
+Do not execute user plotting code. First test: open or source_status; if
+setup_required, bind the global Library and Local workspace before searching.
 open the workbench, search the local published library.
 Tell me when I need to grant folder access or start a new host session.
 ```

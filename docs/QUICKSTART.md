@@ -60,15 +60,19 @@ is the local plugin path.
 
 ## First session
 
-1. Call `figure_library_source_status`. If writes are off, bind a global
-   Library with `figure_library_plan_bind_global` then
-   `figure_library_apply_bind_global` after the user confirms the absolute path.
-2. Import a figure/code pair if the local library is empty, review it, and
+1. Call `figure_library_open` or `figure_library_source_status`. A new install
+   returns `setup_required` until both roots exist.
+2. If setup is required, ask for two absolute directories: the global Library
+   (绘图仓库) and the Local workspace (本地工作区). Do not use the current
+   project folder unless the user names it. Plan/Apply
+   `figure_library_plan_bind_global` and `figure_library_plan_bind_workspace`
+   after the user confirms each path.
+3. Import a figure/code pair if the local library is empty, review it, and
    publish a Release.
-3. Call `figure_library_open`, or `figure_library_search` against Local
-   Published.
-4. Wait for the user to confirm one exact card.
-5. Materialize only after a preview receipt: `figure_library_plan_materialize`
+4. After both binds succeed, call `figure_library_open` or
+   `figure_library_search` against Local Published.
+5. Wait for the user to confirm one exact card.
+6. Materialize only after a preview receipt: `figure_library_plan_materialize`
    then `figure_library_apply_materialize`.
 
 Full contract: [PROTOCOL.md](PROTOCOL.md).
