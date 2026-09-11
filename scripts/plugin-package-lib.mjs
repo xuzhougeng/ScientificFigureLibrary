@@ -268,17 +268,22 @@ export async function writeVerifiedZip(archive, baseName) {
   };
 }
 
-export async function publishVerifiedZip(candidate) {
+export async function publishVerifiedZip(candidate, extraArtifacts = new Map()) {
   const checksumName = `${candidate.baseName}.sha256`;
+  if (extraArtifacts.has(candidate.baseName) || extraArtifacts.has(checksumName)) {
+    throw new Error("extra artifacts must not replace the verified ZIP or checksum");
+  }
   const stagingDirectory = process.env.SFL_RELEASE_STAGING_DIR;
   const publish = stagingDirectory
     ? publishArtifactsToDirectory(stagingDirectory, new Map([
         [candidate.baseName, candidate.zip],
         [checksumName, strToU8(`${candidate.sha256}  ${candidate.baseName}\n`)],
+        ...extraArtifacts,
       ]))
     : publishReleaseArtifacts(root, new Map([
         [candidate.baseName, candidate.zip],
         [checksumName, strToU8(`${candidate.sha256}  ${candidate.baseName}\n`)],
+        ...extraArtifacts,
       ]));
   await publish;
   const releaseDirectory = stagingDirectory

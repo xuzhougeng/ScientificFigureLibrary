@@ -6,6 +6,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { promisify } from "node:util";
 import { unzipSync } from "fflate";
+import { buildWispUpdateManifest, WISP_UPDATE_MANIFEST } from "./wisp-update-manifest.mjs";
 import {
   assertFinalCommunitySnapshot,
   auditPackageContents,
@@ -45,7 +46,7 @@ try {
     if (stderr.trim()) console.error(stderr.trim());
   }
 
-  const expected = [];
+  const expected = [WISP_UPDATE_MANIFEST];
   for (const host of ["wisp", "codex", "claude", "cursor"]) {
     const zipName = `scientific-figure-library-${host}-${packageJson.version}.zip`;
     expected.push(zipName, `${zipName}.sha256`);
@@ -65,9 +66,20 @@ try {
     const sidecar = Buffer.from(artifacts.get(`${zipName}.sha256`)).toString("utf8").trim();
     if (sidecar !== `${digest}  ${zipName}`) throw new Error(`${zipName} staged SHA-256 sidecar is invalid`);
     auditPackageContents(unzipSync(bytes), { label: zipName, repositoryRoot: root });
+    if (host === "wisp") {
+      const expectedManifest = buildWispUpdateManifest({
+        version: packageJson.version,
+        nodeEngine: packageJson.engines.node,
+        candidate: { baseName: zipName, zip: bytes, sha256: digest, unpacked: unzipSync(bytes) },
+      });
+      const observedManifest = JSON.parse(Buffer.from(artifacts.get(WISP_UPDATE_MANIFEST)).toString("utf8"));
+      if (JSON.stringify(observedManifest) !== JSON.stringify(expectedManifest)) {
+        throw new Error("staged Wisp update manifest does not match the verified ZIP");
+      }
+    }
   }
   await publishReleaseArtifacts(root, artifacts);
-  console.log(`Published all ${observed.length} verified plugin ZIP/SHA artifacts as one rollback-protected transaction.`);
+  console.log(`Published all ${observed.length} verified plugin release artifacts as one rollback-protected transaction.`);
 } finally {
   await fs.rm(temporary, { recursive: true, force: true });
 }
