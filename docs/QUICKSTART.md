@@ -44,6 +44,9 @@ npm run package:wisp
 Install the generated ZIP from `release/` in **Settings → Plugins**, enable it
 for the project, and start a new session.
 
+For maintainers, packaging also emits a [Wisp update feed](WISP_UPDATES.md).
+This is a release-side prerequisite; current Wisp installation steps still apply.
+
 ## Cursor
 
 ```bash

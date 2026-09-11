@@ -13,6 +13,7 @@ import {
   writeVerifiedZip,
 } from "./plugin-package-lib.mjs";
 import path from "node:path";
+import { buildWispUpdateManifest, WISP_UPDATE_MANIFEST } from "./wisp-update-manifest.mjs";
 
 await assertPluginReleaseReady();
 
@@ -46,7 +47,14 @@ const smoke = await smokePackagedPlugin({
   unpacked,
   version: packageJson.version,
 });
-const outputPath = await publishVerifiedZip(candidate);
+const updateManifest = buildWispUpdateManifest({
+  version: packageJson.version,
+  nodeEngine: packageJson.engines.node,
+  candidate,
+});
+const outputPath = await publishVerifiedZip(candidate, new Map([
+  [WISP_UPDATE_MANIFEST, new TextEncoder().encode(`${JSON.stringify(updateManifest, null, 2)}\n`)],
+]));
 console.log(
   `${outputPath}\nSHA-256 ${sha256}\nVerified ${actualFiles.length} packaged files; foreign-cwd initialize/tools-list exposed ${smoke.toolCount} tools`,
 );
