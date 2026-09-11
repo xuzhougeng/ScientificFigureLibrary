@@ -1,123 +1,244 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="本机优先的科学图 MCP App：导入、审阅、发布到你磁盘上的全局 Library，再在 Claude Science 与 Wisp Science 里跨项目复用。" />
-  <title>Scientific Figure Library | 本机科学图库</title>
-  <link rel="icon" href="assets/logo.svg" type="image/svg+xml" />
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Noto+Sans+SC:wght@400;600&family=Noto+Serif+SC:wght@600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,600&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="assets/pages.css" />
-  <script>
-    (function () {
-      var lang = "zh";
-      try {
-        var q = new URLSearchParams(location.search).get("lang");
-        if (q === "en" || q === "zh") lang = q;
-        else {
-          var s = localStorage.getItem("sfl-pages-lang");
-          if (s === "en" || s === "zh") lang = s;
-        }
-      } catch (e) {}
-      document.documentElement.lang = lang === "en" ? "en" : "zh-CN";
-      document.documentElement.dataset.lang = lang;
-    })();
-  </script>
-</head>
-<body>
-  <header class="site-nav">
-    <div class="container">
-      <a class="brand" href="#top"><img src="assets/logo.svg" alt="" width="28" height="28" /><span>Scientific Figure Library</span></a>
-      <nav class="nav-links">
-        <a href="#features" data-i18n="nav.features">功能</a>
-        <a href="#install" data-i18n="nav.install">安装</a>
-        <a href="https://github.com/xuzhougeng/ScientificFigureLibrary/blob/main/docs/PROTOCOL.md" data-i18n="nav.docs">协议</a>
-      </nav>
-      <div class="nav-cta">
-        <div class="lang-switch" role="group" aria-label="语言">
-          <button type="button" data-lang="zh" aria-pressed="true">中文</button>
-          <button type="button" data-lang="en" aria-pressed="false">EN</button>
-        </div>
-        <a class="btn btn-secondary" href="https://github.com/xuzhougeng/ScientificFigureLibrary" data-i18n="nav.github">GitHub</a>
-        <a class="btn btn-primary" href="https://github.com/xuzhougeng/ScientificFigureLibrary/releases/latest" data-i18n="nav.release">Releases</a>
-      </div>
-    </div>
-  </header>
-
-  <main id="top">
-    <section class="hero">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="把科学图、代码与方法保存在本机，在不同项目中复用。Scientific Figure Library 是开源、本机优先的 MCP 服务与交互式图库。">
+    <title>Scientific Figure Library | 让好图成为下一次研究的起点</title>
+    <link rel="icon" href="assets/logo.svg" type="image/svg+xml">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Noto+Sans+SC:wght@400;500;600&family=Noto+Serif+SC:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600&family=Source+Serif+4:opsz,wght@8..60,400;8..60,500;8..60,600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="assets/pages.css">
+    <script src="assets/pages.js" defer></script>
+  </head>
+  <body>
+    <a data-i18n="skip" class="skip-link" href="#top">跳至主要内容</a>
+    <header class="site-nav">
       <div class="container">
-        <p class="eyebrow" data-i18n="hero.eyebrow">Local first · MCP App · Claude Science · Wisp Science</p>
-        <h1 data-i18n-html="hero.title">你的科学图<br>留在本机一份库里</h1>
-        <p class="lead" data-i18n="hero.lead">导入图和代码，审阅后发布成不可变 Release。一份全局 Library 跨项目复用。服务器不执行绘图脚本。可选外部目录只是补充，权威始终是 Local Published。</p>
-        <div class="hero-actions">
-          <a class="btn btn-primary" href="https://github.com/xuzhougeng/ScientificFigureLibrary/releases/latest" data-i18n="hero.cta">查看 Releases</a>
-          <a class="btn btn-secondary" href="https://github.com/xuzhougeng/ScientificFigureLibrary" data-i18n="hero.source">源码</a>
-        </div>
-        <figure class="shot">
-          <img src="assets/sfl-gallery.png" alt="Local published scientific figure templates in the MCP App" />
-        </figure>
-        <p class="lead" style="margin-top:12px;font-size:0.95rem" data-i18n="shot.caption">在 MCP App 里浏览本机已发布模板，确认后再物化到项目。</p>
-      </div>
-    </section>
-
-    <section class="section" id="features">
-      <div class="container">
-        <p class="kicker" data-i18n="feat.kicker">Features</p>
-        <h2 data-i18n="feat.heading">本机优先的图库</h2>
-        <div class="grid">
-          <article class="card">
-            <h3 data-i18n="feat.local.title">本机全局 Library</h3>
-            <p data-i18n="feat.local.body">目录由你指定。不会悄悄写进当前项目。备份这份磁盘目录即可带走全部 Release。</p>
-          </article>
-          <article class="card">
-            <h3 data-i18n="feat.review.title">审阅再发布</h3>
-            <p data-i18n="feat.review.body">图与代码分开记录。作图是否跑过、上游流程、科学判断是三件独立的事。</p>
-          </article>
-          <article class="card">
-            <h3 data-i18n="feat.reuse.title">精确物化</h3>
-            <p data-i18n="feat.reuse.body">预览、确认、plan、apply。只有你点过的那一张会进项目，不会整库下载。</p>
-          </article>
+        <a class="brand" href="#top">
+          <img src="assets/logo.svg" alt="" width="28" height="28">
+          <span class="brand-name">Scientific Figure Library</span>
+          <span class="brand-short" aria-hidden="true">SFL</span>
+        </a>
+        <nav class="nav-links" aria-label="页面导航" data-i18n-aria="nav.aria">
+          <a data-i18n="nav.features" href="#features">功能</a>
+          <a data-i18n="nav.workflow" href="#workflow">使用流程</a>
+          <a data-i18n="nav.install" href="#install">安装</a>
+          <a data-i18n="nav.faq" href="#faq">常见问题</a>
+        </nav>
+        <div class="nav-cta">
+          <div class="lang-switch" role="group" aria-label="语言" data-i18n-aria="lang.aria">
+            <button type="button" data-lang="zh" aria-pressed="true">中文</button>
+            <button type="button" data-lang="en" aria-pressed="false">EN</button>
+          </div>
+          <a class="btn btn-secondary nav-github" href="https://github.com/xuzhougeng/ScientificFigureLibrary">GitHub</a>
+          <a data-i18n="nav.download" class="btn btn-primary" href="https://github.com/xuzhougeng/ScientificFigureLibrary/releases/latest">获取插件</a>
         </div>
       </div>
-    </section>
-
-    <section class="section" id="install">
-      <div class="container">
-        <p class="kicker" data-i18n="install.kicker">Install</p>
-        <h2 data-i18n="install.heading">接到 MCP 宿主</h2>
-        <div class="steps">
-          <div class="step"><div data-i18n="install.s1">Node.js 22+。clone 后 npm ci && npm run check。</div></div>
-          <div class="step"><div data-i18n="install.s2">stdio MCP 名称 figure-library，入口 dist/index.js。</div></div>
-          <div class="step"><div data-i18n="install.s3">Wisp Science：npm run package:wisp，安装 release/ 里的 ZIP。</div></div>
-          <div class="step"><div data-i18n="install.s4">先绑定一个本机全局 Library 目录，再导入或检索 Local Published。</div></div>
+    </header>
+    <main id="top">
+      <section class="hero">
+        <div class="container">
+          <div class="hero-identity">
+            <img src="assets/logo.svg" alt="" width="76" height="76">
+            <p>Scientific Figure Library</p>
+          </div>
+          <div data-i18n="hero.eyebrow" class="eyebrow">开源 · 本机优先 · MCP App</div>
+          <h1 data-i18n-html="hero.title">让每一张好图，<br>成为下一次研究的起点。</h1>
+          <p data-i18n="hero.lead" class="lead">把科学图、绘图代码与方法说明，收进你自己的本机图库。审阅、发布，再带到下一个项目，让已经打磨好的图形与风格持续复用。</p>
+          <div class="hero-actions">
+            <a data-i18n="hero.download" class="btn btn-primary" href="https://github.com/xuzhougeng/ScientificFigureLibrary/releases/latest">获取最新插件</a>
+            <a data-i18n="hero.start" class="btn btn-secondary" href="#install">快速开始</a>
+            <a data-i18n="hero.source" class="btn btn-secondary" href="https://github.com/xuzhougeng/ScientificFigureLibrary">查看源码</a>
+          </div>
+          <figure class="hero-visual">
+            <img src="assets/sfl-gallery.png" alt="科学图库预览：热图、火山图、生存曲线、t-SNE、Oncoplot 和 Circos 模板" data-i18n-alt="gallery.alt" width="1440" height="900" fetchpriority="high">
+          </figure>
+          <p data-i18n="gallery.caption" class="visual-caption">浏览本机已发布的模板，预览并确认后，将选中的图与代码带入项目。</p>
         </div>
-        <h2 style="margin-top:40px" data-i18n="tools.heading">主要工具</h2>
-        <table>
-          <thead><tr><th>Tool</th><th></th></tr></thead>
-          <tbody>
-            <tr><td><code>figure_library_plan_bind_global</code></td><td data-i18n="tools.bind">选择本机 Library 目录</td></tr>
-            <tr><td><code>figure_library_open</code></td><td data-i18n="tools.open">打开 MCP App</td></tr>
-            <tr><td><code>figure_library_search</code></td><td data-i18n="tools.search">检索 Local Published</td></tr>
-            <tr><td><code>figure_library_plan_publish_working_revision</code></td><td data-i18n="tools.publish">发布 Release</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </section>
-  </main>
+      </section>
+      <section class="integrations" aria-labelledby="hosts-heading">
+        <div class="container">
+          <h2 data-i18n="hosts.title" id="hosts-heading">在熟悉的科研与编程工具里使用</h2>
+          <ul class="host-list">
+            <li>Wisp Science</li>
+            <li>Claude Science</li>
+            <li>Codex</li>
+            <li>Cursor</li>
+            <li class="host-protocol">stdio MCP</li>
+          </ul>
+        </div>
+      </section>
+      <section id="features">
+        <div class="container">
+          <div class="section-label">
+            <span class="idx">[ 001 ]</span>
+            <span data-i18n="001.label">为长期积累而设计</span>
+          </div>
+          <div class="section-head">
+            <h2 data-i18n="features.title">自己的图库，越用越有价值。</h2>
+            <p data-i18n="features.body">把一次作图的成果，变成有来源、可审阅、能再次使用的研究资产。</p>
+          </div>
+          <div class="feature-grid">
+            <article class="feature-card">
+              <p class="card-index">01 / LOCAL FIRST</p>
+              <h3 data-i18n="feature.local.title">一份图库，留在本机</h3>
+              <p data-i18n="feature.local.body">自行指定全局图库目录，集中保存不同项目的图形与代码。备份这份目录，就能带走已发布的版本。</p>
+            </article>
+            <article class="feature-card">
+              <p class="card-index">02 / REVIEW & PUBLISH</p>
+              <h3 data-i18n="feature.review.title">审阅之后，再放心复用</h3>
+              <p data-i18n="feature.review.body">将图、代码和方法说明一起整理，记录验证情况，再发布为不可变版本。下次使用时，清楚知道自己选中了什么。</p>
+            </article>
+            <article class="feature-card">
+              <p class="card-index">03 / PREVIEW & REUSE</p>
+              <h3 data-i18n="feature.reuse.title">选中哪张，就带走哪张</h3>
+              <p data-i18n="feature.reuse.body">在交互式图库里预览模板，确认后将所选版本复制到项目。保留来源与版本记录，让后续修改有迹可循。</p>
+            </article>
+          </div>
+        </div>
+      </section>
+      <section id="workflow" class="section-muted">
+        <div class="container">
+          <div class="section-label">
+            <span class="idx">[ 002 ]</span>
+            <span data-i18n="002.label">从一张图到下一次复用</span>
+          </div>
+          <div class="section-head">
+            <h2 data-i18n="workflow.title">把好用的方法，一起留下。</h2>
+            <p data-i18n="workflow.body">导入、审阅、发布、复用。让每张图不仅有结果，也有可以继续工作的起点。</p>
+          </div>
+          <ol class="workflow-grid">
+            <li>
+              <span class="step-number">01</span>
+              <h3 data-i18n="step.1.title">导入图与代码</h3>
+              <p data-i18n="step.1.body">收集图形、源代码和方法说明，整理到本机图库。</p>
+            </li>
+            <li>
+              <span class="step-number">02</span>
+              <h3 data-i18n="step.2.title">审阅与记录</h3>
+              <p data-i18n="step.2.body">检查模板与文件，记录绘图验证情况及适用条件。</p>
+            </li>
+            <li>
+              <span class="step-number">03</span>
+              <h3 data-i18n="step.3.title">发布固定版本</h3>
+              <p data-i18n="step.3.body">将审阅后的内容发布为可追溯的不可变版本。</p>
+            </li>
+            <li>
+              <span class="step-number">04</span>
+              <h3 data-i18n="step.4.title">在新项目中复用</h3>
+              <p data-i18n="step.4.body">预览并确认具体模板，将所需文件复制到项目中。</p>
+            </li>
+          </ol>
+          <div class="workflow-note">
+            <p data-i18n="workflow.note">图与代码保存在一起；实际绘图由宿主在你批准的 R / Python 环境中完成。</p>
+          </div>
+        </div>
+      </section>
+      <section id="install">
+        <div class="container">
+          <div class="section-label">
+            <span class="idx">[ 003 ]</span>
+            <span data-i18n="003.label">几步开始使用</span>
+          </div>
+          <div class="section-head">
+            <h2 data-i18n="install.title">接入工具，打开你的图库。</h2>
+            <p data-i18n="install.body">需要 Node.js 22+ 和支持 stdio MCP 的宿主。可以从发布页获取插件，也可以从源码构建。</p>
+          </div>
+          <div class="install-grid">
+            <div class="install-guide">
+              <ol class="install-steps">
+                <li>
+                  <h3 data-i18n="install.1.title">安装插件或构建源码</h3>
+                  <p data-i18n="install.1.body">Wisp Science 可在「设置 → 插件」中安装 ZIP；其他宿主的安装方式见快速开始。</p>
+                </li>
+                <li>
+                  <h3 data-i18n="install.2.title">指定两个本机目录</h3>
+                  <p data-i18n="install.2.body">分别绑定全局图库与本地工作区；由你选择实际路径。</p>
+                </li>
+                <li>
+                  <h3 data-i18n="install.3.title">打开图库，导入第一张图</h3>
+                  <p data-i18n="install.3.body">在宿主中打开 Scientific Figure Library，导入图与代码，审阅后发布。</p>
+                </li>
+              </ol>
+              <a data-i18n="install.guide" class="text-link" href="https://github.com/xuzhougeng/ScientificFigureLibrary/blob/main/docs/QUICKSTART.md">阅读完整安装指南</a>
+            </div>
+            <div class="code-card">
+              <div class="code-header">
+                <span data-i18n="install.code">从源码构建</span>
+                <button data-i18n="copy.label" class="copy-button" type="button" data-copy="install-code">复制命令</button>
+              </div>
+              <pre>
+<code id="install-code">git clone https://github.com/xuzhougeng/ScientificFigureLibrary.git
+cd ScientificFigureLibrary
+npm ci
+npm run check
 
-  <footer class="site-footer">
-    <div class="container">
-      <span data-i18n="footer.note">代码 MIT。用户导入的图保留导入时记录的许可证。</span>
-      <span>
-        <a href="https://github.com/xuzhougeng/ScientificFigureLibrary">GitHub</a>
-        ·
-        <a href="https://github.com/xuzhougeng/wisp-science">Wisp Science</a>
-      </span>
-    </div>
-  </footer>
-  <script src="assets/pages.js"></script>
-</body>
+# Wisp Science plugin
+npm run package:wisp</code>
+</pre>
+              <p data-i18n="install.codeNote" class="code-note">构建后，在 release/ 中找到 Wisp 插件 ZIP。通用 MCP 入口为 dist/index.js。</p>
+              <p class="copy-status" role="status" aria-live="polite">
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+      <section id="faq" class="section-muted">
+        <div class="container faq-layout">
+          <div>
+            <div class="section-label">
+              <span class="idx">[ 004 ]</span>
+              <span data-i18n="004.label">一些常见问题</span>
+            </div>
+            <div class="section-head">
+              <h2 data-i18n-html="faq.title">开始之前，<br>你可能想知道。</h2>
+              <p data-i18n="faq.body">更多技术细节，可查看项目文档与协议说明。</p>
+            </div>
+            <a data-i18n="faq.docs" class="text-link" href="https://github.com/xuzhougeng/ScientificFigureLibrary/blob/main/docs/PROTOCOL.md">查看协议文档</a>
+          </div>
+          <div class="faq-list">
+            <details class="faq-item">
+              <summary data-i18n="faq.1.q">图和代码保存在什么地方？</summary>
+              <p data-i18n="faq.1.a">保存在你指定的本机全局图库目录。已发布的版本可跨项目使用；本地工作区用于工作内容。调用远程模型或在线服务时，相关数据处理范围取决于宿主、服务与任务配置。</p>
+            </details>
+            <details class="faq-item">
+              <summary data-i18n="faq.2.q">它会自动运行绘图脚本吗？</summary>
+              <p data-i18n="faq.2.a">不会。Scientific Figure Library 负责整理、检索、预览和复制模板。实际绘图需要由宿主在你批准的 R / Python 环境中执行。</p>
+            </details>
+            <details class="faq-item">
+              <summary data-i18n="faq.3.q">支持哪些工具？</summary>
+              <p data-i18n="faq.3.a">支持 Wisp Science、Claude Science、Codex、Cursor 等宿主，也可配置为通用 stdio MCP 服务。交互式图库需要宿主支持 MCP Apps。</p>
+            </details>
+            <details class="faq-item">
+              <summary data-i18n="faq.4.q">能使用外部模板吗？</summary>
+              <p data-i18n="faq.4.a">可以。默认先检索本机已发布内容，再检索 FigureYa、Open Figure Modules 与已启用的动态个人 Provider。预览并确认具体模板后，再将所选文件带入项目。</p>
+            </details>
+            <details class="faq-item">
+              <summary data-i18n="faq.5.q">代码与图形分别遵循什么许可？</summary>
+              <p data-i18n="faq.5.a">仓库代码采用 MIT 许可证。用户导入的图形保留导入时记录的许可证；复用模板时，请核对对应来源与许可。</p>
+            </details>
+          </div>
+        </div>
+      </section>
+    </main>
+    <footer class="site-footer">
+      <div class="container footer-inner">
+        <a class="brand" href="#top">
+          <img src="assets/logo.svg" alt="" width="28" height="28">
+          <span class="brand-name">Scientific Figure Library</span>
+          <span class="brand-short" aria-hidden="true">SFL</span>
+        </a>
+        <nav class="footer-links" aria-label="项目链接" data-i18n-aria="footer.aria">
+          <a href="https://github.com/xuzhougeng/ScientificFigureLibrary">GitHub</a>
+          <a data-i18n="footer.releases" href="https://github.com/xuzhougeng/ScientificFigureLibrary/releases">版本记录</a>
+          <a data-i18n="footer.issues" href="https://github.com/xuzhougeng/ScientificFigureLibrary/issues">问题反馈</a>
+          <a href="https://github.com/xuzhougeng/wisp-science">Wisp Science</a>
+          <a href="https://github.com/xuzhougeng/ScientificFigureLibrary/blob/main/LICENSE">MIT</a>
+        </nav>
+        <p data-i18n="footer.note" class="footer-copy">代码 MIT · 导入图形保留其记录的许可证。</p>
+      </div>
+    </footer>
+  </body>
 </html>
