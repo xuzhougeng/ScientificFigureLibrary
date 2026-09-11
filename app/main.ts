@@ -16,6 +16,7 @@ import {
 } from "./brand.ts";
 import { createIcon, setButtonContent } from "./icons.ts";
 import {
+  announceSelectionChange,
   openCandidateDetail,
   parseSearchResult,
   renderCandidateCards,
@@ -46,6 +47,7 @@ const pageStatus = document.getElementById("page-status")!;
 const plotSetBar = document.getElementById("plot-set-bar")!;
 const plotSetCount = document.getElementById("plot-set-count")!;
 const plotSetSubmit = document.getElementById("plot-set-submit") as HTMLButtonElement;
+const toastRegion = document.getElementById("toast-region")!;
 const displayControls = document.getElementById("display-controls")!;
 const expandBrowse = document.getElementById("expand-browse") as HTMLButtonElement;
 const keepVisible = document.getElementById("keep-visible") as HTMLButtonElement;
@@ -104,7 +106,7 @@ const reportedCapabilities = new Set<string>();
 const selectedCandidates = new Map<string, Candidate>();
 
 const DEFAULT_TITLE = "选择科学绘图模板";
-const DEFAULT_HINT = "先在这里浏览详情并选择；Agent 会等待你的决定";
+const DEFAULT_HINT = "点击卡片或标题即可勾选；详情用「查看详情」按钮打开";
 const DEFAULT_EMPTY = "请在对话中上传图片或数据，也可以直接描述想画的图。";
 const SETUP_TITLE = "先完成本机绑定";
 const SETUP_HINT = "绑定完成前请先在对话里指定两个绝对目录";
@@ -164,13 +166,14 @@ function selectedIds() {
   return new Set(selectedCandidates.keys());
 }
 
-function refreshPlotSetBar() {
+function refreshPlotSetBar(animateCount = false) {
   renderPlotSetBar({
     bar: plotSetBar,
     submit: plotSetSubmit,
     countLabel: plotSetCount,
     selectedCount: selectedCandidates.size,
     canSubmit: Boolean(activeResult) && updateModelContextAvailable(),
+    animateCount,
   });
 }
 
@@ -207,7 +210,6 @@ function updateModelContextAvailable() {
 async function recordUiEvent(
   event:
     | "host.capabilities_detected"
-    | "candidate.thumbnail_clicked"
     | "candidate.detail_opened"
     | "candidate.detail_closed"
     | "exact_preview.image_loaded"
@@ -264,12 +266,16 @@ function render(result: SearchResult) {
     onToggleSelect: (candidate, selected) => {
       if (selected) selectedCandidates.set(candidate.candidateId, candidate);
       else selectedCandidates.delete(candidate.candidateId);
-      refreshPlotSetBar();
+      refreshPlotSetBar(true);
+      announceSelectionChange({
+        document,
+        region: toastRegion,
+        message: selected
+          ? `已选择「${candidate.title}」，共 ${selectedCandidates.size} 项`
+          : `已取消选择「${candidate.title}」，剩余 ${selectedCandidates.size} 项`,
+      });
     },
-    onDetail: (candidate, elements, opener) => {
-      if (opener === elements.previewButton) {
-        void recordUiEvent("candidate.thumbnail_clicked", candidate);
-      }
+    onDetail: (candidate, _elements, opener) => {
       void recordUiEvent("candidate.detail_opened", candidate);
       activeDetail = openCandidateDetail({
         document,
@@ -291,9 +297,9 @@ function render(result: SearchResult) {
     },
   });
   status.textContent = serverToolsAvailable()
-    ? "请先在 App 内浏览候选详情；只有你请求精确预览并确认后，才会把选择交给 Agent。"
+    ? "点击卡片或标题即可勾选候选。注意：对话中批准 figure_library_record_ui_event 只是允许上报浏览日志，不代表已选择候选；勾选后请点下方「交给 Agent 绘制」。"
     : updateModelContextAvailable()
-      ? "当前 Host 未提供 serverTools；可勾选 1 到 8 个模板交给 Agent 绘制，或打开详情做单张审核。"
+      ? "当前 Host 未提供 serverTools；点击卡片或标题勾选 1 到 8 个模板交给 Agent 绘制，或打开详情做单张审核。"
       : "当前 Host 既未提供 serverTools，也未提供 updateModelContext；只能浏览当前页基础详情。";
   if (result.diagnosticsDegraded) {
     status.textContent += " 诊断日志处于降级状态。";

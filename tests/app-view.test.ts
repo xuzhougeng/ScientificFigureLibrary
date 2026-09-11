@@ -9,10 +9,12 @@ import {
   updateModelContextForHeadlessReview,
 } from "../app/handoff.ts";
 import {
+  announceSelectionChange,
   mountExactPreviewImage,
   openCandidateDetail,
   parseSearchResult,
   renderCandidateCards,
+  renderPlotSetBar,
   type Candidate,
   type SearchResult,
 } from "../app/view.ts";
@@ -234,7 +236,7 @@ test("personal module cards keep publisher state, Local state, and thumbnail sta
   detail.closeButton.click();
 });
 
-test("thumbnail, title, and explicit action open candidate details without exact preview", () => {
+test("thumbnail and explicit action open candidate details while the title toggles selection", () => {
   const window = createTestWindow();
   const document = window.document as unknown as Document;
   const cards = document.createElement("section");
@@ -245,11 +247,15 @@ test("thumbnail, title, and explicit action open candidate details without exact
     candidate("org.figureya.module", "figureya-bar", "ready", dataUrl),
   ]);
   const opened: Array<{ templateId: string; openerClass: string }> = [];
+  const toggles: Array<{ templateId: string; selected: boolean }> = [];
   renderCandidateCards({
     document,
     cards,
     empty,
     result,
+    onToggleSelect(value, selected) {
+      toggles.push({ templateId: value.templateId, selected });
+    },
     onDetail(value, _elements, opener) {
       opened.push({ templateId: value.templateId, openerClass: opener.className });
     },
@@ -278,14 +284,108 @@ test("thumbnail, title, and explicit action open candidate details without exact
     ),
   );
   (cards.querySelectorAll(".preview-button")[0] as HTMLButtonElement).click();
-  (cards.querySelectorAll(".candidate-title")[1] as HTMLButtonElement).click();
   (cards.querySelectorAll(".candidate-action")[1] as HTMLButtonElement).click();
   assert.deepEqual(opened, [
     { templateId: "local-bar", openerClass: "preview preview-button" },
-    { templateId: "figureya-bar", openerClass: "candidate-title" },
     { templateId: "figureya-bar", openerClass: "candidate-action" },
   ]);
+  (cards.querySelectorAll(".candidate-title")[1] as HTMLButtonElement).click();
+  assert.deepEqual(toggles, [{ templateId: "figureya-bar", selected: true }]);
+  assert.equal(opened.length, 2);
   assert.equal(empty.hidden, true);
+});
+
+test("selection is visible on the card and title or blank-area clicks toggle it", () => {
+  const window = createTestWindow();
+  const document = window.document as unknown as Document;
+  const cards = document.createElement("section");
+  const empty = document.createElement("section");
+  const result = searchResult([
+    candidate("org.scientificfigurelibrary.local", "select-a", "ready"),
+    candidate("org.figureya.module", "select-b", "ready"),
+  ]);
+  const toggles: Array<{ templateId: string; selected: boolean }> = [];
+  let detailsOpened = 0;
+  renderCandidateCards({
+    document,
+    cards,
+    empty,
+    result,
+    selectedIds: new Set(["candidate-select-a"]),
+    onToggleSelect(value, selected) {
+      toggles.push({ templateId: value.templateId, selected });
+    },
+    onDetail() {
+      detailsOpened += 1;
+    },
+  });
+
+  const first = cards.querySelectorAll(".card")[0] as HTMLElement;
+  assert.equal(first.dataset.selected, "true");
+  assert.equal(
+    (first.querySelector(".candidate-select-input") as HTMLInputElement).checked,
+    true,
+  );
+  assert.equal(
+    (first.querySelector(".candidate-title") as HTMLButtonElement).getAttribute("aria-pressed"),
+    "true",
+  );
+  assert.match(first.querySelector(".select-badge")?.textContent ?? "", /已选/u);
+
+  const second = cards.querySelectorAll(".card")[1] as HTMLElement;
+  assert.equal(second.dataset.selected, "false");
+  (second.querySelector(".description") as HTMLElement).click();
+  assert.deepEqual(toggles, [{ templateId: "select-b", selected: true }]);
+  assert.equal(second.dataset.selected, "true");
+  assert.equal(
+    (second.querySelector(".candidate-select-input") as HTMLInputElement).checked,
+    true,
+  );
+  (second.querySelector(".candidate-title") as HTMLButtonElement).click();
+  assert.deepEqual(toggles[1], { templateId: "select-b", selected: false });
+  assert.equal(second.dataset.selected, "false");
+  assert.equal(
+    (second.querySelector(".candidate-select-input") as HTMLInputElement).checked,
+    false,
+  );
+
+  (second.querySelector(".candidate-action") as HTMLButtonElement).click();
+  (second.querySelector(".preview-button") as HTMLButtonElement).click();
+  assert.equal(detailsOpened, 2);
+  assert.equal(toggles.length, 2);
+});
+
+test("selection changes announce a toast and bump the sticky selection count", () => {
+  const window = createTestWindow();
+  const document = window.document as unknown as Document;
+  const region = document.createElement("div");
+  const toast = announceSelectionChange({
+    document,
+    region,
+    message: "已选择「Foo 图」，共 1 项",
+  });
+  assert.equal(region.querySelector(".selection-toast"), toast);
+  assert.equal(toast.textContent, "已选择「Foo 图」，共 1 项");
+
+  const bar = document.createElement("section");
+  const submit = document.createElement("button");
+  const countLabel = document.createElement("span");
+  renderPlotSetBar({
+    bar,
+    submit,
+    countLabel,
+    selectedCount: 1,
+    canSubmit: true,
+    animateCount: true,
+  });
+  assert.equal(countLabel.textContent, "已选 1 个模板");
+  assert.ok(countLabel.classList.contains("count-bump"));
+  assert.equal(bar.dataset.selected, "true");
+  assert.equal(submit.disabled, false);
+  renderPlotSetBar({ bar, submit, countLabel, selectedCount: 0, canSubmit: true });
+  assert.equal(countLabel.classList.contains("count-bump"), false);
+  assert.equal(bar.dataset.selected, "false");
+  assert.equal(submit.disabled, true);
 });
 
 test("basic detail remains available without serverTools and exposes complete metadata", async () => {

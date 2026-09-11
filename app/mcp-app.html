@@ -17,7 +17,7 @@
           </div>
         </div>
         <div class="header-side">
-          <p class="hint">先在这里浏览详情并选择；Agent 会等待你的决定</p>
+          <p class="hint">点击卡片或标题即可勾选；详情用「查看详情」按钮打开</p>
           <div id="display-controls" class="display-controls" hidden>
             <button type="button" id="expand-browse">展开浏览</button>
             <button type="button" id="keep-visible">保持可见</button>
@@ -33,9 +33,10 @@
       </section>
       <section id="cards" class="cards" aria-label="Scientific figure template candidates"></section>
       <section id="plot-set-bar" class="plot-set-bar" aria-label="多选绘图模板">
-        <span id="plot-set-count">已选 0 个模板</span>
+        <span id="plot-set-count" class="plot-set-count">已选 0 个模板</span>
         <button id="plot-set-submit" type="button" disabled>交给 Agent 绘制（0）</button>
       </section>
+      <div id="toast-region" class="toast-region" role="status" aria-live="polite"></div>
       <nav id="pagination" class="pagination" aria-label="候选分页">
         <button id="previous-page" type="button" disabled>上一页</button>
         <span id="page-status">等待搜索结果</span>
@@ -43,7 +44,7 @@
       </nav>
       <footer id="status" aria-live="polite">
         <span id="status-icon" class="status-icon" aria-hidden="true"></span>
-        <span id="status-text">分数只表示召回顺序。打开基础详情不会调用 Agent；可勾选 1 到 8 个模板后点“交给 Agent 绘制”。打开详情不会调用 Agent。</span>
+        <span id="status-text">分数只表示召回顺序。点击卡片或标题即可勾选；打开详情不会调用 Agent。对话中的工具批准只代表允许上报浏览日志，不等于已选择候选。</span>
       </footer>
     </main>
     <script type="module" src="/main.ts"></script>
