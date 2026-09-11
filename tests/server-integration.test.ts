@@ -44,6 +44,18 @@ function toolText(value: unknown) {
 }
 
 const STANDARD_TOOLS = [
+  "figure_library_get_style_profile",
+  "figure_library_save_style_profile",
+  "figure_library_reset_style_profile",
+  "figure_library_resolve_style",
+  "figure_library_list_project_figures",
+  "figure_library_plan_project_figures",
+  "figure_library_apply_project_figures",
+  "figure_library_archive_project_figure",
+  "figure_library_check_project_figure",
+  "figure_library_prepare_submission",
+  "figure_library_plan_submission_export",
+  "figure_library_apply_submission_export",
   "figure_library_apply_adopt_versioning",
   "figure_library_apply_bind_global",
   "figure_library_apply_bind_workspace",
@@ -936,6 +948,19 @@ test("standard server unifies Local Published and FigureYa while hiding Working/
         figure_library_template_history: { templateId: "missing-template" },
       };
       const alreadyAudited = new Set([
+        // Exercised through MCP in figure-workflow.test.ts with isolated user/project stores.
+        "figure_library_get_style_profile",
+        "figure_library_save_style_profile",
+        "figure_library_reset_style_profile",
+        "figure_library_resolve_style",
+        "figure_library_list_project_figures",
+        "figure_library_plan_project_figures",
+        "figure_library_apply_project_figures",
+        "figure_library_archive_project_figure",
+        "figure_library_check_project_figure",
+        "figure_library_prepare_submission",
+        "figure_library_plan_submission_export",
+        "figure_library_apply_submission_export",
         "figure_library_confirm_selection",
         "figure_library_confirm_selection_headless",
         "figure_library_export_diagnostics",

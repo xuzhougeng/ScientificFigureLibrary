@@ -204,8 +204,8 @@ footer {
 .candidate-title:hover:not(:disabled),
 .candidate-title:focus-visible:not(:disabled) {
   background: transparent;
-  color: #1d6849;
-  outline: 2px solid currentColor;
+  color: inherit;
+  outline: 2px solid #58b79d;
   outline-offset: 2px;
 }
 
@@ -694,7 +694,10 @@ footer {
 
 .plot-set-bar button {
   min-width: 0;
+  width: auto;
 }
+
+.plot-set-bar > span { flex-shrink: 0; white-space: nowrap; }
 
 .header-side {
   display: grid;
@@ -886,3 +889,22 @@ html[data-theme="dark"] .warning-list {
     justify-content: flex-start;
   }
 }
+
+.card { cursor: pointer; }
+.card.is-selected { border: 2px solid #229577; box-shadow: 0 0 0 2px #22957733; }
+.card:hover { outline: 1px solid #22957788; }
+.candidate-select { font-weight: 700; font-size: .95rem; padding: 8px; }
+.candidate-select-input { width: 24px; height: 24px; accent-color: #16846a; }
+.is-selected .candidate-select { color: var(--color-text-primary, #16644f); background: #22957722; border-radius: 6px; }
+.plot-set-bar { position: sticky; bottom: 8px; z-index: 5; border: 1px solid #22957766; box-shadow: 0 4px 20px #0002; }
+.plotting-tips { margin: 14px 0; padding: 14px; border: 1px solid #22957755; border-radius: 10px; }
+.plotting-tips summary { cursor: pointer; font-weight: 700; }
+.plotting-tips p { line-height: 1.65; }
+.plotting-tips blockquote { margin: 12px 0; padding-left: 14px; border-left: 3px solid #229577; }
+#app[data-display-mode="pip"] .plotting-tips { display: none; }
+.submission-dialog { width: min(680px, 90vw); max-height: 85vh; overflow: auto; border: 1px solid #229577; border-radius: 14px; background: var(--color-background-primary, #fff); color: var(--color-text-primary, #172d25); padding: 24px; }
+.submission-dialog::backdrop { background: #0008; }
+.submission-dialog button { margin: 6px; }
+.submission-dialog p { line-height: 1.6; }
+.submission-inventory { white-space: pre-wrap; overflow-wrap: anywhere; font-size: .85rem; }
+#app[data-display-mode="pip"] #project-figures { display: none; }

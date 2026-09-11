@@ -1,0 +1,36 @@
+# Project figure workflow
+
+Use the bound project workspace. Do not confuse a public template ID with a user's project figure identity. The tools store a project index under `.sfl-project`, isolated from the global template library. They do not execute code, install dependencies, assemble PPT slides, or submit to journals.
+
+## Plan, find and rename
+
+1. Read `figure_library_list_project_figures` before continuing an existing figure. Search stable ID, display name or `Figure 1B`. Historical names may match several entries: show candidates and ask only if the intended figure is ambiguous.
+2. For new figures, call `figure_library_plan_project_figures`. Supply a useful title and English descriptive `slug` (especially for non-English titles); optionally set `label: {figure: 1, panel: "B"}`. A standalone plot does not need a paper number. Use the accepted project figure directory through `figuresDirectory`, rather than reorganizing unrelated files.
+3. Review the plan's before/after paths and labels, then apply its `digest` with `figure_library_apply_project_figures`. Explicitly requested creation, naming or reordering provides authorization; do not re-ask for already clear information. Batch B/C exchanges in one plan. The stable ID survives renaming; old labels remain historical aliases. External absolute paths are not rewritten automatically: check affected scripts/references and explain any unresolved ones.
+4. Planning A–H creates planned entries, not rendered outputs. Only archive successfully executed panels as complete. Main-figure groups are represented by labels in the project index; individual directories remain independent archive units.
+
+## Work and archive
+
+Use the returned working directory. Preserve materialized templates and author scripts unchanged. Keep real adapted scripts in `scripts/`, actual plotting data in `data/`, and rendered files in `outputs/`; do not create empty helper directories. Original experimental data, analysis results and actual plot data have different roles. Large shared raw data may remain outside the figure folder with a truthful version/hash and retrieval reference.
+
+Before plotting, resolve the user's effective style through `figure_library_resolve_style`. Save its result in `details.style`. Write the actual adapted script and plotting data to disk. Execute only through the authorized host runtime. For a successful render, record SHA-256 for the exact plot data, plotting/preprocessing scripts and outputs, plus the verification time. Supply these in `details.renderEvidence: {files: {"data/plot-data.csv": "<sha256>", ...}, verifiedAt: "<ISO timestamp>"}`. Changed files cannot reuse a previous render's evidence.
+
+Call `figure_library_archive_project_figure` with the stable `figureId`, current `expectedRevision`, explicit artifacts, and filled details. Each artifact has `path` relative to the figure folder, role, description and source. Use `plot_data` for the actual table plotted, `analysis_data` for upstream results, and `raw_data` only for actual raw inputs. Use `original_script` for immutable author code and `plot_script` for the actual adapted code. Network sources need real URLs/DOIs/commits when known; local sources need honest identifiers. Unknown sources remain incomplete, never invented. The archive contains only listed files, not an automatic copy of the whole project.
+
+Fill purpose, data description (columns, units, missing-value handling), script responsibilities, actual environment, parameters, sources, relative reproduction command, execution status/notes, changes and package scope. Say when no upstream script exists. Set `panelLabelInArtwork` to the actual rendered panel letter, or null when the artwork has no panel label. Renaming a rendered panel requires checking/rerendering its label before export. Failed/not-run work can be recorded but is not complete. Do not rerun costly upstream analysis merely to change style.
+
+The tool creates an immutable snapshot under `.sfl-project/revisions/<figure-id>/<revision>/` with README.md, manifest.json, parameters.json, provenance.json, environment.txt and the declared files. `figure.json` in the working figure directory points to its revision history. The generated README contains all nine required sections; no empty placeholder is considered a complete archive. Use `figure_library_check_project_figure` to check hashes and missing roles/sources. Hash integrity is distinct from the host's execution and visual checks.
+
+## Chinese / English submission copies
+
+The App's “我的项目图” → “导出投稿包” lets the user select a language, ask the Agent to prepare it, review the file inventory, and export or cancel. Preparation alone never creates a ZIP.
+
+- `zh-CN`: generated README and explanations are Chinese; adapted/generated code identifiers, comments and docstrings are English. Preserve the current artwork language.
+- `en`: generated prose, adapted code and generated artwork labels are English. Translate scientifically ambiguous labels only after resolving their meaning. Preserve original data fields, samples/genes, original scripts, licenses and source citations. Use explicit display-label mappings instead of renaming scientific identifiers.
+- Preserve workspace scripts and original material. Write prepared copies under a separate directory inside the figure folder and pass mappings `{originalPath, preparedPath}`. Both languages require English generated code; convert this Skill's Chinese navigation comments only in the export copy. Represent preserved non-English data-key string literals with language-appropriate escapes if needed; never rename actual data columns for a code-language check.
+- For either locale supply `readmeSections` (purpose, dataDescription, scriptDescription, environment, provenanceNotes, executionNotes, scope, changes) in the selected language, plus translated `fileDescriptions` for generated file descriptions. Translating headings alone is insufficient. Use `labels` to record original/translated display text. Changed labels require actual rerendered files in every output format. Verify code behavior and scientific equivalence in the host; do not claim a renamed image was translated.
+- Call `figure_library_prepare_submission` with figure ID, locale and `translation` including prepared files, labels, truthful `verified` and verification notes. An unverified translation is not ready. Then use the App's inventory preview or `figure_library_plan_submission_export` followed by `figure_library_apply_submission_export` for a requested, reviewed export. Stale prepared content must be prepared again.
+
+ZIPs use `exports/<slug>-r<revision>-<locale>.zip`, preserve source files and cannot overwrite earlier exports. Unavailable/local-only external dependencies prevent complete export; a resolvable archival reference is listed explicitly and means the package is not self-contained. The package README explains whether it contains plotting source data, analysis results or raw experiments. It never guarantees every journal's raw-data requirements.
+
+Deliver a concise mapping: paper label → title → stable ID/revision → working directory and archive/export paths. Report planned panels, missing sources, unverified checks and stale artwork honestly.

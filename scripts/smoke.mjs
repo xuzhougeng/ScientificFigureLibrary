@@ -85,6 +85,18 @@ try {
   const listed = await client.listTools();
   const names = listed.tools.map((tool) => tool.name).sort();
   const required = [
+    "figure_library_get_style_profile",
+    "figure_library_save_style_profile",
+    "figure_library_reset_style_profile",
+    "figure_library_resolve_style",
+    "figure_library_list_project_figures",
+    "figure_library_plan_project_figures",
+    "figure_library_apply_project_figures",
+    "figure_library_archive_project_figure",
+    "figure_library_check_project_figure",
+    "figure_library_prepare_submission",
+    "figure_library_plan_submission_export",
+    "figure_library_apply_submission_export",
     "figure_library_open",
     "figure_library_search",
     "figure_library_search_page",

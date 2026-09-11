@@ -1,6 +1,6 @@
 ---
 name: figure-organization
-description: Organize R or Python figure-replication and adaptation scripts into readable, owner-editable workflows with Chinese navigation comments and traceable inputs and outputs. Use when creating or reorganizing code for a selected SFL template, not for browsing templates or restructuring an unrelated application.
+description: Name and track project figures and panels, organize reproducible R or Python plotting scripts and data, archive revisions, and prepare Chinese or English submission packages. Use for project plotting workflows and figure renaming, not browsing templates or restructuring unrelated applications.
 ---
 
 # Figure Organization
@@ -20,6 +20,8 @@ Respect the active project's AGENTS instructions, directories, language and exec
 - Never install dependencies, execute a downloaded installer, run an upstream analysis, or infer authorization from successful SFL materialization. Use only the execution scope the user has granted.
 
 ## On-demand references
+
+For new figures and revisions, follow [project figures and submission archives](references/project-figures.md). Plan a stable project figure ID before adapting code; the default is one directory per independent figure/panel under the project's accepted figure root. Main-figure labels are logical groups, not automatically assembled artwork. Saved plotting data, actual scripts, provenance and truthful render evidence are required for complete archives. This supersedes loose output-file naming for managed project figures.
 
 For analysis scripts read [script organization](references/script-organization.md) and, when outputs matter, [output binding](references/output-binding.md). Read [workflow lineage](references/workflow-lineage.md) only for multi-step work needing it. [Source organization](references/source-organization.md) is relevant only when there is actual reusable library code; do not force it onto one figure.
 

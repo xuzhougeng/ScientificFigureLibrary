@@ -234,7 +234,7 @@ test("personal module cards keep publisher state, Local state, and thumbnail sta
   detail.closeButton.click();
 });
 
-test("thumbnail, title, and explicit action open candidate details without exact preview", () => {
+test("thumbnail and explicit action open details while title toggles selection locally", () => {
   const window = createTestWindow();
   const document = window.document as unknown as Document;
   const cards = document.createElement("section");
@@ -279,10 +279,11 @@ test("thumbnail, title, and explicit action open candidate details without exact
   );
   (cards.querySelectorAll(".preview-button")[0] as HTMLButtonElement).click();
   (cards.querySelectorAll(".candidate-title")[1] as HTMLButtonElement).click();
+  assert.equal(cards.querySelectorAll(".card")[1]!.classList.contains("is-selected"), true);
+  assert.equal(cards.querySelectorAll(".candidate-title")[1]!.getAttribute("aria-pressed"), "true");
   (cards.querySelectorAll(".candidate-action")[1] as HTMLButtonElement).click();
   assert.deepEqual(opened, [
     { templateId: "local-bar", openerClass: "preview preview-button" },
-    { templateId: "figureya-bar", openerClass: "candidate-title" },
     { templateId: "figureya-bar", openerClass: "candidate-action" },
   ]);
   assert.equal(empty.hidden, true);

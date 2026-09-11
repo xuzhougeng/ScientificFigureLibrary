@@ -14,6 +14,7 @@ import {
   CatalogIndex,
 } from "./catalog.ts";
 import { registerBundleTools } from "./bundle-tools.ts";
+import { registerFigureWorkflowTools } from "./figure-workflow-tools.ts";
 import { inspectLibraryWriteLock } from "./cross-runtime-lock.ts";
 import {
   type CurrentLibraryContext,
@@ -1930,6 +1931,7 @@ export async function createServer(options: {
     diagnostics,
   });
   registerBundleTools({ server, currentLibraries });
+  registerFigureWorkflowTools(server, workspaceRuntime);
   registerGitHubPublicationTools({ server });
   registerOpenFigurePrTools({
     ...options.openFigurePr,

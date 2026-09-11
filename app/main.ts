@@ -34,6 +34,15 @@ import {
   type WorkbenchDisplayMode,
 } from "./display-mode.ts";
 import "./styles.css";
+import { mountPlottingTips } from "./plotting-tips.ts";
+import { mountProjectFigures } from "./project-figures.ts";
+
+let preferenceStorage: Storage | undefined;
+try { preferenceStorage = window.localStorage; } catch { /* Embedded host may deny storage. */ }
+mountPlottingTips(document, document.getElementById("plotting-help")!, {
+  storage: preferenceStorage,
+  copy: (text) => navigator.clipboard.writeText(text),
+});
 
 const root = document.getElementById("app")!;
 const cards = document.getElementById("cards")!;
@@ -80,6 +89,17 @@ const app = new App(
   { availableDisplayModes: ["inline", "fullscreen", "pip"] },
 );
 
+mountProjectFigures(document, document.getElementById("project-figures")!, async (name, input) => {
+  if (!serverToolsAvailable()) throw Error("当前宿主无法在界面调用项目工具，请在对话中请求项目图或投稿导出。");
+  const result = await app.callServerTool({ name, arguments: input });
+  if (result.isError) throw Error(result.content.filter((c) => c.type === "text").map((c) => c.text).join("\n"));
+  if (!result.structuredContent) throw Error("项目工具未返回有效数据");
+  return result.structuredContent;
+}, async (figure, locale) => {
+  if (!updateModelContextAvailable()) throw Error("请在对话中请求 Agent 准备该图的所选语言投稿包。");
+  await app.updateModelContext({ content: [{ type: "text", text: `Prepare submission language ${locale} for project figure ${figure.id} (${figure.title}), revision ${figure.revision}. Read figure-organization and prepare separate translated code/prose and rerendered labels where necessary. Preserve originals; verify behavior and call figure_library_prepare_submission. Do not export yet: the user will review the file inventory in the App.` }] });
+});
+
 brandLogo.src = SFL_BRAND_ICON_DATA_URI;
 emptyIcon.replaceChildren(createIcon(document, "image", "sfl-icon state-icon-svg"));
 statusIcon.replaceChildren(createIcon(document, "layers", "sfl-icon"));
@@ -100,7 +120,6 @@ let activeResult: SearchResult | undefined;
 let activeResultSetId: string | undefined;
 let activeDetail: DetailViewElements | undefined;
 const pageCache = new Map<number, SearchResult>();
-const reportedCapabilities = new Set<string>();
 const selectedCandidates = new Map<string, Candidate>();
 
 const DEFAULT_TITLE = "选择科学绘图模板";
@@ -267,10 +286,6 @@ function render(result: SearchResult) {
       refreshPlotSetBar();
     },
     onDetail: (candidate, elements, opener) => {
-      if (opener === elements.previewButton) {
-        void recordUiEvent("candidate.thumbnail_clicked", candidate);
-      }
-      void recordUiEvent("candidate.detail_opened", candidate);
       activeDetail = openCandidateDetail({
         document,
         candidate,
@@ -282,7 +297,6 @@ function render(result: SearchResult) {
           if (result.isError) throw new Error("Host could not open documentation link");
         },
         onClosed: () => {
-          void recordUiEvent("candidate.detail_closed", candidate);
           activeDetail = undefined;
         },
         onRequestExactPreview: (detail) => void loadExactPreview(candidate, detail),
@@ -291,19 +305,14 @@ function render(result: SearchResult) {
     },
   });
   status.textContent = serverToolsAvailable()
-    ? "请先在 App 内浏览候选详情；只有你请求精确预览并确认后，才会把选择交给 Agent。"
+    ? "点击标题或空白处选择，查看详情用于浏览。以已选标记和计数为准；工具审批不代表已选模板。"
     : updateModelContextAvailable()
       ? "当前 Host 未提供 serverTools；可勾选 1 到 8 个模板交给 Agent 绘制，或打开详情做单张审核。"
       : "当前 Host 既未提供 serverTools，也未提供 updateModelContext；只能浏览当前页基础详情。";
   if (result.diagnosticsDegraded) {
     status.textContent += " 诊断日志处于降级状态。";
   }
-  const first = result.candidates[0];
   refreshPlotSetBar();
-  if (first && !reportedCapabilities.has(result.resultSetId) && serverToolsAvailable()) {
-    reportedCapabilities.add(result.resultSetId);
-    void recordUiEvent("host.capabilities_detected", first);
-  }
 }
 
 async function submitPlotSet() {

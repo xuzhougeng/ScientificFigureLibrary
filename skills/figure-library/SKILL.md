@@ -23,6 +23,8 @@ path.
 
 ## Bundled companion Skills
 
+For user project figures, naming/renaming, cross-session continuation and submission packages, use `figure_library_list_project_figures` and the [project figure workflow](../figure-organization/references/project-figures.md). These project tools are separate from template library publication/export. For explicit style-memory requests, follow [figure-style](../figure-style/SKILL.md). The App exposes collapsible drawing tips and a separate project-figure/export section.
+
 Use the copies shipped beside this Skill, not similarly named Host installations.
 - Before creating/updating template prose use [figure-description](../figure-description/SKILL.md).
   Pass independent Markdown description/application/dataProfile, with a non-empty application
