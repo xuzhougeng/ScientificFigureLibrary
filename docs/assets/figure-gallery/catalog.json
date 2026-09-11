@@ -1,0 +1,1641 @@
+{
+  "schema": "sfl.website-gallery.v1",
+  "repository": "jarxunlai/ScientificFigureLibrary-personal",
+  "providerId": "io.github.jarxunlai.personal-figures",
+  "displayName": "Open Figure Modules",
+  "commit": "196c99a24bb0e2eaf61f8511417a655b96dd6e3b",
+  "figures": [
+    {
+      "id": "cancercell-pathway-nes-heatmap",
+      "title": "Cancer Cell通路NES热图",
+      "titleEn": "Cancer Cell pathway NES heatmap",
+      "description": "A portable ComplexHeatmap module for comparing pathway normalized enrichment scores across four subtypes.",
+      "application": "Compare pathway NES values across A–D subtypes with category annotations and significance marks.",
+      "dataProfile": "A pathway table with Pathway, Category, A, B, C, D, and significance-marker columns.",
+      "category": "heatmap",
+      "family": "heatmap",
+      "language": "R",
+      "tags": [
+        "cancercell",
+        "cancercell-pathway-nes-heatmap",
+        "heatmap",
+        "nes",
+        "pathway"
+      ],
+      "packages": [
+        "ComplexHeatmap",
+        "circlize",
+        "ggsci",
+        "grid",
+        "readr",
+        "tibble"
+      ],
+      "licenses": {
+        "code": "MIT",
+        "content": "CC BY 4.0",
+        "documentation": "CC BY 4.0"
+      },
+      "thumbnail": "assets/figure-gallery/cancercell-pathway-nes-heatmap.jpg",
+      "thumbnailSha256": "1bc25fe370a14c117593e1137f9298bbab9ca0b1788645216949be6f2adf4316",
+      "preview": "https://raw.githubusercontent.com/jarxunlai/ScientificFigureLibrary-personal/196c99a24bb0e2eaf61f8511417a655b96dd6e3b/modules/cancercell-pathway-nes-heatmap/preview.png",
+      "source": "https://github.com/jarxunlai/ScientificFigureLibrary-personal/tree/196c99a24bb0e2eaf61f8511417a655b96dd6e3b/modules/cancercell-pathway-nes-heatmap",
+      "code": "https://github.com/jarxunlai/ScientificFigureLibrary-personal/blob/196c99a24bb0e2eaf61f8511417a655b96dd6e3b/modules/cancercell-pathway-nes-heatmap/code/organized.R"
+    },
+    {
+      "id": "cell-fig2h-volcano-go-combo",
+      "title": "单细胞百分比差火山图加GO条形组合图",
+      "titleEn": "Percentage-difference volcano plot with GO bar chart combination",
+      "description": "A cleaned plotting-layer module combining a percentage-difference bubble scatter with directional GO bars.",
+      "application": "Show fold-change and percentage-difference signals beside a compact directional pathway panel.",
+      "dataProfile": "Two example tables: DEG rows with fold-change/percentage fields and GO rows with direction and bar coordinates.",
+      "category": "enrichment",
+      "family": "volcano_go_combo",
+      "language": "R",
+      "tags": [
+        "cell",
+        "cell-fig2h-volcano-go-combo",
+        "combo",
+        "fig2h",
+        "go",
+        "volcano",
+        "volcano_go_combo"
+      ],
+      "packages": [
+        "dplyr",
+        "ggplot2",
+        "grid",
+        "patchwork"
+      ],
+      "licenses": {
+        "code": "MIT",
+        "content": "CC BY 4.0",
+        "documentation": "CC BY 4.0"
+      },
+      "thumbnail": "assets/figure-gallery/cell-fig2h-volcano-go-combo.jpg",
+      "thumbnailSha256": "a1392dd9ae35888dfa8fd04e11c583216c66afe0b2828b768d8e1c1d02836e98",
+      "preview": "https://raw.githubusercontent.com/jarxunlai/ScientificFigureLibrary-personal/196c99a24bb0e2eaf61f8511417a655b96dd6e3b/modules/cell-fig2h-volcano-go-combo/preview.png",
+      "source": "https://github.com/jarxunlai/ScientificFigureLibrary-personal/tree/196c99a24bb0e2eaf61f8511417a655b96dd6e3b/modules/cell-fig2h-volcano-go-combo",
+      "code": "https://github.com/jarxunlai/ScientificFigureLibrary-personal/blob/196c99a24bb0e2eaf61f8511417a655b96dd6e3b/modules/cell-fig2h-volcano-go-combo/code/organized.R"
+    },
+    {
+      "id": "clustergvis-deg-go-kegg-combo",
+      "title": "差异基因聚类热图加GO和KEGG注释",
+      "titleEn": "Clustered DEG heatmap with GO and KEGG annotation",
+      "description": "A ComplexHeatmap module showing clustered synthetic expression patterns with GO and KEGG text annotations.",
+      "application": "Present cluster-level expression patterns, marker genes, and pathway annotations in one composite panel.",
+      "dataProfile": "Synthetic Z-score and pathway tables are bundled as reproducible example inputs for the plotting layer.",
+      "category": "heatmap",
+      "family": "clustered_heatmap_annotation",
+      "language": "R",
+      "tags": [
+        "clustered_heatmap_annotation",
+        "clustergvis",
+        "clustergvis-deg-go-kegg-combo",
+        "combo",
+        "deg",
+        "go",
+        "kegg"
+      ],
+      "packages": [
+        "ComplexHeatmap",
+        "circlize",
+        "dplyr",
+        "grid",
+        "ragg",
+        "readr",
+        "scales",
+        "tibble"
+      ],
+      "licenses": {
+        "code": "MIT",
+        "content": "CC BY 4.0",
+        "documentation": "CC BY 4.0"
+      },
+      "thumbnail": "assets/figure-gallery/clustergvis-deg-go-kegg-combo.jpg",
+      "thumbnailSha256": "3aeb60b4d7c6a0786c6beb5a81e3e09389d6503347c1d7c8c0ed18d5c03c16d5",
+      "preview": "https://raw.githubusercontent.com/jarxunlai/ScientificFigureLibrary-personal/196c99a24bb0e2eaf61f8511417a655b96dd6e3b/modules/clustergvis-deg-go-kegg-combo/preview.png",
+      "source": "https://github.com/jarxunlai/ScientificFigureLibrary-personal/tree/196c99a24bb0e2eaf61f8511417a655b96dd6e3b/modules/clustergvis-deg-go-kegg-combo",
+      "code": "https://github.com/jarxunlai/ScientificFigureLibrary-personal/blob/196c99a24bb0e2eaf61f8511417a655b96dd6e3b/modules/clustergvis-deg-go-kegg-combo/code/organized.R"
+    },
+    {
+      "id": "deg-heatmap-go-panel",
+      "title": "差异表达热图加GO富集组合图",
+      "titleEn": "Combined DEG heatmap and GO enrichment panel",
+      "description": "A composite DEG-state heatmap and GO enrichment panel driven by bundled synthetic inputs.",
+      "application": "Present tissue annotations, differential states, module blocks, and pathway bars in one panel.",
+      "dataProfile": "Three synthetic CSV inputs: cell annotations, gene-by-cell regulation states, and GO terms.",
+      "category": "heatmap",
+      "family": "deg_heatmap_go_combo",
+      "language": "R",
+      "tags": [
+        "deg",
+        "deg-heatmap-go-panel",
+        "deg_heatmap_go_combo",
+        "go",
+        "heatmap",
+        "panel"
+      ],
+      "packages": [
+        "dplyr",
+        "ggplot2",
+        "grid",
+        "patchwork",
+        "readr",
+        "scales"
+      ],
+      "licenses": {
+        "code": "MIT",
+        "content": "CC BY 4.0",
+        "documentation": "CC BY 4.0"
+      },
+      "thumbnail": "assets/figure-gallery/deg-heatmap-go-panel.jpg",
+      "thumbnailSha256": "e1a041931da9c286b836bcd70df29d8799cdf33107cfeea5c27b8ed6432142c4",
+      "preview": "https://raw.githubusercontent.com/jarxunlai/ScientificFigureLibrary-personal/196c99a24bb0e2eaf61f8511417a655b96dd6e3b/modules/deg-heatmap-go-panel/preview.png",
+      "source": "https://github.com/jarxunlai/ScientificFigureLibrary-personal/tree/196c99a24bb0e2eaf61f8511417a655b96dd6e3b/modules/deg-heatmap-go-panel",
+      "code": "https://github.com/jarxunlai/ScientificFigureLibrary-personal/blob/196c99a24bb0e2eaf61f8511417a655b96dd6e3b/modules/deg-heatmap-go-panel/code/organized.R"
+    },
+    {
+      "id": "ggsankeyfier-layout-color-combo",
+      "title": "ggsankeyfier 桑基图布局、配色与组合",
+      "titleEn": "ggsankeyfier Sankey layout, color, and combo",
+      "description": "A portable R module demonstrating Sankey layout, color transitions, multi-stage flows, and pathway-bubble alignment with synthetic data.",
+      "application": "Use as a readable starting point for Sankey layout, node ordering, color mapping, and aligned pathway enrichment bubbles.",
+      "dataProfile": "Five small synthetic CSV tables describe cell-class flows, habitat flows, multi-stage land-cover paths, metabolite-pathway links, and pathway enrichment bubbles.",
+      "category": "relationships",
+      "family": "sankey",
+      "language": "R",
+      "tags": [
+        "ggsankeyfier",
+        "sankey",
+        "synthetic-data"
+      ],
+      "packages": [
+        "RColorBrewer",
+        "dplyr",
+        "ggplot2",
+        "ggsankeyfier",
+        "patchwork",
+        "readr",
+        "tidyr"
+      ],
+      "licenses": {
+        "code": "MIT",
+        "content": "CC BY 4.0",
+        "documentation": "CC BY 4.0"
+      },
+      "thumbnail": "assets/figure-gallery/ggsankeyfier-layout-color-combo.jpg",
+      "thumbnailSha256": "725bc06ab64f887b96b79e207f2a77b5784460146c18611a993668bc4bfc7977",
+      "preview": "https://raw.githubusercontent.com/jarxunlai/ScientificFigureLibrary-personal/196c99a24bb0e2eaf61f8511417a655b96dd6e3b/modules/ggsankeyfier-layout-color-combo/preview.png",
+      "source": "https://github.com/jarxunlai/ScientificFigureLibrary-personal/tree/196c99a24bb0e2eaf61f8511417a655b96dd6e3b/modules/ggsankeyfier-layout-color-combo",
+      "code": "https://github.com/jarxunlai/ScientificFigureLibrary-personal/blob/196c99a24bb0e2eaf61f8511417a655b96dd6e3b/modules/ggsankeyfier-layout-color-combo/code/organized.R"
+    },
+    {
+      "id": "ggtree-ch13-bootstrap-points",
+      "title": "植物树bootstrap分箱圆点",
+      "titleEn": "ggtree ch13 bootstrap points",
+      "description": "场景一：IQ-TREE / RAxML 已经给出带 bootstrap 的 Newick，论文里要标明哪些科/属节点可靠。白/灰/黑三档圆点比把 0–100 数字全写在节点上更干净，读者能先跳过 BP<70 的分叉。场景二：讨论两个近缘种是否单系。如果连接它们的节点是黑点，就不能把该拓扑写成定论，只能写成“当前数据不支持/弱支持”。不适合：Newick 没有 node.label 支持率；BEAST 后验概率更适合连续色条，而不是 70/90 两刀切。切点按书中 700/900/1000（对应 70%/90%），换自己的树时要核对支持率是 0–100 还是 0–1000。\n\n复刻 YuLab treedata-book Figure 13.2。树来自 TDbook::text_RMI_tree，未重跑建树。",
+      "application": "- 场景一：IQ-TREE / RAxML 已经给出带 bootstrap 的 Newick，论文里要标明哪些科/属节点可靠。白/灰/黑三档圆点比把 0–100 数字全写在节点上更干净，读者能先跳过 BP<70 的分叉。\n- 场景二：讨论两个近缘种是否单系。如果连接它们的节点是黑点，就不能把该拓扑写成定论，只能写成“当前数据不支持/弱支持”。\n- 不适合：Newick 没有 node.label 支持率；BEAST 后验概率更适合连续色条，而不是 70/90 两刀切。切点按书中 700/900/1000（对应 70%/90%），换自己的树时要核对支持率是 0–100 还是 0–1000。",
+      "dataProfile": "Newick，node.label 为 0–1000 的 bootstrap。视觉结构：黑色矩形树；内部节点 21 号点分三档。",
+      "category": "genomics",
+      "family": "ggtree_bootstrap_bins",
+      "language": "R",
+      "tags": [
+        "R",
+        "YuLab",
+        "bootstrap",
+        "chapter13",
+        "ggtree",
+        "phylogeny"
+      ],
+      "packages": [
+        "ggplot2",
+        "ggtree",
+        "ragg",
+        "treeio"
+      ],
+      "licenses": {
+        "code": "MIT",
+        "content": "CC-BY-4.0",
+        "documentation": "CC BY 4.0"
+      },
+      "thumbnail": "assets/figure-gallery/ggtree-ch13-bootstrap-points.jpg",
+      "thumbnailSha256": "40e64912eea1078381c916739f125ca22b93daba4ed9f466252fb1573a2b4549",
+      "preview": "https://raw.githubusercontent.com/jarxunlai/ScientificFigureLibrary-personal/196c99a24bb0e2eaf61f8511417a655b96dd6e3b/modules/ggtree-ch13-bootstrap-points/preview.png",
+      "source": "https://github.com/jarxunlai/ScientificFigureLibrary-personal/tree/196c99a24bb0e2eaf61f8511417a655b96dd6e3b/modules/ggtree-ch13-bootstrap-points",
+      "code": "https://github.com/jarxunlai/ScientificFigureLibrary-personal/blob/196c99a24bb0e2eaf61f8511417a655b96dd6e3b/modules/ggtree-ch13-bootstrap-points/code/organized.R"
+    },
+    {
+      "id": "ggtree-ch13-ctldcp-circular",
+      "title": "鸡CTLDcp环形树与禽特异扩张",
+      "titleEn": "ggtree ch13 ctldcp circular",
+      "description": "场景一：做完免疫受体 / OLR / CYP 等基因家族的跨物种树，想看鸡（或鱼、植物）的拷贝是一对一挂在哺乳动物直系同源旁边，还是在某一亚家族里堆成一块“物种特异扩张”。环形 + 按物种改线型/颜色 + 扇形高亮就是为这个问题设计的。场景二：论文里要同时标出 Group II vs Group V，并给扩张支写上 Subgroup A/B。tip 很多（>50）时矩形树会拉得很长，环形更省版面。不适合：只有一两个物种、或主要想展示采样年/分化时间（用矩形时间树）。本图用 tip 前缀 ch/h/p 区分物种；换成自己的树时要先统一命名，否则 groupOTU 会分错。\n\n复刻 YuLab treedata-book Figure 13.3 / Larsen et al. 2019 Figure 1。树来自 TDbook，未重跑基因家族建树。",
+      "application": "- 场景一：做完免疫受体 / OLR / CYP 等基因家族的跨物种树，想看鸡（或鱼、植物）的拷贝是一对一挂在哺乳动物直系同源旁边，还是在某一亚家族里堆成一块“物种特异扩张”。环形 + 按物种改线型/颜色 + 扇形高亮就是为这个问题设计的。\n- 场景二：论文里要同时标出 Group II vs Group V，并给扩张支写上 Subgroup A/B。tip 很多（>50）时矩形树会拉得很长，环形更省版面。\n- 不适合：只有一两个物种、或主要想展示采样年/分化时间（用矩形时间树）。本图用 tip 前缀 ch/h/p 区分物种；换成自己的树时要先统一命名，否则 groupOTU 会分错。",
+      "dataProfile": "Newick，tip 前缀 ch=鸡，h=人，p=猪等。环形树 + 扇形高亮。",
+      "category": "genomics",
+      "family": "ggtree_ctldcp_circular",
+      "language": "R",
+      "tags": [
+        "CTLDcp",
+        "R",
+        "YuLab",
+        "avian",
+        "chapter13",
+        "circular",
+        "ggtree"
+      ],
+      "packages": [
+        "ape",
+        "ggplot2",
+        "ggtree",
+        "ragg"
+      ],
+      "licenses": {
+        "code": "MIT",
+        "content": "CC-BY-4.0",
+        "documentation": "CC BY 4.0"
+      },
+      "thumbnail": "assets/figure-gallery/ggtree-ch13-ctldcp-circular.jpg",
+      "thumbnailSha256": "47258235eaa5243d2eeaa028a14451c832a204337050e60117bd94b3eff4c05a",
+      "preview": "https://raw.githubusercontent.com/jarxunlai/ScientificFigureLibrary-personal/196c99a24bb0e2eaf61f8511417a655b96dd6e3b/modules/ggtree-ch13-ctldcp-circular/preview.png",
+      "source": "https://github.com/jarxunlai/ScientificFigureLibrary-personal/tree/196c99a24bb0e2eaf61f8511417a655b96dd6e3b/modules/ggtree-ch13-ctldcp-circular",
+      "code": "https://github.com/jarxunlai/ScientificFigureLibrary-personal/blob/196c99a24bb0e2eaf61f8511417a655b96dd6e3b/modules/ggtree-ch13-ctldcp-circular/code/organized.R"
+    },
+    {
+      "id": "ggtree-ch13-genome-locus",
+      "title": "基因组共有基因距离树与位点轨道",
+      "titleEn": "ggtree ch13 genome locus",
+      "description": "场景一：比较一组细菌 / 病毒 / 质粒的基因有无（pangenome 或移动元件），Jaccard 距离树已经把基因组分成几簇。想同时看到簇与簇之间到底缺了哪一段、多了哪一段，而不是只看一个距离数字。场景二：怀疑某几株发生了插入/缺失导致共线性改变。把轨道按某个保守基因（本例为 genE）对齐后，就能看出谁丢了上游长基因、谁在中间多了一段。不适合：要展示核苷酸突变或氨基酸保守性（用 MSA）；要展示表达量（用热图）。示例数据是 gggenes::example_genes，不能当成真实病原体结论；换自己的 GFF/基因表时保留 molecule、gene、start、end。\n\n复刻 YuLab treedata-book Figure 13.4。ggtree 4.0.5 geom_motif 会把箭头标成基因组名，已按书中意图改成标 gene 列。",
+      "application": "- 场景一：比较一组细菌 / 病毒 / 质粒的基因有无（pangenome 或移动元件），Jaccard 距离树已经把基因组分成几簇。想同时看到簇与簇之间到底缺了哪一段、多了哪一段，而不是只看一个距离数字。\n- 场景二：怀疑某几株发生了插入/缺失导致共线性改变。把轨道按某个保守基因（本例为 genE）对齐后，就能看出谁丢了上游长基因、谁在中间多了一段。\n- 不适合：要展示核苷酸突变或氨基酸保守性（用 MSA）；要展示表达量（用热图）。示例数据是 gggenes::example_genes，不能当成真实病原体结论；换自己的 GFF/基因表时保留 molecule、gene、start、end。",
+      "dataProfile": "example_genes.csv（molecule, gene, start, end, strand）。左树右基因轨道。",
+      "category": "genomics",
+      "family": "ggtree_genome_locus",
+      "language": "R",
+      "tags": [
+        "Jaccard",
+        "R",
+        "YuLab",
+        "chapter13",
+        "genome",
+        "gggenes",
+        "ggtree"
+      ],
+      "packages": [
+        "ape",
+        "dplyr",
+        "gggenes",
+        "ggplot2",
+        "ggtree",
+        "ragg",
+        "readr"
+      ],
+      "licenses": {
+        "code": "MIT",
+        "content": "CC-BY-4.0",
+        "documentation": "CC BY 4.0"
+      },
+      "thumbnail": "assets/figure-gallery/ggtree-ch13-genome-locus.jpg",
+      "thumbnailSha256": "f5a370fb44208d959b050ea789c5e96fbedbdc3378e29bf1db593b1497c529fc",
+      "preview": "https://raw.githubusercontent.com/jarxunlai/ScientificFigureLibrary-personal/196c99a24bb0e2eaf61f8511417a655b96dd6e3b/modules/ggtree-ch13-genome-locus/preview.png",
+      "source": "https://github.com/jarxunlai/ScientificFigureLibrary-personal/tree/196c99a24bb0e2eaf61f8511417a655b96dd6e3b/modules/ggtree-ch13-genome-locus",
+      "code": "https://github.com/jarxunlai/ScientificFigureLibrary-personal/blob/196c99a24bb0e2eaf61f8511417a655b96dd6e3b/modules/ggtree-ch13-genome-locus/code/organized.R"
+    },
+    {
+      "id": "ggtree-ch13-hpv58-distance",
+      "title": "HPV58全基因组树与成对核苷酸距离",
+      "titleEn": "ggtree ch13 hpv58 distance",
+      "description": "场景一：一批 HPV / 流感 / SARS-CoV-2 全基因组已按命名规则分成 A/B/C 谱系，审稿人问“谱系是不是只靠树拓扑硬切的”。把树和成对核苷酸距离画在一起：同一谱系的点应聚在左侧、跨谱系拉到右侧，谱系才有序列差异支撑。场景二：怀疑某几株被错分到邻近谱系（重组、污染或 accession 贴错）。右面板里如果某株对“自己谱系”的距离反而比对别的谱系更远，就要回头查标签和比对。不适合：只有 5–6 株、没有比对 FASTA、或只想展示一棵树。距离层需要 N×N 成对距离，株数太多（>200）会糊成一片。\n\n复刻 YuLab treedata-book Figure 13.1 / Chen et al. 2017。树与比对来自 TDbook，未从 GenBank 重下。",
+      "application": "- 场景一：一批 HPV / 流感 / SARS-CoV-2 全基因组已按命名规则分成 A/B/C 谱系，审稿人问“谱系是不是只靠树拓扑硬切的”。把树和成对核苷酸距离画在一起：同一谱系的点应聚在左侧、跨谱系拉到右侧，谱系才有序列差异支撑。\n- 场景二：怀疑某几株被错分到邻近谱系（重组、污染或 accession 贴错）。右面板里如果某株对“自己谱系”的距离反而比对别的谱系更远，就要回头查标签和比对。\n- 不适合：只有 5–6 株、没有比对 FASTA、或只想展示一棵树。距离层需要 N×N 成对距离，株数太多（>200）会糊成一片。",
+      "dataProfile": "TDbook::tree_HPV58 Newick + dna_HPV58_aln FASTA。tip 标签为 isolate|accession。左树右距离面板。",
+      "category": "genomics",
+      "family": "ggtree_hpv58_distance",
+      "language": "R",
+      "tags": [
+        "HPV58",
+        "R",
+        "YuLab",
+        "chapter13",
+        "ggtree",
+        "phylogeny",
+        "sequence distance"
+      ],
+      "packages": [
+        "Biostrings",
+        "ape",
+        "dplyr",
+        "ggplot2",
+        "ggtree",
+        "ragg",
+        "tibble",
+        "tidyr",
+        "treeio"
+      ],
+      "licenses": {
+        "code": "MIT",
+        "content": "CC-BY-4.0",
+        "documentation": "CC BY 4.0"
+      },
+      "thumbnail": "assets/figure-gallery/ggtree-ch13-hpv58-distance.jpg",
+      "thumbnailSha256": "27daa5f63be16a21c1c9272e69fff43d5283aa6f89e2940c137e63ff781fb6d8",
+      "preview": "https://raw.githubusercontent.com/jarxunlai/ScientificFigureLibrary-personal/196c99a24bb0e2eaf61f8511417a655b96dd6e3b/modules/ggtree-ch13-hpv58-distance/preview.png",
+      "source": "https://github.com/jarxunlai/ScientificFigureLibrary-personal/tree/196c99a24bb0e2eaf61f8511417a655b96dd6e3b/modules/ggtree-ch13-hpv58-distance",
+      "code": "https://github.com/jarxunlai/ScientificFigureLibrary-personal/blob/196c99a24bb0e2eaf61f8511417a655b96dd6e3b/modules/ggtree-ch13-hpv58-distance/code/organized.R"
+    },
+    {
+      "id": "go-enrichment-comet-combined",
+      "title": "单细胞GO富集彗星图（叠加）",
+      "titleEn": "Overlay GO enrichment comet plot",
+      "description": "A portable overlay comet plot for pathway enrichment rows across multiple cell clusters.",
+      "application": "Compare enrichment strength and contributing-gene counts for several cell clusters on a shared axis.",
+      "dataProfile": "A fully synthetic long table with Cluster, Description, Count, pvalue, and -log10(p) fields.",
+      "category": "enrichment",
+      "family": "enrichment_comet_overlay",
+      "language": "R",
+      "tags": [
+        "combined",
+        "comet",
+        "enrichment",
+        "enrichment_comet_overlay",
+        "go",
+        "go-enrichment-comet-combined"
+      ],
+      "packages": [
+        "dplyr",
+        "ggforce",
+        "ggplot2",
+        "ragg",
+        "readr"
+      ],
+      "licenses": {
+        "code": "MIT",
+        "content": "CC BY 4.0",
+        "documentation": "CC BY 4.0"
+      },
+      "thumbnail": "assets/figure-gallery/go-enrichment-comet-combined.jpg",
+      "thumbnailSha256": "03b564ec5ed7f883d41400401c51db89e2b6fff54ee5b30c6fe0c035d55c08af",
+      "preview": "https://raw.githubusercontent.com/jarxunlai/ScientificFigureLibrary-personal/196c99a24bb0e2eaf61f8511417a655b96dd6e3b/modules/go-enrichment-comet-combined/preview.png",
+      "source": "https://github.com/jarxunlai/ScientificFigureLibrary-personal/tree/196c99a24bb0e2eaf61f8511417a655b96dd6e3b/modules/go-enrichment-comet-combined",
+      "code": "https://github.com/jarxunlai/ScientificFigureLibrary-personal/blob/196c99a24bb0e2eaf61f8511417a655b96dd6e3b/modules/go-enrichment-comet-combined/code/organized.R"
+    },
+    {
+      "id": "go-enrichment-comet-facet",
+      "title": "单细胞GO富集彗星图（分面）",
+      "titleEn": "Faceted GO enrichment comet plot",
+      "description": "A faceted comet plot for displaying enrichment results separately by cell cluster.",
+      "application": "Show cluster-specific pathway enrichment with independent facet scales and count labels.",
+      "dataProfile": "A fully synthetic long table with Cluster, Description, Count, pvalue, and -log10(p) fields.",
+      "category": "enrichment",
+      "family": "enrichment_comet_facet",
+      "language": "R",
+      "tags": [
+        "comet",
+        "enrichment",
+        "enrichment_comet_facet",
+        "facet",
+        "go",
+        "go-enrichment-comet-facet"
+      ],
+      "packages": [
+        "dplyr",
+        "ggforce",
+        "ggplot2",
+        "ragg",
+        "readr"
+      ],
+      "licenses": {
+        "code": "MIT",
+        "content": "CC BY 4.0",
+        "documentation": "CC BY 4.0"
+      },
+      "thumbnail": "assets/figure-gallery/go-enrichment-comet-facet.jpg",
+      "thumbnailSha256": "734d000654d0d4e781ed7fcdb967ff93c299fe920839dc4441971c0d99a09c78",
+      "preview": "https://raw.githubusercontent.com/jarxunlai/ScientificFigureLibrary-personal/196c99a24bb0e2eaf61f8511417a655b96dd6e3b/modules/go-enrichment-comet-facet/preview.png",
+      "source": "https://github.com/jarxunlai/ScientificFigureLibrary-personal/tree/196c99a24bb0e2eaf61f8511417a655b96dd6e3b/modules/go-enrichment-comet-facet",
+      "code": "https://github.com/jarxunlai/ScientificFigureLibrary-personal/blob/196c99a24bb0e2eaf61f8511417a655b96dd6e3b/modules/go-enrichment-comet-facet/code/organized.R"
+    },
+    {
+      "id": "hallmark-gsea-nes-ranked-scatter",
+      "title": "GSEA打分排序图",
+      "titleEn": "Ranked GSEA NES scatter",
+      "description": "A ranked GSEA normalized-enrichment-score bubble scatter using a bundled synthetic pathway table.",
+      "application": "Show ranked pathway NES values with point size and transparency encoding.",
+      "dataProfile": "A pathway table with ID, NES, setSize, and pvalue columns.",
+      "category": "enrichment",
+      "family": "ranked_nes_scatter",
+      "language": "R",
+      "tags": [
+        "gsea",
+        "hallmark",
+        "hallmark-gsea-nes-ranked-scatter",
+        "nes",
+        "ranked",
+        "ranked_nes_scatter",
+        "scatter"
+      ],
+      "packages": [
+        "ggplot2",
+        "ggrepel"
+      ],
+      "licenses": {
+        "code": "MIT",
+        "content": "CC BY 4.0",
+        "documentation": "CC BY 4.0"
+      },
+      "thumbnail": "assets/figure-gallery/hallmark-gsea-nes-ranked-scatter.jpg",
+      "thumbnailSha256": "191be2ff3811f2839e76151de5c57b276037841ae4f2bd60e521c2b2269e0b7a",
+      "preview": "https://raw.githubusercontent.com/jarxunlai/ScientificFigureLibrary-personal/196c99a24bb0e2eaf61f8511417a655b96dd6e3b/modules/hallmark-gsea-nes-ranked-scatter/preview.png",
+      "source": "https://github.com/jarxunlai/ScientificFigureLibrary-personal/tree/196c99a24bb0e2eaf61f8511417a655b96dd6e3b/modules/hallmark-gsea-nes-ranked-scatter",
+      "code": "https://github.com/jarxunlai/ScientificFigureLibrary-personal/blob/196c99a24bb0e2eaf61f8511417a655b96dd6e3b/modules/hallmark-gsea-nes-ranked-scatter/code/organized.R"
+    },
+    {
+      "id": "hlca-scib-integration-benchmark-matrix",
+      "title": "HLCA scIB 整合基准总表",
+      "titleEn": "HLCA scIB integration benchmark matrix",
+      "description": "A reproducible benchmark-table visualization for comparing integration metrics and weighted scores.",
+      "application": "Compare batch-correction and biological-conservation metrics across integration methods and preprocessing settings.",
+      "dataProfile": "A newly generated scIB-shaped metrics table used to demonstrate the weighted score display.",
+      "category": "heatmap",
+      "family": "benchmark_matrix",
+      "language": "R",
+      "tags": [
+        "benchmark",
+        "benchmark_matrix",
+        "hlca",
+        "hlca-scib-integration-benchmark-matrix",
+        "integration",
+        "matrix",
+        "scib"
+      ],
+      "packages": [
+        "RColorBrewer",
+        "dplyr",
+        "ggforce",
+        "ggplot2",
+        "grid",
+        "ragg",
+        "readr",
+        "scales",
+        "stringr"
+      ],
+      "licenses": {
+        "code": "MIT",
+        "content": "CC BY 4.0",
+        "documentation": "CC BY 4.0"
+      },
+      "thumbnail": "assets/figure-gallery/hlca-scib-integration-benchmark-matrix.jpg",
+      "thumbnailSha256": "199bf61884dca9336654392fe28ec70e8cc5b99f8a76c44b44f401177fe6b79e",
+      "preview": "https://raw.githubusercontent.com/jarxunlai/ScientificFigureLibrary-personal/196c99a24bb0e2eaf61f8511417a655b96dd6e3b/modules/hlca-scib-integration-benchmark-matrix/preview.png",
+      "source": "https://github.com/jarxunlai/ScientificFigureLibrary-personal/tree/196c99a24bb0e2eaf61f8511417a655b96dd6e3b/modules/hlca-scib-integration-benchmark-matrix",
+      "code": "https://github.com/jarxunlai/ScientificFigureLibrary-personal/blob/196c99a24bb0e2eaf61f8511417a655b96dd6e3b/modules/hlca-scib-integration-benchmark-matrix/code/organized.R"
+    },
+    {
+      "id": "kegg-variant-blue-inside-label",
+      "title": "KEGG变体条形图（蓝黄红柱内标签）",
+      "titleEn": "KEGG variant bar with blue-yellow-red inside labels",
+      "description": "A labeled KEGG enrichment bar variant with a blue-yellow-red gradient and black in-bar pathway names.",
+      "application": "Display ranked pathway enrichment with readable labels placed inside each bar.",
+      "dataProfile": "Fifteen synthetic pathway descriptions with adjusted p-values.",
+      "category": "enrichment",
+      "family": "enrichment_bar",
+      "language": "R",
+      "tags": [
+        "blue",
+        "enrichment_bar",
+        "inside",
+        "kegg",
+        "kegg-variant-blue-inside-label",
+        "label",
+        "variant"
+      ],
+      "packages": [
+        "ggplot2",
+        "ragg",
+        "readr"
+      ],
+      "licenses": {
+        "code": "MIT",
+        "content": "CC BY 4.0",
+        "documentation": "CC BY 4.0"
+      },
+      "thumbnail": "assets/figure-gallery/kegg-variant-blue-inside-label.jpg",
+      "thumbnailSha256": "3e5525c70dc858a3ee81b9cf9dbff17579e44f59d5f480b00972093170024309",
+      "preview": "https://raw.githubusercontent.com/jarxunlai/ScientificFigureLibrary-personal/196c99a24bb0e2eaf61f8511417a655b96dd6e3b/modules/kegg-variant-blue-inside-label/preview.png",
+      "source": "https://github.com/jarxunlai/ScientificFigureLibrary-personal/tree/196c99a24bb0e2eaf61f8511417a655b96dd6e3b/modules/kegg-variant-blue-inside-label",
+      "code": "https://github.com/jarxunlai/ScientificFigureLibrary-personal/blob/196c99a24bb0e2eaf61f8511417a655b96dd6e3b/modules/kegg-variant-blue-inside-label/code/organized.R"
+    },
+    {
+      "id": "kegg-variant-bw-text-classic",
+      "title": "KEGG变体条形图（前三白字）",
+      "titleEn": "KEGG variant bar with white-on-dark labels",
+      "description": "A KEGG enrichment bar variant that uses white labels for the first three bars and black labels thereafter.",
+      "application": "Compare ranked pathway enrichment while preserving high-contrast labels for the largest bars.",
+      "dataProfile": "Fifteen synthetic pathway descriptions with adjusted p-values.",
+      "category": "enrichment",
+      "family": "enrichment_bar",
+      "language": "R",
+      "tags": [
+        "bw",
+        "classic",
+        "enrichment_bar",
+        "kegg",
+        "kegg-variant-bw-text-classic",
+        "text",
+        "variant"
+      ],
+      "packages": [
+        "ggplot2",
+        "ragg",
+        "readr"
+      ],
+      "licenses": {
+        "code": "MIT",
+        "content": "CC BY 4.0",
+        "documentation": "CC BY 4.0"
+      },
+      "thumbnail": "assets/figure-gallery/kegg-variant-bw-text-classic.jpg",
+      "thumbnailSha256": "37fb0f03de2b897f464dfb0ce46937cc76889252e1b551d0fd0114585091f25e",
+      "preview": "https://raw.githubusercontent.com/jarxunlai/ScientificFigureLibrary-personal/196c99a24bb0e2eaf61f8511417a655b96dd6e3b/modules/kegg-variant-bw-text-classic/preview.png",
+      "source": "https://github.com/jarxunlai/ScientificFigureLibrary-personal/tree/196c99a24bb0e2eaf61f8511417a655b96dd6e3b/modules/kegg-variant-bw-text-classic",
+      "code": "https://github.com/jarxunlai/ScientificFigureLibrary-personal/blob/196c99a24bb0e2eaf61f8511417a655b96dd6e3b/modules/kegg-variant-bw-text-classic/code/organized.R"
+    },
+    {
+      "id": "kegg-variant-inside-label-bar",
+      "title": "KEGG变体条形图（柱内通路名）",
+      "titleEn": "KEGG variant bar with inside-bar pathway labels",
+      "description": "A compact KEGG enrichment bar variant with a warm gradient and pathway names written inside the bars.",
+      "application": "Present ranked pathway enrichment in a minimal, label-forward bar layout.",
+      "dataProfile": "Fifteen synthetic pathway descriptions with adjusted p-values.",
+      "category": "enrichment",
+      "family": "enrichment_bar",
+      "language": "R",
+      "tags": [
+        "bar",
+        "enrichment_bar",
+        "inside",
+        "kegg",
+        "kegg-variant-inside-label-bar",
+        "label",
+        "variant"
+      ],
+      "packages": [
+        "ggplot2",
+        "ragg",
+        "readr"
+      ],
+      "licenses": {
+        "code": "MIT",
+        "content": "CC BY 4.0",
+        "documentation": "CC BY 4.0"
+      },
+      "thumbnail": "assets/figure-gallery/kegg-variant-inside-label-bar.jpg",
+      "thumbnailSha256": "ee4edad850b5bdd5f825738b54876ebc5b70972ae3029b3f20720889bd7a4d01",
+      "preview": "https://raw.githubusercontent.com/jarxunlai/ScientificFigureLibrary-personal/196c99a24bb0e2eaf61f8511417a655b96dd6e3b/modules/kegg-variant-inside-label-bar/preview.png",
+      "source": "https://github.com/jarxunlai/ScientificFigureLibrary-personal/tree/196c99a24bb0e2eaf61f8511417a655b96dd6e3b/modules/kegg-variant-inside-label-bar",
+      "code": "https://github.com/jarxunlai/ScientificFigureLibrary-personal/blob/196c99a24bb0e2eaf61f8511417a655b96dd6e3b/modules/kegg-variant-inside-label-bar/code/organized.R"
+    },
+    {
+      "id": "nature-2022-fig2a-gcc-overview",
+      "title": "海洋微生物 BGC 的 GCC 新颖性与组成概览",
+      "titleEn": "nature 2022 fig2a gcc overview",
+      "description": "Paoli et al. Nature 2022 Fig.2a independent local-private reference. GCC tree plus genome type, phylum, BGC class, count, prevalence and RefSeq novelty rings. Upstream assembly/binning/antiSMASH/BiG-SLICE not rerun; final author reroot/leaf order unavailable.",
+      "application": "未单独记录。此历史模板尚未提供独立应用场景。",
+      "dataProfile": "151 GCC; 17,689 representative BGC; six entry-local CSV/Newick inputs.",
+      "category": "genomics",
+      "family": "circular_hierarchical_annotation",
+      "language": "R",
+      "tags": [
+        "BGC",
+        "Fig.2a",
+        "GCC",
+        "Nature",
+        "private_reference"
+      ],
+      "packages": [
+        "ape",
+        "dplyr",
+        "ggplot2",
+        "patchwork",
+        "ragg",
+        "scales",
+        "tidyr"
+      ],
+      "licenses": {
+        "code": "MIT",
+        "content": "CC BY 4.0",
+        "documentation": "CC BY 4.0"
+      },
+      "thumbnail": "assets/figure-gallery/nature-2022-fig2a-gcc-overview.jpg",
+      "thumbnailSha256": "869c4bd2d3406ca9e1c759ecf451838209c463b07a2e70caf6280584fc48fe0c",
+      "preview": "https://raw.githubusercontent.com/jarxunlai/ScientificFigureLibrary-personal/196c99a24bb0e2eaf61f8511417a655b96dd6e3b/modules/nature-2022-fig2a-gcc-overview/preview.png",
+      "source": "https://github.com/jarxunlai/ScientificFigureLibrary-personal/tree/196c99a24bb0e2eaf61f8511417a655b96dd6e3b/modules/nature-2022-fig2a-gcc-overview",
+      "code": "https://github.com/jarxunlai/ScientificFigureLibrary-personal/blob/196c99a24bb0e2eaf61f8511417a655b96dd6e3b/modules/nature-2022-fig2a-gcc-overview/code/organized.R"
+    },
+    {
+      "id": "nature-2022-fig2b-gcf-novelty",
+      "title": "海洋微生物 GCF 对参考数据库的新颖性分布",
+      "titleEn": "nature 2022 fig2b gcf novelty",
+      "description": "独立 Local Published 条目：Paoli et al. Nature 2022 Fig.2b。包括当前 preview、canonical organized.R、histogram-observations.csv、gcf-distance-summary.csv、作者原始脚本、AUTHOR_LICENSE、说明/来源/schema/readme 和渲染证据。仅 private_reference；不公开到 Community。\n\n适用场景：已完成 GCF 聚类和 reference-distance 计算，需要量化 dbar>0.2 的新颖 GCF、筛选新颖 BGC class 候选，或检查 novelty 是否集中于少数 phylum。作者 histogram 的 GCF-category 计数口径和 unique GCF headline 分开记录。",
+      "application": "未单独记录。此历史模板尚未提供独立应用场景。",
+      "dataProfile": "histogram-observations.csv 和 gcf-distance-summary.csv；6907 GCF；真实官方Table 2派生数据。",
+      "category": "genomics",
+      "family": "stacked_histogram_facets",
+      "language": "R",
+      "tags": [
+        "BGC",
+        "Fig.2b",
+        "GCF",
+        "MIBiG",
+        "Nature",
+        "RefSeq",
+        "private_reference"
+      ],
+      "packages": [
+        "dplyr",
+        "ggplot2",
+        "patchwork",
+        "ragg",
+        "scales",
+        "tidyr"
+      ],
+      "licenses": {
+        "code": "MIT",
+        "content": "CC BY 4.0",
+        "documentation": "CC BY 4.0"
+      },
+      "thumbnail": "assets/figure-gallery/nature-2022-fig2b-gcf-novelty.jpg",
+      "thumbnailSha256": "89079a598d3fcdba192aa208e0a939e606700db69fda12ec11af3d31c69bcc19",
+      "preview": "https://raw.githubusercontent.com/jarxunlai/ScientificFigureLibrary-personal/196c99a24bb0e2eaf61f8511417a655b96dd6e3b/modules/nature-2022-fig2b-gcf-novelty/preview.png",
+      "source": "https://github.com/jarxunlai/ScientificFigureLibrary-personal/tree/196c99a24bb0e2eaf61f8511417a655b96dd6e3b/modules/nature-2022-fig2b-gcf-novelty",
+      "code": "https://github.com/jarxunlai/ScientificFigureLibrary-personal/blob/196c99a24bb0e2eaf61f8511417a655b96dd6e3b/modules/nature-2022-fig2b-gcf-novelty/code/organized.R"
+    },
+    {
+      "id": "nature-2022-fig2c-phylogenomic-bgc",
+      "title": "海洋微生物 BGC 的系统发育分布",
+      "titleEn": "nature 2022 fig2c phylogenomic bgc",
+      "description": "独立 Local Published 条目：Paoli et al. Nature 2022 Fig.2c。包括最终同心 GTDB bacteria/archaea preview、canonical organized.R、prepare-layout.R、真实 tree/layout tables、作者原始 Fig.2C scripts、AUTHOR_LICENSE、输入/布局/stack checks、说明/来源/schema/readme。\n\n适用场景：已有 genome-resolved BGC annotation 和 GTDB placement，需要定位 BGC-rich host lineage、比较 MAG/SAG/REF phylogenomic coverage、选择天然产物/酶学验证对象时使用。保持同一 selected genome 的六类 BGC counts，不组合不同 genome 的类别最大值；4个无法落到原树的后续 species cluster 单独列示。\n\n范围仅 panel c。GTDB/OMD 数据与作者代码真实取得，collapse/color/category helper 适配实现已披露；不宣称像素级原图、GTDB-Tk或上游重建重跑。canonical renderer要求项目根目录/gallery布局；不收录 broken example.R、旧 trial outputs 或环境文件。",
+      "application": "未单独记录。此历史模板尚未提供独立应用场景。",
+      "dataProfile": "直接绘图输入 tree-segments.csv、tree-wedges.csv、bgc-radial-bins.csv、taxonomy-labels.csv、unplaced-species.csv；上游参考含GTDB trees、species summary、membership、prepare-layout.R。",
+      "category": "genomics",
+      "family": "circular_phylogenomic_tree_with_radial_bars",
+      "language": "R",
+      "tags": [
+        "BGC",
+        "Fig.2c",
+        "GTDB",
+        "Nature",
+        "phylogenomics",
+        "private_reference"
+      ],
+      "packages": [
+        "dplyr",
+        "ggplot2",
+        "patchwork",
+        "ragg",
+        "readr",
+        "scales",
+        "tidyr",
+        "viridisLite"
+      ],
+      "licenses": {
+        "code": "MIT",
+        "content": "CC BY 4.0",
+        "documentation": "CC BY 4.0"
+      },
+      "thumbnail": "assets/figure-gallery/nature-2022-fig2c-phylogenomic-bgc.jpg",
+      "thumbnailSha256": "f69174e6349fbfebe6c3bdeab807ea5770b6812a21e7e484fb14f060789e66c2",
+      "preview": "https://raw.githubusercontent.com/jarxunlai/ScientificFigureLibrary-personal/196c99a24bb0e2eaf61f8511417a655b96dd6e3b/modules/nature-2022-fig2c-phylogenomic-bgc/preview.png",
+      "source": "https://github.com/jarxunlai/ScientificFigureLibrary-personal/tree/196c99a24bb0e2eaf61f8511417a655b96dd6e3b/modules/nature-2022-fig2c-phylogenomic-bgc",
+      "code": "https://github.com/jarxunlai/ScientificFigureLibrary-personal/blob/196c99a24bb0e2eaf61f8511417a655b96dd6e3b/modules/nature-2022-fig2c-phylogenomic-bgc/code/organized.R"
+    },
+    {
+      "id": "nature-deg-grouped-barplot",
+      "title": "Nature风格分组DEG条形图",
+      "titleEn": "Nature-style grouped DEG bar plot",
+      "description": "A three-time-point grouped DEG bar layout with color-coded cell-type classes.",
+      "application": "Compare differential-gene counts across three time points and cell-type groups.",
+      "dataProfile": "Synthetic cell-type rows with SNI_3day, SNI_3week, SNI_3month, and Group columns.",
+      "category": "composition",
+      "family": "grouped_deg_bar",
+      "language": "R",
+      "tags": [
+        "barplot",
+        "deg",
+        "grouped",
+        "grouped_deg_bar",
+        "nature",
+        "nature-deg-grouped-barplot"
+      ],
+      "packages": [
+        "ggplot2",
+        "ragg",
+        "readr"
+      ],
+      "licenses": {
+        "code": "MIT",
+        "content": "CC BY 4.0",
+        "documentation": "CC BY 4.0"
+      },
+      "thumbnail": "assets/figure-gallery/nature-deg-grouped-barplot.jpg",
+      "thumbnailSha256": "7bcca6435fd0524e38d5eb5985bdaffac3493288d18fc119c5dc4fb8b789b557",
+      "preview": "https://raw.githubusercontent.com/jarxunlai/ScientificFigureLibrary-personal/196c99a24bb0e2eaf61f8511417a655b96dd6e3b/modules/nature-deg-grouped-barplot/preview.png",
+      "source": "https://github.com/jarxunlai/ScientificFigureLibrary-personal/tree/196c99a24bb0e2eaf61f8511417a655b96dd6e3b/modules/nature-deg-grouped-barplot",
+      "code": "https://github.com/jarxunlai/ScientificFigureLibrary-personal/blob/196c99a24bb0e2eaf61f8511417a655b96dd6e3b/modules/nature-deg-grouped-barplot/code/organized.R"
+    },
+    {
+      "id": "nature-evoflux-fig1bc",
+      "title": "fCpG条形码示意与淋巴肿瘤甲基化热图",
+      "titleEn": "nature evoflux fig1bc",
+      "description": "复刻 Gabbutt et al., Nature 2025 Fig. 1b–c：用示意棒棒糖解释 bulk 甲基化分布如何编码群体历史，再用 978×2,204 热图展示淋巴 fCpG 的斑驳条形码。作者仓库无 Fig. 1b/c 脚本；本条目是 Source Data + 期刊图的视觉复刻，不是 EVOFLUx 推断复现。",
+      "application": "- 场景一：只有 bulk 450k / EPIC 甲基化矩阵，要向读者解释为什么中间 β 值的单峰不等于“半甲基化位点”，而是多克隆平均。把 Fig. 1b 上排（星形树 + 杂乱灰点 + 单峰）和下排（W 形）并排放，比单独贴直方图更不容易被读成批次效应。\n- 场景二：已经筛出一批候选 fCpG，需要证明它们不像 clock CpG 那样按病种成块，而是跨病种斑驳。Fig. 1c 用官方列序 + 顶部 Sample group / tumour fraction / discovery / cancer / platform 五条注释，适合作为“位点是条形码、不是细胞类型标志”的主图。\n- 场景三：论文要同时交代发现集（Training=True）和验证/健康对照（Training=False）。顶部青/橙色条能直接标出哪些列参与了 fCpG 发现，避免把健康对照误当成发现集。\n- 不适合：要展示差异甲基化（DMP/DMH）或按病种聚类的表观亚型；那种图应让位点按疾病成块，而不是斑驳。也不适合单细胞甲基化 UMAP，或只有几十个样本的小热图。",
+      "dataProfile": "官方 Source Data Fig. 1c 宽表（注释行 + fCpG 行）；Fig. 1b 三列模拟 bulk 分数；棒棒糖长表。fCpG 矩阵不进 Git，运行时从 inbox xlsx 读取。",
+      "category": "genomics",
+      "family": "annotated_heatmap_plus_schematic",
+      "language": "R",
+      "tags": [
+        "ComplexHeatmap",
+        "Nature",
+        "barcode",
+        "fCpG",
+        "heatmap",
+        "lollipop",
+        "lymphoid",
+        "methylation"
+      ],
+      "packages": [
+        "ComplexHeatmap",
+        "circlize",
+        "dplyr",
+        "ggplot2",
+        "grid",
+        "patchwork",
+        "ragg",
+        "readr",
+        "tidyr"
+      ],
+      "licenses": {
+        "code": "MIT",
+        "content": "CC-BY-4.0",
+        "documentation": "CC BY 4.0"
+      },
+      "thumbnail": "assets/figure-gallery/nature-evoflux-fig1bc.jpg",
+      "thumbnailSha256": "5d83348de215f8536339c5f8692c89b1e38c1ea2be88d8ecd873d7870eb9e1f0",
+      "preview": "https://raw.githubusercontent.com/jarxunlai/ScientificFigureLibrary-personal/196c99a24bb0e2eaf61f8511417a655b96dd6e3b/modules/nature-evoflux-fig1bc/preview.png",
+      "source": "https://github.com/jarxunlai/ScientificFigureLibrary-personal/tree/196c99a24bb0e2eaf61f8511417a655b96dd6e3b/modules/nature-evoflux-fig1bc",
+      "code": "https://github.com/jarxunlai/ScientificFigureLibrary-personal/blob/196c99a24bb0e2eaf61f8511417a655b96dd6e3b/modules/nature-evoflux-fig1bc/code/organized.R"
+    },
+    {
+      "id": "nature-fig4a-galnac-upset",
+      "title": "四物种GalNAc通路完整性UpSet",
+      "titleEn": "nature fig4a galnac upset",
+      "description": "复刻 Zhernakova et al., Nature 2024 Fig. 4a：UHGG 中四个 ABO 相关肠道菌的 GalNAc 通路步骤完整性 exclusive intersection。问的是这些物种是否真有完整 GalNAc 利用通路，还是只带个别步骤。论文结论：完整通路占 26%（2678/10487）；C. aerofaciens 80% 完整，F. prausnitzii 23% 完整，B. bifidum 几乎没有完整通路。\n\n适用场景（对齐 FigureYa）：场景一——已对 2–6 个物种做完同一条代谢通路的步骤有无，要看完整通路相对残缺组合有多少、缺在哪一步。场景二——宿主基因型与菌种丰度相关，要看是这个种整体都有通路还是只有一部分菌株有；堆积色把物种放进组合柱。不适合韦恩图、基因轨道或生长曲线。\n\n绘图层用 ggplot2 复刻 ComplexUpset 版式。Supplementary Table S16 只有完整通路基因组；长尾组合按原图列序重建，不是 UHGG tblastn 复现。",
+      "application": "未单独记录。此历史模板尚未提供独立应用场景。",
+      "dataProfile": "长表：每行 = exclusive intersection × 物种；step0–step5 为 0/1，n 为菌株数。完整通路两行之和必须为 2678。",
+      "category": "relationships",
+      "family": "stacked_upset",
+      "language": "R",
+      "tags": [
+        "ABO",
+        "C. aerofaciens",
+        "F. prausnitzii",
+        "GalNAc",
+        "Nature",
+        "ggplot2",
+        "microbiome",
+        "pathway completeness",
+        "upset"
+      ],
+      "packages": [
+        "cowplot",
+        "dplyr",
+        "ggplot2",
+        "patchwork",
+        "ragg",
+        "readr",
+        "tidyr"
+      ],
+      "licenses": {
+        "code": "MIT",
+        "content": "CC BY 4.0",
+        "documentation": "CC BY 4.0"
+      },
+      "thumbnail": "assets/figure-gallery/nature-fig4a-galnac-upset.jpg",
+      "thumbnailSha256": "ee2169f52494846c333d4790ff9dd831b5cb42ff9845fc4671aaf4939db50bd9",
+      "preview": "https://raw.githubusercontent.com/jarxunlai/ScientificFigureLibrary-personal/196c99a24bb0e2eaf61f8511417a655b96dd6e3b/modules/nature-fig4a-galnac-upset/preview.png",
+      "source": "https://github.com/jarxunlai/ScientificFigureLibrary-personal/tree/196c99a24bb0e2eaf61f8511417a655b96dd6e3b/modules/nature-fig4a-galnac-upset",
+      "code": "https://github.com/jarxunlai/ScientificFigureLibrary-personal/blob/196c99a24bb0e2eaf61f8511417a655b96dd6e3b/modules/nature-fig4a-galnac-upset/code/organized.R"
+    },
+    {
+      "id": "nature-metabolome-style-pca",
+      "title": "Nature风格四分组PCA",
+      "titleEn": "Nature-style four-group PCA",
+      "description": "A four-group PCA presentation with confidence ellipses, outlined points, and direct sample labels.",
+      "application": "Show group separation and sample labels in a clean PCA panel.",
+      "dataProfile": "Synthetic sample-level coordinates with sample, group, PC1, and PC2 columns.",
+      "category": "embedding",
+      "family": "pca",
+      "language": "R",
+      "tags": [
+        "metabolome",
+        "nature",
+        "nature-metabolome-style-pca",
+        "pca",
+        "style"
+      ],
+      "packages": [
+        "ggplot2",
+        "ggrepel",
+        "ragg",
+        "readr"
+      ],
+      "licenses": {
+        "code": "MIT",
+        "content": "CC BY 4.0",
+        "documentation": "CC BY 4.0"
+      },
+      "thumbnail": "assets/figure-gallery/nature-metabolome-style-pca.jpg",
+      "thumbnailSha256": "b8a6f1358504f9b448f63e6dc913c5208cedb3704506ec0e32a18b4092d4a0fc",
+      "preview": "https://raw.githubusercontent.com/jarxunlai/ScientificFigureLibrary-personal/196c99a24bb0e2eaf61f8511417a655b96dd6e3b/modules/nature-metabolome-style-pca/preview.png",
+      "source": "https://github.com/jarxunlai/ScientificFigureLibrary-personal/tree/196c99a24bb0e2eaf61f8511417a655b96dd6e3b/modules/nature-metabolome-style-pca",
+      "code": "https://github.com/jarxunlai/ScientificFigureLibrary-personal/blob/196c99a24bb0e2eaf61f8511417a655b96dd6e3b/modules/nature-metabolome-style-pca/code/organized.R"
+    },
+    {
+      "id": "nature-spatial-niche-stacked-bar",
+      "title": "Nature同款空转生态位堆积柱",
+      "titleEn": "Nature-style spatial niche stacked bar",
+      "description": "A 100% stacked-bar module for comparing spatial niche composition across samples.",
+      "application": "Compare nine niche proportions across a sample series with a stable palette.",
+      "dataProfile": "Long-form sample-by-niche proportions with patient, ctniche, and Proportion columns.",
+      "category": "composition",
+      "family": "stacked_proportion_bar",
+      "language": "R",
+      "tags": [
+        "bar",
+        "nature",
+        "nature-spatial-niche-stacked-bar",
+        "niche",
+        "spatial",
+        "stacked",
+        "stacked_proportion_bar"
+      ],
+      "packages": [
+        "dplyr",
+        "ggplot2",
+        "ragg",
+        "readr"
+      ],
+      "licenses": {
+        "code": "MIT",
+        "content": "CC BY 4.0",
+        "documentation": "CC BY 4.0"
+      },
+      "thumbnail": "assets/figure-gallery/nature-spatial-niche-stacked-bar.jpg",
+      "thumbnailSha256": "5ccec74e2806570cbb2e68b1715e2b95ddf0f81df5bf6f69696e265dbaabe084",
+      "preview": "https://raw.githubusercontent.com/jarxunlai/ScientificFigureLibrary-personal/196c99a24bb0e2eaf61f8511417a655b96dd6e3b/modules/nature-spatial-niche-stacked-bar/preview.png",
+      "source": "https://github.com/jarxunlai/ScientificFigureLibrary-personal/tree/196c99a24bb0e2eaf61f8511417a655b96dd6e3b/modules/nature-spatial-niche-stacked-bar",
+      "code": "https://github.com/jarxunlai/ScientificFigureLibrary-personal/blob/196c99a24bb0e2eaf61f8511417a655b96dd6e3b/modules/nature-spatial-niche-stacked-bar/code/organized.R"
+    },
+    {
+      "id": "nc-backtoback-lollipop",
+      "title": "NC背靠背棒棒图（LHSC）",
+      "titleEn": "Nat Commun back-to-back lollipop plot",
+      "description": "A back-to-back lollipop panel for comparing marker impact scores between two groups.",
+      "application": "Compare marker scores for a selected cell type across two named cohorts.",
+      "dataProfile": "Synthetic marker-level rows with celltype, group, marker, impact score, EC score, and specificity.",
+      "category": "composition",
+      "family": "back_to_back_lollipop",
+      "language": "R",
+      "tags": [
+        "back_to_back_lollipop",
+        "backtoback",
+        "lollipop",
+        "nc",
+        "nc-backtoback-lollipop"
+      ],
+      "packages": [
+        "dplyr",
+        "ggplot2",
+        "patchwork",
+        "ragg"
+      ],
+      "licenses": {
+        "code": "MIT",
+        "content": "CC BY 4.0",
+        "documentation": "CC BY 4.0"
+      },
+      "thumbnail": "assets/figure-gallery/nc-backtoback-lollipop.jpg",
+      "thumbnailSha256": "e40f98e1beff34a7b1c5af731b6be38bf55b3b3833b6871f21e1cb5f1a154533",
+      "preview": "https://raw.githubusercontent.com/jarxunlai/ScientificFigureLibrary-personal/196c99a24bb0e2eaf61f8511417a655b96dd6e3b/modules/nc-backtoback-lollipop/preview.png",
+      "source": "https://github.com/jarxunlai/ScientificFigureLibrary-personal/tree/196c99a24bb0e2eaf61f8511417a655b96dd6e3b/modules/nc-backtoback-lollipop",
+      "code": "https://github.com/jarxunlai/ScientificFigureLibrary-personal/blob/196c99a24bb0e2eaf61f8511417a655b96dd6e3b/modules/nc-backtoback-lollipop/code/organized.R"
+    },
+    {
+      "id": "ncb-fig2d-hox-ridge-heatmap",
+      "title": "HOX前后轴山脊图加热图",
+      "titleEn": "HOX A-P ridgeline with average-expression heatmap",
+      "description": "A four-panel HOX expression module combining ridgelines and an average-expression heatmap.",
+      "application": "Display spatial expression trends along an anterior-posterior axis for HOX groups.",
+      "dataProfile": "A synthetic gene-by-position CSV with one expression value for each AP layer.",
+      "category": "heatmap",
+      "family": "ridgeline_heatmap",
+      "language": "R",
+      "tags": [
+        "fig2d",
+        "heatmap",
+        "hox",
+        "ncb",
+        "ncb-fig2d-hox-ridge-heatmap",
+        "ridge",
+        "ridgeline_heatmap"
+      ],
+      "packages": [
+        "cowplot",
+        "ggplot2",
+        "ggridges",
+        "patchwork",
+        "ragg",
+        "scales"
+      ],
+      "licenses": {
+        "code": "MIT",
+        "content": "CC BY 4.0",
+        "documentation": "CC BY 4.0"
+      },
+      "thumbnail": "assets/figure-gallery/ncb-fig2d-hox-ridge-heatmap.jpg",
+      "thumbnailSha256": "cbd256431365e041764c9ccb4f720f3730ea95d75bac0044ac3760335b425f88",
+      "preview": "https://raw.githubusercontent.com/jarxunlai/ScientificFigureLibrary-personal/196c99a24bb0e2eaf61f8511417a655b96dd6e3b/modules/ncb-fig2d-hox-ridge-heatmap/preview.png",
+      "source": "https://github.com/jarxunlai/ScientificFigureLibrary-personal/tree/196c99a24bb0e2eaf61f8511417a655b96dd6e3b/modules/ncb-fig2d-hox-ridge-heatmap",
+      "code": "https://github.com/jarxunlai/ScientificFigureLibrary-personal/blob/196c99a24bb0e2eaf61f8511417a655b96dd6e3b/modules/ncb-fig2d-hox-ridge-heatmap/code/organized.R"
+    },
+    {
+      "id": "open-radial-multitrack-annotation",
+      "title": "开放式径向多轨注释图",
+      "titleEn": "open radial multitrack annotation",
+      "description": "一个可编辑的 R 绘图模板：约 270° 的开放式径向图包含两条定量 signature median/IQR 轨道、一条二分类轨道和两条分类注释轨道。左上开口处，各 annular track 延伸为共享半径边界的竖向摘要槽，使箱线摘要和 stacked strips 与圆环保持连续。",
+      "application": "- 单细胞或空间组学中，以 cluster 为单位同时展示 signature score、恶性状态和多套细胞类型注释。\n- 比较模型预测与作者/专家标签，并保持 cluster 顺序一致。\n- 用于多组学样本、物种分类或表型审计中连续指标与分类轨道的联合汇总。\n- 适合需要开放圆环与端点摘要槽相互对应的高密度补充图或总览图。",
+      "dataProfile": "一行对应一个 cluster。需包含显示顺序、cluster ID、二分类状态、模型标签、作者标签，以及 positive/negative 两组 q25、median、q75。随附 CSV 为 35 行确定性示例数据；signature 数值和二分类为合成数据，不代表真实临床或生物学结果。",
+      "category": "genomics",
+      "family": "open radial multi-track annotation chart",
+      "language": "R",
+      "tags": [
+        "R",
+        "UCell",
+        "circular plot",
+        "cluster annotation",
+        "grid",
+        "malignancy",
+        "multi-track",
+        "radial plot",
+        "single-cell"
+      ],
+      "packages": [
+        "dplyr",
+        "grid",
+        "readr"
+      ],
+      "licenses": {
+        "code": "MIT",
+        "content": "CC-BY-4.0",
+        "documentation": "CC BY 4.0"
+      },
+      "thumbnail": "assets/figure-gallery/open-radial-multitrack-annotation.jpg",
+      "thumbnailSha256": "29e872c6fdb48303f1ffbf594be5d95545e393eeaa128bc8033686ba239ebeba",
+      "preview": "https://raw.githubusercontent.com/jarxunlai/ScientificFigureLibrary-personal/196c99a24bb0e2eaf61f8511417a655b96dd6e3b/modules/open-radial-multitrack-annotation/preview.png",
+      "source": "https://github.com/jarxunlai/ScientificFigureLibrary-personal/tree/196c99a24bb0e2eaf61f8511417a655b96dd6e3b/modules/open-radial-multitrack-annotation",
+      "code": "https://github.com/jarxunlai/ScientificFigureLibrary-personal/blob/196c99a24bb0e2eaf61f8511417a655b96dd6e3b/modules/open-radial-multitrack-annotation/code/organized.R"
+    },
+    {
+      "id": "sc-celltype-grouped-dodge-count",
+      "title": "分组细胞绝对数 dodge 柱状图",
+      "titleEn": "Grouped dodged bars of absolute cell counts",
+      "description": "A portable R module for grouped dodged bars of absolute cell counts, using a fully synthetic sample-level count table.",
+      "application": "Compare aggregate absolute cell counts between groups for each cell type.",
+      "dataProfile": "A sample-level long table with Sample_ID, Group, celltype, and n. All distributed values are newly generated synthetic examples.",
+      "category": "composition",
+      "family": "grouped_bar",
+      "language": "R",
+      "tags": [
+        "absolute-count",
+        "cell-composition",
+        "single-cell"
+      ],
+      "packages": [
+        "dplyr",
+        "forcats",
+        "ggplot2",
+        "scales"
+      ],
+      "licenses": {
+        "code": "MIT",
+        "content": "CC BY 4.0",
+        "documentation": "CC BY 4.0"
+      },
+      "thumbnail": "assets/figure-gallery/sc-celltype-grouped-dodge-count.jpg",
+      "thumbnailSha256": "735f0726d8d2b5764deb3891b3953779c1fec5bd31e324bb0d7e726fa610c884",
+      "preview": "https://raw.githubusercontent.com/jarxunlai/ScientificFigureLibrary-personal/196c99a24bb0e2eaf61f8511417a655b96dd6e3b/modules/sc-celltype-grouped-dodge-count/preview.png",
+      "source": "https://github.com/jarxunlai/ScientificFigureLibrary-personal/tree/196c99a24bb0e2eaf61f8511417a655b96dd6e3b/modules/sc-celltype-grouped-dodge-count",
+      "code": "https://github.com/jarxunlai/ScientificFigureLibrary-personal/blob/196c99a24bb0e2eaf61f8511417a655b96dd6e3b/modules/sc-celltype-grouped-dodge-count/code/organized.R"
+    },
+    {
+      "id": "sc-celltype-grouped-horizontal-bar",
+      "title": "分组水平条形细胞比例图",
+      "titleEn": "Faceted horizontal bars of cell-type proportions",
+      "description": "A portable R module for faceted horizontal bars of cell-type proportions, using a fully synthetic sample-level count table.",
+      "application": "Compare cell-type proportions between groups with side-by-side horizontal facets.",
+      "dataProfile": "A sample-level long table with Sample_ID, Group, celltype, and n. All distributed values are newly generated synthetic examples.",
+      "category": "composition",
+      "family": "faceted_horizontal_bar",
+      "language": "R",
+      "tags": [
+        "cell-composition",
+        "group-comparison",
+        "single-cell"
+      ],
+      "packages": [
+        "dplyr",
+        "ggplot2"
+      ],
+      "licenses": {
+        "code": "MIT",
+        "content": "CC BY 4.0",
+        "documentation": "CC BY 4.0"
+      },
+      "thumbnail": "assets/figure-gallery/sc-celltype-grouped-horizontal-bar.jpg",
+      "thumbnailSha256": "a0ad2f643ca55a98a8b7f30c40bbdfeb13d7ea421fbc227883e67614cd2d01be",
+      "preview": "https://raw.githubusercontent.com/jarxunlai/ScientificFigureLibrary-personal/196c99a24bb0e2eaf61f8511417a655b96dd6e3b/modules/sc-celltype-grouped-horizontal-bar/preview.png",
+      "source": "https://github.com/jarxunlai/ScientificFigureLibrary-personal/tree/196c99a24bb0e2eaf61f8511417a655b96dd6e3b/modules/sc-celltype-grouped-horizontal-bar",
+      "code": "https://github.com/jarxunlai/ScientificFigureLibrary-personal/blob/196c99a24bb0e2eaf61f8511417a655b96dd6e3b/modules/sc-celltype-grouped-horizontal-bar/code/organized.R"
+    },
+    {
+      "id": "sc-celltype-grouped-stacked-bar",
+      "title": "分组堆叠柱状细胞构成图",
+      "titleEn": "Grouped 100% stacked bars of cell composition",
+      "description": "A portable R module for grouped 100% stacked bars of cell composition, using a fully synthetic sample-level count table.",
+      "application": "Compare group-level cell composition with normalized stacked bars.",
+      "dataProfile": "A sample-level long table with Sample_ID, Group, celltype, and n. All distributed values are newly generated synthetic examples.",
+      "category": "composition",
+      "family": "stacked_bar",
+      "language": "R",
+      "tags": [
+        "cell-composition",
+        "group-comparison",
+        "single-cell"
+      ],
+      "packages": [
+        "RColorBrewer",
+        "dplyr",
+        "ggplot2"
+      ],
+      "licenses": {
+        "code": "MIT",
+        "content": "CC BY 4.0",
+        "documentation": "CC BY 4.0"
+      },
+      "thumbnail": "assets/figure-gallery/sc-celltype-grouped-stacked-bar.jpg",
+      "thumbnailSha256": "45f98a42bb65edb46f5cb7c203f268cbdf09f10f675d0a401a166a977990fba1",
+      "preview": "https://raw.githubusercontent.com/jarxunlai/ScientificFigureLibrary-personal/196c99a24bb0e2eaf61f8511417a655b96dd6e3b/modules/sc-celltype-grouped-stacked-bar/preview.png",
+      "source": "https://github.com/jarxunlai/ScientificFigureLibrary-personal/tree/196c99a24bb0e2eaf61f8511417a655b96dd6e3b/modules/sc-celltype-grouped-stacked-bar",
+      "code": "https://github.com/jarxunlai/ScientificFigureLibrary-personal/blob/196c99a24bb0e2eaf61f8511417a655b96dd6e3b/modules/sc-celltype-grouped-stacked-bar/code/organized.R"
+    },
+    {
+      "id": "sc-celltype-nightingale-rose",
+      "title": "南丁格尔玫瑰细胞构成图",
+      "titleEn": "Nightingale rose chart of cell composition",
+      "description": "A portable R module for nightingale rose chart of cell composition, using a fully synthetic sample-level count table.",
+      "application": "Display per-sample cell-type proportions as faceted polar stacked bars.",
+      "dataProfile": "A sample-level long table with Sample_ID, Group, celltype, and n. All distributed values are newly generated synthetic examples.",
+      "category": "composition",
+      "family": "polar_bar",
+      "language": "R",
+      "tags": [
+        "cell-composition",
+        "polar-chart",
+        "single-cell"
+      ],
+      "packages": [
+        "dplyr",
+        "forcats",
+        "ggplot2",
+        "scales"
+      ],
+      "licenses": {
+        "code": "MIT",
+        "content": "CC BY 4.0",
+        "documentation": "CC BY 4.0"
+      },
+      "thumbnail": "assets/figure-gallery/sc-celltype-nightingale-rose.jpg",
+      "thumbnailSha256": "9469b250874e4b4a7aa2cb5d6726d6740dba452ad2e06079477cd009eeb8ebf1",
+      "preview": "https://raw.githubusercontent.com/jarxunlai/ScientificFigureLibrary-personal/196c99a24bb0e2eaf61f8511417a655b96dd6e3b/modules/sc-celltype-nightingale-rose/preview.png",
+      "source": "https://github.com/jarxunlai/ScientificFigureLibrary-personal/tree/196c99a24bb0e2eaf61f8511417a655b96dd6e3b/modules/sc-celltype-nightingale-rose",
+      "code": "https://github.com/jarxunlai/ScientificFigureLibrary-personal/blob/196c99a24bb0e2eaf61f8511417a655b96dd6e3b/modules/sc-celltype-nightingale-rose/code/organized.R"
+    },
+    {
+      "id": "sc-celltype-sample-dodge-count",
+      "title": "样本细胞绝对数 dodge 柱状图",
+      "titleEn": "Sample-level dodged bars of absolute cell counts",
+      "description": "A portable R module for sample-level dodged bars of absolute cell counts, using a fully synthetic sample-level count table.",
+      "application": "Compare absolute cell counts at sample level, faceted by group.",
+      "dataProfile": "A sample-level long table with Sample_ID, Group, celltype, and n. All distributed values are newly generated synthetic examples.",
+      "category": "composition",
+      "family": "grouped_bar",
+      "language": "R",
+      "tags": [
+        "absolute-count",
+        "cell-composition",
+        "single-cell"
+      ],
+      "packages": [
+        "dplyr",
+        "forcats",
+        "ggplot2",
+        "scales"
+      ],
+      "licenses": {
+        "code": "MIT",
+        "content": "CC BY 4.0",
+        "documentation": "CC BY 4.0"
+      },
+      "thumbnail": "assets/figure-gallery/sc-celltype-sample-dodge-count.jpg",
+      "thumbnailSha256": "18fc3a528e3215cfe5f0b637d624d5784c767cfc38c01509f21e59ffbcc55fb2",
+      "preview": "https://raw.githubusercontent.com/jarxunlai/ScientificFigureLibrary-personal/196c99a24bb0e2eaf61f8511417a655b96dd6e3b/modules/sc-celltype-sample-dodge-count/preview.png",
+      "source": "https://github.com/jarxunlai/ScientificFigureLibrary-personal/tree/196c99a24bb0e2eaf61f8511417a655b96dd6e3b/modules/sc-celltype-sample-dodge-count",
+      "code": "https://github.com/jarxunlai/ScientificFigureLibrary-personal/blob/196c99a24bb0e2eaf61f8511417a655b96dd6e3b/modules/sc-celltype-sample-dodge-count/code/organized.R"
+    },
+    {
+      "id": "sc-celltype-sample-stacked-proportion",
+      "title": "样本堆叠比例加总数柱状图",
+      "titleEn": "Sample stacked proportions with totals",
+      "description": "A portable R module for sample stacked proportions with totals, using a fully synthetic sample-level count table.",
+      "application": "Show per-sample cell-type proportions with sample totals and group facets.",
+      "dataProfile": "A sample-level long table with Sample_ID, Group, celltype, and n. All distributed values are newly generated synthetic examples.",
+      "category": "composition",
+      "family": "stacked_bar",
+      "language": "R",
+      "tags": [
+        "cell-composition",
+        "proportion",
+        "single-cell"
+      ],
+      "packages": [
+        "dplyr",
+        "forcats",
+        "ggplot2",
+        "scales"
+      ],
+      "licenses": {
+        "code": "MIT",
+        "content": "CC BY 4.0",
+        "documentation": "CC BY 4.0"
+      },
+      "thumbnail": "assets/figure-gallery/sc-celltype-sample-stacked-proportion.jpg",
+      "thumbnailSha256": "fd394fb1fa8f916c66742e80b225bc0244a5e1afc39c270f44ffb68e479407ab",
+      "preview": "https://raw.githubusercontent.com/jarxunlai/ScientificFigureLibrary-personal/196c99a24bb0e2eaf61f8511417a655b96dd6e3b/modules/sc-celltype-sample-stacked-proportion/preview.png",
+      "source": "https://github.com/jarxunlai/ScientificFigureLibrary-personal/tree/196c99a24bb0e2eaf61f8511417a655b96dd6e3b/modules/sc-celltype-sample-stacked-proportion",
+      "code": "https://github.com/jarxunlai/ScientificFigureLibrary-personal/blob/196c99a24bb0e2eaf61f8511417a655b96dd6e3b/modules/sc-celltype-sample-stacked-proportion/code/organized.R"
+    },
+    {
+      "id": "sc-celltype-sankey",
+      "title": "细胞类型到分组桑基图",
+      "titleEn": "Cell type to group Sankey",
+      "description": "A portable R module for cell type to group sankey, using a fully synthetic sample-level count table.",
+      "application": "Show aggregate flows from cell types to experimental groups with parallel-set ribbons.",
+      "dataProfile": "A sample-level long table with Sample_ID, Group, celltype, and n. All distributed values are newly generated synthetic examples.",
+      "category": "relationships",
+      "family": "sankey",
+      "language": "R",
+      "tags": [
+        "cell-composition",
+        "sankey",
+        "single-cell"
+      ],
+      "packages": [
+        "dplyr",
+        "ggforce",
+        "ggplot2"
+      ],
+      "licenses": {
+        "code": "MIT",
+        "content": "CC BY 4.0",
+        "documentation": "CC BY 4.0"
+      },
+      "thumbnail": "assets/figure-gallery/sc-celltype-sankey.jpg",
+      "thumbnailSha256": "7c7916fd33664e65a764f1fcc24407996e9ee1ebc64a2ccc9bcfe43e649d4d32",
+      "preview": "https://raw.githubusercontent.com/jarxunlai/ScientificFigureLibrary-personal/196c99a24bb0e2eaf61f8511417a655b96dd6e3b/modules/sc-celltype-sankey/preview.png",
+      "source": "https://github.com/jarxunlai/ScientificFigureLibrary-personal/tree/196c99a24bb0e2eaf61f8511417a655b96dd6e3b/modules/sc-celltype-sankey",
+      "code": "https://github.com/jarxunlai/ScientificFigureLibrary-personal/blob/196c99a24bb0e2eaf61f8511417a655b96dd6e3b/modules/sc-celltype-sankey/code/organized.R"
+    },
+    {
+      "id": "sc-celltype-stacked-area",
+      "title": "跨样本堆叠面积细胞构成图",
+      "titleEn": "Stacked area of cell composition across samples",
+      "description": "A portable R module for stacked area of cell composition across samples, using a fully synthetic sample-level count table.",
+      "application": "Show cell-type composition changes across ordered samples as a normalized stacked area chart.",
+      "dataProfile": "A sample-level long table with Sample_ID, Group, celltype, and n. All distributed values are newly generated synthetic examples.",
+      "category": "composition",
+      "family": "stacked_area",
+      "language": "R",
+      "tags": [
+        "cell-composition",
+        "sample-comparison",
+        "single-cell"
+      ],
+      "packages": [
+        "dplyr",
+        "forcats",
+        "ggplot2",
+        "scales"
+      ],
+      "licenses": {
+        "code": "MIT",
+        "content": "CC BY 4.0",
+        "documentation": "CC BY 4.0"
+      },
+      "thumbnail": "assets/figure-gallery/sc-celltype-stacked-area.jpg",
+      "thumbnailSha256": "a91354f3312e92b42c222b4378800448831dd5badef4be7c7d1d7c796f7cee2d",
+      "preview": "https://raw.githubusercontent.com/jarxunlai/ScientificFigureLibrary-personal/196c99a24bb0e2eaf61f8511417a655b96dd6e3b/modules/sc-celltype-stacked-area/preview.png",
+      "source": "https://github.com/jarxunlai/ScientificFigureLibrary-personal/tree/196c99a24bb0e2eaf61f8511417a655b96dd6e3b/modules/sc-celltype-stacked-area",
+      "code": "https://github.com/jarxunlai/ScientificFigureLibrary-personal/blob/196c99a24bb0e2eaf61f8511417a655b96dd6e3b/modules/sc-celltype-stacked-area/code/organized.R"
+    },
+    {
+      "id": "sc-marker-dotplot-highlight-boxes",
+      "title": "单细胞marker气泡图加突出框",
+      "titleEn": "scRNA marker dotplot with highlight boxes",
+      "description": "A marker dot plot with expression color, percent-expressed size, and three highlighted cluster regions.",
+      "application": "Compare marker expression across named cell clusters while emphasizing selected cluster blocks.",
+      "dataProfile": "A DotPlot-style table with avg.exp, pct.exp, features.plot, id, and avg.exp.scaled columns.",
+      "category": "expression",
+      "family": "marker_dotplot",
+      "language": "R",
+      "tags": [
+        "boxes",
+        "dotplot",
+        "highlight",
+        "marker",
+        "marker_dotplot",
+        "sc",
+        "sc-marker-dotplot-highlight-boxes"
+      ],
+      "packages": [
+        "ggplot2",
+        "ragg",
+        "readr"
+      ],
+      "licenses": {
+        "code": "MIT",
+        "content": "CC BY 4.0",
+        "documentation": "CC BY 4.0"
+      },
+      "thumbnail": "assets/figure-gallery/sc-marker-dotplot-highlight-boxes.jpg",
+      "thumbnailSha256": "e5439046fd62090fccea4e1b7da5401c7bd5463fb488684cdf4d8dfcd4cd71b4",
+      "preview": "https://raw.githubusercontent.com/jarxunlai/ScientificFigureLibrary-personal/196c99a24bb0e2eaf61f8511417a655b96dd6e3b/modules/sc-marker-dotplot-highlight-boxes/preview.png",
+      "source": "https://github.com/jarxunlai/ScientificFigureLibrary-personal/tree/196c99a24bb0e2eaf61f8511417a655b96dd6e3b/modules/sc-marker-dotplot-highlight-boxes",
+      "code": "https://github.com/jarxunlai/ScientificFigureLibrary-personal/blob/196c99a24bb0e2eaf61f8511417a655b96dd6e3b/modules/sc-marker-dotplot-highlight-boxes/code/organized.R"
+    },
+    {
+      "id": "science-mantel-corrplot",
+      "title": "Science风格Mantel网络相关热图",
+      "titleEn": "Science-style Mantel network correlation heatmap",
+      "description": "A correlation heatmap with Mantel links, significance colors, and effect-size widths.",
+      "application": "Relate environmental variables to grouped composition blocks with a compact network overlay.",
+      "dataProfile": "Two synthetic numeric tables: a composition matrix and an environmental-variable matrix.",
+      "category": "relationships",
+      "family": "mantel_corrplot",
+      "language": "R",
+      "tags": [
+        "corrplot",
+        "mantel",
+        "mantel_corrplot",
+        "science",
+        "science-mantel-corrplot"
+      ],
+      "packages": [
+        "RColorBrewer",
+        "dplyr",
+        "ggnewscale",
+        "ggplot2",
+        "linkET",
+        "ragg"
+      ],
+      "licenses": {
+        "code": "MIT",
+        "content": "CC BY 4.0",
+        "documentation": "CC BY 4.0"
+      },
+      "thumbnail": "assets/figure-gallery/science-mantel-corrplot.jpg",
+      "thumbnailSha256": "38c613f5fbe90ca231e9b6fe22519fb475da2d6da14be15b9d0989b7c505c3d0",
+      "preview": "https://raw.githubusercontent.com/jarxunlai/ScientificFigureLibrary-personal/196c99a24bb0e2eaf61f8511417a655b96dd6e3b/modules/science-mantel-corrplot/preview.png",
+      "source": "https://github.com/jarxunlai/ScientificFigureLibrary-personal/tree/196c99a24bb0e2eaf61f8511417a655b96dd6e3b/modules/science-mantel-corrplot",
+      "code": "https://github.com/jarxunlai/ScientificFigureLibrary-personal/blob/196c99a24bb0e2eaf61f8511417a655b96dd6e3b/modules/science-mantel-corrplot/code/organized.R"
+    },
+    {
+      "id": "single-cell-enrichment-bar-pathway-genes",
+      "title": "单细胞富集分析条形图（通路+基因）",
+      "titleEn": "Single-cell enrichment bar plot with pathways and genes",
+      "description": "A reusable labeled enrichment-bar function with pathway names, contributing genes, and cluster blocks.",
+      "application": "Compare top enriched pathways across selected cell clusters with direct labels.",
+      "dataProfile": "A long-form enrichment table with Cluster, Description, pvalue, geneID, and optional enrichment fields.",
+      "category": "enrichment",
+      "family": "enrichment_bar_with_genes",
+      "language": "R",
+      "tags": [
+        "bar",
+        "cell",
+        "enrichment",
+        "enrichment_bar_with_genes",
+        "genes",
+        "pathway",
+        "single",
+        "single-cell-enrichment-bar-pathway-genes"
+      ],
+      "packages": [
+        "dplyr",
+        "ggplot2",
+        "grid"
+      ],
+      "licenses": {
+        "code": "MIT",
+        "content": "CC BY 4.0",
+        "documentation": "CC BY 4.0"
+      },
+      "thumbnail": "assets/figure-gallery/single-cell-enrichment-bar-pathway-genes.jpg",
+      "thumbnailSha256": "0b44bc01c7329d495ced37c4d2b8ce56c9a70c0876dd86ad4d82c7630982af6c",
+      "preview": "https://raw.githubusercontent.com/jarxunlai/ScientificFigureLibrary-personal/196c99a24bb0e2eaf61f8511417a655b96dd6e3b/modules/single-cell-enrichment-bar-pathway-genes/preview.png",
+      "source": "https://github.com/jarxunlai/ScientificFigureLibrary-personal/tree/196c99a24bb0e2eaf61f8511417a655b96dd6e3b/modules/single-cell-enrichment-bar-pathway-genes",
+      "code": "https://github.com/jarxunlai/ScientificFigureLibrary-personal/blob/196c99a24bb0e2eaf61f8511417a655b96dd6e3b/modules/single-cell-enrichment-bar-pathway-genes/code/organized.R"
+    },
+    {
+      "id": "umap-style-density-heatmap",
+      "title": "暗夜密度热力UMAP",
+      "titleEn": "Dark magma density UMAP",
+      "description": "A dark-background density UMAP with white cluster ellipses and direct labels.",
+      "application": "Show density hotspots and cluster boundaries in a single-cell embedding.",
+      "dataProfile": "Synthetic cell-level coordinates with cell, UMAP_1, UMAP_2, celltype, and group columns.",
+      "category": "embedding",
+      "family": "umap_density",
+      "language": "R",
+      "tags": [
+        "density",
+        "heatmap",
+        "style",
+        "umap",
+        "umap-style-density-heatmap",
+        "umap_density"
+      ],
+      "packages": [
+        "dplyr",
+        "ggplot2",
+        "ggrepel",
+        "viridis"
+      ],
+      "licenses": {
+        "code": "MIT",
+        "content": "CC BY 4.0",
+        "documentation": "CC BY 4.0"
+      },
+      "thumbnail": "assets/figure-gallery/umap-style-density-heatmap.jpg",
+      "thumbnailSha256": "62d9dd7dd69771b889dc81b0e69df83cd21fbf58e795f2b465f74a1ee78f322c",
+      "preview": "https://raw.githubusercontent.com/jarxunlai/ScientificFigureLibrary-personal/196c99a24bb0e2eaf61f8511417a655b96dd6e3b/modules/umap-style-density-heatmap/preview.png",
+      "source": "https://github.com/jarxunlai/ScientificFigureLibrary-personal/tree/196c99a24bb0e2eaf61f8511417a655b96dd6e3b/modules/umap-style-density-heatmap",
+      "code": "https://github.com/jarxunlai/ScientificFigureLibrary-personal/blob/196c99a24bb0e2eaf61f8511417a655b96dd6e3b/modules/umap-style-density-heatmap/code/organized.R"
+    },
+    {
+      "id": "umap-style-ellipse-labels",
+      "title": "半透明椭圆同色标签UMAP",
+      "titleEn": "UMAP with translucent ellipses and matching labels",
+      "description": "A UMAP module with translucent per-cluster ellipses and labels in matching colors.",
+      "application": "Show cluster shape and location while removing a separate legend.",
+      "dataProfile": "Synthetic cell-level UMAP coordinates and cell-type labels.",
+      "category": "embedding",
+      "family": "umap_ellipse",
+      "language": "R",
+      "tags": [
+        "ellipse",
+        "labels",
+        "style",
+        "umap",
+        "umap-style-ellipse-labels",
+        "umap_ellipse"
+      ],
+      "packages": [
+        "colorspace",
+        "dplyr",
+        "ggplot2",
+        "ggrepel"
+      ],
+      "licenses": {
+        "code": "MIT",
+        "content": "CC BY 4.0",
+        "documentation": "CC BY 4.0"
+      },
+      "thumbnail": "assets/figure-gallery/umap-style-ellipse-labels.jpg",
+      "thumbnailSha256": "84dc232c0d99e24fa7a1d08ec9a79efbe1e562e7513c28971710e9b452d5587a",
+      "preview": "https://raw.githubusercontent.com/jarxunlai/ScientificFigureLibrary-personal/196c99a24bb0e2eaf61f8511417a655b96dd6e3b/modules/umap-style-ellipse-labels/preview.png",
+      "source": "https://github.com/jarxunlai/ScientificFigureLibrary-personal/tree/196c99a24bb0e2eaf61f8511417a655b96dd6e3b/modules/umap-style-ellipse-labels",
+      "code": "https://github.com/jarxunlai/ScientificFigureLibrary-personal/blob/196c99a24bb0e2eaf61f8511417a655b96dd6e3b/modules/umap-style-ellipse-labels/code/organized.R"
+    },
+    {
+      "id": "umap-style-plot1cell-circlize",
+      "title": "环形Circos风格UMAP",
+      "titleEn": "Circular circos-style UMAP",
+      "description": "A circular UMAP presentation with cell-type and group rings around the embedding.",
+      "application": "Combine a central embedding with categorical rings and group composition arcs.",
+      "dataProfile": "Synthetic UMAP coordinates with celltype and group columns.",
+      "category": "embedding",
+      "family": "circular_umap",
+      "language": "R",
+      "tags": [
+        "circlize",
+        "circular_umap",
+        "plot1cell",
+        "style",
+        "umap",
+        "umap-style-plot1cell-circlize"
+      ],
+      "packages": [
+        "dplyr",
+        "ggplot2"
+      ],
+      "licenses": {
+        "code": "MIT",
+        "content": "CC BY 4.0",
+        "documentation": "CC BY 4.0"
+      },
+      "thumbnail": "assets/figure-gallery/umap-style-plot1cell-circlize.jpg",
+      "thumbnailSha256": "31654e507ed6e9a157b07cdf5bbf2cec03a957058e682f47c1adcc17ca09faf3",
+      "preview": "https://raw.githubusercontent.com/jarxunlai/ScientificFigureLibrary-personal/196c99a24bb0e2eaf61f8511417a655b96dd6e3b/modules/umap-style-plot1cell-circlize/preview.png",
+      "source": "https://github.com/jarxunlai/ScientificFigureLibrary-personal/tree/196c99a24bb0e2eaf61f8511417a655b96dd6e3b/modules/umap-style-plot1cell-circlize",
+      "code": "https://github.com/jarxunlai/ScientificFigureLibrary-personal/blob/196c99a24bb0e2eaf61f8511417a655b96dd6e3b/modules/umap-style-plot1cell-circlize/code/organized.R"
+    },
+    {
+      "id": "umap-style-scp-numbered-legend",
+      "title": "编号加侧边图例UMAP",
+      "titleEn": "Numbered UMAP with count legend",
+      "description": "A numbered UMAP with a side legend that reports cell counts for each cluster.",
+      "application": "Keep a dense embedding readable with compact numeric labels and counts.",
+      "dataProfile": "Synthetic cell-level UMAP coordinates and cell-type labels.",
+      "category": "embedding",
+      "family": "umap_numbered_legend",
+      "language": "R",
+      "tags": [
+        "legend",
+        "numbered",
+        "scp",
+        "style",
+        "umap",
+        "umap-style-scp-numbered-legend",
+        "umap_numbered_legend"
+      ],
+      "packages": [
+        "dplyr",
+        "ggplot2"
+      ],
+      "licenses": {
+        "code": "MIT",
+        "content": "CC BY 4.0",
+        "documentation": "CC BY 4.0"
+      },
+      "thumbnail": "assets/figure-gallery/umap-style-scp-numbered-legend.jpg",
+      "thumbnailSha256": "24db7c611c206ebcbf0b448738331c3dee736eb524c5f767679a7a1112d7c4cb",
+      "preview": "https://raw.githubusercontent.com/jarxunlai/ScientificFigureLibrary-personal/196c99a24bb0e2eaf61f8511417a655b96dd6e3b/modules/umap-style-scp-numbered-legend/preview.png",
+      "source": "https://github.com/jarxunlai/ScientificFigureLibrary-personal/tree/196c99a24bb0e2eaf61f8511417a655b96dd6e3b/modules/umap-style-scp-numbered-legend",
+      "code": "https://github.com/jarxunlai/ScientificFigureLibrary-personal/blob/196c99a24bb0e2eaf61f8511417a655b96dd6e3b/modules/umap-style-scp-numbered-legend/code/organized.R"
+    },
+    {
+      "id": "umap-style-scp-square-axes",
+      "title": "方形坐标轴UMAP",
+      "titleEn": "Square-axis labelled UMAP",
+      "description": "A square-axis UMAP with direct cluster labels and a fixed symmetric coordinate range.",
+      "application": "Present a compact, equal-aspect embedding with stable axis limits.",
+      "dataProfile": "Synthetic cell-level UMAP coordinates and cell-type labels.",
+      "category": "embedding",
+      "family": "umap_square_axes",
+      "language": "R",
+      "tags": [
+        "axes",
+        "scp",
+        "square",
+        "style",
+        "umap",
+        "umap-style-scp-square-axes",
+        "umap_square_axes"
+      ],
+      "packages": [
+        "dplyr",
+        "ggplot2"
+      ],
+      "licenses": {
+        "code": "MIT",
+        "content": "CC BY 4.0",
+        "documentation": "CC BY 4.0"
+      },
+      "thumbnail": "assets/figure-gallery/umap-style-scp-square-axes.jpg",
+      "thumbnailSha256": "b7b7eda03163dff36a19414f5a0aef0fa6667f66ce29144ad024ff37b4f6eb4f",
+      "preview": "https://raw.githubusercontent.com/jarxunlai/ScientificFigureLibrary-personal/196c99a24bb0e2eaf61f8511417a655b96dd6e3b/modules/umap-style-scp-square-axes/preview.png",
+      "source": "https://github.com/jarxunlai/ScientificFigureLibrary-personal/tree/196c99a24bb0e2eaf61f8511417a655b96dd6e3b/modules/umap-style-scp-square-axes",
+      "code": "https://github.com/jarxunlai/ScientificFigureLibrary-personal/blob/196c99a24bb0e2eaf61f8511417a655b96dd6e3b/modules/umap-style-scp-square-axes/code/organized.R"
+    },
+    {
+      "id": "umap-style-scpubr-stroke",
+      "title": "黑边颗粒风UMAP",
+      "titleEn": "Black-stroke granule UMAP",
+      "description": "A marker UMAP with black outlines, cluster labels, and a compact bottom legend.",
+      "application": "Emphasize point boundaries and preserve cluster identity in a dense embedding.",
+      "dataProfile": "Synthetic cell-level UMAP coordinates and cell-type labels.",
+      "category": "embedding",
+      "family": "umap_stroke",
+      "language": "R",
+      "tags": [
+        "scpubr",
+        "stroke",
+        "style",
+        "umap",
+        "umap-style-scpubr-stroke",
+        "umap_stroke"
+      ],
+      "packages": [
+        "dplyr",
+        "ggplot2",
+        "shadowtext"
+      ],
+      "licenses": {
+        "code": "MIT",
+        "content": "CC BY 4.0",
+        "documentation": "CC BY 4.0"
+      },
+      "thumbnail": "assets/figure-gallery/umap-style-scpubr-stroke.jpg",
+      "thumbnailSha256": "64e224413d1e6237b76ce149d210446ac47aa7a2d9edc1f8fd85d7bdc49becb6",
+      "preview": "https://raw.githubusercontent.com/jarxunlai/ScientificFigureLibrary-personal/196c99a24bb0e2eaf61f8511417a655b96dd6e3b/modules/umap-style-scpubr-stroke/preview.png",
+      "source": "https://github.com/jarxunlai/ScientificFigureLibrary-personal/tree/196c99a24bb0e2eaf61f8511417a655b96dd6e3b/modules/umap-style-scpubr-stroke",
+      "code": "https://github.com/jarxunlai/ScientificFigureLibrary-personal/blob/196c99a24bb0e2eaf61f8511417a655b96dd6e3b/modules/umap-style-scpubr-stroke/code/organized.R"
+    },
+    {
+      "id": "umap-style-scrnatoolvis-insitu",
+      "title": "簇内直接标注UMAP",
+      "titleEn": "In-situ labelled UMAP",
+      "description": "A directly labelled UMAP with corner arrows standing in for a specialized cluster-axis theme.",
+      "application": "Place cell-type names in the embedding while retaining a small coordinate cue.",
+      "dataProfile": "Synthetic cell-level UMAP coordinates and cell-type labels.",
+      "category": "embedding",
+      "family": "umap_in_situ_labels",
+      "language": "R",
+      "tags": [
+        "insitu",
+        "scrnatoolvis",
+        "style",
+        "umap",
+        "umap-style-scrnatoolvis-insitu",
+        "umap_in_situ_labels"
+      ],
+      "packages": [
+        "dplyr",
+        "ggplot2"
+      ],
+      "licenses": {
+        "code": "MIT",
+        "content": "CC BY 4.0",
+        "documentation": "CC BY 4.0"
+      },
+      "thumbnail": "assets/figure-gallery/umap-style-scrnatoolvis-insitu.jpg",
+      "thumbnailSha256": "b281b62f657a5b40c58d66bec5d26c7d8a136163b8833a3a53d69ec7c59b412c",
+      "preview": "https://raw.githubusercontent.com/jarxunlai/ScientificFigureLibrary-personal/196c99a24bb0e2eaf61f8511417a655b96dd6e3b/modules/umap-style-scrnatoolvis-insitu/preview.png",
+      "source": "https://github.com/jarxunlai/ScientificFigureLibrary-personal/tree/196c99a24bb0e2eaf61f8511417a655b96dd6e3b/modules/umap-style-scrnatoolvis-insitu",
+      "code": "https://github.com/jarxunlai/ScientificFigureLibrary-personal/blob/196c99a24bb0e2eaf61f8511417a655b96dd6e3b/modules/umap-style-scrnatoolvis-insitu/code/organized.R"
+    },
+    {
+      "id": "umap-unchull-main-type-circles",
+      "title": "单细胞UMAP大群虚线非凸包",
+      "titleEn": "UMAP with dashed non-convex hulls around main cell types",
+      "description": "A UMAP module with colored main-type hull outlines, subcluster labels, and a compact coordinate cue.",
+      "application": "Show broad cell-type territories around subclusters in a synthetic embedding.",
+      "dataProfile": "Synthetic cell-level coordinates with subcluster and main-cell-type columns.",
+      "category": "embedding",
+      "family": "umap_hulls",
+      "language": "R",
+      "tags": [
+        "circles",
+        "main",
+        "type",
+        "umap",
+        "umap-unchull-main-type-circles",
+        "umap_hulls",
+        "unchull"
+      ],
+      "packages": [
+        "dplyr",
+        "ggplot2",
+        "ggrepel",
+        "ggunchull",
+        "grid",
+        "tidydr"
+      ],
+      "licenses": {
+        "code": "MIT",
+        "content": "CC BY 4.0",
+        "documentation": "CC BY 4.0"
+      },
+      "thumbnail": "assets/figure-gallery/umap-unchull-main-type-circles.jpg",
+      "thumbnailSha256": "396883cb62dff3b88706590e06b7e4d2046d7935040031e6b01c64b1c9b7adf5",
+      "preview": "https://raw.githubusercontent.com/jarxunlai/ScientificFigureLibrary-personal/196c99a24bb0e2eaf61f8511417a655b96dd6e3b/modules/umap-unchull-main-type-circles/preview.png",
+      "source": "https://github.com/jarxunlai/ScientificFigureLibrary-personal/tree/196c99a24bb0e2eaf61f8511417a655b96dd6e3b/modules/umap-unchull-main-type-circles",
+      "code": "https://github.com/jarxunlai/ScientificFigureLibrary-personal/blob/196c99a24bb0e2eaf61f8511417a655b96dd6e3b/modules/umap-unchull-main-type-circles/code/organized.R"
+    }
+  ]
+}

@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-page="gallery">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="浏览 Open Figure Modules 科学图形模板：UMAP、热图、富集分析、系统发育树等，附预览、代码与来源。">
+    <title>Figure Gallery | Scientific Figure Library</title>
+    <link rel="icon" href="assets/logo.svg" type="image/svg+xml">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Noto+Sans+SC:wght@400;500;600&family=Noto+Serif+SC:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600&family=Source+Serif+4:opsz,wght@8..60,400;8..60,500;8..60,600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="assets/pages.css">
+    <link rel="stylesheet" href="assets/gallery.css">
+    <script src="assets/pages.js" defer></script>
+    <script src="assets/gallery.js" defer></script>
+  </head>
+  <body>
+    <a data-i18n="skip" class="skip-link" href="#top">跳至主要内容</a>
+    <header class="site-nav">
+      <div class="container">
+        <a class="brand" href="index.html" data-page-link>
+          <img src="assets/logo.svg" alt="" width="28" height="28">
+          <span class="brand-name">Scientific Figure Library</span>
+          <span class="brand-short" aria-hidden="true">SFL</span>
+        </a>
+        <nav class="nav-links" aria-label="页面导航" data-i18n-aria="nav.aria">
+          <a href="index.html" data-page-link data-i18n="nav.home">首页</a>
+          <a href="gallery.html" data-page-link aria-current="page" data-i18n="nav.gallery">图库</a>
+          <a href="index.html#install" data-page-link data-i18n="nav.install">安装</a>
+        </nav>
+        <div class="nav-cta">
+          <div class="lang-switch" role="group" aria-label="语言" data-i18n-aria="lang.aria">
+            <button type="button" data-lang="zh" aria-pressed="true">中文</button>
+            <button type="button" data-lang="en" aria-pressed="false">EN</button>
+          </div>
+          <a class="btn btn-secondary nav-github" href="https://github.com/xuzhougeng/ScientificFigureLibrary">GitHub</a>
+          <a data-i18n="nav.download" class="btn btn-primary" href="https://github.com/xuzhougeng/ScientificFigureLibrary/releases/latest">获取插件</a>
+        </div>
+      </div>
+    </header>
+    <main id="top">
+      <section class="gallery-hero">
+        <div class="container">
+          <p class="section-label"><span class="idx">[ FIGURE GALLERY ]</span><span data-i18n="gallery.kicker">开放的科学图形模板</span></p>
+          <h1 data-i18n="gallery.title">为下一张图，找到灵感。</h1>
+          <p class="lead" data-i18n="gallery.lead">来自 Open Figure Modules 的可复用图形模板。按类型浏览，查看预览与代码，把合适的方法带到自己的研究中。</p>
+          <div class="gallery-hero-actions">
+            <a class="btn btn-primary" href="https://github.com/jarxunlai/ScientificFigureLibrary-personal" data-i18n="gallery.repository">访问图库仓库</a>
+            <a class="btn btn-secondary" href="index.html#install" data-page-link data-i18n="gallery.use">在 SFL 中使用</a>
+          </div>
+          <div class="gallery-source">
+            <div><span class="gallery-source-label" data-i18n="gallery.sourceLabel">图库来源</span><a href="https://github.com/jarxunlai/ScientificFigureLibrary-personal">Open Figure Modules</a></div>
+            <p data-i18n="gallery.maintainers">共同维护：jarxunlai 与 xuzhougeng</p>
+          </div>
+        </div>
+      </section>
+      <section class="gallery-browser" aria-label="Figure Gallery">
+        <div class="container">
+          <div class="gallery-toolbar">
+            <div class="gallery-search"><label for="figure-search" data-i18n="gallery.search">搜索图名、方法或 R 包</label><input id="figure-search" type="search" placeholder="试试 UMAP、KEGG、ggtree…" data-i18n-placeholder="gallery.searchPlaceholder" autocomplete="off" maxlength="200"></div>
+            <p class="gallery-count" role="status" aria-live="polite" data-i18n="gallery.loading">正在加载图形目录…</p>
+          </div>
+          <div class="gallery-filters" role="group" aria-label="按图形类型筛选" data-i18n-aria="gallery.filters"></div>
+          <div class="figure-grid" aria-busy="true"></div>
+          <div class="gallery-empty" hidden><h2 data-i18n="gallery.empty">没有找到匹配的图形</h2><p data-i18n="gallery.emptyHelp">试试其他关键词，或清除搜索与筛选。</p><button class="btn btn-secondary" id="gallery-reset" type="button" data-i18n="gallery.reset">清除筛选</button></div>
+          <div class="gallery-error" hidden role="alert"><p data-i18n="gallery.error">图形目录暂时无法加载，请重试或访问源仓库。</p><button class="btn btn-secondary" id="gallery-retry" type="button" data-i18n="gallery.retry">重新加载</button></div>
+          <noscript><p>请启用 JavaScript 浏览和筛选图形，或直接访问 <a href="https://github.com/jarxunlai/ScientificFigureLibrary-personal/tree/main/modules">Open Figure Modules 模块目录</a>。</p></noscript>
+          <p class="gallery-attribution" data-i18n="gallery.credit">图形与说明来自 Open Figure Modules，各模块的内容与代码许可见详情。预览用于展示绘图方法，具体数据来源见原模块。</p>
+          <p class="gallery-snapshot"><span data-i18n="gallery.snapshot">目录快照</span> <a id="gallery-commit"></a></p>
+        </div>
+      </section>
+    </main>
+    <dialog class="figure-dialog" aria-labelledby="figure-title">
+      <div class="dialog-top"><span>Open Figure Modules</span><button class="btn btn-secondary" id="figure-close" type="button" data-i18n="gallery.close">关闭预览</button></div>
+      <div class="figure-detail-layout">
+        <div class="figure-detail-visual"><img id="figure-image" alt=""><p id="figure-image-status" role="status"></p><a id="figure-original" class="text-link" target="_blank" rel="noopener" data-i18n="gallery.fullImage">打开原始预览</a></div>
+        <div class="figure-detail-copy"><p id="figure-family" class="card-index"></p><h2 id="figure-title"></h2><p id="figure-description"></p><h3 data-i18n="gallery.data">数据要求</h3><p id="figure-data"></p><h3 data-i18n="gallery.packages">依赖包</h3><p id="figure-packages"></p><h3 data-i18n="gallery.license">许可</h3><p id="figure-license"></p><div class="figure-detail-actions"><a id="figure-module" class="btn btn-primary" data-i18n="gallery.module">查看模块</a><a id="figure-code" class="btn btn-secondary" data-i18n="gallery.code">查看绘图代码</a></div></div>
+      </div>
+    </dialog>
+    <footer class="site-footer">
+      <div class="container footer-inner">
+        <a class="brand" href="index.html" data-page-link>
+          <img src="assets/logo.svg" alt="" width="28" height="28">
+          <span class="brand-name">Scientific Figure Library</span>
+          <span class="brand-short" aria-hidden="true">SFL</span>
+        </a>
+        <nav class="footer-links" aria-label="项目链接" data-i18n-aria="footer.aria">
+          <a href="https://github.com/xuzhougeng/ScientificFigureLibrary">GitHub</a>
+          <a data-page-link href="gallery.html" data-i18n="nav.gallery">图库</a>
+          <a data-i18n="footer.releases" href="https://github.com/xuzhougeng/ScientificFigureLibrary/releases">版本记录</a>
+          <a data-i18n="footer.issues" href="https://github.com/xuzhougeng/ScientificFigureLibrary/issues">问题反馈</a>
+          <a href="https://github.com/xuzhougeng/wisp-science">Wisp Science</a>
+          <a href="https://github.com/xuzhougeng/ScientificFigureLibrary/blob/main/LICENSE">MIT</a>
+        </nav>
+        <p data-i18n="footer.note" class="footer-copy">代码 MIT · 导入图形保留其记录的许可证。</p>
+      </div>
+    </footer>
+  </body>
+</html>

@@ -72,7 +72,59 @@ const I18N = {
     "footer.aria": "项目链接",
     "gallery.alt": "科学图库预览：热图、火山图、生存曲线、t-SNE、Oncoplot 和 Circos 模板",
     "copy.success": "命令已复制",
-    "copy.error": "无法自动复制，请选择上方命令手动复制。"
+    "copy.error": "无法自动复制，请选择上方命令手动复制。",
+    "nav.gallery": "图库",
+    "nav.home": "首页",
+    "gallery.meta.title": "Figure Gallery | Scientific Figure Library",
+    "gallery.meta.desc": "浏览 Open Figure Modules 科学图形模板：UMAP、热图、富集分析、系统发育树等，附预览、代码与来源。",
+    "gallery.kicker": "开放的科学图形模板",
+    "gallery.title": "为下一张图，找到灵感。",
+    "gallery.lead": "来自 Open Figure Modules 的可复用图形模板。按类型浏览，查看预览与代码，把合适的方法带到自己的研究中。",
+    "gallery.repository": "访问图库仓库",
+    "gallery.use": "在 SFL 中使用",
+    "gallery.sourceLabel": "图库来源",
+    "gallery.sourceNote": "已作为 Open Figure Modules 接入 SFL，可在应用内检索。",
+    "gallery.maintainers": "共同维护：jarxunlai 与 xuzhougeng",
+    "gallery.search": "搜索图名、方法或 R 包",
+    "gallery.searchPlaceholder": "试试 UMAP、KEGG、ggtree…",
+    "gallery.filters": "按图形类型筛选",
+    "gallery.all": "全部图形",
+    "gallery.embedding": "UMAP / PCA",
+    "gallery.heatmap": "热图与矩阵",
+    "gallery.enrichment": "富集分析",
+    "gallery.composition": "组成与比较",
+    "gallery.genomics": "系统发育与基因组",
+    "gallery.relationships": "关系与网络",
+    "gallery.expression": "表达与分布",
+    "gallery.count": "显示 {shown} / {total} 个图形",
+    "gallery.loading": "正在加载图形目录…",
+    "gallery.error": "图形目录暂时无法加载，请重试或访问源仓库。",
+    "gallery.retry": "重新加载",
+    "gallery.empty": "没有找到匹配的图形",
+    "gallery.emptyHelp": "试试其他关键词，或清除搜索与筛选。",
+    "gallery.reset": "清除筛选",
+    "gallery.view": "查看图形",
+    "gallery.close": "关闭预览",
+    "gallery.description": "模块说明",
+    "gallery.data": "数据要求",
+    "gallery.packages": "依赖包",
+    "gallery.license": "许可",
+    "gallery.codeLicense": "代码",
+    "gallery.contentLicense": "图形内容",
+    "gallery.docsLicense": "文档",
+    "gallery.module": "查看模块",
+    "gallery.code": "查看绘图代码",
+    "gallery.fullImage": "打开原始预览",
+    "gallery.previewNote": "完整尺寸图像可通过「打开原始预览」查看。",
+    "gallery.imageFallback": "当前显示缩略图，可通过源仓库查看原始预览。",
+    "gallery.credit": "图形与说明来自 Open Figure Modules，各模块的内容与代码许可见详情。预览用于展示绘图方法，具体数据来源见原模块。",
+    "gallery.snapshot": "目录快照",
+    "gallery.homeTitle": "从开放图库，找到下一张图。",
+    "gallery.homeBody": "Open Figure Modules 收录了热图、UMAP、富集分析与系统发育树等模板。每张图都附有预览、绘图代码和许可说明。",
+    "gallery.browse": "浏览 Figure Gallery",
+    "gallery.feature1": "通路 NES 热图",
+    "gallery.feature2": "环形 UMAP",
+    "gallery.feature3": "系统发育环形树"
   },
   "en": {
     "skip": "Skip to content",
@@ -147,7 +199,59 @@ const I18N = {
     "footer.aria": "Project links",
     "gallery.alt": "Scientific figure gallery showing heatmap, volcano plot, survival curve, t-SNE, Oncoplot, and Circos templates",
     "copy.success": "Commands copied",
-    "copy.error": "Could not copy automatically. Select and copy the commands above."
+    "copy.error": "Could not copy automatically. Select and copy the commands above.",
+    "nav.gallery": "Gallery",
+    "nav.home": "Home",
+    "gallery.meta.title": "Figure Gallery | Scientific Figure Library",
+    "gallery.meta.desc": "Explore Open Figure Modules: scientific figure templates with previews, plotting code, and source attribution.",
+    "gallery.kicker": "An open collection of scientific figures",
+    "gallery.title": "Find a starting point for your next figure.",
+    "gallery.lead": "Reusable figure templates from Open Figure Modules. Explore by type, inspect the preview and code, and bring the right method into your research.",
+    "gallery.repository": "Explore the repository",
+    "gallery.use": "Use with SFL",
+    "gallery.sourceLabel": "Library source",
+    "gallery.sourceNote": "Available in SFL as Open Figure Modules. Search for these templates in the app.",
+    "gallery.maintainers": "Maintained by jarxunlai and xuzhougeng",
+    "gallery.search": "Search figures, methods, or R packages",
+    "gallery.searchPlaceholder": "Try UMAP, KEGG, ggtree…",
+    "gallery.filters": "Filter by figure type",
+    "gallery.all": "All figures",
+    "gallery.embedding": "UMAP / PCA",
+    "gallery.heatmap": "Heatmaps & matrices",
+    "gallery.enrichment": "Enrichment",
+    "gallery.composition": "Composition & comparison",
+    "gallery.genomics": "Phylogeny & genomics",
+    "gallery.relationships": "Relationships & networks",
+    "gallery.expression": "Expression & distributions",
+    "gallery.count": "Showing {shown} of {total} figures",
+    "gallery.loading": "Loading figure catalog…",
+    "gallery.error": "The figure catalog could not be loaded. Retry or visit the source repository.",
+    "gallery.retry": "Try again",
+    "gallery.empty": "No matching figures",
+    "gallery.emptyHelp": "Try a different keyword, or clear the search and filters.",
+    "gallery.reset": "Clear filters",
+    "gallery.view": "View figure",
+    "gallery.close": "Close preview",
+    "gallery.description": "Module description",
+    "gallery.data": "Input data",
+    "gallery.packages": "Packages",
+    "gallery.license": "Licenses",
+    "gallery.codeLicense": "Code",
+    "gallery.contentLicense": "Content",
+    "gallery.docsLicense": "Documentation",
+    "gallery.module": "View module",
+    "gallery.code": "View plotting code",
+    "gallery.fullImage": "Open original preview",
+    "gallery.previewNote": "Use Open original preview to view the full-size source image.",
+    "gallery.imageFallback": "Showing the thumbnail. Open the source repository for the original preview.",
+    "gallery.credit": "Figures and descriptions are from Open Figure Modules. See each module for content and code licenses. Previews illustrate plotting methods; consult the source module for data provenance.",
+    "gallery.snapshot": "Catalog snapshot",
+    "gallery.homeTitle": "Find your next figure in an open library.",
+    "gallery.homeBody": "Open Figure Modules includes heatmaps, UMAPs, enrichment plots, phylogenetic trees, and more. Each module includes a preview, plotting code, and license information.",
+    "gallery.browse": "Browse Figure Gallery",
+    "gallery.feature1": "Pathway NES heatmap",
+    "gallery.feature2": "Circular UMAP",
+    "gallery.feature3": "Circular phylogenetic tree"
   }
 };
 const KEY = "sfl-pages-lang";
@@ -164,15 +268,16 @@ function apply(current) {
   const pack = I18N[current] || I18N.zh;
   document.documentElement.lang = current === "en" ? "en" : "zh-CN";
   document.documentElement.dataset.lang = current;
-  document.title = pack["meta.title"];
-  document.querySelector('meta[name="description"]').setAttribute("content", pack["meta.desc"]);
+  const meta = document.documentElement.dataset.page === "gallery" ? "gallery.meta" : "meta";
+  document.title = pack[`${meta}.title`];
+  document.querySelector('meta[name="description"]').setAttribute("content", pack[`${meta}.desc`]);
   for (const [attribute, target] of [["data-i18n", "textContent"], ["data-i18n-html", "innerHTML"]]) {
     document.querySelectorAll(`[${attribute}]`).forEach((element) => {
       const value = pack[element.getAttribute(attribute)];
       if (value != null) element[target] = value;
     });
   }
-  for (const [attribute, target] of [["data-i18n-aria", "aria-label"], ["data-i18n-alt", "alt"]]) {
+  for (const [attribute, target] of [["data-i18n-aria", "aria-label"], ["data-i18n-alt", "alt"], ["data-i18n-placeholder", "placeholder"]]) {
     document.querySelectorAll(`[${attribute}]`).forEach((element) => {
       const value = pack[element.getAttribute(attribute)];
       if (value != null) element.setAttribute(target, value);
@@ -181,7 +286,13 @@ function apply(current) {
   document.querySelectorAll(".lang-switch [data-lang]").forEach((button) => {
     button.setAttribute("aria-pressed", String(button.dataset.lang === current));
   });
-  document.querySelector(".copy-status").textContent = "";
+  document.querySelectorAll(".copy-status").forEach(element => { element.textContent = ""; });
+  document.querySelectorAll("[data-page-link]").forEach(link => {
+    const destination = new URL(link.getAttribute("href"), location.href);
+    destination.searchParams.set("lang", current);
+    link.setAttribute("href", destination.pathname.split("/").pop() + destination.search + destination.hash);
+  });
+  document.dispatchEvent(new CustomEvent("sfl:languagechange", { detail: current }));
 }
 function setLang(next) {
   try { localStorage.setItem(KEY, next); } catch { /* Language still updates without storage. */ }

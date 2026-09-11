@@ -27,3 +27,17 @@ The first reload used cached CSS and JavaScript. A cache-bypassing reload resolv
 - `npm run build`, `node --check docs/assets/pages.js`, and `git diff --check` passed.
 
 Limitations: the browser tool stalled during an additional reference screenshot after the main captures and interaction checks. Clipboard behavior was verified with a simulated API, not a native system clipboard. External destination links were preserved from the repository and were not network-audited. Tablet widths and additional browser engines were not separately tested. Existing Google Fonts requests retain system font fallbacks.
+
+## Figure Gallery extension
+
+final result: passed
+
+Source inventory: `jarxunlai/ScientificFigureLibrary-personal` at `196c99a24bb0e2eaf61f8511417a655b96dd6e3b`, verified through the GitHub tree and 46 module manifests. The application already registers this provider as Open Figure Modules; this change adds its public website presentation, not a duplicate provider.
+
+The gallery follows the landing page's existing typography, colors, cards, and responsive navigation. Actual module previews were reviewed in `/tmp/sfl-gallery-contact-sheet.jpg`. Browser evidence: `/tmp/sfl-gallery-desktop.png` (1440 × 1000), `/tmp/sfl-gallery-mobile.png` (390 × 844), `/tmp/sfl-gallery-mobile-detail.png` (390 × 844), and `/tmp/sfl-home-gallery.png` (1440 × 1000). No artwork is stretched or cropped. Detailed module descriptions retain the source language.
+
+Browser checks passed for combined category/search filtering, counts, empty results and reset, Chinese/English switching, URL state, modal opening, Escape close and focus restoration. Gallery layouts were checked at 1440, 768, and 390 CSS pixels; homepage navigation and featured images were also checked at 320px. No document-level horizontal overflow was observed. Console check found no warnings or errors.
+
+An initial attempt to load full previews from raw.githubusercontent.com was slow. Detail panels now show the verified local thumbnail immediately and provide an explicit link to the full-size original. Source image and code URLs are pinned to the catalog commit. All 46 local thumbnails passed SHA-256 validation. The thumbnail snapshot is approximately 2.7 MB and card images use lazy loading.
+
+Four new regression tests passed: source/asset integrity, bilingual search and filtering, deep-link selection and close state, and catalog failure/retry. The homepage interaction regression checks and production build passed. Gallery changes have not been deployed in this turn.

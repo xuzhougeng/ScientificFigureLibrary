@@ -10,6 +10,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Noto+Sans+SC:wght@400;500;600&family=Noto+Serif+SC:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600&family=Source+Serif+4:opsz,wght@8..60,400;8..60,500;8..60,600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="assets/pages.css">
+    <link rel="stylesheet" href="assets/gallery.css">
     <script src="assets/pages.js" defer></script>
   </head>
   <body>
@@ -22,6 +23,7 @@
           <span class="brand-short" aria-hidden="true">SFL</span>
         </a>
         <nav class="nav-links" aria-label="页面导航" data-i18n-aria="nav.aria">
+          <a data-i18n="nav.gallery" data-page-link href="gallery.html">图库</a>
           <a data-i18n="nav.features" href="#features">功能</a>
           <a data-i18n="nav.workflow" href="#workflow">使用流程</a>
           <a data-i18n="nav.install" href="#install">安装</a>
@@ -68,6 +70,33 @@
             <li>Cursor</li>
             <li class="host-protocol">stdio MCP</li>
           </ul>
+        </div>
+      </section>
+      <section class="gallery-intro" id="gallery">
+        <div class="container">
+          <div class="section-label"><span class="idx">[ GALLERY ]</span><span>Open Figure Modules</span></div>
+          <div class="gallery-intro-head">
+            <div class="section-head">
+              <h2 data-i18n="gallery.homeTitle">从开放图库，找到下一张图。</h2>
+              <p data-i18n="gallery.homeBody">Open Figure Modules 收录了热图、UMAP、富集分析与系统发育树等模板。每张图都附有预览、绘图代码和许可说明。</p>
+            </div>
+            <a class="btn btn-primary" data-page-link href="gallery.html" data-i18n="gallery.browse">浏览 Figure Gallery</a>
+          </div>
+          <div class="gallery-featured">
+            <a class="gallery-featured-card" data-page-link href="gallery.html?figure=cancercell-pathway-nes-heatmap">
+              <img src="assets/figure-gallery/cancercell-pathway-nes-heatmap.jpg" alt="" loading="lazy" width="600" height="400">
+              <span data-i18n="gallery.feature1">通路 NES 热图</span>
+            </a>
+            <a class="gallery-featured-card" data-page-link href="gallery.html?figure=umap-style-plot1cell-circlize">
+              <img src="assets/figure-gallery/umap-style-plot1cell-circlize.jpg" alt="" loading="lazy" width="600" height="400">
+              <span data-i18n="gallery.feature2">环形 UMAP</span>
+            </a>
+            <a class="gallery-featured-card" data-page-link href="gallery.html?figure=ggtree-ch13-ctldcp-circular">
+              <img src="assets/figure-gallery/ggtree-ch13-ctldcp-circular.jpg" alt="" loading="lazy" width="600" height="400">
+              <span data-i18n="gallery.feature3">系统发育环形树</span>
+            </a>
+          </div>
+          <p class="gallery-attribution"><a href="https://github.com/jarxunlai/ScientificFigureLibrary-personal">jarxunlai/ScientificFigureLibrary-personal</a> · <span data-i18n="gallery.sourceNote">已作为 Open Figure Modules 接入 SFL，可在应用内检索。</span></p>
         </div>
       </section>
       <section id="features">
@@ -232,6 +261,7 @@ npm run package:wisp</code>
         </a>
         <nav class="footer-links" aria-label="项目链接" data-i18n-aria="footer.aria">
           <a href="https://github.com/xuzhougeng/ScientificFigureLibrary">GitHub</a>
+          <a data-page-link href="gallery.html" data-i18n="nav.gallery">图库</a>
           <a data-i18n="footer.releases" href="https://github.com/xuzhougeng/ScientificFigureLibrary/releases">版本记录</a>
           <a data-i18n="footer.issues" href="https://github.com/xuzhougeng/ScientificFigureLibrary/issues">问题反馈</a>
           <a href="https://github.com/xuzhougeng/wisp-science">Wisp Science</a>
