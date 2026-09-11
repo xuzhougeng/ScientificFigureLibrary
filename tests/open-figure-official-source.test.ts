@@ -36,6 +36,13 @@ function sha256(bytes: Uint8Array | string) {
   return createHash("sha256").update(bytes).digest("hex");
 }
 
+function isolatedOfficialPaths(root: string) {
+  return officialOpenFigurePaths({
+    configFile: path.join(root, "cfg", "open-figure-modules.json"),
+    dataRoot: path.join(root, "data"),
+  });
+}
+
 function testKey() {
   const { privateKey, publicKey } = generateKeyPairSync("ed25519");
   const raw = Buffer.from(publicKey.export({ format: "der", type: "spki" })).subarray(-32);
@@ -166,7 +173,7 @@ test("signed official feed activates without blocking startup and updates the cu
   const key = testKey();
   const fixture = await officialFixture({ key, sequence: 1 });
   const manager = new OfficialOpenFigureSourceManager({
-    paths: officialOpenFigurePaths({ env: { APPDATA: path.join(root, "cfg"), LOCALAPPDATA: path.join(root, "data") } }),
+    paths: isolatedOfficialPaths(root),
     bundledRoot: DEFAULT_PERSONAL_MODULE_ASSETS_DIR,
     fetcher: mockFetcher(fixture.routes),
     jitterRatio: 0,
@@ -177,6 +184,7 @@ test("signed official feed activates without blocking startup and updates the cu
   const before = manager.currentIndex().catalogSha256;
   assert.equal(manager.statusDetails().activeOrigin, "bundled");
   await manager.refresh({ ignoreTtl: true });
+  assert.equal(manager.statusDetails().lastError, null);
   assert.equal(manager.statusDetails().activeOrigin, "remote-lkg");
   assert.equal(manager.currentIndex().catalogSha256, sha256(fixture.catalogBytes));
   assert.notEqual(manager.currentIndex().catalogSha256, before);
@@ -199,7 +207,7 @@ test("auto-refresh env kill switch does not network on load or search", async ()
     },
   });
   const manager = new OfficialOpenFigureSourceManager({
-    paths: officialOpenFigurePaths({ env: { APPDATA: path.join(root, "cfg"), LOCALAPPDATA: path.join(root, "data") } }),
+    paths: isolatedOfficialPaths(root),
     fetcher,
     env: { NODE_TEST_CONTEXT: "1", SFL_OPEN_FIGURE_AUTO_REFRESH: "0" },
   });
@@ -216,7 +224,7 @@ test("runtime controller exposes official overlay without changing Provider iden
   const root = await fs.mkdtemp(path.join(os.tmpdir(), "sfl-open-figure-runtime-"));
   const controller = await createRuntimeProviderController({
     officialOpenFigure: await new OfficialOpenFigureSourceManager({
-      paths: officialOpenFigurePaths({ env: { APPDATA: path.join(root, "cfg"), LOCALAPPDATA: path.join(root, "data") } }),
+      paths: isolatedOfficialPaths(root),
       env: { NODE_TEST_CONTEXT: "1", SFL_OPEN_FIGURE_AUTO_REFRESH: "0" },
     }).load(),
   });
@@ -240,7 +248,7 @@ test("process start refreshes immediately and later checks skip unchanged payloa
       return found;
     },
   });
-  const paths = officialOpenFigurePaths({ env: { APPDATA: path.join(root, "cfg"), LOCALAPPDATA: path.join(root, "data") } });
+  const paths = isolatedOfficialPaths(root);
   const first = new OfficialOpenFigureSourceManager({
     paths,
     bundledRoot: DEFAULT_PERSONAL_MODULE_ASSETS_DIR,
@@ -252,6 +260,7 @@ test("process start refreshes immediately and later checks skip unchanged payloa
   await first.load();
   assert.equal(first.statusDetails().activeOrigin, "bundled");
   await first.refreshOnProcessStart();
+  assert.equal(first.statusDetails().lastError, null);
   assert.equal(first.statusDetails().activeOrigin, "remote-lkg");
   assert.equal(first.statusDetails().templateCount, fixture.catalog.modules.length);
   assert.ok(hits.some((url) => url.endsWith("module-catalog.json")));

@@ -1296,7 +1296,8 @@ test("Personal module materialization writes an authoritative receipt and reject
       const listedPersonal = listed.find(
         (item) => item.providerId === PERSONAL_MODULE_PROVIDER_ID,
       );
-      assert.equal(listedPersonal?.sourceKind, "module-catalog");
+      assert.equal(listedPersonal?.sourceKind, "official-signed-overlay");
+      assert.equal(record(listedPersonal?.details).activeOrigin, "bundled");
       assert.equal(listedPersonal?.includeInDefaultSearch, true);
       assert.equal(listedPersonal?.bundled, true);
       assert.equal(listedPersonal?.health, "ready");
