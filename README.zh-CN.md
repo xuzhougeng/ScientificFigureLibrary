@@ -7,6 +7,7 @@
 [Website](https://xuzhougeng.github.io/ScientificFigureLibrary/) ·
 [English](README.md) ·
 [快速开始](docs/QUICKSTART.md) ·
+[用户手册](docs/USER_GUIDE.zh-CN.md) ·
 [协议说明](docs/PROTOCOL.md) ·
 [Releases](https://github.com/xuzhougeng/ScientificFigureLibrary/releases)
 

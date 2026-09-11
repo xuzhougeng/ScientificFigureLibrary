@@ -7,6 +7,7 @@
 [Website](https://xuzhougeng.github.io/ScientificFigureLibrary/) ·
 [简体中文](README.zh-CN.md) ·
 [Quickstart](docs/QUICKSTART.md) ·
+[User Guide](docs/USER_GUIDE.md) ·
 [Protocol](docs/PROTOCOL.md) ·
 [Releases](https://github.com/xuzhougeng/ScientificFigureLibrary/releases) ·
 [Wisp Science](https://github.com/xuzhougeng/wisp-science)
