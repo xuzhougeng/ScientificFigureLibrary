@@ -1,8 +1,0 @@
-blank_issues_enabled: false
-contact_links:
-  - name: 安全报告 / Security reporting
-    url: https://github.com/xuzhougeng/ScientificFigureLibrary/security/policy
-    about: 先查看当前私密报告方式；不要在公开 Issue 中提交漏洞细节或凭据。
-  - name: 用户指南 / User guide
-    url: https://github.com/xuzhougeng/ScientificFigureLibrary/blob/main/docs/USER_GUIDE.zh-CN.md
-    about: 安装、绑定、搜索、选择与物化流程。
