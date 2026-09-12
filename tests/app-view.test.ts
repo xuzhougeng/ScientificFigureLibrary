@@ -791,3 +791,141 @@ test("legacy scenarios render once and absent scenarios never use visualProfile"
   assert.doesNotMatch(detail.dialog.textContent ?? "", /Red points/u);
   detail.closeButton.click();
 });
+
+test("selection toggles locally once and survives rerender; detail controls do not select", () => {
+  const window = createTestWindow();
+  const document = window.document as unknown as Document;
+  const cards = document.createElement("section");
+  const empty = document.createElement("section");
+  document.body.append(cards, empty);
+  const item = candidate("org.figureya.module", "selection", "ready", "data:image/png;base64,iVBORw0KGgo=");
+  const selected = new Set<string>();
+  const toggles: boolean[] = [];
+  let details = 0;
+  const render = () => renderCandidateCards({
+    document, cards, empty, result: searchResult([item]), selectedIds: selected,
+    onToggleSelect(value, checked) {
+      toggles.push(checked);
+      if (checked) selected.add(value.candidateId); else selected.delete(value.candidateId);
+    },
+    onDetail() { details++; },
+  });
+  const card = () => cards.querySelector(".card") as HTMLElement;
+  const title = () => cards.querySelector(".candidate-title") as HTMLButtonElement;
+  const checkbox = () => cards.querySelector(".candidate-select-input") as HTMLInputElement;
+  render();
+  title().click();
+  assert.deepEqual(toggles, [true]);
+  assert.equal(card().classList.contains("is-selected"), true);
+  assert.equal(title().getAttribute("aria-pressed"), "true");
+  assert.match(cards.querySelector(".candidate-select")!.textContent!, /已选/);
+  render();
+  assert.equal(checkbox().checked, true);
+  assert.equal(card().classList.contains("is-selected"), true);
+  assert.equal(title().getAttribute("aria-pressed"), "true");
+  (cards.querySelector(".preview-button") as HTMLButtonElement).click();
+  (cards.querySelector(".candidate-action") as HTMLButtonElement).click();
+  assert.equal(details, 2);
+  assert.deepEqual(toggles, [true]);
+  card().click();
+  assert.deepEqual(toggles, [true, false]);
+  assert.equal(checkbox().checked, false);
+  checkbox().click();
+  assert.deepEqual(toggles, [true, false, true]);
+  (cards.querySelector(".candidate-select") as HTMLLabelElement).click();
+  assert.deepEqual(toggles, [true, false, true, false]);
+  const link = document.createElement("a");
+  link.textContent = "source";
+  card().append(link);
+  link.click();
+  assert.deepEqual(toggles, [true, false, true, false]);
+  assert.equal(title().getAttribute("aria-pressed"), "false");
+});
+
+test("basic browsing no longer emits diagnostic calls and retains exact-preview diagnostics", () => {
+  const main = fs.readFileSync(path.join(import.meta.dirname, "../app/main.ts"), "utf8");
+  assert.doesNotMatch(main, /recordUiEvent\("(?:candidate\.(?:thumbnail_clicked|detail_opened|detail_closed)|host\.capabilities_detected)"/);
+  assert.match(main, /recordUiEvent\("exact_preview\.image_loaded"/);
+  assert.match(main, /recordUiEvent\("model_context\.updated"/);
+  const html = fs.readFileSync(path.join(import.meta.dirname, "../app/mcp-app.html"), "utf8");
+  assert.match(html, /id="plot-set-count"[^>]*aria-live="polite"/);
+  assert.doesNotMatch(html, /id="project-figures"/);
+  assert.doesNotMatch(main, /mountProjectFigures|figure_library_(?:resolve_style|.*submission)/);
+});
+
+test("merged selection keeps PR27 state semantics and PR26 visual hooks together", () => {
+  const window = createTestWindow();
+  const document = window.document as unknown as Document;
+  const cards = document.createElement("section");
+  const empty = document.createElement("section");
+  document.body.append(cards, empty);
+  const item = candidate("org.figureya.module", "merged-selection", "ready");
+  const transitions: boolean[] = [];
+  renderCandidateCards({ document, cards, empty, result: searchResult([item]), onDetail() {},
+    onToggleSelect(_candidate, selected) { transitions.push(selected); },
+  });
+  const card = cards.querySelector(".card") as HTMLElement;
+  const title = cards.querySelector(".candidate-title") as HTMLButtonElement;
+  title.click();
+  assert.equal(card.dataset.selected, "true");
+  assert.equal(card.classList.contains("is-selected"), true);
+  assert.match(card.querySelector(".candidate-select")!.textContent!, /已选/u);
+  assert.match(card.querySelector(".select-badge")!.textContent!, /已选/u);
+  for (const tag of ["button", "input", "a", "label", "summary", "select", "textarea"] as const) {
+    const control = document.createElement(tag);
+    card.append(control);
+    control.click();
+  }
+  assert.deepEqual(transitions, [true]);
+  title.click();
+  assert.equal(card.dataset.selected, "false");
+  assert.equal(card.classList.contains("is-selected"), false);
+  assert.equal(title.getAttribute("aria-pressed"), "false");
+  assert.deepEqual(transitions, [true, false]);
+  window.close();
+});
+
+test("plot-set feedback retains zero, eight, nine and missing-host submission gates", () => {
+  const window = createTestWindow();
+  const document = window.document as unknown as Document;
+  const bar = document.createElement("section");
+  const submit = document.createElement("button");
+  const countLabel = document.createElement("span");
+  for (const [selectedCount, canSubmit, disabled] of [[0, true, true], [8, true, false], [9, true, true], [1, false, true]] as const) {
+    renderPlotSetBar({ bar, submit, countLabel, selectedCount, canSubmit, animateCount: true });
+    assert.equal(submit.disabled, disabled);
+    assert.equal(countLabel.textContent, `已选 ${selectedCount} 个模板`);
+    assert.equal(bar.dataset.selected, String(selectedCount > 0));
+  }
+  window.close();
+});
+
+test("replaced toast timers cannot remove the latest selection announcement", async () => {
+  const window = createTestWindow();
+  const document = window.document as unknown as Document;
+  const region = document.createElement("div");
+  const first = announceSelectionChange({ document, region, message: "first", durationMs: 0 });
+  const current = announceSelectionChange({ document, region, message: "current", durationMs: 10000 });
+  await new Promise((resolve) => setTimeout(resolve, 20));
+  assert.equal(first.parentNode, null);
+  assert.equal(region.firstChild, current);
+  const final = announceSelectionChange({ document, region, message: "final", durationMs: 0 });
+  await new Promise((resolve) => setTimeout(resolve, 20));
+  assert.equal(final.parentNode, null);
+  assert.equal(region.childElementCount, 0);
+  window.close();
+});
+
+test("merged shell keeps accessible count, toast, plotting tips and hidden empty state", () => {
+  const root = path.resolve(import.meta.dirname, "..");
+  const html = fs.readFileSync(path.join(root, "app/mcp-app.html"), "utf8");
+  const main = fs.readFileSync(path.join(root, "app/main.ts"), "utf8");
+  const styles = fs.readFileSync(path.join(root, "app/styles.css"), "utf8");
+  assert.match(html, /id="plot-set-count"[^>]*class="plot-set-count"[^>]*aria-live="polite"/u);
+  assert.match(html, /id="toast-region"[^>]*aria-live="polite"/u);
+  assert.match(html, /id="plotting-help"/u);
+  assert.match(main, /mountPlottingTips\(/u);
+  assert.match(main, /announceSelectionChange\(/u);
+  assert.match(styles, /\.empty\[hidden\]\s*\{\s*display: none;/u);
+  assert.match(styles, /#app\[data-display-mode="pip"\] \.plotting-tips/u);
+});

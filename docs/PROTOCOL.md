@@ -444,7 +444,9 @@ claim of complete reproduction.
 
 The MCP App paginates all matched candidates through App-only
 `figure_library_search_page` and renders each usable candidate as a real
-lazy-loaded `<img>`. Clicking the thumbnail, title, or **查看详情** opens an
+lazy-loaded `<img>`. Clicking a title or non-interactive card area toggles local
+selection with a visible marker and count; it does not create a preview receipt
+or authorize materialization. Clicking the thumbnail or **查看详情** opens an
 accessible dialog with a larger candidate image, the complete description,
 and only metadata actually present in the search result. This basic detail is
 fully local to the App: it works without `serverTools`, does not call the

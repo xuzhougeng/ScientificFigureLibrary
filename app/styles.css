@@ -248,8 +248,8 @@ footer {
 .candidate-title:hover:not(:disabled),
 .candidate-title:focus-visible:not(:disabled) {
   background: transparent;
-  color: #1d6849;
-  outline: 2px solid currentColor;
+  color: inherit;
+  outline: 2px solid #58b79d;
   outline-offset: 2px;
 }
 
@@ -774,6 +774,7 @@ footer {
 
 .plot-set-bar button {
   min-width: 0;
+  width: auto;
 }
 
 .plot-set-count {
@@ -1127,3 +1128,9 @@ html[data-theme="dark"] .warning-list {
     justify-content: flex-start;
   }
 }
+
+.plotting-tips { margin: 14px 0; padding: 14px; border: 1px solid #22957755; border-radius: 10px; }
+.plotting-tips summary { cursor: pointer; font-weight: 700; }
+.plotting-tips p { line-height: 1.65; }
+.plotting-tips blockquote { margin: 12px 0; padding-left: 14px; border-left: 3px solid #229577; }
+#app[data-display-mode="pip"] .plotting-tips { display: none; }

@@ -366,7 +366,8 @@ export function renderCandidateCards(options: {
     selectBox.className = "candidate-select-input";
     selectBox.setAttribute("aria-label", `选择 ${candidate.title} 交给 Agent 绘制`);
     selectBox.addEventListener("click", (event) => event.stopPropagation());
-    selectLabel.append(selectBox, document.createTextNode("选择"));
+    const selectionText = element(document, "span");
+    selectLabel.append(selectBox, selectionText);
     const selectBadge = element(document, "span", "select-badge");
     selectBadge.append(createIcon(document, "check"), document.createTextNode("已选"));
     const previewButton = button(
@@ -418,6 +419,8 @@ export function renderCandidateCards(options: {
     const detailButton = button(document, "candidate-action", "查看详情", "details");
     const applySelected = (selected: boolean) => {
       selectBox.checked = selected;
+      card.classList.toggle("is-selected", selected);
+      selectionText.textContent = selected ? "✓ 已选" : "选择";
       card.dataset.selected = selected ? "true" : "false";
       titleButton.setAttribute("aria-pressed", selected ? "true" : "false");
     };

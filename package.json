@@ -52,6 +52,7 @@
     "package:cursor": "node scripts/release-preflight.mjs && npm run build && node scripts/package-cursor.mjs",
     "package:plugins": "node scripts/package-plugins.mjs",
     "community:sync": "node scripts/sync-community.mjs",
+    "docs:check-links": "node scripts/check-doc-links.mjs",
     "modules:validate": "node scripts/validate-personal-modules.mjs",
     "modules:archive": "node scripts/archive-personal-modules.mjs",
     "modules:catalog": "node scripts/build-personal-module-catalog.mjs",

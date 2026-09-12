@@ -26,6 +26,7 @@
         </div>
       </header>
       <p id="pip-summary" class="pip-summary" hidden></p>
+      <section id="plotting-help" aria-label="绘图提示"></section>
 
       <section id="empty" class="empty" aria-live="polite">
         <span id="empty-icon" class="state-icon" aria-hidden="true"></span>
@@ -33,7 +34,7 @@
       </section>
       <section id="cards" class="cards" aria-label="Scientific figure template candidates"></section>
       <section id="plot-set-bar" class="plot-set-bar" aria-label="多选绘图模板">
-        <span id="plot-set-count" class="plot-set-count">已选 0 个模板</span>
+        <span id="plot-set-count" class="plot-set-count" role="status" aria-live="polite" aria-atomic="true">已选 0 个模板</span>
         <button id="plot-set-submit" type="button" disabled>交给 Agent 绘制（0）</button>
       </section>
       <div id="toast-region" class="toast-region" role="status" aria-live="polite"></div>
@@ -44,7 +45,7 @@
       </nav>
       <footer id="status" aria-live="polite">
         <span id="status-icon" class="status-icon" aria-hidden="true"></span>
-        <span id="status-text">分数只表示召回顺序。点击卡片或标题即可勾选；打开详情不会调用 Agent。对话中的工具批准只代表允许上报浏览日志，不等于已选择候选。</span>
+        <span id="status-text">点击标题或卡片空白处选择模板，“查看详情”用于浏览。工具运行审批不代表模板已选中；请以“已选”标记和计数为准。</span>
       </footer>
     </main>
     <script type="module" src="/main.ts"></script>
