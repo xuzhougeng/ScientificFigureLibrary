@@ -51,6 +51,7 @@ SFL 是一个**本机优先**的 stdio MCP 服务器加 MCP App。它把你的�
 - 维护本机**一份全局 Library**,一个用户选定的目录,跨项目、跨宿主共享
 - 图+代码的**直接导入**:不可变 Revision、审阅记录与 Release
 - MCP App 画廊:浏览、精确预览、用户确认后才继续
+- 可折叠的科研绘图提示与复制示例:帮助表达当次需求,不保存长期样式、不要求填写参数表;更多示例见[第 6 节](#6-字体配色尺寸与导出调整)
 - 统一检索,默认顺序:**Local Published → FigureYa → Open Figure Modules(内置目录或已验证更新目录) → 已启用并显式参与默认搜索的动态个人 Provider**;Community 快照已冻结,不参与默认搜索
 - **精确物化(materialize)**:把你确认的那一个模板复制进项目,目标目录永不覆盖,并写入 `template.lock.json`
 - 便携备份/恢复/分叉(bundle export / full restore)
@@ -69,7 +70,6 @@ SFL 是一个**本机优先**的 stdio MCP 服务器加 MCP App。它把你的�
 **规划中(🕓,截至本手册编写时均未实现):**
 
 - [#17](https://github.com/xuzhougeng/ScientificFigureLibrary/issues/17):持久保存用户绘图规范(style profile)并在后续会话自动应用——当前字体、配色等偏好只在你当次会话内有效
-- [#18](https://github.com/xuzhougeng/ScientificFigureLibrary/issues/18):用户可见的科研绘图提示与需求表达示例——目前请参考本手册[第 6 节](#6-字体配色尺寸与导出调整)的提问示例
 - [#19](https://github.com/xuzhougeng/ScientificFigureLibrary/issues/19):默认落实"一图一文件夹"归档与投稿打包——当前由宿主模型按你的要求临时组织,见[第 7 节](#7-输出查看与重绘)
 
 ---
@@ -121,6 +121,8 @@ Claude Science、Codex、Claude Code、Cursor 等)。
 
 SFL 的核心纪律是:**先看真实预览,由你确认那一张卡,然后才物化**。
 物化(materialize)是把确认的模板文件复制到项目,不是运行代码。
+
+点击标题或卡片空白处可选择/取消选择,以“已选”标记和计数为准;缩略图和“查看详情”用于浏览。基础详情不触发诊断工具调用。勾选和宿主工具审批都不等于精确预览确认,也不自动授权物化或执行绘图。
 
 | 步骤 | 谁做 | 你需要知道什么 |
 | --- | --- | --- |
