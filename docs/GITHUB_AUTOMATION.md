@@ -197,6 +197,11 @@ Issue 内容或标签、PR 描述、base/head、策略任一变化都会使旧�
 - `SFL / CI required` 汇总：任意必需 job 失败、取消或跳过均不通过。
 - 非阻塞 npm audit 基线；不能视作强制安全扫描已完成。
 
+跨平台 runner 约束：CI 通过仅进程级 `GIT_CONFIG_*` 固定 `core.autocrlf=false` 和 `core.eol=lf`，
+避免 Windows checkout 改变已有字节锁定快照。测试的 TMPDIR/TEMP/TMP 统一指向 runner 临时目录下
+经过 `realpathSync` 规范化的隔离目录，避免 8.3 短名与长名混用。预检查报告字节长度并拒绝非规范临时根；
+不修改源快照、产品校验或业务测试断言，也不写维护者机器的全局 Git 配置。
+
 工作流文件不会自动把检查设为 required；应待实际 Actions 验证后，由有权限的人设置分支保护。
 Dependabot 对 npm 和 Actions 每周检查，每个生态最多 3 个普通更新 PR，不自动合并。
 

@@ -19,6 +19,12 @@ concurrency:
 env:
   CI: "true"
   SFL_OPEN_FIGURE_AUTO_REFRESH: "0"
+  # Preserve committed snapshot bytes on Windows too; no persistent Git config.
+  GIT_CONFIG_COUNT: "2"
+  GIT_CONFIG_KEY_0: core.autocrlf
+  GIT_CONFIG_VALUE_0: "false"
+  GIT_CONFIG_KEY_1: core.eol
+  GIT_CONFIG_VALUE_1: lf
 
 defaults:
   run:
@@ -102,7 +108,17 @@ jobs:
             New-Item -ItemType Directory -Force -Path $entry.Value | Out-Null
             "$($entry.Key)=$($entry.Value)" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
           }
+          # Do not inherit Windows TEMP aliases such as C:\Users\RUNNER~1.
+          $testTemp = Join-Path $root "tmp"
+          New-Item -ItemType Directory -Force -Path $testTemp | Out-Null
+          $canonicalTemp = node -e "console.log(require('node:fs').realpathSync(process.argv[1]))" $testTemp
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          foreach ($name in @('TMPDIR', 'TEMP', 'TMP')) {
+            "$name=$canonicalTemp" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          }
           New-Item -ItemType Directory -Force -Path reports | Out-Null
+      - name: Verify committed snapshot sizes and canonical temp root
+        run: node .github/scripts/verify-ci-environment.cjs
       - name: Run unit and integration tests
         run: |
           npm test 2>&1 | Tee-Object -FilePath reports/tests.log

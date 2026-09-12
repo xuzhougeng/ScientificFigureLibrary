@@ -4,7 +4,9 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
+const { execFileSync } = require("node:child_process");
 const yaml = require("yaml");
+const { verifyEnvironment } = require("../scripts/verify-ci-environment.cjs");
 const root = path.resolve(__dirname, "../..");
 const read = (file) => fs.readFileSync(path.join(root, file), "utf8");
 const parse = (file) => {
@@ -52,6 +54,41 @@ test("AI workflow is main-only, allowlisted, manual, disabled unless explicitly 
   assert.equal(ai.jobs.publish.environment, undefined);
   assert.equal(ai.jobs.publish.needs, "infer");
   assert.equal(ai.concurrency["cancel-in-progress"], false);
+});
+
+test("CI preserves LF bytes without writing local or global Git configuration", () => {
+  const ci = parse(".github/workflows/ci.yml");
+  const env = { ...process.env, ...ci.env };
+  assert.equal(execFileSync("git", ["config", "--get", "core.autocrlf"], { env, encoding: "utf8" }).trim(), "false");
+  assert.equal(execFileSync("git", ["config", "--get", "core.eol"], { env, encoding: "utf8" }).trim(), "lf");
+  assert.equal(ci.env.GIT_CONFIG_COUNT, "2");
+});
+
+test("matrix fixtures use a canonical isolated temp root, not runner user aliases", () => {
+  const ci = parse(".github/workflows/ci.yml");
+  const steps = ci.jobs["test-build"].steps;
+  const isolate = steps.findIndex((step) => step.name === "Isolate application state");
+  const verify = steps.findIndex((step) => step.run === "node .github/scripts/verify-ci-environment.cjs");
+  const tests = steps.findIndex((step) => step.name === "Run unit and integration tests");
+  assert.ok(isolate < verify && verify < tests);
+  assert.ok(steps[isolate].run.includes("realpathSync(process.argv[1])"));
+  assert.ok(steps[isolate].run.includes("@('TMPDIR', 'TEMP', 'TMP')"));
+});
+
+test("CI environment preflight rejects converted snapshots and noncanonical temp paths", () => {
+  const tempDirectory = path.join(root, "virtual-temp");
+  const filesystem = {
+    realpathSync: (file) => file,
+    readFileSync: () => JSON.stringify({ catalog: { bytes: 374 }, previewManifest: { bytes: 131 } }),
+    statSync: (file) => ({ size: file.endsWith("preview-manifest.json") ? 131 : 374 }),
+  };
+  assert.deepEqual(verifyEnvironment({ root, tempDirectory, filesystem }), {
+    canonicalTemp: true, snapshotBytes: { "catalog.json": 374, "preview-manifest.json": 131 },
+  });
+  assert.throws(() => verifyEnvironment({ root, tempDirectory,
+    filesystem: { ...filesystem, statSync: () => ({ size: 999 }) } }), /checkout changed/);
+  assert.throws(() => verifyEnvironment({ root, tempDirectory,
+    filesystem: { ...filesystem, realpathSync: () => path.join(root, "different-long-path") } }), /already be canonical/);
 });
 
 test("new workflows pin actions, disable persisted Git credentials and avoid PR checkout", () => {
