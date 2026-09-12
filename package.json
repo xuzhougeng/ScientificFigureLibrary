@@ -60,7 +60,7 @@
     "modules:feed": "node scripts/publish-open-figure-feed.mjs"
   },
   "devDependencies": {
-    "@modelcontextprotocol/ext-apps": "^1.7.0",
+    "@modelcontextprotocol/ext-apps": "^2.0.0",
     "@modelcontextprotocol/sdk": "^1.29.0",
     "@types/jsdom": "^21.1.7",
     "@types/markdown-it": "^14.2.0",
