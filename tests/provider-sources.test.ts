@@ -183,7 +183,8 @@ class MockFeed {
     if (options.catalogFault === "bad_licenses") {
       (firstEntry.licenses as Record<string, unknown>).code = "";
     }
-    const previewsBytes = new Uint8Array(zipSync(previewArchive, { level: 0 }));
+    // Re-publishing a fixture must not change its preview identity with wall-clock time.
+    const previewsBytes = new Uint8Array(zipSync(previewArchive, { level: 0, mtime: new Date(2000, 0, 1) }));
     const catalogBytes = Buffer.from(canonicalJson({
       schema: "figure-library.public-provider-catalog.v1",
       provider: {
