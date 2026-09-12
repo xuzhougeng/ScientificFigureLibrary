@@ -186,16 +186,6 @@ or reads the selected ZIP, validates its bytes and safe paths, extracts the
 requested `template`/`full` file set, and writes a lock with
 `codeExecutedBySflClient: false`.
 
-## Contributing and maintenance
-
-`jarxunlai` is the lead developer and day-to-day maintainer; `xuzhougeng` is
-the repository account owner and fallback reviewer. See
-[CONTRIBUTING.md](CONTRIBUTING.md), [Agent guidance](AGENTS.md),
-[Code of Conduct](CODE_OF_CONDUCT.md), and [SECURITY.md](SECURITY.md).
-Repository automation and bring-your-own-API setup are documented in
-[GitHub collaboration configuration](docs/GITHUB_AUTOMATION.md); these are
-separate from the local-first SFL runtime and are not enabled by documentation alone.
-
 ## License
 
 MIT for this project's code. User-imported figures keep the license recorded
