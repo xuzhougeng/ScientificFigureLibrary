@@ -56,12 +56,22 @@ test("AI workflow is main-only, allowlisted, manual, disabled unless explicitly 
   assert.equal(ai.concurrency["cancel-in-progress"], false);
 });
 
-test("CI preserves LF bytes without writing local or global Git configuration", () => {
+test("CI pins LF only for checkout without overriding fixture Git configuration", () => {
   const ci = parse(".github/workflows/ci.yml");
-  const env = { ...process.env, ...ci.env };
-  assert.equal(execFileSync("git", ["config", "--get", "core.autocrlf"], { env, encoding: "utf8" }).trim(), "false");
-  assert.equal(execFileSync("git", ["config", "--get", "core.eol"], { env, encoding: "utf8" }).trim(), "lf");
-  assert.equal(ci.env.GIT_CONFIG_COUNT, "2");
+  assert.equal(ci.env.GIT_CONFIG_COUNT, undefined);
+  for (const job of Object.values(ci.jobs)) {
+    assert.equal(job.env?.GIT_CONFIG_COUNT, undefined);
+    for (const step of job.steps) {
+      if (step.uses?.startsWith("actions/checkout@")) {
+        const env = { ...process.env, ...step.env };
+        assert.equal(execFileSync("git", ["config", "--get", "core.autocrlf"], { env, encoding: "utf8" }).trim(), "false");
+        assert.equal(execFileSync("git", ["config", "--get", "core.eol"], { env, encoding: "utf8" }).trim(), "lf");
+        assert.equal(step.env.GIT_CONFIG_COUNT, "2");
+      } else {
+        assert.equal(step.env?.GIT_CONFIG_COUNT, undefined);
+      }
+    }
+  }
 });
 
 test("matrix fixtures use a canonical isolated temp root, not runner user aliases", () => {
