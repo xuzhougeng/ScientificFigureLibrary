@@ -16,6 +16,7 @@ import {
 } from "./brand.ts";
 import { createIcon, setButtonContent } from "./icons.ts";
 import {
+  announceSelectionChange,
   openCandidateDetail,
   parseSearchResult,
   renderCandidateCards,
@@ -54,6 +55,7 @@ const pageStatus = document.getElementById("page-status")!;
 const plotSetBar = document.getElementById("plot-set-bar")!;
 const plotSetCount = document.getElementById("plot-set-count")!;
 const plotSetSubmit = document.getElementById("plot-set-submit") as HTMLButtonElement;
+const toastRegion = document.getElementById("toast-region")!;
 const displayControls = document.getElementById("display-controls")!;
 const expandBrowse = document.getElementById("expand-browse") as HTMLButtonElement;
 const keepVisible = document.getElementById("keep-visible") as HTMLButtonElement;
@@ -111,7 +113,7 @@ const pageCache = new Map<number, SearchResult>();
 const selectedCandidates = new Map<string, Candidate>();
 
 const DEFAULT_TITLE = "选择科学绘图模板";
-const DEFAULT_HINT = "先在这里浏览详情并选择；Agent 会等待你的决定";
+const DEFAULT_HINT = "点击卡片或标题即可勾选；详情用「查看详情」按钮打开";
 const DEFAULT_EMPTY = "请在对话中上传图片或数据，也可以直接描述想画的图。";
 const SETUP_TITLE = "先完成本机绑定";
 const SETUP_HINT = "绑定完成前请先在对话里指定两个绝对目录";
@@ -171,13 +173,14 @@ function selectedIds() {
   return new Set(selectedCandidates.keys());
 }
 
-function refreshPlotSetBar() {
+function refreshPlotSetBar(animateCount = false) {
   renderPlotSetBar({
     bar: plotSetBar,
     submit: plotSetSubmit,
     countLabel: plotSetCount,
     selectedCount: selectedCandidates.size,
     canSubmit: Boolean(activeResult) && updateModelContextAvailable(),
+    animateCount,
   });
 }
 
@@ -213,10 +216,6 @@ function updateModelContextAvailable() {
 
 async function recordUiEvent(
   event:
-    | "host.capabilities_detected"
-    | "candidate.thumbnail_clicked"
-    | "candidate.detail_opened"
-    | "candidate.detail_closed"
     | "exact_preview.image_loaded"
     | "exact_preview.image_error"
     | "model_context.updated",
@@ -271,9 +270,16 @@ function render(result: SearchResult) {
     onToggleSelect: (candidate, selected) => {
       if (selected) selectedCandidates.set(candidate.candidateId, candidate);
       else selectedCandidates.delete(candidate.candidateId);
-      refreshPlotSetBar();
+      refreshPlotSetBar(true);
+      announceSelectionChange({
+        document,
+        region: toastRegion,
+        message: selected
+          ? `已选择「${candidate.title}」，共 ${selectedCandidates.size} 项`
+          : `已取消选择「${candidate.title}」，剩余 ${selectedCandidates.size} 项`,
+      });
     },
-    onDetail: (candidate, elements, opener) => {
+    onDetail: (candidate, _elements, opener) => {
       activeDetail = openCandidateDetail({
         document,
         candidate,
@@ -295,7 +301,7 @@ function render(result: SearchResult) {
   status.textContent = serverToolsAvailable()
     ? "点击标题或空白处选择，查看详情用于浏览。以已选标记和计数为准；工具审批不代表已选模板。"
     : updateModelContextAvailable()
-      ? "当前 Host 未提供 serverTools；可勾选 1 到 8 个模板交给 Agent 绘制，或打开详情做单张审核。"
+      ? "当前 Host 未提供 serverTools；点击卡片或标题勾选 1 到 8 个模板交给 Agent 绘制，或打开详情做单张审核。"
       : "当前 Host 既未提供 serverTools，也未提供 updateModelContext；只能浏览当前页基础详情。";
   if (result.diagnosticsDegraded) {
     status.textContent += " 诊断日志处于降级状态。";

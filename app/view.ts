@@ -355,6 +355,7 @@ export function renderCandidateCards(options: {
   const { document, cards, empty, result } = options;
   cards.replaceChildren();
   empty.hidden = result.candidates.length > 0;
+  const interactiveSelector = "button, input, a, label, summary, select, textarea";
 
   for (const candidate of result.candidates) {
     const card = element(document, "article", "card");
@@ -363,11 +364,12 @@ export function renderCandidateCards(options: {
     const selectBox = document.createElement("input");
     selectBox.type = "checkbox";
     selectBox.className = "candidate-select-input";
-    selectBox.checked = Boolean(options.selectedIds?.has(candidate.candidateId));
     selectBox.setAttribute("aria-label", `选择 ${candidate.title} 交给 Agent 绘制`);
     selectBox.addEventListener("click", (event) => event.stopPropagation());
     const selectionText = element(document, "span");
     selectLabel.append(selectBox, selectionText);
+    const selectBadge = element(document, "span", "select-badge");
+    selectBadge.append(createIcon(document, "check"), document.createTextNode("已选"));
     const previewButton = button(
       document,
       "preview preview-button",
@@ -385,26 +387,8 @@ export function renderCandidateCards(options: {
     const heading = element(document, "div");
     const headingNode = element(document, "h2", "module");
     const titleButton = button(document, "candidate-title", candidate.title);
-    titleButton.setAttribute("aria-label", `选择 ${candidate.title}`);
-    const syncSelection = () => {
-      card.classList.toggle("is-selected", selectBox.checked);
-      titleButton.setAttribute("aria-pressed", String(selectBox.checked));
-      selectionText.textContent = selectBox.checked ? "✓ 已选" : "选择此模板";
-    };
-    const toggleSelection = () => {
-      selectBox.checked = !selectBox.checked;
-      syncSelection();
-      options.onToggleSelect?.(candidate, selectBox.checked);
-    };
-    selectBox.addEventListener("change", () => {
-      syncSelection();
-      options.onToggleSelect?.(candidate, selectBox.checked);
-    });
-    card.addEventListener("click", (event) => {
-      const target = event.target as Element;
-      if (!target.closest("button, input, label, a")) toggleSelection();
-    });
-    syncSelection();
+    titleButton.setAttribute("aria-label", `选择 ${candidate.title} 交给 Agent 绘制`);
+    titleButton.title = "点击选择或取消选择；查看详情请用「查看详情」按钮";
     headingNode.append(titleButton);
     heading.append(
       headingNode,
@@ -433,13 +417,38 @@ export function renderCandidateCards(options: {
 
     if (candidate.matchKind) content.append(element(document, "p", "description", "检索分不是重复证明，请对照预览人工确认。"));
     const detailButton = button(document, "candidate-action", "查看详情", "details");
+    const applySelected = (selected: boolean) => {
+      selectBox.checked = selected;
+      card.classList.toggle("is-selected", selected);
+      selectionText.textContent = selected ? "✓ 已选" : "选择";
+      card.dataset.selected = selected ? "true" : "false";
+      titleButton.setAttribute("aria-pressed", selected ? "true" : "false");
+    };
+    const toggleSelection = () => {
+      const selected = card.dataset.selected !== "true";
+      applySelected(selected);
+      options.onToggleSelect?.(candidate, selected);
+    };
+    selectBox.addEventListener("change", () => {
+      applySelected(selectBox.checked);
+      options.onToggleSelect?.(candidate, selectBox.checked);
+    });
+    titleButton.addEventListener("click", (event) => {
+      event.stopPropagation();
+      toggleSelection();
+    });
+    card.addEventListener("click", (event) => {
+      const target = event.target as HTMLElement | null;
+      if (target?.closest?.(interactiveSelector)) return;
+      toggleSelection();
+    });
     const elements = { card, previewButton, titleButton, detailButton };
     const open = (opener: HTMLButtonElement) => options.onDetail(candidate, elements, opener);
     previewButton.addEventListener("click", () => open(previewButton));
-    titleButton.addEventListener("click", toggleSelection);
     detailButton.addEventListener("click", () => open(detailButton));
     content.append(detailButton);
-    card.append(selectLabel, previewButton, content);
+    applySelected(Boolean(options.selectedIds?.has(candidate.candidateId)));
+    card.append(selectLabel, selectBadge, previewButton, content);
     cards.append(card);
   }
 }
@@ -608,14 +617,33 @@ export function renderPlotSetBar(options: {
   countLabel: HTMLElement;
   selectedCount: number;
   canSubmit: boolean;
+  animateCount?: boolean;
 }) {
   const { bar, submit, countLabel, selectedCount, canSubmit } = options;
   bar.hidden = false;
+  bar.dataset.selected = selectedCount > 0 ? "true" : "false";
   countLabel.textContent = `已选 ${selectedCount} 个模板`;
+  countLabel.classList.remove("count-bump");
+  if (options.animateCount) {
+    void countLabel.offsetWidth;
+    countLabel.classList.add("count-bump");
+  }
   submit.disabled = !canSubmit || selectedCount < 1 || selectedCount > 8;
   setButtonContent(
     submit,
     selectedCount > 8 ? "warning" : "send",
     selectedCount > 8 ? "最多选择 8 个模板" : `交给 Agent 绘制（${selectedCount}）`,
   );
+}
+
+export function announceSelectionChange(options: {
+  document: Document;
+  region: HTMLElement;
+  message: string;
+  durationMs?: number;
+}) {
+  const toast = element(options.document, "div", "selection-toast", options.message);
+  options.region.replaceChildren(toast);
+  options.document.defaultView?.setTimeout(() => toast.remove(), options.durationMs ?? 2400);
+  return toast;
 }
