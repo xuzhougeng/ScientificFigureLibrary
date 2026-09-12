@@ -45,6 +45,14 @@ figure-organization、figure-style，不要求宿主另外安装同名 Skills。
 依赖包默认可见；技术与验证信息保留在折叠区。旧模板只做兼容读取，不批量重写。
 缺少论文背景时不会自动补造生物学结论。
 
+## 贡献与维护
+
+`jarxunlai` 是主力开发者和日常维护者；`xuzhougeng` 是 GitHub 仓库所有者及备援 reviewer。
+请阅读 [贡献指南](CONTRIBUTING.md)、[Agent 规范](AGENTS.md)、
+[行为准则](CODE_OF_CONDUCT.md) 和 [安全政策](SECURITY.md)。
+[GitHub 协作与自有 API 配置](docs/GITHUB_AUTOMATION.md) 说明仓库回复/审核自动化的接入方式；
+它与本机 SFL 运行时分离，提交文档不会自动启用模型调用。
+
 ## 许可证
 
 本仓库代码 MIT。用户导入的图保留导入时记录的许可证。

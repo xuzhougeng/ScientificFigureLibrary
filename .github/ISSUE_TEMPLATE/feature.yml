@@ -1,0 +1,67 @@
+name: Feature request / 功能建议
+description: Describe a concrete use case, compatibility boundary and acceptance criteria.
+title: "[Feature]: "
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        请先搜索已有 Issues，并遵循 [行为准则](https://github.com/xuzhougeng/ScientificFigureLibrary/blob/main/CODE_OF_CONDUCT.md)。
+        不要公开私有数据、API Key、token 或漏洞细节；安全问题见 [安全政策](https://github.com/xuzhougeng/ScientificFigureLibrary/security/policy)。
+  - type: textarea
+    id: problem
+    attributes:
+      label: 要解决的问题 / Problem
+    validations:
+      required: true
+  - type: textarea
+    id: use_case
+    attributes:
+      label: 用户场景 / Use case
+      description: 谁在什么工作流中遇到限制？
+    validations:
+      required: true
+  - type: textarea
+    id: proposed_solution
+    attributes:
+      label: 建议方案 / Proposed solution
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: 替代方案 / Alternatives
+      description: 列出考虑过的方案；没有时填写“无”。
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: 影响范围 / Scope
+      description: 涉及哪些宿主、Provider 和模块？明确不包含的工作。
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance_criteria
+    attributes:
+      label: 验收标准 / Acceptance criteria
+      description: 使用可以检查的条目，不只写“体验更好”。
+    validations:
+      required: true
+  - type: textarea
+    id: compatibility_and_risk
+    attributes:
+      label: API、存储、权限与发布影响 / Compatibility and risk
+      description: |
+        分别说明是否涉及公共 MCP API/schema、本地 Library/locator/Revision/Release/receipt 格式、
+        配置、网络访问、权限、依赖、签名、部署或发布；不确定的项明确填写“不确定”。
+        本项目没有应用数据库服务，不要求提供虚构的数据库迁移。
+    validations:
+      required: true
+  - type: dropdown
+    id: willingness_to_implement
+    attributes:
+      label: 是否愿意提交实现 / Willingness to implement
+      options: [Yes / 愿意, With guidance / 需要指导, No / 暂不实现]
+    validations:
+      required: true

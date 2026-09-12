@@ -1,0 +1,16 @@
+{
+  "schema": "sfl.ai-policy.v1",
+  "repository": "xuzhougeng/ScientificFigureLibrary",
+  "defaultBranch": "main",
+  "allowedActors": ["jarxunlai"],
+  "baseUrl": "https://api.jadelai.top/v1",
+  "model": "gemini-3.8-flash-high",
+  "apiStyle": "chat_completions",
+  "maxFiles": 40,
+  "maxInputCharacters": 100000,
+  "maxResponseBytes": 262144,
+  "requestTimeoutMs": 90000,
+  "maxAttempts": 2,
+  "maxFindings": 10,
+  "minimumConfidence": 0.75
+}

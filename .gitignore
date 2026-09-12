@@ -5,6 +5,8 @@ release/
 .codex/
 .DS_Store
 *.log
+reports/
+coverage/
 
 __pycache__/
 *.py[cod]
