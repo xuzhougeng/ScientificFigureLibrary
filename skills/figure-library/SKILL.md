@@ -412,8 +412,10 @@ complete result set by default.
 The search result keeps model-visible `structuredContent` compact and carries
 verified thumbnail Data URLs only in result `_meta`, which is component-only.
 The App merges those thumbnails by result-scoped `candidateId`; do not ask the
-Agent to parse Base64. Each thumbnail, title, and **查看详情** action opens an
-accessible dialog using metadata already returned by search. Basic detail must
+Agent to parse Base64. Clicking a title or non-interactive card area toggles
+local selection; the selected marker and count are not tool approvals or preview
+receipts. Each thumbnail and **查看详情** action opens an accessible dialog using
+metadata already returned by search. Basic detail must
 remain usable without `serverTools` and must not call the Agent or a Server
 Tool. Candidates whose preview is missing, unreadable, unsupported,
 path-invalid, corrupt, or over the transfer limit remain visible with an error

@@ -67,6 +67,8 @@ Three parties are involved; for every step, ask who does it:
   `template.lock.json` is written
 - Portable backup / restore / fork (bundle export / full restore)
 
+Collapsible plotting tips and a copyable example help express current-task requirements without a mandatory form or persistent style settings. More examples are in [section 6](#6-fonts-colors-sizes-and-export).
+
 **What SFL does not do (✅ boundaries are equally implemented):**
 
 - It **never executes plotting code** and contains no second model;
@@ -87,9 +89,6 @@ figure-style) guide those behaviors; see [section 9](#9-advanced-reference).
 - [#17](https://github.com/xuzhougeng/ScientificFigureLibrary/issues/17): persist
   a user style profile and apply it automatically in later sessions — today
   font/color preferences last only for the current session
-- [#18](https://github.com/xuzhougeng/ScientificFigureLibrary/issues/18): a
-  user-visible plotting tips card with requirement examples — for now use the
-  prompts in [section 6](#6-fonts-colors-sizes-and-export)
 - [#19](https://github.com/xuzhougeng/ScientificFigureLibrary/issues/19): enforce
   one-figure-one-folder archiving and submission packaging by default — today
   the host model organizes folders on request only, see
@@ -149,6 +148,8 @@ an admin override only; daily use does not need it.
 The core discipline is **view the real preview, explicitly confirm that card,
 then materialize**. Materialization copies the confirmed template into the
 project; it does not execute code.
+
+Click a title or empty card area to select or deselect; use the selected marker and count as feedback. Thumbnails and **查看详情** open details. Basic detail browsing emits no diagnostic tool calls. Neither a selection checkbox nor a host tool approval is an exact-preview confirmation or permission to materialize or execute code.
 
 | Step | Who | What you need to know |
 | --- | --- | --- |

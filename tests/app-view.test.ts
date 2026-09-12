@@ -234,7 +234,7 @@ test("personal module cards keep publisher state, Local state, and thumbnail sta
   detail.closeButton.click();
 });
 
-test("thumbnail, title, and explicit action open candidate details without exact preview", () => {
+test("thumbnail and explicit action open details while title toggles selection locally", () => {
   const window = createTestWindow();
   const document = window.document as unknown as Document;
   const cards = document.createElement("section");
@@ -279,10 +279,11 @@ test("thumbnail, title, and explicit action open candidate details without exact
   );
   (cards.querySelectorAll(".preview-button")[0] as HTMLButtonElement).click();
   (cards.querySelectorAll(".candidate-title")[1] as HTMLButtonElement).click();
+  assert.equal(cards.querySelectorAll(".card")[1]!.classList.contains("is-selected"), true);
+  assert.equal(cards.querySelectorAll(".candidate-title")[1]!.getAttribute("aria-pressed"), "true");
   (cards.querySelectorAll(".candidate-action")[1] as HTMLButtonElement).click();
   assert.deepEqual(opened, [
     { templateId: "local-bar", openerClass: "preview preview-button" },
-    { templateId: "figureya-bar", openerClass: "candidate-title" },
     { templateId: "figureya-bar", openerClass: "candidate-action" },
   ]);
   assert.equal(empty.hidden, true);
@@ -690,4 +691,65 @@ test("legacy scenarios render once and absent scenarios never use visualProfile"
   assert.match(detail.dialog.textContent ?? "", /未单独记录/u);
   assert.doesNotMatch(detail.dialog.textContent ?? "", /Red points/u);
   detail.closeButton.click();
+});
+
+test("selection toggles locally once and survives rerender; detail controls do not select", () => {
+  const window = createTestWindow();
+  const document = window.document as unknown as Document;
+  const cards = document.createElement("section");
+  const empty = document.createElement("section");
+  document.body.append(cards, empty);
+  const item = candidate("org.figureya.module", "selection", "ready", "data:image/png;base64,iVBORw0KGgo=");
+  const selected = new Set<string>();
+  const toggles: boolean[] = [];
+  let details = 0;
+  const render = () => renderCandidateCards({
+    document, cards, empty, result: searchResult([item]), selectedIds: selected,
+    onToggleSelect(value, checked) {
+      toggles.push(checked);
+      if (checked) selected.add(value.candidateId); else selected.delete(value.candidateId);
+    },
+    onDetail() { details++; },
+  });
+  const card = () => cards.querySelector(".card") as HTMLElement;
+  const title = () => cards.querySelector(".candidate-title") as HTMLButtonElement;
+  const checkbox = () => cards.querySelector(".candidate-select-input") as HTMLInputElement;
+  render();
+  title().click();
+  assert.deepEqual(toggles, [true]);
+  assert.equal(card().classList.contains("is-selected"), true);
+  assert.equal(title().getAttribute("aria-pressed"), "true");
+  assert.match(cards.querySelector(".candidate-select")!.textContent!, /已选/);
+  render();
+  assert.equal(checkbox().checked, true);
+  assert.equal(card().classList.contains("is-selected"), true);
+  assert.equal(title().getAttribute("aria-pressed"), "true");
+  (cards.querySelector(".preview-button") as HTMLButtonElement).click();
+  (cards.querySelector(".candidate-action") as HTMLButtonElement).click();
+  assert.equal(details, 2);
+  assert.deepEqual(toggles, [true]);
+  card().click();
+  assert.deepEqual(toggles, [true, false]);
+  assert.equal(checkbox().checked, false);
+  checkbox().click();
+  assert.deepEqual(toggles, [true, false, true]);
+  (cards.querySelector(".candidate-select") as HTMLLabelElement).click();
+  assert.deepEqual(toggles, [true, false, true, false]);
+  const link = document.createElement("a");
+  link.textContent = "source";
+  card().append(link);
+  link.click();
+  assert.deepEqual(toggles, [true, false, true, false]);
+  assert.equal(title().getAttribute("aria-pressed"), "false");
+});
+
+test("basic browsing no longer emits diagnostic calls and retains exact-preview diagnostics", () => {
+  const main = fs.readFileSync(path.join(import.meta.dirname, "../app/main.ts"), "utf8");
+  assert.doesNotMatch(main, /recordUiEvent\("(?:candidate\.(?:thumbnail_clicked|detail_opened|detail_closed)|host\.capabilities_detected)"/);
+  assert.match(main, /recordUiEvent\("exact_preview\.image_loaded"/);
+  assert.match(main, /recordUiEvent\("model_context\.updated"/);
+  const html = fs.readFileSync(path.join(import.meta.dirname, "../app/mcp-app.html"), "utf8");
+  assert.match(html, /id="plot-set-count"[^>]*aria-live="polite"/);
+  assert.doesNotMatch(html, /id="project-figures"/);
+  assert.doesNotMatch(main, /mountProjectFigures|figure_library_(?:resolve_style|.*submission)/);
 });

@@ -366,8 +366,8 @@ export function renderCandidateCards(options: {
     selectBox.checked = Boolean(options.selectedIds?.has(candidate.candidateId));
     selectBox.setAttribute("aria-label", `选择 ${candidate.title} 交给 Agent 绘制`);
     selectBox.addEventListener("click", (event) => event.stopPropagation());
-    selectBox.addEventListener("change", () => options.onToggleSelect?.(candidate, selectBox.checked));
-    selectLabel.append(selectBox, document.createTextNode("选择"));
+    const selectionText = element(document, "span");
+    selectLabel.append(selectBox, selectionText);
     const previewButton = button(
       document,
       "preview preview-button",
@@ -385,7 +385,26 @@ export function renderCandidateCards(options: {
     const heading = element(document, "div");
     const headingNode = element(document, "h2", "module");
     const titleButton = button(document, "candidate-title", candidate.title);
-    titleButton.setAttribute("aria-label", `查看 ${candidate.title} 详情`);
+    titleButton.setAttribute("aria-label", `选择 ${candidate.title}`);
+    const syncSelection = () => {
+      card.classList.toggle("is-selected", selectBox.checked);
+      titleButton.setAttribute("aria-pressed", String(selectBox.checked));
+      selectionText.textContent = selectBox.checked ? "✓ 已选" : "选择此模板";
+    };
+    const toggleSelection = () => {
+      selectBox.checked = !selectBox.checked;
+      syncSelection();
+      options.onToggleSelect?.(candidate, selectBox.checked);
+    };
+    selectBox.addEventListener("change", () => {
+      syncSelection();
+      options.onToggleSelect?.(candidate, selectBox.checked);
+    });
+    card.addEventListener("click", (event) => {
+      const target = event.target as Element;
+      if (!target.closest("button, input, label, a")) toggleSelection();
+    });
+    syncSelection();
     headingNode.append(titleButton);
     heading.append(
       headingNode,
@@ -417,7 +436,7 @@ export function renderCandidateCards(options: {
     const elements = { card, previewButton, titleButton, detailButton };
     const open = (opener: HTMLButtonElement) => options.onDetail(candidate, elements, opener);
     previewButton.addEventListener("click", () => open(previewButton));
-    titleButton.addEventListener("click", () => open(titleButton));
+    titleButton.addEventListener("click", toggleSelection);
     detailButton.addEventListener("click", () => open(detailButton));
     content.append(detailButton);
     card.append(selectLabel, previewButton, content);
