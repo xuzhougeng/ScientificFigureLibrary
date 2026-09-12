@@ -29,7 +29,7 @@
 附录:
 
 - [附录 A:端到端示例](#附录-a端到端示例)
-- [附录 B:索引再生成与链接检查](#附录-b索引再生成与链接检查)
+- [附录 B:文档维护与链接检查](#附录-b文档维护与链接检查)
 
 ---
 
@@ -51,7 +51,7 @@ SFL 是一个**本机优先**的 stdio MCP 服务器加 MCP App。它把你的�
 - 维护本机**一份全局 Library**,一个用户选定的目录,跨项目、跨宿主共享
 - 图+代码的**直接导入**:不可变 Revision、审阅记录与 Release
 - MCP App 画廊:浏览、精确预览、用户确认后才继续
-- 统一检索,默认顺序:**Local Published → FigureYa → 内置 Open Figure Modules → 已启用并显式参与默认搜索的动态个人 Provider**;Community 快照已冻结,不参与默认搜索
+- 统一检索,默认顺序:**Local Published → FigureYa → Open Figure Modules(内置目录或已验证更新目录) → 已启用并显式参与默认搜索的动态个人 Provider**;Community 快照已冻结,不参与默认搜索
 - **精确物化(materialize)**:把你确认的那一个模板复制进项目,目标目录永不覆盖,并写入 `template.lock.json`
 - 便携备份/恢复/分叉(bundle export / full restore)
 
@@ -79,53 +79,22 @@ SFL 是一个**本机优先**的 stdio MCP 服务器加 MCP App。它把你的�
 **准备(你):** Node.js 22 或更新版本;任一 stdio MCP 宿主(Wisp Science、
 Claude Science、Codex、Claude Code、Cursor 等)。
 
-### 2.1 安装方式(任选其一)
+### 2.1 安装方式
 
-**方式 A:让编码代理帮你装(推荐给新用户)。** 把本仓库给 Claude Code、Codex、
-Cursor 等有终端权限的本地编码代理,并粘贴以下请求(✅ 已实现,安装器即本仓库文档):
+各宿主的安装、打包和连接步骤统一见 [QUICKSTART](QUICKSTART.md),本手册不另维护一套安装命令。
+如果你在阅读解压后的插件包,请使用 [在线快速开始](https://github.com/xuzhougeng/ScientificFigureLibrary/blob/main/docs/QUICKSTART.md)。
+
+可以把下面的请求交给具有终端权限的宿主模型:
 
 ```text
-Install Scientific Figure Library from
-https://github.com/xuzhougeng/ScientificFigureLibrary.
-
-Follow docs/QUICKSTART.md. Prefer a GitHub Release ZIP when one is published.
-Node.js 22+ is required. Register the stdio MCP server as figure-library
-pointing at dist/index.js. For Wisp Science, use npm run package:wisp and
-install the generated plugin. For Cursor, use npm run package:cursor and unzip
-into ~/.cursor/plugins/local/figure-library/. Bind one global Library directory on disk.
-Do not execute user plotting code. First test: open or source_status; if
-setup_required, bind the global Library and Local workspace before searching.
-Tell me when I need to grant folder access or start a new host session.
+请从 https://github.com/xuzhougeng/ScientificFigureLibrary 安装 Scientific Figure Library,
+按仓库 QUICKSTART 和我正在使用的宿主选择安装方式。先说明需要下载什么、
+改哪些配置,在我确认后执行。不要运行绘图代码或自动安装绘图依赖。
+连接后先检查配置状态,缺少绑定时向我要全局 Library 和本地工作区的明确绝对路径。
+告诉我何时需要授予目录权限、重启宿主或新建会话。
 ```
 
-**方式 B:Wisp Science 插件(🤖 宿主打包,你安装)。** `npm run package:wisp`
-生成 ZIP,在 Wisp **Settings → Plugins** 安装并启用,然后新开会话。
-
-**方式 C:Cursor 本地插件。** `npm run package:cursor` 生成 ZIP,解压到
-`~/.cursor/plugins/local/figure-library/`,重启 Cursor。
-
-**方式 D:从源码运行。**
-
-```bash
-git clone https://github.com/xuzhougeng/ScientificFigureLibrary.git
-cd ScientificFigureLibrary
-npm ci
-npm run check
-node dist/index.js
-```
-
-```json
-{
-  "mcpServers": {
-    "figure-library": {
-      "command": "node",
-      "args": ["/absolute/path/to/ScientificFigureLibrary/dist/index.js"]
-    }
-  }
-}
-```
-
-注意:不要同时注册裸 MCP 配置**和**宿主插件,那会重复暴露工具。
+不要同时注册裸 MCP 配置和同一服务的宿主插件,以免工具重复。
 
 ### 2.2 首次配置:绑定两个目录
 
@@ -136,9 +105,9 @@ node dist/index.js
 | --- | --- | --- |
 | 1. 检查状态 | 宿主模型 | 调 `figure_library_source_status` 或 `figure_library_open`,确认 `setup_required` |
 | 2. 你提供两个**绝对路径** | 你 | 如 `D:\figure-library` 与当前项目目录;不要随手用当前项目当全局 Library |
-| 3. 生成绑定计划 | 宿主模型 | `figure_library_plan_bind_global` / `figure_library_plan_bind_workspace`,并把确切路径、`libraryId`、`planDigest` 展示给你 |
+| 3. 生成绑定计划 | 宿主模型 | 展示确切目录和计划,不在你确认前应用;工具名见第 9.5 节 |
 | 4. 确认路径 | 你 | 核对计划里展示的路径无误后确认 |
-| 5. 应用绑定 | 宿主模型 | 同一会话内 `figure_library_apply_bind_global` / `figure_library_apply_bind_workspace` |
+| 5. 应用绑定 | 宿主模型 | 在同一服务会话内应用你确认的绑定计划 |
 | 6. 复查 | 宿主模型 | 再次 `figure_library_source_status`,确认写入已启用、计数正确 |
 
 绑定信息记录在本机 locator 文件中(Windows:
@@ -151,63 +120,112 @@ node dist/index.js
 ## 3. 模板浏览、搜索与确认
 
 SFL 的核心纪律是:**先看真实预览,由你确认那一张卡,然后才物化**。
+物化(materialize)是把确认的模板文件复制到项目,不是运行代码。
 
-| 步骤 | 谁做 | 说明 |
+| 步骤 | 谁做 | 你需要知道什么 |
 | --- | --- | --- |
-| 1. 打开工作台/搜索 | 宿主模型 | MCP App 宿主调 `figure_library_open`;任意宿主可调 `figure_library_search` |
-| 2. 浏览候选 | 你 + 宿主模型 | App 逐页渲染缩略图;点缩略图或"查看详情"看大图与描述;检索得分只用于排序,**不是**相似度或可信度 |
-| 3. 停下等你选 | 宿主模型 | 搜索后宿主必须停下,等待你选择;除非你明确说"帮我选模板" |
-| 4. 精确预览 | 宿主模型/App | App 内"查看精确预览"走 `figure_library_preview_exact` + `figure_library_confirm_selection`;无 App 界面的宿主用 `figure_library_preview_exact_headless` + `figure_library_confirm_selection_headless` |
-| 5. 确认 | 你 | 只有你在看到精确预览后确认,才产生一次性的 `previewReceipt` |
-| 6. 物化计划 | 宿主模型 | `figure_library_plan_materialize`:带上未改动的 `providerId`、`exactSelector`、`previewReceipt`、绝对目标路径;缺回执会返回 `preview_required` |
-| 7. 展示并确认计划 | 宿主模型 + 你 | 展示确切模板、目标目录、文件集(template/full) |
-| 8. 执行物化 | 宿主模型 | `figure_library_apply_materialize`;目标为 `<目标目录>/<templateId>`,永不覆盖已有目录 |
-| 9. 查看结果 | 你 + 宿主模型 | 项目里出现模板文件与 `template.lock.json`(记录 `codeExecutedBySflClient: false`) |
+| 1. 说明目标并搜索 | 你 → 宿主模型 | 说明科研问题、已有数据和希望使用的来源;模型展示真实候选 |
+| 2. 浏览候选 | 你 | 查看缩略图、用途、数据要求和来源;检索得分不是可信度或科学验证 |
+| 3. 选择模板 | 你 | 模型搜索后应停下等你选择,除非你明确委托它代选 |
+| 4. 查看精确预览 | 宿主模型/App → 你 | 查看选中版本的真实预览;没有 App 的宿主使用 headless 预览流程 |
+| 5. 明确确认 | 你 | 看过精确预览后确认,服务器才签发本次会话的一次性预览回执 |
+| 6. 核对物化计划 | 宿主模型 → 你 | 展示模板、文件集(template/full)、网络需求和绝对目标目录,等你确认 |
+| 7. 应用物化 | 宿主模型调用 SFL | 保持原回执和模板身份不变;目标为 `<目标目录>/<templateId>`,不覆盖已有目录 |
+| 8. 检查文件 | 你 + 宿主模型 | 查看文件清单与 `template.lock.json`,然后进入数据适配,尚未运行代码 |
 
-两点常见误解:
+高级工具名见[第 9.5 节](#95-工具对照),普通用户不需要记住固定工具口令。
 
-- **检索范围**:默认按第 1 节的顺序搜索;Community 快照要显式指定才可访问。
-  用 `figure_library_list_provider_sources`(完全离线)查看已启用的 Provider。
-- **上游状态 ≠ 本地验证**:FigureYa 与 Open Figure Modules 的上游发布、发布者签名
-  或中心策展状态,都不会自动变成你本地的审核通过。描述模板时宿主必须如实区分。
-
-空目录也可能是健康状态:某个内置附加目录在授权撤下后可能没有任何 Release,
-默认搜索会继续在其余 Provider 上进行,这不代表安装坏了。
+- **搜索范围:** 默认顺序见第 1 节;Community 冻结且只在明确指定时参与。模型可离线读取 Provider 状态,但搜索结果不是完整目录枚举。
+- **上游状态不等于本地验证:** 上游发布、签名或审核不能自动变成你本机的运行通过或科学验证。
+- **空目录不一定是故障:** 某些来源可能在撤下内容后合法为空;先看来源和状态,不要擅自重新安装。
 
 ---
 
 ## 4. 图型索引(按用途)
 
-本手册的两份图型索引由仓库内置目录元数据**自动生成**,并标注快照版本:
+**手册讲使用方法,内容源维护模板目录。** 本手册不复制一份容易落后的“全部模板”名单,也不把插件内置模板数当作永久总数。
 
-- [Open Figure Modules 索引(36 个模块,按 plotFamily 分类)](generated/open-figure-modules-index.zh-CN.md)
-- [FigureYa 模板索引(全部模板,按 ID 字母序)](generated/figureya-index.zh-CN.md)
+- [Open Figure Modules 当前内容目录](https://github.com/jarxunlai/ScientificFigureLibrary-personal#current-modules):按图型提供中文名称、英文副标题和模块入口;模块内查看预览、说明、输入文件及逐模块许可。
+- [FigureYa 上游目录](https://github.com/ying-ge/FigureYa):浏览上游说明后,在 SFL 中指定 FigureYa 搜索并检查实际可用版本。
+- **Local Published 与额外 Provider:** 在你本机的工作台中查看,不属于公共内容仓库的完整目录。
 
-每个索引条目包含:名称与稳定标识(`moduleId`)、分类、预览链接、适用科研场景、
-输入数据要求、模板来源与许可,以及可复制的自然语言调用示例。目录里缺失的元数据
-在页面中如实标注为"未记录",不会编造调用链接。
+### 4.1 按科研问题查找
 
-使用索引时注意三点:
+| 我想做什么 | 给宿主模型的查找方向 |
+| --- | --- |
+| 比较细胞组成 | 搜索细胞比例、分组条形或堆叠柱状图 |
+| 展示差异表达 | 根据差异分析表查找相应展示图型,先核对输入字段 |
+| 展示通路富集 | 搜索富集柱状图、气泡图或其他富集展示模板 |
+| 展示表达模式 | 搜索热图、带注释热图或 marker 气泡图 |
 
-1. **快照 vs 远端**:索引页生成自插件内置的目录快照;安装后 SFL 会通过签名 feed
-   异步更新 Open Figure Modules 的本地 overlay,远端可能已有新增或下架模块。
-   最终以 SFL 搜索结果为准。
-2. **你自己的图不在索引里**:Local Published 的模板请在工作台或搜索里查看,
-   它们属于你本机 Library,不在这个仓库的目录快照中。
-3. **FigureYa 无分类元数据**:FigureYa 目录没有按用途的分类字段,索引按模板 ID
-   字母序列出;按场景找图建议直接用关键词搜索(如 survival、PCA、volcano)。
+```text
+请在 Open Figure Modules 中查找适合比较两组细胞组成的模板。
+先核对我的输入数据,展示候选预览、数据要求与来源,然后停下来让我选。
+不要自动下载完整模块或运行代码。
+```
 
-找到候选模板后的流程见[第 3 节](#3-模板浏览搜索与确认);数据怎么准备见
-[第 5 节](#5-准备你自己的图与数据)。
+### 4.2 为什么目录数量会不同
+
+| 层次 | 代表什么 |
+| --- | --- |
+| 内容仓库 | 已合入的公开模块,可能尚未发布到官方 feed |
+| 官方发布目录 | 官方 feed 指向的版本;客户端验证签名后可采用 |
+| 插件内置目录(bootstrap) | 打包时的离线起步快照,不代表当前全集 |
+| 本机加载目录 | 本机实际采用的内置或已验证目录,受更新状态、联网和配置影响 |
+
+早期安装中的小目录可能远少于官方已发布集合。插件内置条目数不是模板总数上限,手册不固定宣称一个当前总数。
+最新数量请查看内容源;本机可用数量请让模型读取相应 Provider 的状态。不要用一次搜索结果的条数代替全集数量。
+
+普通模块新增、更新或撤下不要求重新打包插件。SFL 搜索读取已加载的本地目录,不等待网络;官方目录可以在后台更新。
+若本机仍显示旧快照,先检查目录来源、更新状态和错误,不要仅凭手册数字判断安装失败。
+
+选中模板后按[第 3 节](#3-模板浏览搜索与确认)继续,数据适配见[第 5 节](#5-准备你自己的图与数据)。
 
 ---
 
 ## 5. 准备你自己的图与数据
 
-把"一张图 + 它的代码 + 作图数据"当作一个**图形单元(Figure Unit)**导入。
-建议每个图形单元整理出一个独立文件夹再开始。
+这里有两条独立路线:**用已有模板画自己的数据**,以及**把满意的图保存为可复用资产**。
+使用公共模板不要求先导入、发布一张自己的图。
 
-### 5.1 要准备什么(你)
+### 5.1 路线 A:用模板画自己的数据
+
+先完成第 3 节的选择与物化,再让宿主模型检查项目副本中的 `description.md`、`data_schema.yml`、输入文件和实际代码。
+向模型提供数据路径、各列含义、分组和单位;未知含义先询问,不要为适配图形而猜测或改动统计结果。
+
+**最小教学例子:** `sc-celltype-grouped-stacked-bar` 的真实输入契约是样本级长表,一行代表一个样本中一种细胞的计数。
+字段依据固定版本的[数据说明](https://github.com/jarxunlai/ScientificFigureLibrary-personal/blob/b349606d7219b58a80a224e409dfd51928d1329b/modules/sc-celltype-grouped-stacked-bar/data_schema.yml)和[绘图代码](https://github.com/jarxunlai/ScientificFigureLibrary-personal/blob/b349606d7219b58a80a224e409dfd51928d1329b/modules/sc-celltype-grouped-stacked-bar/code/organized.R)。下面的数值是为教程编写的合成示例,不是真实实验结果:
+
+```csv
+Sample_ID,Group,celltype,n
+C1,Control,B-cells,40
+C1,Control,T-cells,60
+C2,Control,B-cells,30
+C2,Control,T-cells,70
+T1,Treatment,B-cells,55
+T1,Treatment,T-cells,45
+T2,Treatment,B-cells,60
+T2,Treatment,T-cells,40
+```
+
+- 必需列是 `Sample_ID`、`Group`、`celltype`、`n`;`n` 为非负整数,每个样本只属于一个组。
+- 该版本示例代码固定使用 `Control` / `Treatment`,并从 Control 组决定细胞类型顺序。真实分组名称或某组独有的细胞类型需要先确认映射和顺序,不能直接让它们变成缺失值。
+- 代码先按组汇总细胞计数,再绘制 100% 堆叠柱;这不是样本比例的等权平均,也不是差异丰度检验。改变汇总方法属于分析决策,不能只作为样式修改。
+- 保留物化时的合成示例;真实数据可另存为项目中的 `data/user-counts.csv`,让模型在脚本副本里明确修改读取路径,不要静默覆盖原数据。
+- 重复行、负值、缺失值、组名不匹配或零总数先诊断,不自动删除、合并、补零或安装依赖。
+
+```text
+请检查这个模板的数据契约与我的计数表,说明每列如何对应、每行代表什么。
+保留模板的示例输入,在项目副本中使用我的数据路径。先确认分组名称、
+细胞类型顺序和按组汇总的含义,再修改脚本。列出所需 R 包和输出目录,
+等我授权运行后再执行;不要把数据适配说成已经复现了原研究。
+```
+
+### 5.2 路线 B:把自己的图保存到图库
+
+把“一张图 + 它的代码 + 作图数据”当作一个图形单元(Figure Unit),建议放在独立文件夹。
+没有可靠代码时使用 `visual_reference`,不要声称存在可复现模板。
+这一步是可选的资产沉淀,不是路线 A 的前置条件。
 
 | 材料 | 要求 |
 | --- | --- |
@@ -217,7 +235,7 @@ SFL 的核心纪律是:**先看真实预览,由你确认那一张卡,然后才�
 | 依赖信息 | 用到的包列表(会进入模板描述) |
 | 许可信息 | 你拥有导入权利;许可证在导入时如实记录 |
 
-### 5.2 导入与发布流程(🤖 宿主模型执行,关键处你确认)
+### 5.3 导入与发布流程(🤖 宿主模型执行,关键处你确认)
 
 | 步骤 | 谁做 | 工具/操作 |
 | --- | --- | --- |
@@ -267,13 +285,15 @@ SFL 的核心纪律是:**先看真实预览,由你确认那一张卡,然后才�
 导出格式:
 
 ```text
-投稿要求:TIFF,300 dpi,白底,Lab 或 RGB 都可以;矢量 PDF 不需要套栅格 DPI。
+请按我提供的期刊要求导出 TIFF,300 dpi,白底;色彩空间按期刊和实际后端确认。
+矢量 PDF 不需要套栅格 DPI。
 ```
 
 有期刊规范或参考图时直接提供:
 
 ```text
-按 Nature 单栏 89 mm 宽度规范调整这张图;附上一张参考图,请尽量贴近它的版式。
+我提供的投稿说明要求单栏宽度 89 mm;请按这个最终尺寸调整这张图。
+附上一张参考图,请尽量贴近它的版式,但不要改变数据含义。
 ```
 
 **由谁完成:** 改代码与运行由宿主模型(🤖)在项目批准的 R/Python 环境里完成,
@@ -343,14 +363,24 @@ CC BY-NC-SA 4.0(见 `assets/FIGUREYA_LICENSE.txt`);Open Figure Modules 代码
 MIT、内容与文档 CC BY 4.0。详见
 [THIRD_PARTY_NOTICES.md](../THIRD_PARTY_NOTICES.md)。
 
-**索引页的模块数和 SFL 里搜到的不一致?**
-索引页是内置快照,安装后签名 feed 可能已更新本地 overlay。以 SFL 搜索为准;
-文档维护者可按[附录 B](#附录-b索引再生成与链接检查)重新生成。
+**内容目录和 SFL 的数量不同?**
+内容仓库、官方发布目录、插件 bootstrap 和本机加载目录是不同层次,见[第 4.2 节](#42-为什么目录数量会不同)。
+搜索结果可能经过关键词过滤和分页,不能据此宣称完整目录只有这么多。
 
-**我的数据会被上传吗?**
-Library 在你指定的本机目录;搜索与 Provider 状态检查完全离线,搜索不等待网络。
-只有你显式要求的流程(如 GitHub 发布 PR、官方频道提交)才涉及网络,且都需要
-逐步确认。安全边界见 [SECURITY.md](../SECURITY.md)。
+**我的数据会被上传吗?会联网吗?**
+
+- SFL 的 Library 文件存放在你绑定的本机目录,没有用于托管这些文件的 SFL 后端。
+- 搜索使用已加载的本地目录,不等待网络;Provider 状态读取本身是离线的。但进程启动及后续后台检查可在自动刷新开启时联网获取官方目录和预览,不是每次都另行询问。
+- 自动目录刷新是获取公共元数据和预览,不等于发布你的 Library。完整模块归档按你确认的物化流程获取;发布到 GitHub/官方频道属于另外的显式授权流程。
+- 关闭官方自动刷新可使用已有配置流程或环境变量 `SFL_OPEN_FIGURE_AUTO_REFRESH=0`,由用户明确决定;这不保证其他显式网络操作或宿主模型也离线。
+- 宿主模型如何处理你提交的数据、图像和对话,取决于宿主及模型服务的设置。SFL 本地优先不等于整条工作流离线;敏感数据应先核对宿主的数据政策。
+
+安全边界见 [SECURITY.md](../SECURITY.md)。
+
+**字体缺失、依赖不足或渲染失败?**
+让模型给出原始错误、实际运行环境和缺失项,先区分数据契约、字体、包和导出后端问题。
+不要自动装包、替换字体或改数据来隐藏失败;确认修复方案后再执行。
+
 
 ---
 
@@ -367,11 +397,10 @@ ScientificFigureLibrary/
 ├── docs/
 │   ├── USER_GUIDE.md              # 本手册(英文)
 │   ├── USER_GUIDE.zh-CN.md        # 本手册(中文)
-│   ├── generated/                 # 自动生成的图型索引(勿手工编辑)
 │   ├── PROTOCOL.md                # 完整工具契约
 │   ├── QUICKSTART.md              # 安装快速上手
 │   └── GLOBAL_LIBRARY_0.6.md      # 当前 Library 设计说明
-├── scripts/                       # 构建/打包/索引生成脚本
+├── scripts/                       # 构建/打包/文档检查脚本
 ├── skills/                        # 四个内置 Skills
 └── src/                           # MCP 服务器实现
 ```
@@ -407,6 +436,22 @@ ScientificFigureLibrary/
 
 ---
 
+### 9.5 工具对照
+
+供宿主模型和进阶用户查阅,不要求普通用户背工具名。
+
+| 操作 | 工具 |
+| --- | --- |
+| 配置 | `figure_library_source_status`, `figure_library_open`; `figure_library_plan_bind_global` / `figure_library_apply_bind_global`; `figure_library_plan_bind_workspace` / `figure_library_apply_bind_workspace` |
+| 搜索 | `figure_library_search`, `figure_library_list_provider_sources` |
+| 预览与确认 | `figure_library_preview_exact` / `figure_library_confirm_selection`; `figure_library_preview_exact_headless` / `figure_library_confirm_selection_headless` |
+| 物化 | `figure_library_plan_materialize` / `figure_library_apply_materialize` |
+
+绑定与物化都要展示计划再等用户确认。精确预览的 `providerId`、`exactSelector`、`previewReceipt` 必须保持不变;缺回执会返回 `preview_required`。
+参数、导入发布、备份恢复等完整合同统一见 [PROTOCOL](PROTOCOL.md),本表不是另一份协议。
+
+---
+
 ## 附录 A:端到端示例
 
 场景:新用户用 Open Figure Modules 里的单细胞细胞类型比例堆叠柱状图模板
@@ -414,34 +459,35 @@ ScientificFigureLibrary/
 
 | # | 你做 | 宿主模型做 | SFL 服务器做 |
 | --- | --- | --- | --- |
-| 1 | 发出安装请求(第 2.1 节方式 A 的提示词) | 按 QUICKSTART 安装并注册 MCP 服务器 | — |
+| 1 | 发出安装请求(第 2.1 节的提示词) | 按 QUICKSTART 安装并注册 MCP 服务器 | — |
 | 2 | 提供 `D:\figure-library` 和项目目录两个绝对路径 | Plan 绑定并展示路径,你确认后 Apply | 校验路径、写 locator、启用写入 |
-| 3 | 说"搜索 celltype stacked" | `figure_library_search`,展示候选卡后**停下等你选** | 返回候选与缩略图,附 `exactSelector` |
+| 3 | 说"在 Open Figure Modules 搜索分组堆叠柱状细胞构成图" | `figure_library_search`,展示候选卡后**停下等你选** | 返回候选与缩略图,附 `exactSelector` |
 | 4 | 点开详情、精确预览后确认那张卡 | 按宿主能力走 `preview_exact`/`confirm_selection`(或 headless 版) | 生成一次性 `previewReceipt` |
-| 5 | 确认物化计划 | `figure_library_plan_materialize` → 你确认 → `figure_library_apply_materialize`,目标 `./figures/fig03-celltype/` | 校验回执与计划,复制模板文件集 `template`,写 `template.lock.json` |
-| 6 | 把自己的数据整理成模板要求的表(见索引条目的"输入数据要求") | 对照 `description.md`/`data_schema.yml` 检查列与单位,替换示例数据 | — |
+| 5 | 确认物化计划 | `figure_library_plan_materialize` → 你确认 → `figure_library_apply_materialize`,使用你明确提供的绝对目标目录 | 校验回执与计划,复制模板文件集 `template`,写 `template.lock.json` |
+| 6 | 按第 5.1 节核对行单位、列名、分组和汇总方法 | 保留合成示例,在项目副本中明确修改输入路径 | — |
 | 7 | 提风格要求(第 6 节示例:Arial、分组配色、170 mm × 60 mm、300 dpi) | 按 figure-style 指导改项目内脚本副本 | — |
-| 8 | 批准运行 | 在项目批准的 R 环境运行脚本,看图自查,交付图像路径 | — |
+| 8 | 批准运行 | 核对依赖和明确输出目录后,在项目批准的 R 环境执行并看图自查 | — |
 | 9 | 检查成图,提出修改 | 迭代重绘 | — |
 | 10 | 满意后说"按一图一文件夹整理"(第 7 节示例) | 整理归档并给内容清单 | — |
+
+该模板分发的脚本默认只生成 `render.png`,没有指定输出位置时使用 R 临时目录。宿主应在获批后通过 `SFL_OUTPUT_DIR` 或核对过的脚本参数指定项目输出目录;如需 PDF/TIFF,还需修改项目副本中的导出代码并实际验证。这里的流程说明不是已在你的机器运行成功的证明。
 
 任意一步卡住时,先问宿主模型当前处于哪一步、缺哪个确认;`setup_required`、
 `preview_required` 等错误码的含义见 [PROTOCOL.md](PROTOCOL.md)。
 
-## 附录 B:索引再生成与链接检查
+## 附录 B:文档维护与链接检查
 
-本手册的图型索引(第 4 节链接的四个页面)由脚本从内置目录 JSON 生成,
-输出确定性(不含运行时刻时间戳),元数据更新后可重复再生成:
+从完整源码检出目录执行:
 
 ```bash
-npm run docs:index         # 重新生成 docs/generated/ 下四个索引页
-npm run docs:check-links   # 检查手册与 README 的本地链接和锚点(离线)
+npm run docs:check-links
+node --test tests/docs-link-checker.test.ts
 ```
 
-- `docs:index` 读取 `assets/catalog.json` 与
-  `assets/personal-modules/module-catalog.json`,重新生成中英文四页;
-  缺失元数据会如实标注,不会编造链接。
-- `docs:check-links` 只校验仓库内相对链接与标题锚点,不访问外部网站,
-  可在离线环境重复执行。
-- 目录快照更新(如 FigureYa 目录重建、Open Figure Modules feed 刷新 bootstrap)
-  后,重新运行 `docs:index` 并随代码一起提交即可,无需手工维护模板名单。
+只检查 README、手册和 QUICKSTART 中支持的 Markdown 本地链接及标题锚点;外部链接计数但不抓取,不会下载模板或刷新本机目录。
+本地检查不需要安装依赖。它不能证明外部页面在线、宿主安装成功或绘图已通过。
+
+- 两种语言的目录结构、数据契约、功能状态和技术标识应同步维护。
+- README 使用在线手册入口,解压插件包或安装 npm 包后也不会指向未打包的手册路径;阅读在线手册需要网络。
+- 完整源码检出仍可离线阅读本手册;公共完整模板目录由各内容源维护,不随手册复制或强制纳入安装包。
+- 以后如需可复现的离线全量索引,应另行约定固定的官方发布快照与更新流程,不要把 bootstrap 当成当前全集。

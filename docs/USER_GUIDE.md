@@ -32,7 +32,7 @@ presented as shipped ones:
 Appendices:
 
 - [Appendix A: end-to-end example](#appendix-a-end-to-end-example)
-- [Appendix B: regenerating the index and checking links](#appendix-b-regenerating-the-index-and-checking-links)
+- [Appendix B: document maintenance and link checks](#appendix-b-document-maintenance-and-link-checks)
 
 ---
 
@@ -59,7 +59,7 @@ Three parties are involved; for every step, ask who does it:
 - MCP App gallery: browse, exact preview, and user confirmation before anything
   proceeds
 - Unified retrieval in the default order: **Local Published → FigureYa →
-  bundled Open Figure Modules → enabled dynamic personal Providers that
+  Open Figure Modules (bundled or verified updated catalog) → enabled dynamic personal Providers that
   explicitly opt into default search**; the Community snapshot is frozen and
   excluded from default search
 - **Exact materialization**: copies the one template you confirmed into a
@@ -102,57 +102,25 @@ figure-style) guide those behaviors; see [section 9](#9-advanced-reference).
 **Prerequisites (you):** Node.js 22 or newer; any stdio MCP host (Wisp
 Science, Claude Science, Codex, Claude Code, Cursor, and others).
 
-### 2.1 Install options (pick one)
+### 2.1 Installation
 
-**Option A: let a coding agent install it (recommended for new users).** Give
-this repository to Claude Code, Codex, Cursor, or another local coding agent
-with terminal access, together with this request (✅ the installer is this
-repository's documentation):
+Keep host-specific install, packaging, and connection instructions in the
+[QUICKSTART](QUICKSTART.md), rather than duplicating commands here. From an
+unpacked plugin, use the [online quickstart](https://github.com/xuzhougeng/ScientificFigureLibrary/blob/main/docs/QUICKSTART.md).
+
+Give a terminal-capable host model this request:
 
 ```text
 Install Scientific Figure Library from
-https://github.com/xuzhougeng/ScientificFigureLibrary.
-
-Follow docs/QUICKSTART.md. Prefer a GitHub Release ZIP when one is published.
-Node.js 22+ is required. Register the stdio MCP server as figure-library
-pointing at dist/index.js. For Wisp Science, use npm run package:wisp and
-install the generated plugin. For Cursor, use npm run package:cursor and unzip
-into ~/.cursor/plugins/local/figure-library/. Bind one global Library directory on disk.
-Do not execute user plotting code. First test: open or source_status; if
-setup_required, bind the global Library and Local workspace before searching.
-Tell me when I need to grant folder access or start a new host session.
+https://github.com/xuzhougeng/ScientificFigureLibrary using its QUICKSTART
+and the instructions for my host. Explain downloads and configuration changes
+before asking for my approval. Do not run plotting code or automatically install
+plotting dependencies. Once connected, check setup status and ask for explicit
+absolute Library and Local workspace paths if either binding is missing.
+Tell me when folder access, a host restart, or a new session is needed.
 ```
 
-**Option B: Wisp Science plugin (🤖 the host packages, you install).**
-`npm run package:wisp` produces a ZIP; install and enable it in Wisp
-**Settings → Plugins**, then start a new session.
-
-**Option C: Cursor local plugin.** `npm run package:cursor` produces a ZIP;
-unzip it into `~/.cursor/plugins/local/figure-library/` and restart Cursor.
-
-**Option D: run from source.**
-
-```bash
-git clone https://github.com/xuzhougeng/ScientificFigureLibrary.git
-cd ScientificFigureLibrary
-npm ci
-npm run check
-node dist/index.js
-```
-
-```json
-{
-  "mcpServers": {
-    "figure-library": {
-      "command": "node",
-      "args": ["/absolute/path/to/ScientificFigureLibrary/dist/index.js"]
-    }
-  }
-}
-```
-
-Note: do not register a raw MCP entry **and** a host plugin at the same time;
-that duplicates tools.
+Do not register both a bare MCP configuration and a plugin for the same server.
 
 ### 2.2 First-run setup: bind two directories
 
@@ -164,9 +132,9 @@ workspace** is the working directory on the project side.
 | --- | --- | --- |
 | 1. Check status | Host model | Call `figure_library_source_status` or `figure_library_open`; expect `setup_required` |
 | 2. You provide two **absolute paths** | You | e.g. `D:\figure-library` and the current project folder; do not casually use the project as the global Library |
-| 3. Plan the binding | Host model | `figure_library_plan_bind_global` / `figure_library_plan_bind_workspace`, showing you the exact paths, `libraryId`, and `planDigest` |
+| 3. Plan the binding | Host model | Show the exact directories and plan; do not apply before confirmation; tool names are in section 9.5 |
 | 4. Confirm the paths | You | Verify the displayed paths before confirming |
-| 5. Apply the binding | Host model | `figure_library_apply_bind_global` / `figure_library_apply_bind_workspace` in the same server session |
+| 5. Apply the binding | Host model | Apply the confirmed plans in the same server session |
 | 6. Re-check | Host model | `figure_library_source_status` again; writes enabled, counts correct |
 
 The binding is recorded in the machine-local locator (Windows:
@@ -178,75 +146,132 @@ an admin override only; daily use does not need it.
 
 ## 3. Browse, search, and confirm templates
 
-The core discipline: **look at the real preview, let the user confirm that one
-card, and only then materialize.**
+The core discipline is **view the real preview, explicitly confirm that card,
+then materialize**. Materialization copies the confirmed template into the
+project; it does not execute code.
 
-| Step | Who | Notes |
+| Step | Who | What you need to know |
 | --- | --- | --- |
-| 1. Open workbench / search | Host model | MCP App hosts call `figure_library_open`; any host can call `figure_library_search` |
-| 2. Browse candidates | You + host model | The App renders thumbnails page by page; click a thumbnail or "查看详情" for the large image and description; the retrieval score only orders candidates — it is **not** similarity, confidence, or approval |
-| 3. Stop and wait for you | Host model | After searching, the host must stop and wait for your selection unless you explicitly say "帮我选择模板" |
-| 4. Exact preview | Host model / App | In the App, "查看精确预览" runs `figure_library_preview_exact` + `figure_library_confirm_selection`; hosts without an App UI use `figure_library_preview_exact_headless` + `figure_library_confirm_selection_headless` |
-| 5. Confirm | You | Only your confirmation after seeing the exact preview produces the one-time `previewReceipt` |
-| 6. Plan materialization | Host model | `figure_library_plan_materialize` with the unchanged `providerId`, `exactSelector`, `previewReceipt`, and absolute destination; a missing receipt returns `preview_required` |
-| 7. Present and confirm the plan | Host model + you | Show the exact template, target directory, and file set (`template`/`full`) |
-| 8. Apply materialization | Host model | `figure_library_apply_materialize`; the target is `<destination>/<templateId>` and existing directories are never overwritten |
-| 9. Inspect the result | You + host model | The project now contains the template files plus `template.lock.json` recording `codeExecutedBySflClient: false` |
+| 1. Describe the goal and search | You → host model | State the research question, available data, and preferred source; the model shows actual candidates |
+| 2. Browse candidates | You | Inspect thumbnails, use cases, input requirements, and sources; retrieval scores are not confidence or scientific validation |
+| 3. Choose a template | You | The model stops after search unless you explicitly delegate the choice |
+| 4. View the exact preview | Host model / App → you | View the actual selected version; hosts without an App use the headless preview flow |
+| 5. Explicitly confirm | You | Only confirmation after the exact preview produces a session-local, single-use preview receipt |
+| 6. Check the materialization plan | Host model → you | Check the template, file set (template/full), network needs, and absolute destination before confirming |
+| 7. Apply materialization | Host model calls SFL | Preserve the receipt and exact identity; output is `<destination>/<templateId>` and existing directories are not overwritten |
+| 8. Inspect the files | You + host model | Review the inventory and `template.lock.json`, then adapt your data; no plotting code has run |
 
-Two common misconceptions:
+See [section 9.5](#95-tool-reference) for tool names; users do not need to memorize them.
 
-- **Retrieval scope**: default search follows the order in section 1; the
-  Community snapshot is accessible only when explicitly requested. Use
-  `figure_library_list_provider_sources` (fully offline) to see enabled
-  providers.
-- **Upstream status ≠ local verification**: upstream publication, publisher
-  signatures, or central curation of FigureYa and Open Figure Modules never
-  become your local approval. Hosts must describe templates with that
-  distinction intact.
-
-An empty catalog can be a healthy state: after an authorized redaction a
-bundled extra catalog may contain zero releases, and default search continues
-across the remaining providers — that does not mean the install is broken.
+- **Search scope:** defaults are in section 1; frozen Community is explicit-only. Provider status can be read offline, but search results are not a complete catalog enumeration.
+- **Upstream status is not local verification:** upstream publication, signatures, or review do not establish a successful local run or scientific validity.
+- **An empty catalog can be healthy:** a source may legitimately be empty after a withdrawal. Inspect source status rather than reinstalling without diagnosis.
 
 ---
 
 ## 4. Figure index (by purpose)
 
-The two figure indexes referenced here are **auto-generated** from the bundled
-catalog metadata and stamped with their snapshot version:
+**The guide explains workflows; content sources maintain their catalogs.**
+This guide does not duplicate an easily stale complete template list or treat
+a plugin's bundled count as a permanent total.
 
-- [Open Figure Modules index (36 modules, grouped by plotFamily)](generated/open-figure-modules-index.md)
-- [FigureYa template index (all templates, alphabetical by ID)](generated/figureya-index.md)
+- [Current Open Figure Modules content catalog](https://github.com/jarxunlai/ScientificFigureLibrary-personal#current-modules): browse figure families, Chinese names, readable English subtitles, and module links; each module provides previews, descriptions, inputs, and its own license scope.
+- [Upstream FigureYa catalog](https://github.com/ying-ge/FigureYa): browse upstream documentation, then search SFL with the FigureYa source and inspect the available version.
+- **Local Published and additional Providers:** inspect them in your local workbench; a public content repository is not an inventory of your personal Library.
 
-Every entry carries: the name and stable ID (`moduleId`), the plot family, a
-preview link, the research use case, input data requirements, template source
-and license, and a copyable natural-language invocation example. Metadata that
-the catalog lacks is honestly marked "not recorded"; invocation links are
-never fabricated.
+### 4.1 Search by research question
 
-Three things to keep in mind when using the indexes:
+| I want to | Ask the host model to look for |
+| --- | --- |
+| Compare cell composition | Cell proportions, grouped bars, or stacked bars |
+| Show differential expression | Suitable views for the differential-analysis table, after checking its input fields |
+| Show pathway enrichment | Enrichment bars, bubbles, or other enrichment templates |
+| Show expression patterns | Heatmaps, annotated heatmaps, or marker dot plots |
 
-1. **Snapshot vs remote**: the pages are generated from the catalog snapshot
-   bundled with the plugin. After install, SFL asynchronously refreshes the
-   local Open Figure Modules overlay through a signed feed, so the remote may
-   already have newer or retired modules. Always trust the SFL search results.
-2. **Your own figures are not in the index**: Local Published templates live in
-   your machine's Library — browse them in the workbench or via search.
-3. **FigureYa has no category metadata**: its catalog carries no use-case
-   categories, so that index lists templates alphabetically by ID; to find a
-   figure by scenario, search by keyword (for example survival, PCA, volcano).
+```text
+Find Open Figure Modules templates for comparing cell composition across two
+groups. First inspect my inputs, show candidate previews, input requirements,
+and sources, then stop for my choice. Do not automatically download complete
+modules or execute code.
+```
 
-After you find a candidate, continue with [section 3](#3-browse-search-and-confirm-templates);
-data preparation is covered in [section 5](#5-prepare-your-own-figure-and-data).
+### 4.2 Why catalog counts differ
+
+| Layer | What it represents |
+| --- | --- |
+| Content repository | Merged public modules, potentially not yet published to the official feed |
+| Official published catalog | The version referenced by the official feed, accepted by clients after signature verification |
+| Plugin bootstrap | The offline catalog bundled at packaging time, not the current complete collection |
+| Locally loaded catalog | The bundled or verified catalog actually in use, depending on refresh status, connectivity, and configuration |
+
+An older installation's small bootstrap may contain far fewer modules than
+the official published collection. Its count is not an upper limit, and this
+guide does not hard-code a current total.
+Use the content source for current counts and ask the host to read the relevant
+Provider's status for local availability. One search page is not a full inventory.
+
+Ordinary module additions, updates, or withdrawals do not require repackaging
+the plugin. Search reads the loaded local catalog without waiting for the
+network; the official catalog can refresh in the background. If the local
+catalog is old, inspect its origin, refresh status, and errors before blaming
+the installation.
+
+Continue with [section 3](#3-browse-search-and-confirm-templates), then adapt
+your data using [section 5](#5-prepare-your-own-figure-and-data).
 
 ---
 
 ## 5. Prepare your own figure and data
 
-Treat "one figure + its code + the plotting data" as one **Figure Unit** and,
-ideally, give it its own folder before importing.
+There are two independent routes: **plot your own data with an existing
+template**, or **save a finished figure as a reusable asset**. Using a public
+template does not require importing and publishing your own figure first.
 
-### 5.1 What to prepare (you)
+### 5.1 Route A: plot your own data with a template
+
+Complete selection and materialization in section 3. Have the host inspect the
+project copy's `description.md`, `data_schema.yml`, input files, and actual code.
+Provide your data path, column meanings, groups, and units. Unknown meanings
+must be clarified; do not guess or change statistical results to fit a figure.
+
+**Minimal teaching example:** `sc-celltype-grouped-stacked-bar` expects a
+sample-level long table: one row is the count of one cell type in one sample.
+The field contract is grounded in the pinned [data schema](https://github.com/jarxunlai/ScientificFigureLibrary-personal/blob/b349606d7219b58a80a224e409dfd51928d1329b/modules/sc-celltype-grouped-stacked-bar/data_schema.yml)
+and [plotting code](https://github.com/jarxunlai/ScientificFigureLibrary-personal/blob/b349606d7219b58a80a224e409dfd51928d1329b/modules/sc-celltype-grouped-stacked-bar/code/organized.R).
+The following values are synthetic tutorial data, not experimental results:
+
+```csv
+Sample_ID,Group,celltype,n
+C1,Control,B-cells,40
+C1,Control,T-cells,60
+C2,Control,B-cells,30
+C2,Control,T-cells,70
+T1,Treatment,B-cells,55
+T1,Treatment,T-cells,45
+T2,Treatment,B-cells,60
+T2,Treatment,T-cells,40
+```
+
+- Required columns are `Sample_ID`, `Group`, `celltype`, and `n`; counts are nonnegative integers and each sample belongs to one group.
+- This code version fixes group levels to `Control` / `Treatment` and orders cell types using Control. Different group names or group-specific cell types require an explicit mapping and order; do not silently turn them into missing values.
+- The code pools cell counts by group before drawing 100% stacked bars. It is not an equal-weight average of sample proportions or a differential-abundance test. Changing the aggregation is an analysis decision, not merely styling.
+- Preserve the materialized synthetic example. Put real inputs in a separate project file such as `data/user-counts.csv` and explicitly change the project-side script's input path; do not silently overwrite source data.
+- Diagnose duplicate rows, negative or missing values, mismatched groups, and zero totals first. Do not automatically delete, merge, zero-fill, or install dependencies.
+
+```text
+Inspect the template's data contract and my count table. Explain the row unit
+and column mapping. Preserve its synthetic input and use my data path in the
+project copy. Confirm group names, cell-type ordering, and the meaning of pooled
+group counts before editing. List required R packages and the output directory;
+wait for permission to run. Do not call data adaptation a reproduction of the
+original study.
+```
+
+### 5.2 Route B: save your own figure to the Library
+
+Treat one figure, its code, and its plotting data as a Figure Unit, preferably
+in one folder. Use `visual_reference` when reliable code is absent.
+This optional asset-capture step is not a prerequisite for route A.
 
 | Material | Requirement |
 | --- | --- |
@@ -256,7 +281,7 @@ ideally, give it its own folder before importing.
 | Dependencies | The package list (it becomes part of the template description) |
 | License | You must have the right to import; the license is recorded truthfully at import time |
 
-### 5.2 Import and publish flow (🤖 host model, with your confirmation at the gates)
+### 5.3 Import and publish flow (🤖 host model, with your confirmation at the gates)
 
 | Step | Who | Tool / action |
 | --- | --- | --- |
@@ -312,15 +337,17 @@ and one vector PDF.
 Export format:
 
 ```text
-Submission requires TIFF, 300 dpi, white background; do not apply raster DPI
-to the vector PDF.
+Follow the journal instructions I provide: TIFF, 300 dpi, white background.
+Confirm the color space against those instructions and the actual backend.
+Do not apply raster DPI to the vector PDF.
 ```
 
 Provide journal rules or a reference figure directly:
 
 ```text
-Adjust this figure to the Nature single-column 89 mm width; attached is a
-reference figure — match its layout as closely as possible.
+The submission instructions I provide specify a single-column width of 89 mm.
+Use that final size; match the attached reference layout without changing the
+meaning of the data.
 ```
 
 **Who does what:** editing and running are done by the host model (🤖) inside
@@ -402,21 +429,30 @@ back up, `figure_library_plan_full_restore` /
 **How do licenses work?**
 This repository's code is MIT; imported figures keep the license recorded at
 import; upstream FigureYa content is CC BY-NC-SA 4.0 (see
-`assets/FIGUREYA_LICENSE.txt`); Open Figure Modules are code MIT, content and
-documentation CC BY 4.0. See
+`assets/FIGUREYA_LICENSE.txt`); Open Figure Modules have per-module license scopes recorded in their manifests. See
 [THIRD_PARTY_NOTICES.md](../THIRD_PARTY_NOTICES.md).
 
-**The index page count differs from what SFL finds?**
-Index pages are the bundled snapshot; after install the signed feed may have
-updated the local overlay. Trust SFL search; maintainers can regenerate the
-pages per [Appendix B](#appendix-b-regenerating-the-index-and-checking-links).
+**The content catalog and SFL show different counts?**
+Content, official publication, plugin bootstrap, and locally loaded catalogs
+are different layers; see [section 4.2](#42-why-catalog-counts-differ).
+Keyword filtering and pagination also mean search results are not a full inventory.
 
-**Will my data be uploaded?**
-The Library lives in the local directory you chose; search and provider
-status checks are fully offline and search never waits for the network. Only
-flows you explicitly request (such as a GitHub publication PR or the official
-channel submission) touch the network, and each step requires confirmation.
+**Will my data be uploaded? Does SFL access the network?**
+
+- SFL Library files live in the local directory you bind; SFL has no hosted backend for these files.
+- Search reads the loaded local catalog without waiting for the network, and reading Provider status is itself offline. With auto-refresh enabled, process startup and later background checks can fetch the official catalog and previews without asking separately each time.
+- Fetching public catalog metadata and previews is not publishing your Library. Complete module archives are obtained through confirmed materialization; GitHub or official-channel publication has separate explicit authorization gates.
+- Users can disable official auto-refresh through its configuration flow or `SFL_OPEN_FIGURE_AUTO_REFRESH=0`. This does not make other explicitly requested network operations or the host model offline.
+- Handling of data, images, and conversations sent to a host model depends on that host and model service. Local-first SFL does not guarantee an offline end-to-end workflow; check host data policies before sharing sensitive material.
+
 Security boundaries: [SECURITY.md](../SECURITY.md).
+
+**Missing fonts or dependencies, or a failed render?**
+Ask the host for the original error, actual runtime, and missing requirements.
+Separate input-contract, font, package, and export-backend problems. Do not
+silently install packages, substitute fonts, or alter data to hide a failure;
+approve the proposed fix before it runs.
+
 
 ---
 
@@ -433,11 +469,10 @@ ScientificFigureLibrary/
 ├── docs/
 │   ├── USER_GUIDE.md              # This guide (English)
 │   ├── USER_GUIDE.zh-CN.md        # This guide (Chinese)
-│   ├── generated/                 # Auto-generated figure indexes (do not edit)
 │   ├── PROTOCOL.md                # Full tool contract
 │   ├── QUICKSTART.md              # Install quickstart
 │   └── GLOBAL_LIBRARY_0.6.md      # Current Library design
-├── scripts/                       # Build/package/index-generation scripts
+├── scripts/                       # Build/package/document-check scripts
 ├── skills/                        # The four bundled Skills
 └── src/                           # MCP server implementation
 ```
@@ -476,6 +511,25 @@ do not need to install them separately.
 
 ---
 
+### 9.5 Tool reference
+
+For host models and advanced users; ordinary users need not memorize these names.
+
+| Operation | Tools |
+| --- | --- |
+| Setup | `figure_library_source_status`, `figure_library_open`; `figure_library_plan_bind_global` / `figure_library_apply_bind_global`; `figure_library_plan_bind_workspace` / `figure_library_apply_bind_workspace` |
+| Search | `figure_library_search`, `figure_library_list_provider_sources` |
+| Preview / confirm | `figure_library_preview_exact` / `figure_library_confirm_selection`; `figure_library_preview_exact_headless` / `figure_library_confirm_selection_headless` |
+| Materialize | `figure_library_plan_materialize` / `figure_library_apply_materialize` |
+
+Show binding and materialization plans and wait for confirmation. Preserve the
+exact preview's `providerId`, `exactSelector`, and `previewReceipt`; a missing
+receipt yields `preview_required`. Full parameters, intake/publication, and
+backup/restore contracts remain in [PROTOCOL](PROTOCOL.md), not in a second
+protocol maintained here.
+
+---
+
 ## Appendix A: end-to-end example
 
 Scenario: a new user reproduces the single-cell cell-type proportion stacked
@@ -484,38 +538,39 @@ bar template from Open Figure Modules
 
 | # | You | Host model | SFL server |
 | --- | --- | --- | --- |
-| 1 | Send the install request (section 2.1, option A prompt) | Install per QUICKSTART and register the MCP server | — |
+| 1 | Send the install request (section 2.1 prompt) | Install per QUICKSTART and register the MCP server | — |
 | 2 | Provide two absolute paths, e.g. `D:\figure-library` and the project folder | Plan the binding, show paths, Apply after your confirmation | Validate paths, write the locator, enable writes |
-| 3 | Say "search celltype stacked" | `figure_library_search`, present candidate cards, then **stop and wait for your pick** | Return candidates with thumbnails and `exactSelector` |
+| 3 | Ask to search Open Figure Modules for `sc-celltype-grouped-stacked-bar` | `figure_library_search`, present candidate cards, then **stop and wait for your pick** | Return candidates with thumbnails and `exactSelector` |
 | 4 | Open the details, exact-preview, confirm that card | Use `preview_exact`/`confirm_selection` (or the headless pair) per host capability | Issue the one-time `previewReceipt` |
-| 5 | Confirm the materialization plan | `figure_library_plan_materialize` → your confirmation → `figure_library_apply_materialize` into `./figures/fig03-celltype/` | Validate receipt and plan, copy the `template` file set, write `template.lock.json` |
-| 6 | Arrange your data into the table the template expects (see the entry's input data requirements) | Check columns and units against `description.md`/`data_schema.yml`, replace example data | — |
+| 5 | Confirm the materialization plan | `figure_library_plan_materialize` → your confirmation → `figure_library_apply_materialize` into your explicitly supplied absolute destination | Validate receipt and plan, copy the `template` file set, write `template.lock.json` |
+| 6 | Check row units, columns, groups, and aggregation as in section 5.1 | Preserve the synthetic input and explicitly change the input path in the project copy | — |
 | 7 | State style requirements (section 6 prompts: Arial, fixed group colors, 170 mm × 60 mm, 300 dpi) | Edit the project-side script copy following figure-style guidance | — |
-| 8 | Approve execution | Run the script in the project-approved R environment, self-check the image, deliver the path | — |
+| 8 | Approve execution | Verify dependencies and an explicit output directory, run in the project-approved R environment, and inspect the image | — |
 | 9 | Review the figure, request changes | Iterate and redraw | — |
 | 10 | When satisfied, ask for one-figure-one-folder organization (section 7 prompt) | Organize the archive and deliver the inventory | — |
+
+The distributed script generates `render.png` and defaults to an R temporary directory. After approval, the host should set an explicit project output directory using `SFL_OUTPUT_DIR` or verified script arguments. PDF/TIFF require changes to the project-side export code and actual validation. This walkthrough is not evidence of a successful run on your machine.
 
 If any step gets stuck, ask the host model which step it is on and which
 confirmation is missing; error codes such as `setup_required` and
 `preview_required` are specified in [PROTOCOL.md](PROTOCOL.md).
 
-## Appendix B: regenerating the index and checking links
+## Appendix B: document maintenance and link checks
 
-The figure indexes linked from section 4 are generated from the bundled
-catalog JSON by script. Output is deterministic (no wall-clock timestamps),
-so they can be regenerated reproducibly whenever the metadata changes:
+Run from a complete source checkout:
 
 ```bash
-npm run docs:index         # regenerate the four index pages under docs/generated/
-npm run docs:check-links   # check guide/README local links and anchors (offline)
+npm run docs:check-links
+node --test tests/docs-link-checker.test.ts
 ```
 
-- `docs:index` reads `assets/catalog.json` and
-  `assets/personal-modules/module-catalog.json` and regenerates the four
-  bilingual pages; missing metadata is honestly marked and links are never
-  fabricated.
-- `docs:check-links` validates only repository-relative links and heading
-  anchors, never external websites, so it is repeatable offline.
-- When a catalog snapshot updates (a rebuilt FigureYa catalog, or an Open
-  Figure Modules feed refresh of the bootstrap), rerun `docs:index` and commit
-  the result together with the metadata — no hand-maintained template lists.
+The check covers supported Markdown local links and heading anchors in the
+READMEs, guides, and QUICKSTART. External links are counted, not fetched.
+It does not download modules or refresh local catalogs and needs no dependency
+installation. Passing does not prove external availability, host installation,
+or plotting success.
+
+- Keep both languages aligned in structure, data contracts, feature status, and technical identifiers.
+- README entries use online guide URLs, including in unpacked plugins and npm packages, rather than pointing to guides absent from the package. Reading the online guide requires network access.
+- Complete source checkouts can still read the guide offline. Full public catalogs remain with their content sources; this guide does not duplicate or force them into installation packages.
+- If a complete reproducible offline index is needed later, define a pinned official publication snapshot and update workflow separately; do not equate bootstrap with the current collection.
