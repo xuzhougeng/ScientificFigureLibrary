@@ -89,7 +89,7 @@ test("disabled/missing-key/missing-model/unsupported-protocol are fail closed", 
   }
 });
 
-test("client sends no tools or unsupported optional generation parameters", async () => {
+test("client requests JSON output without tools or extra generation parameters", async () => {
   let calls = 0;
   const output = await client.requestModel(inputFor(), policy, environment(), { fetch: async (url, options) => {
     calls++;
@@ -97,7 +97,8 @@ test("client sends no tools or unsupported optional generation parameters", asyn
     assert.equal(options.redirect, "error");
     assert.equal(options.headers.Authorization, `Bearer ${fakeKey}`);
     const body = JSON.parse(options.body);
-    assert.deepEqual(Object.keys(body).sort(), ["messages", "model", "stream"]);
+    assert.deepEqual(Object.keys(body).sort(), ["messages", "model", "response_format", "stream"]);
+    assert.deepEqual(body.response_format, { type: "json_object" });
     assert.equal(body.model, environment().AI_MODEL);
     assert.equal(body.stream, false);
     assert.equal(body.messages[0].content, client.SYSTEM_RULES);

@@ -1,7 +1,8 @@
 # AI 评论 bot
 
 [SFL AI Assist](../.github/workflows/ai-assist.yml) 使用 GitHub Actions 调用管理员配置的
-Chat Completions 兼容 API，再以 `github-actions[bot]` 身份发布普通讨论评论。
+支持 JSON Output（`response_format: {"type":"json_object"}`）的 Chat Completions 兼容 API，
+再以 `github-actions[bot]` 身份发布普通讨论评论。
 它独立于基础 CI，默认关闭，仅通过 Actions 页面手动触发。
 
 ## 支持的任务

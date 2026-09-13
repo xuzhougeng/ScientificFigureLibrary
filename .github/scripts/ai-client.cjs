@@ -69,7 +69,7 @@ async function requestModel(input, policy, env, dependencies = {}) {
   const inputText = JSON.stringify(input);
   requireValue(inputText.length <= policy.maxInputCharacters, "MODEL_INPUT_TOO_LARGE");
   assertNoSecrets(inputText, settings.apiKey);
-  const body = JSON.stringify({ model: settings.model, stream: false, messages: [
+  const body = JSON.stringify({ model: settings.model, stream: false, response_format: { type: "json_object" }, messages: [
     { role: "system", content: SYSTEM_RULES },
     { role: "user", content: inputText },
   ] });
