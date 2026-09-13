@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       task:
-        description: Advisory task; never modifies code or approves a PR
+        description: Assess whether a useful comment is warranted; may skip without posting
         required: true
         type: choice
         options: [issue_reply, pr_review]

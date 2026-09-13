@@ -2,6 +2,7 @@
 
 const fs = require("node:fs/promises");
 const path = require("node:path");
+const { needsVisualContext, skipDecision, validateIssueDecision, renderIssueReply } = require("./issue-reply.cjs");
 const policy = require("../ai-policy.json");
 const { requestModel, modelSettings } = require("./ai-client.cjs");
 const { upsertComment, findBotComment } = require("./upsert-comment.cjs");
@@ -56,7 +57,36 @@ async function collectInput({ github, context, task, number, env = process.env }
   const { data: issue } = await github.rest.issues.get({ ...context.repo, issue_number: number });
   const checked = checkIssue(issue);
   requireValue(task === "pr_review" ? Boolean(issue.pull_request) : !issue.pull_request, "TASK_OBJECT_KIND_MISMATCH");
-  const content = { title: sanitizeInput(checked.title), body: sanitizeInput(checked.body), files: [], excludedFiles: 0 };
+  const content = { discussion: [], title: sanitizeInput(checked.title), body: sanitizeInput(checked.body), files: [], excludedFiles: 0 };
+  let skipReason = null;
+  const discussionRevision = [];
+  if (task === "issue_reply") {
+    if (needsVisualContext(checked.title, checked.body)) skipReason = "visual_context_required";
+    requireValue(Number.isSafeInteger(issue.comments) && issue.comments >= 0, "DISCUSSION_COUNT_MISSING");
+    if (issue.comments > policy.maxDiscussionComments) {
+      skipReason = "discussion_too_large";
+    } else if (!skipReason) {
+      const { data: bot } = await github.rest.users.getByUsername({ username: "github-actions[bot]" });
+      requireValue(bot.type === "Bot" && Number.isSafeInteger(bot.id), "INVALID_BOT_IDENTITY");
+      const comments = await github.paginate(github.rest.issues.listComments, { ...context.repo, issue_number: number, per_page: 100 });
+      requireValue(comments.length === issue.comments, "DISCUSSION_CHANGED_DURING_READ");
+      let characters = 0;
+      for (const comment of comments) {
+        // Exclude only this bot's own managed output, not a user's forged marker.
+        if (comment.user?.id === bot.id && comment.user?.type === "Bot" &&
+            comment.body?.startsWith("<!-- issue-triage:v1 -->\n")) continue;
+        requireValue(Number.isSafeInteger(comment.id) && comment.id > 0 && typeof comment.body === "string", "INVALID_DISCUSSION_COMMENT");
+        characters += comment.body.length;
+        if (characters > policy.maxDiscussionCharacters) { skipReason = "discussion_too_large"; break; }
+        discussionRevision.push(fingerprint({ id: comment.id, body: comment.body,
+          authorId: comment.user?.id, authorType: comment.user?.type, updatedAt: comment.updated_at }));
+        content.discussion.push({ id: comment.id, body: sanitizeInput(comment.body),
+          author: sanitizeInput(comment.user?.login || "deleted-user"),
+          association: comment.author_association || "NONE", updatedAt: comment.updated_at || null });
+      }
+      if (skipReason) content.discussion = []; // Never reason from a truncated discussion.
+    }
+  }
   let baseSha = null;
   let headSha = null;
   if (task === "pr_review") {
@@ -85,24 +115,16 @@ async function collectInput({ github, context, task, number, env = process.env }
     const { data: latest } = await github.rest.pulls.get({ ...context.repo, pull_number: number });
     requireValue(latest.head.sha === headSha && latest.base.sha === baseSha, "PR_CHANGED_DURING_READ");
   }
-  const sourceKey = fingerprint({ ...checked, baseSha, headSha, policy, workflowSha: context.sha, modelSettings: modelSettings(policy, env) });
-  const input = { schema: "sfl.ai-input.v1", repository: policy.repository, task, number,
-    sourceKey, headSha, baseSha, content };
+  const sourceKey = fingerprint({ ...checked, discussion: content.discussion, discussionRevision, skipReason, baseSha, headSha, policy, workflowSha: context.sha, modelSettings: modelSettings(policy, env) });
+  const input = { schema: "sfl.ai-input.v2", repository: policy.repository, task, number,
+    sourceKey, headSha, baseSha, content, skipReason };
   requireValue(JSON.stringify(input).length <= policy.maxInputCharacters, "MODEL_INPUT_TOO_LARGE");
   return input;
 }
 
 function validateOutput(output, input) {
   assertNoSecrets(JSON.stringify(output));
-  const strings = (values, field) => {
-    requireValue(Array.isArray(values), `${field}_NOT_ARRAY`);
-    requireValue(values.length <= 8, `${field}_TOO_MANY_ITEMS`);
-    return values.map((value) => boundedText(value, 1200));
-  };
-  if (input.task === "issue_reply") {
-    exactKeys(output, ["summary", "missing_information", "next_steps"]);
-    return { summary: boundedText(output.summary), missing_information: strings(output.missing_information, "MISSING_INFORMATION"), next_steps: strings(output.next_steps, "NEXT_STEPS") };
-  }
+  if (input.task === "issue_reply") return validateIssueDecision(output, input);
   exactKeys(output, ["summary", "findings"]);
   requireValue(Array.isArray(output.findings) && output.findings.length <= policy.maxFindings, "INVALID_FINDING_COUNT");
   const findings = output.findings.map((finding) => {
@@ -122,14 +144,14 @@ function validateOutput(output, input) {
   return { summary: boundedText(output.summary), findings };
 }
 
+function outputSkipReason(output, input) {
+  if (input.task === "issue_reply") return output.decision === "skip" ? output.reason : null;
+  return output.findings.length === 0 ? "no_findings" : null;
+}
+
 function renderComment(output, input) {
-  const lines = input.task === "issue_reply" ? [
-    "<!-- issue-triage:v1 -->", "", "## 反馈整理与下一步", "",
-    "AI 辅助建议，仅根据当前 Issue 标题和正文生成，未读取讨论评论或图片，供维护者参考。", "",
-    safeMarkdown(output.summary),
-    ...(output.missing_information.length ? ["", "### 建议补充的信息", ...output.missing_information.map((text) => `- ${safeMarkdown(text)}`)] : []),
-    ...(output.next_steps.length ? ["", "### 下一步", ...output.next_steps.map((text) => `- ${safeMarkdown(text)}`)] : []),
-  ] : [
+  if (outputSkipReason(output, input)) return null;
+  const lines = input.task === "issue_reply" ? renderIssueReply(output) : [
     "<!-- pr-review:v1 -->", "", "## AI 辅助审查（仅建议）", "",
     `审查提交：\`${input.headSha}\`；基线：\`${input.baseSha}\`。`,
     `范围：${input.content.files.length} 个文本文件；排除 ${input.content.excludedFiles} 个生成、敏感、二进制或删除文件。`,
@@ -152,6 +174,7 @@ function renderComment(output, input) {
 async function prepare({ github, context, env = process.env }) {
   const { task, number } = await authorize({ github, context, env });
   const input = await collectInput({ github, context, task, number, env });
+  if (input.skipReason) return { number, task, files: 0, skip: true, reason: input.skipReason };
   const marker = task === "issue_reply" ? "<!-- issue-triage:v1 -->" : "<!-- pr-review:v1 -->";
   const existing = await findBotComment({ github, repo: context.repo, number, marker });
   if (existing?.body?.includes(`<!-- sfl-ai-source:v1 ${input.sourceKey} -->`)) {
@@ -163,18 +186,18 @@ async function prepare({ github, context, env = process.env }) {
 }
 
 async function generateResult(input, env, dependencies = {}) {
-  requireValue(input.schema === "sfl.ai-input.v1" && input.repository === policy.repository, "INVALID_INPUT_ENVELOPE");
+  requireValue(input.schema === "sfl.ai-input.v2" && input.repository === policy.repository, "INVALID_INPUT_ENVELOPE");
   requireValue(["issue_reply", "pr_review"].includes(input.task), "INVALID_TASK");
-  const output = validateOutput(await requestModel(input, policy, env, dependencies), input);
+  const output = validateOutput(input.skipReason ? skipDecision(input.skipReason) : await requestModel(input, policy, env, dependencies), input);
   renderComment(output, input);
-  return { schema: "sfl.ai-result.v1", repository: policy.repository, task: input.task, number: input.number,
+  return { schema: "sfl.ai-result.v2", repository: policy.repository, task: input.task, number: input.number,
     sourceKey: input.sourceKey, runId: String(env.GITHUB_RUN_ID), runAttempt: String(env.GITHUB_RUN_ATTEMPT),
     model: modelSettings(policy, env).model, output };
 }
 
 function verifyResultEnvelope(result, input, env) {
   exactKeys(result, ["schema", "repository", "task", "number", "sourceKey", "runId", "runAttempt", "model", "output"]);
-  requireValue(result.schema === "sfl.ai-result.v1" && result.repository === policy.repository && result.model === modelSettings(policy, env).model,
+  requireValue(result.schema === "sfl.ai-result.v2" && result.repository === policy.repository && result.model === modelSettings(policy, env).model,
     "RESULT_POLICY_MISMATCH");
   requireValue(result.task === input.task && result.number === input.number && result.sourceKey === input.sourceKey, "STALE_OR_WRONG_RESULT");
   requireValue(result.runId === String(env.GITHUB_RUN_ID) && result.runAttempt === String(env.GITHUB_RUN_ATTEMPT), "RESULT_RUN_MISMATCH");
@@ -190,6 +213,12 @@ async function publish({ github, context, env = process.env, log = () => {} }) {
   requireValue(stat.isFile() && !stat.isSymbolicLink() && stat.size <= policy.maxResponseBytes, "INVALID_RESULT_ARTIFACT");
   const result = JSON.parse(await fs.readFile(file, "utf8"));
   const output = verifyResultEnvelope(result, input, env);
+  const reason = outputSkipReason(output, input);
+  if (reason) {
+    const outcome = { operation: "skipped", reason, task, number };
+    log(outcome);
+    return outcome;
+  }
   return upsertComment({ github, repo: context.repo, number,
     marker: task === "issue_reply" ? "<!-- issue-triage:v1 -->" : "<!-- pr-review:v1 -->",
     body: renderComment(output, input), log,
@@ -212,10 +241,10 @@ async function main() {
   const directory = path.join(process.env.RUNNER_TEMP, "sfl-ai-result");
   await fs.mkdir(directory, { recursive: true });
   await fs.writeFile(path.join(directory, "result.json"), JSON.stringify(result), { encoding: "utf8", mode: 0o600 });
-  console.log(JSON.stringify({ operation: "model_completed", task: result.task, number: result.number, model: result.model }));
+  console.log(JSON.stringify({ operation: "model_completed", task: result.task, number: result.number, model: result.model, decision: outputSkipReason(result.output, input) ? "skip" : "reply", reason: outputSkipReason(result.output, input) }));
 }
 
 if (require.main === module) main().catch((error) => { console.error(safeErrorCode(error)); process.exitCode = 1; });
 
 module.exports = { taskInput, authorize, checkIssue, reviewableFile, collectInput, validateOutput,
-  renderComment, prepare, generateResult, verifyResultEnvelope, publish };
+  renderComment, outputSkipReason, prepare, generateResult, verifyResultEnvelope, publish };

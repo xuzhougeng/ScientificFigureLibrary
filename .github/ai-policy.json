@@ -1,5 +1,5 @@
 {
-  "schema": "sfl.ai-policy.v1",
+  "schema": "sfl.ai-policy.v2",
   "repository": "xuzhougeng/ScientificFigureLibrary",
   "defaultBranch": "main",
   "allowedActors": [
@@ -13,5 +13,7 @@
   "requestTimeoutMs": 90000,
   "maxAttempts": 2,
   "maxFindings": 10,
-  "minimumConfidence": 0.75
+  "minimumConfidence": 0.75,
+  "maxDiscussionComments": 100,
+  "maxDiscussionCharacters": 30000
 }
