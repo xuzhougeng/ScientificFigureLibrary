@@ -125,11 +125,10 @@ function validateOutput(output, input) {
 function renderComment(output, input) {
   const lines = input.task === "issue_reply" ? [
     "<!-- issue-triage:v1 -->", "", "## 反馈整理与下一步", "",
-    "以下为 AI 根据当前 Issue 标题和正文整理的建议；未读取讨论评论，尚未复现或确定根因。", "",
-    safeMarkdown(output.summary), "", "### 建议补充的信息",
-    ...(output.missing_information.length ? output.missing_information.map((text) => `- ${safeMarkdown(text)}`) : ["- 暂无额外信息请求；由维护者继续判断。"]),
-    "", "### 下一步", ...output.next_steps.map((text) => `- ${safeMarkdown(text)}`),
-    "", "请勿提供 API Key、token、私有数据或原始 Library/诊断包。此回复不是最终处理结论。",
+    "AI 辅助建议，仅根据当前 Issue 标题和正文生成，未读取讨论评论或图片，供维护者参考。", "",
+    safeMarkdown(output.summary),
+    ...(output.missing_information.length ? ["", "### 建议补充的信息", ...output.missing_information.map((text) => `- ${safeMarkdown(text)}`)] : []),
+    ...(output.next_steps.length ? ["", "### 下一步", ...output.next_steps.map((text) => `- ${safeMarkdown(text)}`)] : []),
   ] : [
     "<!-- pr-review:v1 -->", "", "## AI 辅助审查（仅建议）", "",
     `审查提交：\`${input.headSha}\`；基线：\`${input.baseSha}\`。`,
