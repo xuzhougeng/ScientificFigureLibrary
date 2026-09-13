@@ -1,0 +1,17 @@
+{
+  "schema": "sfl.ai-policy.v1",
+  "repository": "xuzhougeng/ScientificFigureLibrary",
+  "defaultBranch": "main",
+  "allowedActors": [
+    "xuzhougeng",
+    "jarxunlai"
+  ],
+  "apiStyle": "chat_completions",
+  "maxFiles": 40,
+  "maxInputCharacters": 100000,
+  "maxResponseBytes": 262144,
+  "requestTimeoutMs": 90000,
+  "maxAttempts": 2,
+  "maxFindings": 10,
+  "minimumConfidence": 0.75
+}

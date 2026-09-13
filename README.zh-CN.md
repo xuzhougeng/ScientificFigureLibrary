@@ -50,6 +50,7 @@ figure-organization、figure-style，不要求宿主另外安装同名 Skills。
 本地使用 Node.js 22+，执行 `npm ci` 和 `npm run check`。
 PR 的基础 CI 覆盖 Linux、Windows、macOS 上的测试、类型检查、构建和 MCP smoke。
 检查矩阵与合并门禁配置见 [基础 CI](docs/CI.md)。
+维护者也可配置 [AI 评论 bot](docs/COMMENT_BOT.md)，手动生成 Issue 回复建议和 PR 审查评论。
 
 ## 许可证
 

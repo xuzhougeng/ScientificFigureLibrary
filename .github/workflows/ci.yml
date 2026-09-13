@@ -82,12 +82,14 @@ jobs:
           }
       - name: Install locked dependencies
         run: npm ci
+      - name: Test comment bot authorization and publishing
+        run: node --test .github/tests/*.test.cjs
       - name: Check documentation links
         if: matrix.os == 'ubuntu-latest' && matrix.node == '24'
         run: |
           npm run docs:check-links
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          npm run docs:check-links -- AGENTS.md docs/CI.md
+          npm run docs:check-links -- AGENTS.md docs/CI.md docs/COMMENT_BOT.md
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Check versions and run unit and integration tests
         run: npm test

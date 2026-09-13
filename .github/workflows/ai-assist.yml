@@ -1,0 +1,119 @@
+name: SFL AI Assist
+
+on:
+  workflow_dispatch:
+    inputs:
+      task:
+        description: Advisory task; never modifies code or approves a PR
+        required: true
+        type: choice
+        options: [issue_reply, pr_review]
+      number:
+        description: Issue or PR number in this repository
+        required: true
+        type: string
+
+permissions: {}
+
+# Use repository Variables so infer and publish validate the same configuration.
+env:
+  AI_ENABLED: ${{ vars.AI_ENABLED }}
+  AI_BASE_URL: ${{ vars.AI_BASE_URL }}
+  AI_MODEL: ${{ vars.AI_MODEL }}
+  AI_API_STYLE: ${{ vars.AI_API_STYLE }}
+
+# Shared object lock, not a global queue. Old pending dispatches may be folded.
+concurrency:
+  group: sfl-ai-comment-${{ github.repository_id }}-${{ inputs.number }}
+  cancel-in-progress: false
+
+jobs:
+  infer:
+    name: Read-only model assistance
+    if: >-
+      github.repository == 'xuzhougeng/ScientificFigureLibrary' &&
+      github.ref == 'refs/heads/main' &&
+      contains(fromJSON('["xuzhougeng", "jarxunlai"]'), github.actor) &&
+      contains(fromJSON('["xuzhougeng", "jarxunlai"]'), github.triggering_actor) &&
+      vars.AI_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: ai-assist
+    permissions:
+      contents: read
+      issues: read
+      pull-requests: read
+    outputs:
+      publish: ${{ steps.prepare.outputs.should_run }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: "24"
+          package-manager-cache: false
+      - name: Validate authorization and prepare sanitized context
+        id: prepare
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        with:
+          retries: 0
+          script: |
+            const { prepare } = require('./.github/scripts/ai-assist.cjs');
+            const { safeErrorCode } = require('./.github/scripts/ai-safety.cjs');
+            try {
+              const info = await prepare({ github, context });
+              core.setOutput('should_run', String(!info.skip));
+              core.info(JSON.stringify(info));
+            } catch (error) { core.setFailed(safeErrorCode(error)); }
+      - name: Call approved Chat Completions provider
+        if: steps.prepare.outputs.should_run == 'true'
+        env:
+          AI_API_KEY: ${{ secrets.AI_API_KEY }}
+        run: node .github/scripts/ai-assist.cjs generate
+      - name: Pass validated JSON only to the publisher
+        if: steps.prepare.outputs.should_run == 'true'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: ai-result-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/sfl-ai-result/result.json
+          if-no-files-found: error
+          retention-days: 1
+
+  publish:
+    name: Publish advisory comment only
+    needs: infer
+    if: >-
+      needs.infer.result == 'success' &&
+      needs.infer.outputs.publish == 'true' &&
+      github.repository == 'xuzhougeng/ScientificFigureLibrary' &&
+      github.ref == 'refs/heads/main' &&
+      contains(fromJSON('["xuzhougeng", "jarxunlai"]'), github.actor) &&
+      contains(fromJSON('["xuzhougeng", "jarxunlai"]'), github.triggering_actor) &&
+      vars.AI_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5
+        with:
+          name: ai-result-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/sfl-ai-result
+      - name: Revalidate source and upsert the bot comment
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        with:
+          retries: 0
+          script: |
+            const { publish } = require('./.github/scripts/ai-assist.cjs');
+            const { safeErrorCode } = require('./.github/scripts/ai-safety.cjs');
+            try {
+              await publish({ github, context, log: value => core.info(JSON.stringify(value)) });
+            } catch (error) { core.setFailed(safeErrorCode(error)); }
