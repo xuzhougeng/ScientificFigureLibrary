@@ -1,0 +1,112 @@
+name: SFL CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  merge_group:
+    types: [checks_requested]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sfl-ci-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name != 'merge_group' }}
+
+env:
+  CI: "true"
+  SFL_OPEN_FIGURE_AUTO_REFRESH: "0"
+
+defaults:
+  run:
+    shell: pwsh
+
+jobs:
+  test-build:
+    name: SFL / Test build smoke (${{ matrix.os }}, Node ${{ matrix.node }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            node: "22"
+          - os: ubuntu-latest
+            node: "24"
+          - os: windows-latest
+            node: "24"
+          - os: macos-latest
+            node: "24"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        # Keep snapshot bytes intact; scope this to checkout so CRLF test
+        # repositories can still exercise their own Git configuration.
+        env:
+          GIT_CONFIG_COUNT: "2"
+          GIT_CONFIG_KEY_0: core.autocrlf
+          GIT_CONFIG_VALUE_0: "false"
+          GIT_CONFIG_KEY_1: core.eol
+          GIT_CONFIG_VALUE_1: lf
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - name: Isolate application state and canonicalize temp directory
+        run: |
+          $root = Join-Path $env:RUNNER_TEMP "sfl-ci-state"
+          $paths = @{
+            XDG_CONFIG_HOME = Join-Path $root "config"
+            XDG_CACHE_HOME = Join-Path $root "cache"
+            XDG_DATA_HOME = Join-Path $root "data"
+            APPDATA = Join-Path $root "appdata"
+            LOCALAPPDATA = Join-Path $root "localappdata"
+          }
+          foreach ($entry in $paths.GetEnumerator()) {
+            New-Item -ItemType Directory -Force -Path $entry.Value | Out-Null
+            "$($entry.Key)=$($entry.Value)" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          }
+          # Windows TEMP can use an 8.3 alias; tests compare real paths.
+          $testTemp = Join-Path $root "tmp"
+          New-Item -ItemType Directory -Force -Path $testTemp | Out-Null
+          $canonicalTemp = node -e "console.log(require('node:fs').realpathSync(process.argv[1]))" $testTemp
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          foreach ($name in @('TMPDIR', 'TEMP', 'TMP')) {
+            "$name=$canonicalTemp" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          }
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Check documentation links
+        if: matrix.os == 'ubuntu-latest' && matrix.node == '24'
+        run: |
+          npm run docs:check-links
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          npm run docs:check-links -- AGENTS.md docs/CI.md
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Check versions and run unit and integration tests
+        run: npm test
+      - name: Type check, build and run MCP smoke
+        run: npm run test:smoke
+
+  ci-required:
+    name: SFL / CI required
+    if: ${{ always() }}
+    needs: [test-build]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions: {}
+    steps:
+      - name: Require every matrix job to succeed
+        env:
+          TEST_BUILD_RESULT: ${{ needs.test-build.result }}
+        run: |
+          if ($env:TEST_BUILD_RESULT -ne "success") {
+            Write-Error "Test/build matrix: $env:TEST_BUILD_RESULT"
+            exit 1
+          }

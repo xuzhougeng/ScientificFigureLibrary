@@ -45,6 +45,12 @@ figure-organization、figure-style，不要求宿主另外安装同名 Skills。
 依赖包默认可见；技术与验证信息保留在折叠区。旧模板只做兼容读取，不批量重写。
 缺少论文背景时不会自动补造生物学结论。
 
+## 开发验证
+
+本地使用 Node.js 22+，执行 `npm ci` 和 `npm run check`。
+PR 的基础 CI 覆盖 Linux、Windows、macOS 上的测试、类型检查、构建和 MCP smoke。
+检查矩阵与合并门禁配置见 [基础 CI](docs/CI.md)。
+
 ## 许可证
 
 本仓库代码 MIT。用户导入的图保留导入时记录的许可证。
