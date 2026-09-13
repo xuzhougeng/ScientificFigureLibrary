@@ -94,13 +94,14 @@ async function collectInput({ github, context, task, number, env = process.env }
 
 function validateOutput(output, input) {
   assertNoSecrets(JSON.stringify(output));
-  const strings = (values) => {
-    requireValue(Array.isArray(values) && values.length <= 8, "INVALID_LIST_LENGTH");
+  const strings = (values, field) => {
+    requireValue(Array.isArray(values), `${field}_NOT_ARRAY`);
+    requireValue(values.length <= 8, `${field}_TOO_MANY_ITEMS`);
     return values.map((value) => boundedText(value, 1200));
   };
   if (input.task === "issue_reply") {
     exactKeys(output, ["summary", "missing_information", "next_steps"]);
-    return { summary: boundedText(output.summary), missing_information: strings(output.missing_information), next_steps: strings(output.next_steps) };
+    return { summary: boundedText(output.summary), missing_information: strings(output.missing_information, "MISSING_INFORMATION"), next_steps: strings(output.next_steps, "NEXT_STEPS") };
   }
   exactKeys(output, ["summary", "findings"]);
   requireValue(Array.isArray(output.findings) && output.findings.length <= policy.maxFindings, "INVALID_FINDING_COUNT");

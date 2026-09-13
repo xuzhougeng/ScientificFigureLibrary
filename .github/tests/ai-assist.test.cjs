@@ -304,6 +304,18 @@ test("output schema rejects unknown keys and missing fields", () => {
   assert.throws(() => assist.validateOutput({ summary: "x", missing_information: "not array", next_steps: [] }, inputFor("issue_reply")));
 });
 
+test("issue list limits distinguish malformed fields from excessive items without exposing model text", () => {
+  const input = inputFor("issue_reply");
+  const tooMany = Array.from({ length: 9 }, () => "item");
+  assert.throws(() => assist.validateOutput({ ...reply(), missing_information: tooMany }, input), /MISSING_INFORMATION_TOO_MANY_ITEMS/);
+  assert.throws(() => assist.validateOutput({ ...reply(), next_steps: tooMany }, input), /NEXT_STEPS_TOO_MANY_ITEMS/);
+  assert.throws(() => assist.validateOutput({ ...reply(), missing_information: "private output" }, input),
+    (error) => error.message === "MISSING_INFORMATION_NOT_ARRAY");
+  assert.throws(() => assist.validateOutput({ ...reply(), next_steps: {} }, input), /NEXT_STEPS_NOT_ARRAY/);
+  assert.deepEqual(assist.validateOutput({ summary: "ok", missing_information: [], next_steps: [] }, input),
+    { summary: "ok", missing_information: [], next_steps: [] });
+});
+
 test("findings must refer to a real new-side line and literal patch evidence", () => {
   for (const override of [{ file: "src/unrelated.ts" }, { line: 999 }, { file: "../secret.txt" },
     { evidence: "invented code" }, { line: 1, evidence: "return value.trim();" }, { confidence: 2 }, { severity: "critical" }]) {
