@@ -236,13 +236,12 @@ footer {
   display: block;
   max-width: 100%;
   margin-top: 3px;
-  overflow: hidden;
   color: var(--color-text-secondary, #62736a);
   font-family: var(--font-mono, ui-monospace, SFMono-Regular, Consolas, monospace);
   font-size: 0.72rem;
   line-height: 1.35;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .candidate-title {
