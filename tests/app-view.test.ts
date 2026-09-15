@@ -146,6 +146,10 @@ test("App shell includes the shared brand, responsive UI, dark mode, and reduced
   assert.match(styles, /html\[data-theme="dark"\]/u);
   assert.match(styles, /@media \(max-width: 420px\)/u);
   assert.match(styles, /\.card-context-text\s*\{[\s\S]*?-webkit-line-clamp:\s*4;/u);
+  const moduleTitleEn = styles.match(/\.module-title-en\s*\{([\s\S]*?)\}/u)?.[1] ?? "";
+  assert.match(moduleTitleEn, /overflow-wrap:\s*anywhere/u);
+  assert.match(moduleTitleEn, /word-break:\s*break-word/u);
+  assert.doesNotMatch(moduleTitleEn, /text-overflow:\s*ellipsis|white-space:\s*nowrap|overflow:\s*hidden/u);
   assert.doesNotMatch(`${html}\n${source}\n${styles}`, /unpkg|jsdelivr|cdnjs/u);
 });
 
