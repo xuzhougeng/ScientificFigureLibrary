@@ -3,7 +3,7 @@
 > Landing page and install: [README.md](../README.md). This file is the full tool contract, safety rules, and Library layout.
 
 
-Scientific Figure Library (SFL) is a standard stdio MCP server and MCP App for
+Scientific Figure Library (SFL) is a standard stdio MCP server with an optional MCP App for
 building, reviewing, finding, and materializing reusable scientific-figure
 references. Version 0.6 keeps one **user-selected global Library** as the durable,
 cross-project source of truth. Wisp, Codex, Claude, Cursor, and other MCP hosts can use
@@ -442,8 +442,8 @@ upstream-workflow, and scientific-validation summaries. They do not fall back
 to the current Working Head and do not collapse a plot `passed` result into a
 claim of complete reproduction.
 
-The MCP App paginates all matched candidates through App-only
-`figure_library_search_page` and renders each usable candidate as a real
+The host Agent and MCP App paginate all matched candidates through
+`figure_library_search_page`; the App renders each usable candidate as a real
 lazy-loaded `<img>`. Clicking a title or non-interactive card area toggles local
 selection with a visible marker and count; it does not create a preview receipt
 or authorize materialization. Clicking the thumbnail or **查看详情** opens an
@@ -452,7 +452,9 @@ and only metadata actually present in the search result. This basic detail is
 fully local to the App: it works without `serverTools`, does not call the
 Agent, and does not update model context.
 
-After search, the Agent must stop and wait for user selection. It must not call
+After presenting the page in the App or host image display, the Agent must
+wait for user selection. Ordinary hosts may first retrieve current-page
+thumbnails through the image tool or resource URIs below. The Agent must not call
 exact preview for every candidate or substitute a backend `view_image` pass.
 Only an explicit request such as “帮我选择模板” permits limited visual review
 of a small top-ranked subset. Once the user submits a plotting task, the Agent
@@ -505,6 +507,68 @@ and diagnostics export/resource capabilities so Hosts can inspect the exact
 `figure_library_preview` remains a compatibility tool that returns/copies one
 standard MCP image, but it never authorizes materialization and must not be
 presented as sidebar display evidence.
+
+## Ordinary MCP guidance and candidate images
+
+These interfaces are available without loading the App or advertising the MCP
+Apps extension. Tool availability does not prove a host can display images.
+`hostIntegrationCapabilities` in search/describe and the guidance response
+advertise the ordinary tools, thumbnail resource template, limits and receipt gate.
+
+### Core Skill and reference retrieval
+
+`figure_library_get_skill({ document?: string })` defaults to `SKILL.md` and
+works before Library/workspace binding. It returns the unchanged bundled text,
+`document`, `uri`, `mimeType`, file `sha256`, `serverVersion`, a content-derived
+`guidanceRevision`, the `documents` inventory and `capabilities`. Metadata is
+also present as JSON in text content for bridges that omit structured results.
+
+The same documents are listed/readable as MCP resources below
+`figure-library://guidance/figure-library/`. Relative links resolve against the
+current document URI or local directory. The inventory includes optional helper
+source and its notices; reading source does not execute it. Only exact inventory
+IDs are accepted by the tool: paths, aliases and traversal are rejected with
+`guidance_not_found`. The inventory is loaded from the package once per session,
+so local files and MCP guidance have one maintained source. Text retrieval does
+not itself install or activate a native host Skill.
+
+### Candidate thumbnails
+
+Search and pagination add `thumbnailUri` to candidates with a readable thumbnail.
+The URI is `figure-library://candidate-images/{resultSetId}/{candidateId}` and
+can be read with `resources/read` to obtain the binary image as a Base64 `blob`.
+It is a session-bound MCP resource, not an HTTP URL for a WebView `img.src`.
+Resources are discovered through search and the resource template; dynamic
+candidate images are not enumerated by `resources/list`.
+
+`figure_library_get_candidate_images({ resultSetId, candidateIds })` returns
+standard MCP `image` blocks, each preceded by a candidate ID/title/provider label.
+Its `images[]` metadata preserves request order and includes `candidateId`,
+`providerId`, `exactSelector`, `title`, `uri`, canonical thumbnail `sourceSha256`,
+and the actual transport `mimeType`, `byteLength` and `sha256`. Transport hashes
+are distinct from canonical asset identity, especially when images are resized.
+Metadata is also serialized into text content; Base64 is kept in image blocks.
+
+A call accepts 1–12 unique IDs belonging to that result set, with the existing
+256 KiB per-image and 3 MiB total Data URL ceilings. Requested-image count does
+not change rendition policy: the tool and resource paths use the same fixed
+12-image budget. Duplicate or cross-result IDs return `preview_selection_mismatch`;
+missing/unreadable images return `preview_unavailable` without a partial image
+response. Catalog or Library binding changes, an evicted result or a different
+server session return `search_results_stale`. Resource read failures are MCP
+errors rather than successful image responses. Image reads recheck result state
+after loading and never download full template archives.
+
+`figure_library_search_page` now has both App and model visibility. Its inputs
+and opaque cursor semantics are unchanged. Search text includes result-set ID,
+page metadata, candidate IDs, thumbnail URIs and exact selectors, so a bridge
+must not invent identities from titles or list positions.
+
+Neither thumbnail path issues a challenge or receipt. User selection or explicit
+delegation still precedes exact headless preview/review/confirmation. The exact
+headless preview also exposes `PREVIEW_CHALLENGE` in its text response. All
+materialization and replay gates below remain unchanged. An Agent receiving
+an image is not proof the user saw it on their screen.
 
 ## Exact materialization
 
@@ -815,7 +879,7 @@ change the active locator. Fork creates a new `libraryId` and records
 source Library's approval; it creates a Working Revision requiring local review
 and publication.
 
-See [`docs/GLOBAL_LIBRARY_0.6.md`](docs/GLOBAL_LIBRARY_0.6.md) for the storage,
+See [`docs/GLOBAL_LIBRARY_0.6.md`](GLOBAL_LIBRARY_0.6.md) for the storage,
 locator, lifecycle, migration, and portability model.
 
 ## Structured diagnostics and export
@@ -870,8 +934,9 @@ alone must not be described as delivery to the user.
 
 | Area | Tools |
 | --- | --- |
-| Workbench and retrieval | `figure_library_open`, `figure_library_search`, `figure_library_describe`, `figure_library_preview`, `figure_library_preview_exact_headless`, `figure_library_confirm_selection_headless`, `figure_library_create_plot_task_headless`, `figure_library_source_status` |
-| App-only component tools | `figure_library_search_page`, `figure_library_preview_exact`, `figure_library_confirm_selection`, `figure_library_record_ui_event` |
+| Guidance | `figure_library_get_skill` |
+| Workbench and retrieval | `figure_library_get_candidate_images`, `figure_library_search_page`, `figure_library_open`, `figure_library_search`, `figure_library_describe`, `figure_library_preview`, `figure_library_preview_exact_headless`, `figure_library_confirm_selection_headless`, `figure_library_create_plot_task_headless`, `figure_library_source_status` |
+| App-only component tools | `figure_library_preview_exact`, `figure_library_confirm_selection`, `figure_library_record_ui_event` |
 | Diagnostics export | `figure_library_export_diagnostics` |
 | Global binding | `figure_library_plan_bind_global`, `figure_library_apply_bind_global` |
 | Write-lock recovery | `figure_library_plan_recover_write_lock`, `figure_library_apply_recover_write_lock` |
@@ -1012,10 +1077,10 @@ cannot be packaged as the 0.7.0 release.
 
 ## Markdown descriptions and bundled Skills
 
-The four bundled Skills have separate responsibilities: figure-library owns the
-lifecycle, figure-description drafts evidence-grounded biological use cases,
-figure-organization keeps adapted R/Python code readable, and figure-style
-checks faithful rendering. The server never executes their code or contains a
+One core figure-library Skill routes to bundled references: library workflows
+cover the lifecycle, figure-description drafts evidence-grounded biological use
+cases, figure-organization keeps adapted R/Python code readable, and
+figure-style checks faithful rendering. The references are not separate Skills. The server never executes their code or contains a
 model. Host execution/viewer tools and project runtime approval are still needed.
 
 New or updated direct Working plans require a non-empty application (up to
@@ -1056,4 +1121,4 @@ MIT; its synthetic data, generated previews/thumbnails, and documentation are
 CC BY 4.0 and retain per-release attribution in the Community Catalog and
 archive. User-supplied and adapter-imported material keeps its recorded source
 license. See
-[`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md).
+[`THIRD_PARTY_NOTICES.md`](../THIRD_PARTY_NOTICES.md).

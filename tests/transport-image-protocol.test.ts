@@ -153,6 +153,21 @@ test("search and exact preview adapt large canonical images without changing has
     assert.ok(dataUrl.length <= 256 * 1024);
     assert.equal(thumb.previewSha256, canonicalSha);
 
+    const hostImages = await client.callTool({
+      name: "figure_library_get_candidate_images",
+      arguments: { resultSetId: searchedStructured.resultSetId, candidateIds: [candidate.candidateId] },
+    });
+    const hostImage = records(hostImages.content).find((block) => block.type === "image");
+    assert.ok(hostImage);
+    const hostMetadata = records(record(hostImages.structuredContent).images)[0]!;
+    assert.equal(hostMetadata.sourceSha256, canonicalSha);
+    assert.equal(hostMetadata.mimeType, hostImage.mimeType);
+    assert.equal(hostMetadata.sha256, createHash("sha256").update(Buffer.from(String(hostImage.data), "base64")).digest("hex"));
+    assert.notEqual(hostMetadata.sha256, canonicalSha);
+    const hostResource = await client.readResource({ uri: String(candidate.thumbnailUri) });
+    assert.equal(record(hostResource.contents[0]).blob, hostImage.data);
+    assert.equal("previewReceipt" in record(hostImages.structuredContent), false);
+
     const exact = await client.callTool({
       name: "figure_library_preview_exact_headless",
       arguments: {

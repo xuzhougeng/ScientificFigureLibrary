@@ -1,15 +1,15 @@
 # 外部 Agent 接入方案
 
-状态：2026-09-15 方向记录与实现提案。本文不新增运行时能力；拟议工具名和资源 URI
-尚未注册，不可作为当前调用契约。当前契约仍以 [PROTOCOL](PROTOCOL.md) 为准。
+状态：2026-09-15，第一阶段已在开发代码中实现；未发布，真实宿主验收待完成。
+当前工具参数与确认契约见 [PROTOCOL](PROTOCOL.md)，安装见 [QUICKSTART](QUICKSTART.md)。
 
 ## 1. 目标与职责
 
 **SFL 提供图库资产服务、一个核心 Skill 和宿主可调用接口，让外部 Agent 完成选图与后续任务。**
 
 目标宿主包括 zcode、WorkBuddy、Claude Desktop、Codex Desktop、Wisp Science 等。
-宿主可以通过自己的对话、图片控件或 WebView 展示候选图，也可以使用 SFL 的 MCP App。
-核心选图流程不应要求宿主先成功加载 SFL HTML。
+宿主可通过自己的对话、图片控件或 WebView 展示候选图，也可使用可选的 MCP App。
+上述名称表示目标宿主，不代表所有版本均已完成兼容性验收。
 
 ```mermaid
 flowchart TB
@@ -23,141 +23,84 @@ flowchart TB
 ```
 
 SFL 管理可复用资产及其身份、版本、来源。具体研究任务、项目文件组织和绘图执行由
-宿主负责；这次接入调整不扩大 [产品边界](PRODUCT_PRINCIPLES.md)，也不新增项目管理系统。
+宿主负责；接入调整遵循现有 [产品边界](PRODUCT_PRINCIPLES.md)。
 
-## 2. 当前实现与缺口
+## 2. 第一阶段实现
 
-以下根据当前仓库代码核对，未在上述目标宿主中逐一验收。
+| 能力 | 当前开发实现 |
+| --- | --- |
+| 接入 | [入口](../src/index.ts) 提供 stdio MCP；普通调用不要求加载 App HTML |
+| 一个 Skill | [figure-library](../skills/figure-library/SKILL.md) 为唯一入口；原 description、organization、style 迁入按需资料，保留许可和辅助源码 |
+| 读取指导 | `figure_library_get_skill` 返回同源文本、资料清单、哈希、服务版本、指导内容版本及能力说明；未绑定图库也可读取 |
+| 指导资源 | `figure-library://guidance/figure-library/SKILL.md` 与资料清单中的资源返回相同文本 |
+| 搜索 | 返回候选 ID、Provider 限定精确选择、可用缩略图 URI 和分页信息；App 专用缩略图保留兼容 |
+| 候选图片 | `figure_library_get_candidate_images` 返回 1–12 张有身份标签的标准 MCP 图片；也可按 URI 读取图片资源 |
+| 翻页 | `figure_library_search_page` 同时对 Agent 和 App 开放，复用原有不透明游标与过期检查 |
+| 精确看图与确认 | 复用 `figure_library_preview_exact_headless` 和 `figure_library_confirm_selection_headless` |
+| 材料化 | 复用 receipt、plan/apply、过期状态检查及重放语义 |
+| HTTP 图片 URL、常驻 Desktop 服务 | 尚未实现，本轮后置；MCP URI 不能直接充当浏览器 URL |
 
-| 能力 | 当前实现 | 需要补齐的部分 |
-| --- | --- | --- |
-| MCP 接入 | [入口](../src/index.ts) 启动 stdio MCP 服务 | 普通 MCP 宿主的完整选图验收 |
-| 调用指导 | [核心 Skill](../skills/figure-library/SKILL.md) 引用另外三个伴随 Skills；插件包分发四个入口 | 收敛为一个核心入口，并支持从服务读取同源指导 |
-| 搜索 | `figure_library_search` 返回候选元数据和精确身份，并关联 App | 让非 App 宿主直接进入候选展示流程 |
-| 候选图片 | 搜索缩略图在 `_meta.candidatePreviews` 中，模型可见结果不含图片数据 | 面向普通工具或资源读取的有界图片入口 |
-| 翻页 | `figure_library_search_page` 标记为 App-only | 对外开放同一结果集的分页能力，保留游标和过期检查 |
-| 精确看图 | `figure_library_preview_exact_headless` 返回单个精确预览 | 保留此能力，并与候选缩略图获取明确区分 |
-| 选择与交接 | `figure_library_confirm_selection_headless` 与 `figure_library_create_plot_task_headless` 已存在 | 接受宿主界面或对话产生的精确选择，无需伪造 App 事件 |
-| 材料化 | 已有 preview receipt、plan/apply、过期检查及重放语义 | 所有接入方式继续共用同一契约 |
-| 图片 URL | 当前入口没有启动供 WebView 访问的 HTTP 图片服务 | 仅在宿主确需 URL 时增加对应传输适配 |
+接口分别位于 [guidance.ts](../src/guidance.ts)、[candidate-images.ts](../src/candidate-images.ts)
+和 [server.ts](../src/server.ts)。服务初始化说明提示宿主先读取核心 Skill。
 
-搜索、图片与选择的实现主要在 [server.ts](../src/server.ts)。目前已经有不依赖 App 的
-精确预览路径，主要缺口集中在首次加载指导和用户筛选候选图的阶段。
+## 3. 一个核心 Skill，多种加载方式
 
-## 3. 一个核心 Skill，多个加载方式
+支持本地 Skill 的宿主安装 `skills/figure-library/`，保留其按需资料；只配置 MCP 的
+宿主调用 `figure_library_get_skill`。后者的 `document` 默认是 `SKILL.md`，读取其他
+资料时传入返回清单中的精确 ID。MCP 返回内容与本地文件同源，每个服务会话固定一份
+指导快照，提供文件哈希和整体 `guidanceRevision`，不接受任意文件路径。
 
-维护一份权威 `skills/figure-library/SKILL.md`。核心文件只保留适用场景、能力发现、
-检索与选图流程、必要的确认契约、终止条件和按需说明入口。
-
-现有 figure-description、figure-organization、figure-style 的专门指导迁入按需资料，
-保留实际使用的参考文档和辅助资源。检索图片时无需加载全部绘图指导；只有用户要求
-编写模板说明或适配绘图代码时才读取相应内容。一个入口不等于把所有指导合并成一个长文件。
-
-建议提供两种等价加载方式：
-
-1. **本地 Skill**：支持本地 Skill 发现的宿主安装这一个核心入口及按需资源。
-2. **通过 MCP 读取**：新增只读工具 `figure_library_get_skill`，返回同源 Markdown、
-   指导版本、服务协议版本及可读取的参考资料标识；支持资源读取的宿主也可读取
-   `figure-library://guidance/figure-library/SKILL.md`。按需资料通过明确列出的标识读取，
-   不接受任意文件路径。
-
-上述工具名和 URI 是提案。打包时从同一份源文件生成分发内容，避免本地版与 MCP 返回版
-各自演进；资料链接应在本地和 MCP 两条路径中都能解析。读取工具须在尚未绑定 Library
-时可用，因为首次绑定本身也需要指导。服务初始化说明和工具描述提供简短入口提示。
+描述写作、脚本组织、风格检查和不同后端的指导按任务读取。资料中的相对链接在本地
+和 MCP 资源 URI 中均可解析。可选 Python 辅助源码与许可证同样可读取；读取不会执行代码。
 
 MCP Resources 可以传递文本或二进制内容，如何纳入模型上下文由宿主决定。因此，
-返回 `SKILL.md` 文本不等于自动安装或激活宿主原生 Skill；此方案需要宿主或 Agent
-实际调用读取入口。[MCP Resources 规范](https://modelcontextprotocol.io/specification/2025-11-25/server/resources)
+返回 Skill 文本不等于自动安装或激活宿主原生 Skill。
+[MCP Resources 规范](https://modelcontextprotocol.io/specification/2025-11-25/server/resources)
 
-可选的 MCP Prompt 可以帮助用户主动选择工作流，但不能作为所有宿主自动加载 Skill 的
-前提。[MCP Prompts 规范](https://modelcontextprotocol.io/specification/2025-11-25/server/prompts)
+## 4. 宿主中的选图流程
 
-## 4. 图片入口与筛选流程
+1. 读取指导并检查 Library 状态；首次绑定仍按用户明确指定的目录走 Plan/Apply。
+2. Agent 根据用户需求搜索，保留 `resultSetId`、`candidateId`、`providerId` 和 `exactSelector`。
+3. 宿主读取当前页缩略图并展示。用户要求下一页时使用返回游标，不通过改变查询模拟翻页。
+4. 用户在界面或对话中选择，宿主将选择映射回原始候选身份，不能只传标题或序号。
+5. Agent 读取并审阅选中候选的精确预览，按用户选择或明确委托完成 headless 确认。
+6. 使用一次性 receipt 生成材料化计划，展示具体目标和获取策略；获批后 Apply。
+7. 宿主取得准确模板文件，按用户任务和项目约定继续工作。
 
-### 候选元数据和图片分开获取
-
-普通搜索继续返回紧凑元数据：`resultSetId`、`candidateId`、`providerId`、
-`exactSelector`、标题、用途、数据要求和分页游标。新增可读取的缩略图资源标识，
-使宿主能按当前页面拉取图片，避免将全图库图片塞进模型上下文。
-
-建议新增只读工具 `figure_library_get_candidate_images`，按当前结果集与候选 ID
-获取有数量及总字节上限的缩略图。每张图片都必须能对应回候选身份；不存在、跨结果集
-或已过期的选择应明确报错。它只帮助浏览，不产生精确预览 challenge 或材料化 receipt。
-
-图片提供两种 MCP 表达：
-
-- 支持资源读取的宿主：使用资源 URI 按需获取二进制图片。
-- 支持工具图片结果的宿主：返回标准 `image` content blocks，并附上对应候选标识。
-
-MCP 工具结果支持图片、资源链接和结构化数据，但具体显示方式仍需宿主实现。
+候选图片的两种表达是标准 MCP `image` 工具结果和可读取的图片资源。MCP 支持这些
+表达，但实际显示方式由宿主实现。
 [MCP Tools 规范](https://modelcontextprotocol.io/specification/2025-11-25/server/tools)
 
-分页同样应通过普通工具可用的入口访问，复用现有结果集和不透明游标，不能通过修改查询
-参数来模拟翻页。App 也消费相同的候选身份和分页逻辑，已有组件缩略图返回可作为兼容适配保留。
+图片接口接受同一结果集内最多 12 个不重复候选 ID，沿用每图 256 KiB、总计 3 MiB 的
+Data URL 上限。返回数据分别记录原始缩略图哈希和传输图片哈希。资料或图片的读取
+不产生 preview challenge 或 receipt；过期结果、跨会话和跨结果集候选均不能绕过校验。
 
-### 宿主中的完整流程
+缩略图加载、Agent 看图、用户看图和批准写入是不同事实。服务端不能以工具返回成功
+证明用户界面已显示图片；材料化成功也不代表绘图已执行或科学结论已验证。
 
-1. 宿主加载核心指导、检查 Library 状态；首次绑定沿用现有确认流程。
-2. Agent 根据用户需求搜索，宿主获取当前页缩略图并展示。
-3. 用户在宿主界面点击，或在对话中指出候选。宿主将选择映射回原始候选身份，不能只传标题。
-4. 对选中的候选调用 `figure_library_preview_exact_headless`，实际读取并审阅精确图片，
-   再按用户选择或明确委托调用 `figure_library_confirm_selection_headless`。
-5. 使用该次 receipt 生成材料化计划，展示具体目标及获取策略；获批后 Apply。
-6. 宿主取得准确的模板文件与锁记录，按用户任务和项目约定继续工作。
+## 5. Desktop 与其他传输方式：待设计
 
-缩略图加载成功、图片 URI 可读取、点击候选、Agent 已看过图、用户看过图和批准写入是
-不同事实。沿用现有 headless 确认语义，不声称服务端能证明宿主用户界面已经显示图片。
-receipt 仍绑定精确选择、预览哈希、结果集及 Library/目录状态，且只能成功生成一次计划。
-SFL 材料化成功不代表绘图已执行或科学结论已验证。
+根据本轮范围，先完成不依赖 Desktop 形态的 Skill 和 MCP 图片接口。独立桌面应用、
+控制已运行 SFL 的共享进程、HTTP 接入及 WebView 图片 URL 均未在本阶段实现。
 
-### WebView 需要 URL 时
+当前各宿主可启动自己的 stdio MCP 进程并显式绑定同一全局 Library，但各进程拥有
+独立会话。结果集、challenge、receipt 和待应用计划不得跨进程传递；选图到 Apply
+应保持原 MCP 会话。
 
-对 Wisp Science 这类宿主，先验证它是否能将 MCP 图片或资源交给自身图片控件。
-若宿主明确只能显示 HTTP(S) 图片，再增加图片 URL 适配。自定义 MCP URI 不是浏览器
-可直接读取的 URL，也不能默认把服务器本地文件路径放进 WebView 的 `img.src`。
+若宿主只能读取 HTTP(S) 图片，再根据真实接入测试设计图片 URL 适配。需确认宿主
+网络可达性、图片加载策略、资产访问范围与凭据有效期；跨机器宿主的 localhost
+不代表 SFL 所在机器。不要默认把服务器本地路径放进 WebView 的 `img.src`。
 
-URL 适配需要验证宿主实际可达性、图片加载策略和资源有效期。若使用本地服务，应限定
-资产访问范围和访问凭据；跨机器宿主不能把自己的 localhost 当作 SFL 所在机器。
-具体采用本地图片服务还是宿主代理，应根据真实接入测试决定，不在当前版本承诺公网图片地址。
+后续的共享服务、CLI 或其他接口应复用现有图库、Provider、精确身份与写入校验，
+并明确会话隔离和连接生命周期；MCP App 继续作为图库的一个可选客户端。
 
-## 5. 进程与接口边界
+## 6. 验证与剩余工作
 
-当前各宿主可启动各自的 stdio MCP 进程，显式绑定同一个全局 Library。共用图库不等于
-共用会话：`resultSetId`、challenge、receipt、待应用计划不能跨 MCP 进程传递。
-一个选图到 Apply 流程应保持在原服务会话中。
+[普通 MCP 集成测试](../tests/agent-integration.test.ts) 使用隔离临时 Library、配置和
+未声明 Apps 扩展的客户端，覆盖指导读取、同源资料链接、候选图资源/工具、分页、
+精确确认、材料化和重放。负例包括任意指导路径、重复/跨结果集候选、数量超限、
+错误游标、未确认材料化、重复 challenge/receipt、跨会话和图库/目录变更。
 
-若后续需要“控制已经运行的 SFL 应用”，可以为同一图库服务增加共享进程或 HTTP 接入。
-该阶段需要定义会话隔离、连接生命周期和宿主访问方式，不能仅加一个端口后就复用
-原本属于另一个 stdio 会话的确认凭据。新增适配应复用 Provider、身份校验和写入逻辑。
-
-CLI 或其他外部接口也可按真实宿主需要增加；核心产品不以某一种展示或传输方式为边界。
-首阶段仍以现有 stdio MCP 为基础完成可验证闭环。
-
-## 6. 实施顺序与验收
-
-### 第一阶段：一个入口和普通 MCP 选图闭环
-
-- 收敛核心 Skill，整理按需资料，同步各插件打包和引用检查。
-- 提供同源 Skill 读取工具与资源，报告指导和协议版本。
-- 提供候选图片读取及普通工具分页入口，保留 App 兼容行为。
-- 同步协议、用户手册和分发指导，明确图片展示与确认责任。
-
-验收：不加载 MCP App HTML，完成“读取指导 → 检索 → 翻页看缩略图 → 选择 →
-精确预览与确认 → 计划 → 获批 Apply”。检查错误候选、过期结果集、重复 receipt 和
-其他会话的凭据均不能绕过既有契约。测试使用隔离临时 Library 和配置。
-
-### 第二阶段：按宿主实际能力验收
-
-为目标宿主分别记录版本、接入配置、指导读取、分页、图片展示、选择回传、精确确认和
-材料化结果。区分“工具调用成功”“Agent 能读图”“用户能看图”三种结果。
-某宿主不支持其中一种图片表达时再补对应适配；未测试的宿主标为未验证。
-
-### 第三阶段：有明确需求后增加共享服务或 URL 适配
-
-当实际接入要求控制常驻软件、跨机器访问或 WebView 图片 URL 时，补充对应服务设计与
-验收。MCP App 继续作为一个图库客户端演进，所有界面共用资产身份和操作契约。
-
-## 本次记录的验证范围
-
-本次仅更新接入方向与设计文档，并核对当前代码和 MCP 官方规范。未修改服务、Skill
-分发或插件包，未运行宿主接入验收；拟议接口不应出现在当前版本的已实现能力清单中。
+构建和 MCP smoke 用于验证代码与 stdio 接入，不能代替真实宿主体验验收。接下来应
+为各目标宿主记录版本和配置，分别验证“工具调用成功”“Agent 能读图”“用户能看图”，
+再验证选择回传与完整材料化流程。未测试的宿主保留“未验证”状态。

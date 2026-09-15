@@ -37,8 +37,10 @@ docs/QUICKSTART.md。需要 Node.js 22+。stdio MCP 名称 figure-library，
 
 ## 模板说明与内置 Skills
 
-Wisp、Codex、Claude、Cursor 插件均包含四个 Skills：figure-library、figure-description、
-figure-organization、figure-style，不要求宿主另外安装同名 Skills。复刻默认保持
+Wisp、Codex、Claude、Cursor 插件均分发一个核心 figure-library Skill，描述、代码组织和
+风格指导作为按需资料。普通 MCP 宿主可用 `figure_library_get_skill` 读取同源指导，
+用 `figure_library_get_candidate_images` 或资源 URI 获取候选缩略图，再通过
+`figure_library_search_page` 翻页；MCP App 为可选界面。复刻默认保持
 参考模板的风格；真正绘图仍需要项目批准的 R/Python 环境和宿主执行/看图工具。
 
 详情页以安全 Markdown 渲染需求描述、应用场景和数据特征，实际输入文件、代码文件、

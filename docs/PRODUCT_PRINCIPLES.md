@@ -24,8 +24,8 @@ WorkBuddy、Claude Desktop、Codex Desktop、Wisp Science 等；这些名称表�
   服务端验证资产身份和写入契约，不能以 Skill 文本代替这些验证。
 - 按宿主实际具备的工具、资源读取和图片展示能力验收，不根据产品名称推定兼容。
 
-以上是后续实现的方向。当前已有能力、缺口与分阶段改造见
-[Agent 接入方案](AGENT_INTEGRATION.md)；该方案中的拟议接口尚未实现。
+第一阶段已实现核心 Skill、指导读取、候选图片及普通工具分页。开发状态、
+后续 Desktop 设计与宿主验收要求见 [Agent 接入方案](AGENT_INTEGRATION.md)。
 
 ## SFL 应承担的职责
 

@@ -1,6 +1,6 @@
 # Scientific Figure Library quickstart
 
-SFL is a **local-first** stdio MCP server plus an MCP App. You bind one Library
+SFL is a **local-first** stdio MCP server with an optional MCP App. You bind one Library
 directory on disk, publish reviewed figure+code Releases there, then search and
 materialize those exact templates into projects. It never executes plotting
 code.
@@ -60,6 +60,26 @@ Unzip the generated Cursor ZIP from `release/` so this file exists:
 The same folder must also contain plugin-root `mcp.json`, `dist/index.js`, and
 `skills/`. Restart Cursor. Cursor's official marketplace is Git-based; this ZIP
 is the local plugin path.
+
+## Ordinary MCP host (App optional)
+
+After registering the stdio server, ask the host to call
+`figure_library_get_skill` with no arguments. It returns the same core Skill
+and a list of on-demand references; use their exact `document` IDs to read more.
+You may instead install `skills/figure-library/` as a single local Skill. Keep
+its reference files together. The other guidance topics are not separate Skills.
+
+After setup, use `figure_library_search` to get candidate IDs and thumbnail URIs.
+Call `figure_library_get_candidate_images` for the current page, or read its
+thumbnail resources using MCP. Present those images with their candidate labels.
+Use `figure_library_search_page` with the returned result set and cursor when
+the user requests another page.
+
+After selection, use `figure_library_preview_exact_headless` and
+`figure_library_confirm_selection_headless`, then review and approve the normal
+materialization Plan/Apply. Keep the same MCP connection throughout. Thumbnail
+reads cannot replace exact preview confirmation. Host image display support
+requires verification in the actual host; MCP resource URIs are not browser URLs.
 
 ## First session
 

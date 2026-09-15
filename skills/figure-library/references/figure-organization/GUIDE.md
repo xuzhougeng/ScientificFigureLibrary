@@ -1,11 +1,6 @@
----
-name: figure-organization
-description: Organize R or Python figure-replication and adaptation scripts into readable, owner-editable workflows with Chinese navigation comments and traceable inputs and outputs. Use when creating or reorganizing code for a selected SFL template, not for browsing templates or restructuring an unrelated application.
----
-
 # Figure Organization
 
-Use this SFL-bundled Skill, not a same-named or similarly named Host Skill.
+Use this bundled guidance and preserve the user’s project instructions.
 Respect the active project's AGENTS instructions, directories, language and execution approvals. A project's R-only policy is local, not a restriction on all SFL users.
 
 ## Preserve the reference and the analyst's control
@@ -23,7 +18,7 @@ Respect the active project's AGENTS instructions, directories, language and exec
 
 For analysis scripts read [script organization](references/script-organization.md) and, when outputs matter, [output binding](references/output-binding.md). Read [workflow lineage](references/workflow-lineage.md) only for multi-step work needing it. [Source organization](references/source-organization.md) is relevant only when there is actual reusable library code; do not force it onto one figure.
 
-Fonts, palettes, devices and render QA have one authority: this plugin's [figure-style](../figure-style/SKILL.md). Preserve the selected reference style by default rather than imposing Arial or a universal theme.
+Fonts, palettes, devices and render QA have one authority: the bundled [figure-style](../figure-style/GUIDE.md). Preserve the selected reference style by default rather than imposing Arial or a universal theme.
 
 ## Handoff
 
@@ -34,4 +29,4 @@ execution state, treating missing values as unknown. A Source Pack, Gitee
 mirror, or successful materialization proves neither scientific validity nor a
 successful render. Return the adapted script, important parameter decisions
 and truthful execution status. Do not claim a successful render from source
-inspection alone. Description drafting belongs to [figure-description](../figure-description/SKILL.md); SFL operations belong to [figure-library](../figure-library/SKILL.md).
+inspection alone. Description drafting belongs to [figure-description](../figure-description/GUIDE.md); SFL operations belong to [figure-library](../../SKILL.md).

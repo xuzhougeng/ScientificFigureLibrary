@@ -79,9 +79,11 @@ Manual steps: [docs/QUICKSTART.md](docs/QUICKSTART.md).
 
 ## Bundled figure workflow
 
-All four plugin packages include figure-library, figure-description,
-figure-organization and figure-style. The host does not need its own copies
-of these Skills. Approved R/Python runtimes and host execution/image tools
+All four plugin packages include one core figure-library Skill with on-demand
+description, script-organization and style references. Ordinary MCP hosts can
+read the same guidance with `figure_library_get_skill`, browse thumbnails with
+`figure_library_get_candidate_images` or resource URIs, and paginate with
+`figure_library_search_page`. The MCP App is optional. Approved R/Python runtimes and host execution/image tools
 are still required when the user asks to draw.
 
 Template details render safe Markdown for the requirement, biological use

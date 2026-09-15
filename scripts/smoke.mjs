@@ -96,6 +96,8 @@ try {
     "figure_library_confirm_selection_headless",
     "figure_library_create_plot_task_headless",
     "figure_library_record_ui_event",
+    "figure_library_get_skill",
+    "figure_library_get_candidate_images",
     "figure_library_export_diagnostics",
     "figure_library_source_status",
     "figure_library_plan_bind_global",
@@ -149,7 +151,6 @@ try {
   }
   for (const [toolName, visibility] of [
     ["figure_library_search", "model"],
-    ["figure_library_search_page", "app"],
     ["figure_library_preview_exact", "app"],
     ["figure_library_preview_exact_headless", "model"],
     ["figure_library_create_plot_task_headless", "model"],
@@ -160,6 +161,20 @@ try {
     if (JSON.stringify(tool?._meta?.ui?.visibility) !== JSON.stringify([visibility])) {
       throw new Error(`${toolName} visibility is not ${visibility}-only`);
     }
+  }
+  const paginationTool = listed.tools.find((tool) => tool.name === "figure_library_search_page");
+  if (JSON.stringify(paginationTool?._meta?.ui?.visibility) !== JSON.stringify(["app", "model"])) {
+    throw new Error("pagination must be callable by both the host Agent and App");
+  }
+  smokeStep = "guidance";
+  const guidance = await client.callTool({ name: "figure_library_get_skill", arguments: {} });
+  if (outcome(guidance).code !== "guidance_ready" || structured(guidance).document !== "SKILL.md") {
+    throw new Error("ordinary MCP guidance entrypoint is unavailable");
+  }
+  const guidanceResource = await client.readResource({ uri: structured(guidance).uri });
+  if (guidanceResource.contents[0]?.text !== structured(guidance).text ||
+      structured(guidance).text !== await fs.readFile(path.join(path.dirname(serverEntry), "../skills/figure-library/SKILL.md"), "utf8")) {
+    throw new Error("MCP guidance differs from the packaged core Skill");
   }
   if (names.some((name) => name.startsWith("figure_capture_"))) {
     throw new Error("standard server registered an experimental Capture tool");
@@ -260,8 +275,24 @@ try {
       structured(secondPage).resultSetId !== structured(figureYaSearch).resultSetId ||
       structured(secondPage).pageIndex !== 2
     ) {
-      throw new Error("App-only pagination did not continue the existing result set");
+      throw new Error("ordinary pagination did not continue the existing result set");
     }
+  }
+
+  smokeStep = "candidate-images";
+  const candidateImages = await client.callTool({ name: "figure_library_get_candidate_images", arguments: {
+    resultSetId: structured(figureYaSearch).resultSetId, candidateIds: [figureYa.candidateId],
+  } });
+  const imageBlock = candidateImages.content.find((entry) => entry.type === "image");
+  const imageMetadata = structured(candidateImages).images?.[0];
+  if (outcome(candidateImages).code !== "candidate_images_ready" || !imageBlock ||
+      imageMetadata?.candidateId !== figureYa.candidateId || imageMetadata.uri !== figureYa.thumbnailUri ||
+      "previewReceipt" in structured(candidateImages)) {
+    throw new Error("ordinary MCP candidate images lack exact labels or crossed the confirmation boundary");
+  }
+  const candidateResource = await client.readResource({ uri: figureYa.thumbnailUri });
+  if (candidateResource.contents[0]?.blob !== imageBlock.data || candidateResource.contents[0]?.mimeType !== imageBlock.mimeType) {
+    throw new Error("candidate image tool and resource disagree");
   }
   const previewed = await client.callTool({
     name: "figure_library_preview",

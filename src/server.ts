@@ -18,7 +18,6 @@ import { inspectLibraryWriteLock } from "./cross-runtime-lock.ts";
 import {
   type CurrentLibraryContext,
   registerLibraryBindingTools,
-  type ToolOutcomeEnvelope,
 } from "./library-binding-tools.ts";
 import { LibraryRuntime, readLibraryRootMarker } from "./library-runtime.ts";
 import { WorkspaceRuntime } from "./workspace-runtime.ts";
@@ -52,6 +51,7 @@ import {
 import {
   SEARCH_CONCURRENCY,
   SEARCH_MAX_PAGE_DATA_URL_BYTES,
+  SEARCH_MAX_DATA_URL_BYTES,
   mapPool,
   prepareTransportImage,
   searchPerImageBudget,
@@ -78,6 +78,15 @@ import type {
 import { legacyValidationStateFromExecutionStatus, VersionedTemplateLibrary } from "./versioned-library.ts";
 import { VERSION } from "./version.ts";
 import { SFL_SERVER_IDENTITY } from "./brand.ts";
+import { outcome, terminal } from "./tool-outcome.ts";
+import { registerGuidanceTools } from "./guidance.ts";
+import {
+  candidateImageUri,
+  CANDIDATE_IMAGE_URI_TEMPLATE,
+  MAX_CANDIDATE_IMAGES,
+  registerCandidateImages,
+  scopedCandidateId,
+} from "./candidate-images.ts";
 
 export { VERSION };
 export const MATERIALIZATION_PROTOCOL_VERSION = 2;
@@ -153,54 +162,6 @@ const DiagnosticsExportInputSchema = z.object({
   includeAbsolutePaths: z.boolean().optional().default(false),
 });
 
-function outcome(
-  result: ToolOutcomeEnvelope["outcome"],
-  code: string,
-  summary: string,
-  nextAction: ToolOutcomeEnvelope["nextAction"] = "none",
-  missingConfirmations?: string[],
-): ToolOutcomeEnvelope {
-  return {
-    schema: "figure-library.tool-outcome.v1",
-    outcome: result,
-    terminal: true,
-    retrySameCall: false,
-    code,
-    summary,
-    nextAction,
-    ...(missingConfirmations?.length ? { missingConfirmations } : {}),
-  };
-}
-
-function terminal(
-  envelope: ToolOutcomeEnvelope,
-  details: Record<string, unknown> = {},
-  lines: string[] = [],
-  meta?: Record<string, unknown>,
-): CallToolResult {
-  return {
-    content: [
-      {
-        type: "text",
-        text: [
-          `OUTCOME: ${envelope.outcome}`,
-          "TERMINAL: true",
-          "RETRY_SAME_CALL: false",
-          `CODE: ${envelope.code}`,
-          `NEXT_ACTION: ${envelope.nextAction}`,
-          ...(envelope.missingConfirmations?.length
-            ? [`MISSING_CONFIRMATIONS: ${envelope.missingConfirmations.join(",")}`]
-            : []),
-          envelope.summary,
-          ...lines,
-        ].join("\n"),
-      },
-    ],
-    structuredContent: { envelope, ...details },
-    ...(meta ? { _meta: meta } : {}),
-  };
-}
-
 function failed(prefix: string, error: unknown): CallToolResult {
   const message = error instanceof Error ? error.message : String(error);
   const lower = message.toLocaleLowerCase("en-US");
@@ -275,16 +236,18 @@ function validationStateText(state: ValidationStateSummaryV1) {
   ];
 }
 
-function candidateText(candidates: TemplateCandidate[]) {
+function candidateText(candidates: Array<TemplateCandidate & { candidateId: string; thumbnailUri?: string }>) {
   if (!candidates.length) {
     return "No matching templates were found in the selected Providers. No tool retry is needed unless the user changes the search intent.";
   }
   const publicationReview = candidates.some((candidate) => candidate.matchKind);
   return [
     ...(publicationReview ? ["PUBLICATION_REVIEW: compare these exact candidates and wait for explicit user confirmation; do not materialize or plot them. Retrieval scores are not duplication proof."] : []),
-    "Retrieval candidates are now visible in the Scientific Figure Library App. Stop this turn and wait for the user to browse and select a candidate.",
+    "Present these candidates in the host or optional App. Use figure_library_get_candidate_images or the returned thumbnail URIs for host display, then wait for user selection.",
     ...candidates.flatMap((candidate, index) => [
       `${index + 1}. ${candidate.title}`,
+      `   CANDIDATE_ID: ${candidate.candidateId}`,
+      ...(candidate.thumbnailUri ? [`   THUMBNAIL_URI: ${candidate.thumbnailUri}`] : []),
       `   PROVIDER_ID: ${candidate.providerId}`,
       `   TEMPLATE_ID: ${candidate.templateId}`,
       `   EXACT_SELECTOR: ${JSON.stringify(candidate.exactSelector)}`,
@@ -354,11 +317,12 @@ async function hydrateCandidatePreviews(options: {
   index: CatalogIndex;
   registry: ProviderRegistry;
   moduleCatalogs?: ReadonlyMap<string, import("./module-catalog.ts").ModuleCatalogIndex>;
+  perImageBudget?: number;
 }) {
   const needed = options.candidates.filter(
     (candidate) => candidate.searchPreviewAvailable ?? candidate.previewAvailable,
   ).length;
-  let perImageBudget = searchPerImageBudget(needed);
+  let perImageBudget = options.perImageBudget ?? searchPerImageBudget(needed);
   const hydrateOnce = (budget: number): Promise<TemplateCandidate[]> =>
     mapPool(options.candidates, SEARCH_CONCURRENCY, async (candidate): Promise<TemplateCandidate> => {
       if (!candidate.previewAvailable) {
@@ -459,17 +423,6 @@ async function hydrateCandidatePreviews(options: {
   return output;
 }
 
-function scopedCandidateId(resultSetId: string, candidate: TemplateCandidate) {
-  return `candidate-${sha256(
-    canonicalJson({
-      schema: "figure-library.result-candidate.v1",
-      resultSetId,
-      providerId: candidate.providerId,
-      exactSelector: candidate.exactSelector,
-    }),
-  ).slice(0, 32)}`;
-}
-
 function splitCandidatePage(resultSetId: string, candidates: TemplateCandidate[]) {
   const candidatePreviews: Record<
     string,
@@ -491,7 +444,7 @@ function splitCandidatePage(resultSetId: string, candidates: TemplateCandidate[]
         previewSha256: candidate.previewSha256,
       };
     }
-    return { ...visible, candidateId };
+    return { ...visible, candidateId, ...(previewDataUrl ? { thumbnailUri: candidateImageUri(resultSetId, candidateId) } : {}) };
   });
   return { visibleCandidates, candidatePreviews };
 }
@@ -614,7 +567,52 @@ export async function createServer(options: {
       ...(moduleSourcePackDir ? { moduleSourcePackDir } : {}),
     });
 
-  const server = new McpServer({ ...SFL_SERVER_IDENTITY, version: VERSION });
+  const server = new McpServer({ ...SFL_SERVER_IDENTITY, version: VERSION }, {
+    instructions: "Start with figure_library_get_skill for the single SFL Skill and available guidance. Use ordinary search, thumbnail resources/image tools and pagination for host-native browsing; the MCP App is optional. Exact preview confirmation is required before materialization planning.",
+  });
+  const hostIntegrationCapabilities = {
+    guidanceTool: "figure_library_get_skill",
+    paginationTool: "figure_library_search_page",
+    candidateImagesTool: "figure_library_get_candidate_images",
+    candidateImageResourceTemplate: CANDIDATE_IMAGE_URI_TEMPLATE,
+    maxCandidateImages: MAX_CANDIDATE_IMAGES,
+    maxCandidateImageDataUrlBytes: SEARCH_MAX_DATA_URL_BYTES,
+    maxCandidatePageDataUrlBytes: SEARCH_MAX_PAGE_DATA_URL_BYTES,
+    sessionBoundImages: true,
+    appOptional: true,
+    materializationProtocolVersion: MATERIALIZATION_PROTOCOL_VERSION,
+    exactPreviewTool: "figure_library_preview_exact_headless",
+    confirmSelectionTool: "figure_library_confirm_selection_headless",
+    receiptRequired: true,
+  };
+  await registerGuidanceTools(server, hostIntegrationCapabilities);
+
+  const requireSearchState = async (resultSetId: string) => {
+    const state = searchSessions.get(resultSetId);
+    if (!state) throw new PreviewProtocolError("search_results_stale", "This search result set is unavailable in this session; run a fresh search.");
+    const context = await currentLibraries();
+    const catalogRevision = await registry.catalogRevision(state.input.providerIds,
+      createProviderContext(context, index, { ...(liveModuleCatalogs() ? { moduleCatalogs: liveModuleCatalogs() } : {}) }));
+    previewConfirmations.requireResultSet({ resultSetId, queryDigest: state.queryDigest, catalogRevision, libraryBindingDigest: libraryBindingDigest(context) });
+    return { state, context };
+  };
+  registerCandidateImages(server, {
+    failure: previewFailure,
+    load: async (resultSetId, candidateIds) => {
+      const { state, context } = await requireSearchState(resultSetId);
+      const byId = new Map(state.candidates.map((candidate) => [scopedCandidateId(resultSetId, candidate), candidate]));
+      const candidates = candidateIds.map((id) => {
+        const candidate = byId.get(id);
+        if (!candidate) throw new PreviewProtocolError("preview_selection_mismatch", "A candidate ID does not belong to this result set.");
+        return candidate;
+      });
+      const hydrated = await hydrateCandidatePreviews({ candidates, context, index, registry,
+        moduleCatalogs: liveModuleCatalogs(), perImageBudget: searchPerImageBudget(MAX_CANDIDATE_IMAGES) });
+      // Catalog/binding changes during image loading must not produce a current-looking response.
+      await requireSearchState(resultSetId);
+      return hydrated;
+    },
+  });
 
   registerAppTool(
     server,
@@ -680,7 +678,7 @@ export async function createServer(options: {
     offset: number;
     limit: number;
     correlationId: string;
-    invocationSource: "agent" | "app";
+    invocationSource: "agent" | "app" | "server";
     toolName: "figure_library_search" | "figure_library_search_page";
     operationStartedAt: number;
   }): Promise<CallToolResult> => {
@@ -731,7 +729,7 @@ export async function createServer(options: {
       "ok",
       visibleCandidates.length ? "search_candidates_ready" : "search_no_matches",
       visibleCandidates.length
-        ? `Unified search returned page ${pageIndex} of ${options.state.candidates.length} complete ranked matches. The App has verified thumbnails; the Agent must stop and wait for user selection.`
+        ? `Unified search returned page ${pageIndex} of ${options.state.candidates.length} complete ranked matches. Display this page in the host or optional App, then wait for user selection.`
         : "Unified search completed without a matching candidate from the selected Providers.",
       visibleCandidates.length ? "ask_user" : "none",
     );
@@ -768,11 +766,12 @@ export async function createServer(options: {
       }),
       candidates: visibleCandidates,
       diagnosticsDegraded: diagnostics.degraded,
+      hostIntegrationCapabilities,
     };
     const result = terminal(
       responseEnvelope,
       structuredContent,
-      [candidateText(visibleCandidates)],
+      [`RESULT_SET_ID: ${options.resultSetId}`, `PAGINATION: ${JSON.stringify(structuredContent.pagination)}`, candidateText(visibleCandidates)],
       {
         candidatePreviews,
         diagnostics: {
@@ -821,7 +820,7 @@ export async function createServer(options: {
     {
       title: "Search all matching scientific figure Providers",
       description:
-        "Search the complete ranked Local Published, FigureYa, bundled Open Figure Modules, and opted-in dynamic personal Provider match set, open the candidate App, then stop and wait for the user to choose. Community is frozen and excluded from default search; Working, Capture, and flat-v1 entries remain excluded.",
+        "Search Local Published, FigureYa, Open Figure Modules and opted-in personal Providers. Present candidates using host thumbnail resources/image tools or the optional App, then wait for selection. Community is explicit-only; Working, Capture and flat-v1 entries are excluded.",
       inputSchema: SearchInput.shape,
       annotations: {
         readOnlyHint: true,
@@ -1010,7 +1009,7 @@ export async function createServer(options: {
     {
       title: "Load another candidate page",
       description:
-        "App-only pagination for an existing complete search result set.",
+        "Paginate an existing search result set for the host Agent or App. Keep the resultSetId and opaque cursor unchanged.",
       inputSchema: SearchPageInput.shape,
       annotations: {
         readOnlyHint: true,
@@ -1018,7 +1017,7 @@ export async function createServer(options: {
         idempotentHint: true,
         openWorldHint: false,
       },
-      _meta: { ui: { resourceUri: RESOURCE_URI, visibility: ["app"] } },
+      _meta: { ui: { resourceUri: RESOURCE_URI, visibility: ["app", "model"] } },
     },
     async ({ resultSetId, cursor }): Promise<CallToolResult> => {
       const operationStartedAt = performance.now();
@@ -1028,7 +1027,7 @@ export async function createServer(options: {
         correlationId,
         resultSetId,
         toolName: "figure_library_search_page",
-        invocationSource: "app",
+        invocationSource: "server",
       });
       try {
         const state = searchSessions.get(resultSetId);
@@ -1051,7 +1050,7 @@ export async function createServer(options: {
           offset: resolved.offset,
           limit: resolved.limit,
           correlationId,
-          invocationSource: "app",
+          invocationSource: "server",
           toolName: "figure_library_search_page",
           operationStartedAt,
         });
@@ -1062,7 +1061,7 @@ export async function createServer(options: {
           correlationId,
           resultSetId,
           toolName: "figure_library_search_page",
-          invocationSource: "app",
+          invocationSource: "server",
           durationMs: performance.now() - operationStartedAt,
           errorCode: error instanceof PreviewProtocolError ? error.code : "search_page_failed",
           safeMessage: error instanceof Error ? error.message : String(error),
@@ -1150,6 +1149,7 @@ export async function createServer(options: {
             ...description.detail,
             materializationProtocolVersion: MATERIALIZATION_PROTOCOL_VERSION,
             previewConfirmationCapabilities,
+            hostIntegrationCapabilities,
             diagnosticsExportCapabilities,
           },
           [
@@ -1351,6 +1351,7 @@ export async function createServer(options: {
           `PROVIDER_ID: ${options.providerId}`,
           `EXACT_SELECTOR: ${JSON.stringify(options.exactSelector)}`,
           `SHA256: ${preview.sha256}`,
+          ...(options.invocationSource === "headless" ? [`PREVIEW_CHALLENGE: ${previewChallenge}`] : []),
         ].join("\n"),
       };
       const structuredContent = {

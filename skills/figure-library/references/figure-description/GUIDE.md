@@ -1,8 +1,3 @@
----
-name: figure-description
-description: Write or improve FigureYa-style scientific-template requirement descriptions, biological use cases and concise data profiles as Markdown. Use when creating/updating an SFL template description or asking what research questions a figure can illustrate; not for ordinary template search, execution or paper-legend generation.
----
-
 # Figure Description
 
 Help a researcher choose a template and clarify what they want to draw. Write useful, concrete prose, not an execution manual or a field inventory. Default to Chinese with necessary English scientific terms.
@@ -31,6 +26,6 @@ See [writing patterns](references/figureya-writing-patterns.md) for examples and
 
 ## Save/hand off without new authority
 
-Standalone use returns a draft only. When called by this plugin's [figure-library](../figure-library/SKILL.md), pass the approved Markdown fields to the existing Working Plan/Apply flow. New/updated Working revisions require a non-empty application. Do not stuff scenarios into visualProfile or assume editing a Gallery Markdown file updates an immutable Published release. File/code/package lists come from actual template metadata, never from this Skill guessing them.
+Standalone use returns a draft only. When called by this plugin's [figure-library](../../SKILL.md), pass the approved Markdown fields to the existing Working Plan/Apply flow. New/updated Working revisions require a non-empty application. Do not stuff scenarios into visualProfile or assume editing a Gallery Markdown file updates an immutable Published release. File/code/package lists come from actual template metadata, never from this Skill guessing them.
 
 Review description and application for duplication. Keep provenance and validation metadata, without promoting AI observations into user approval. The server performs structural checks, not scientific truth verification. Do not publish, execute code or create PRs from this Skill. Only regenerate public description.md from the same confirmed fields; do not maintain a second divergent prose version.
