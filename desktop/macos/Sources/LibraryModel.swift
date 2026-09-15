@@ -2,9 +2,9 @@ import SwiftUI
 import AppKit
 
 enum Section: String, CaseIterable, Identifiable, Hashable {
-    case discover = "发现模板", library = "我的知识库", add = "导入图片与代码", settings = "设置与外部接口"
+    case discover = "发现模板", library = "我的知识库", add = "导入图片与代码", settings = "设置", integrations = "连接外部工具"
     var id: String { rawValue }
-    var icon: String { switch self { case .discover: return "square.grid.2x2"; case .library: return "books.vertical"; case .add: return "square.and.arrow.down"; case .settings: return "gearshape" } }
+    var icon: String { switch self { case .discover: return "square.grid.2x2"; case .library: return "books.vertical"; case .add: return "square.and.arrow.down"; case .settings: return "gearshape"; case .integrations: return "link" } }
 }
 struct PendingPlan: Identifiable {
     let id = UUID()
@@ -37,6 +37,7 @@ enum Sheet: Identifiable {
     @Published var workspaceDirectory = ""
     @Published var setupRequired = true
     @Published var connectionConfiguration = ""
+    @Published var integrations: JSON = .null
     private var pages: [Int: (JSON, JSON)] = [:]
     private var starting = false
 

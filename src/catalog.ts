@@ -284,6 +284,8 @@ export interface SearchIntent {
 
 export interface SearchableTemplate {
   templateId: string;
+  /** Local asset IDs are identities, not plot-style hints (UUIDs can contain "3d"). */
+  opaqueTemplateId?: boolean;
   title: string;
   description: string;
   scientificQuestion?: string;
@@ -458,7 +460,7 @@ export function scoreSearchableTemplate(
   }
 
   const identifier = fields[0].value;
-  const compactTemplateId = normalizeSearchText(template.templateId).replace(/[^a-z0-9]+/gu, "");
+  const compactTemplateId = template.opaqueTemplateId ? "" : normalizeSearchText(template.templateId).replace(/[^a-z0-9]+/gu, "");
   const description = fields[2].value;
   const application = `${fields[4].value} ${fields[7].value}`;
   const familyMatches = [];

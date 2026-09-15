@@ -4,6 +4,7 @@ import { createServer, type IncomingMessage, type ServerResponse } from "node:ht
 import os from "node:os";
 import path from "node:path";
 import { z } from "zod";
+import { integrationGuide, localConnection } from "./integrations.ts";
 import { VERSION } from "../version.ts";
 import { createLibraryService, type LibraryService } from "../library-service.ts";
 
@@ -116,8 +117,9 @@ export async function startLocalHttp(options: {
         return json(response, 200, { version: VERSION, canShutdown: options.allowShutdown !== false });
       }
       if (request.method === "GET" && url.pathname === "/api/connection") {
-        return json(response, 200, { mcpServers: { "figure-library": { command: process.execPath, args: [path.resolve(import.meta.dirname, "index.js")] } } });
+        return json(response, 200, localConnection({ node: process.execPath, server: path.resolve(import.meta.dirname, "index.js") }));
       }
+      if (request.method === "GET" && url.pathname === "/api/integrations") return json(response, 200, integrationGuide({ server: path.resolve(import.meta.dirname, "index.js") }));
       if (request.method === "GET" && url.pathname === "/api/library") return json(response, 200, await service.local.library());
       if (request.method !== "POST") return json(response, 404, { error: "Unknown local client endpoint" });
       if (url.pathname === "/api/upload") {

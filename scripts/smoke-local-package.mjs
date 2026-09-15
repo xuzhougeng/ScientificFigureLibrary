@@ -74,6 +74,10 @@ try {
     return data;
   };
   const connection = await request('connection');
+  const guide = await request('integrations');
+  if (guide.schema !== 'figure-library.local-integration-guide.v1' || guide.command !== connection.mcpServers['figure-library'].command) throw new Error('Integration guide uses the wrong runtime');
+  await fs.access(guide.skillPath);
+  if (guide.hosts.length < 4 || !guide.verificationPrompt.includes('figure_library_get_skill')) throw new Error('Host installation instructions are missing');
   if (path.resolve(connection.mcpServers['figure-library'].command) !== path.resolve(binary)) throw new Error('App is not using its bundled Node runtime');
   const html = await (await fetch(launch.origin)).text();
   if (!html.includes('本地图片') || !html.includes('copy-mcp')) throw new Error('Standalone page is absent');

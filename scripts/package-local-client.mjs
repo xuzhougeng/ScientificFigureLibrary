@@ -157,6 +157,7 @@ async function macos(architecture) {
   if (smoke.status !== 'passed') throw new Error(`Native smoke failed: ${JSON.stringify(smoke)}`);
   await fs.copyFile(path.join(smokeRoot, 'native-smoke.json'), path.join(output, `macos-${architecture}${variant}-smoke.json`));
   await fs.copyFile(path.join(smokeRoot, 'native-window.png'), path.join(output, `macos-${architecture}${variant}-window.png`));
+  await fs.copyFile(path.join(smokeRoot, 'integrations-window.png'), path.join(output, `macos-${architecture}${variant}-integrations.png`));
   await fs.rm(smokeRoot, { recursive: true, force: true });
   await fs.writeFile(path.join(volume, 'BUILD-INFO.json'), JSON.stringify({ version: pkg.version, platform: `macos-${architecture}`, minimumOS: '13.0', runtimeMode, minimumNodeMajor: 22, nodeVersion: runtimeMode === 'bundled' ? runtimeLock.version : null, signing: 'ad-hoc', notarized: false, smoke, appFiles: await inventory(app) }, null, 2) + '\n');
   await fs.copyFile(path.join(root, 'docs/INSTALL_LOCAL.md'), path.join(volume, 'INSTALL.md'));

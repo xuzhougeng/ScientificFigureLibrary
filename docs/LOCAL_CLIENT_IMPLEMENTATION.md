@@ -32,7 +32,7 @@ macOS 原生界面使用同样的 HTTP 数据契约。Node/TypeScript 核心只�
 
 ## 已执行的验证
 
-- `npm run check`：332 项测试通过，类型检查、两种 Web 入口构建及原有 56 个 MCP 工具的 stdio smoke 通过。
+- `npm run check`：334 项测试通过，类型检查、两种 Web 入口构建及原有 56 个 MCP 工具的 stdio smoke 通过。
 - 本地 HTTP 集成测试：认证、Origin/Host 校验、一次性连接、绑定、上传、导入、审阅、发布、资产读取、本地精确确认、材料化及重放。
 - 同一业务实例的直接调用与真实外部 MCP Client 调用共用状态，另一业务会话不能使用其 receipt；关闭后直接操作和资源读取被拒绝。
 - Linux 浏览器实测：目录绑定、搜索、六张候选图加载、精确图片确认、保存计划入口、复制引用和退出。检查了页面布局；本地界面没有 AI/Agent 操作控件。
@@ -48,3 +48,13 @@ macOS 原生界面使用同样的 HTTP 数据契约。Node/TypeScript 核心只�
 - 平台 smoke 增加两个来源的真实缩略图与精确预览下载，并检查仅缓存三个请求到的图片；macOS 同时验证 NSImage 解码。新架构产物需分别通过平台工作流后分发。
 
 - 同时提供 `no-node` 包，移除运行时并检查本机 Node.js 22+。macOS 的 App 与外部启动器共用 Node 定位逻辑；Windows 通过启动脚本检测 PATH 或明确指定路径。
+
+
+## 外部工具连接说明页
+
+Windows 网页与 macOS 原生 App 提供独立“连接外部工具”页面，共享只读 `/api/integrations` 数据。页面包含 Codex CLI/Desktop、Claude Code、Claude Desktop 与其他 stdio 客户端说明，可复制实际运行时配置、命令、Skill 路径和验证指令，不自动修改其他应用配置。
+
+命令和配置格式参考 [Codex 官方 MCP 文档](https://developers.openai.com/codex/mcp/)、[Claude Code 官方文档](https://code.claude.com/docs/en/mcp) 和 [MCP 本地客户端指南](https://modelcontextprotocol.io/docs/develop/connect-local-servers)。zcode / WorkBuddy 使用通用配置说明，具体版本的安装和图片显示仍需宿主验收。
+
+
+本轮验证补充：334 项测试及 56 个 MCP 工具 smoke 通过；网页已实测四种接入说明的切换、剪贴板内容一致性和页面布局。修复了本地随机资产 ID 含 `3d` 时误触发三维图降权的问题，以固定 ID 的真实导入、发布和检索流程覆盖回归。原生连接说明页与最终安装包继续通过平台工作流验证。

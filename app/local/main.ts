@@ -11,7 +11,7 @@ const input = (id: string) => el<HTMLInputElement>(id);
 const button = (id: string) => el<HTMLButtonElement>(id);
 const form = (id: string) => el<HTMLFormElement>(id);
 const dialog = (id: string) => el<HTMLDialogElement>(id);
-const titles: Record<string, string> = { discover: "发现可复用的科学图", library: "我的图片与代码", import: "导入知识库", settings: "设置与连接" };
+const titles: Record<string, string> = { discover: "发现可复用的科学图", library: "我的图片与代码", import: "导入知识库", settings: "设置与连接", integrations: "连接外部工具" };
 let page = "discover";
 let result: SearchResult | undefined;
 let selected = new Map<string, Candidate>();
@@ -57,6 +57,7 @@ async function showPage(next: string) {
   document.querySelectorAll<HTMLButtonElement>(".local-sidebar button[data-page]").forEach((item) => item.classList.toggle("active", item.dataset.page === page));
   if (page === "library") await loadLibrary();
   if (page === "settings") await loadStatus();
+  if (page === "integrations") await loadIntegrations();
 }
 function refreshSelection() {
   el("selection-bar").hidden = selected.size === 0;
@@ -325,7 +326,7 @@ form("materialize-form").addEventListener("submit", (event) => { event.preventDe
 }); });
 button("copy-mcp").onclick = () => void run(async () => {
   await navigator.clipboard.writeText(JSON.stringify(await api("connection"), null, 2));
-  notify("已复制使用当前内置运行时的 MCP 配置。");
+  notify("已复制使用当前运行时的 MCP 配置。");
 }, button("copy-mcp"));
 button("shutdown").onclick = () => void run(async () => {
   stopped = true;
@@ -343,3 +344,38 @@ async function connect() {
 
 }
 void run(connect);
+
+
+function copyBlock(title: string, value: string, format = "") {
+  const block = node("section", "", "integration-code");
+  block.append(node("h3", title + (format ? ` · ${format}` : "")), node("pre", value));
+  block.append(action("复制", async () => { await navigator.clipboard.writeText(value); notify(`已复制${title}。`); }, true));
+  return block;
+}
+async function loadIntegrations() {
+  const guide = await api<Record<string, unknown>>("integrations");
+  const hosts = records(guide.hosts), snippets = records(guide.snippets);
+  const picker = el<HTMLSelectElement>("integration-host");
+  const previous = picker.value;
+  picker.replaceChildren(...hosts.map(host => { const option = node("option", String(host.title)); option.value = String(host.id); return option; }));
+  if (hosts.some(host => host.id === previous)) picker.value = previous;
+  const render = () => {
+    const host = hosts.find(item => item.id === picker.value) ?? hosts[0]!;
+    const steps = node("ol", "");
+    for (const step of host.steps as string[]) steps.append(node("li", step));
+    el("integration-instructions").replaceChildren(steps);
+    if (typeof host.documentationUrl === "string") el("integration-instructions").append(action("查看官方说明", async () => safeLink(String(host.documentationUrl)), true));
+    el("integration-snippets").replaceChildren(...snippets.filter(item => (host.snippetIds as string[]).includes(String(item.id))).map(item => {
+      const block = copyBlock(String(item.title), String(item.content), String(item.format));
+      block.prepend(node("p", String(item.description)));
+      return block;
+    }));
+    if (host.id === "other") el("integration-snippets").append(copyBlock("命令", String(guide.command)), copyBlock("参数（JSON 数组）", JSON.stringify(guide.args, null, 2)));
+  };
+  picker.onchange = render;
+  render();
+  el("integration-skill-help").textContent = String(guide.skillInstructions);
+  el("integration-skill").replaceChildren(copyBlock("Skill 文件夹", String(guide.skillDirectory)), copyBlock("SKILL.md 路径", String(guide.skillPath)));
+  el("integration-verify").replaceChildren(copyBlock("验证指令", String(guide.verificationPrompt)));
+  el("integration-notes").replaceChildren(...(guide.notes as string[]).map(note => node("p", note)));
+}

@@ -346,6 +346,7 @@ export class LocalPublishedProviderAdapter implements ProviderAdapter {
           {
             templateId: item.templateId,
             title: item.title,
+            opaqueTemplateId: true,
             ...resolveFigureDescription(item.description, item.application),
             visualProfile: item.visualProfile,
             scientificQuestion: item.scientificQuestion,

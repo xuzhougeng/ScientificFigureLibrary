@@ -59,6 +59,13 @@ test("local browser/native session enforces origin, authentication, one-use laun
   const { local, request, api } = await isolated(t);
   assert.equal((await fetch(local.origin + "/")).status, 200);
   assert.equal((await fetch(local.origin + "/api/state")).status, 401);
+  assert.equal((await fetch(local.origin + "/api/integrations")).status, 401);
+  const integration = await (await request("/api/integrations")).json();
+  const connection = await (await request("/api/connection")).json();
+  assert.equal(integration.schema, "figure-library.local-integration-guide.v1");
+  assert.deepEqual(JSON.parse(integration.snippets.find((item: { id: string }) => item.id === "json").content), connection);
+  assert.equal(integration.command, process.execPath);
+  assert.ok(!JSON.stringify(integration).includes(local.token));
   assert.equal((await request("/api/state", undefined, { Origin: "https://unrelated.example" })).status, 403);
   const wrongHost = await new Promise<number | undefined>((resolve, reject) => {
     const request = get(local.origin + "/api/state", { headers: { Host: "unrelated.example", Authorization: `Bearer ${local.token}` } }, (response) => {
@@ -100,7 +107,7 @@ test("local client binds, uploads, imports, reviews, publishes, previews and mat
   const imagePath = await upload("reference.png", png);
   const codePath = await upload("plot.R", Buffer.from("stop('must not execute')\n"));
   const planned = await call("figure_library_plan_working_revision", {
-    mode: "create", title: "localclientfixture reference", description: "Local image and code", application: "Reusable visual reference for localclientfixture", dataProfile: "x y",
+    mode: "create", templateId: "template-123d4567-1234-1234-1234-123456789abc", title: "localclientfixture reference", description: "Local image and code", application: "Reusable visual reference for localclientfixture", dataProfile: "x y",
     language: "R", license: "MIT", tags: ["localclientfixture"], assetKind: "plot_template", codeStatus: "scaffold", executionStatus: "not_run",
     visualAssets: [{ assetId: "reference", sourcePath: imagePath, visualRole: "source_reference" }],
     codeAssets: [{ assetId: "code", sourcePath: codePath, codeOrigin: "user_supplied", language: "R" }],

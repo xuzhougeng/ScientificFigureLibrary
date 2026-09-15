@@ -14,6 +14,10 @@ import AppKit
         try require(model.ready, model.error ?? "Native backend did not start")
         let backend = model.backend
         let connection = try await backend.request("connection")
+        model.integrations = try await backend.request("integrations")
+        try require(model.integrations["schema"].string == "figure-library.local-integration-guide.v1", "Native connection guide is missing")
+        try require(FileManager.default.fileExists(atPath: model.integrations["skillPath"].string), "Installation guide has an invalid Skill path")
+        try require(model.integrations["command"] == connection["mcpServers"]["figure-library"]["command"], "Installation guide uses a different runtime")
         let activeNode = connection["mcpServers"]["figure-library"]["command"].string
         if environment["SFL_RUNTIME_MODE"] == "system" {
             try require(URL(fileURLWithPath: activeNode).resolvingSymlinksInPath() == URL(fileURLWithPath: environment["SFL_NODE_BINARY"]!).resolvingSymlinksInPath(), "App did not use selected system Node")
@@ -69,7 +73,14 @@ import AppKit
             view.cacheDisplay(in: view.bounds, to: image)
             try image.representation(using: .png, properties: [:])?.write(to: root.appendingPathComponent("native-window.png"))
         }
-        let report = object(["status": text("passed"), "nativeWindow": .bool(true), "privateRuntime": .bool(environment["SFL_RUNTIME_MODE"] != "system"), "runtimeMode": text(environment["SFL_RUNTIME_MODE"] ?? "bundled"), "syntheticUserActions": .bool(true), "flows": .array(["downloadedThumbnails", "downloadedExactPreviews", "onDemandCache", "binding", "upload", "import", "publish", "search", "imageDecode", "localConfirmation", "materialize", "replay"].map(text))])
+        model.section = .integrations
+        try await Task.sleep(nanoseconds: 200_000_000)
+        view.layoutSubtreeIfNeeded()
+        if let image = view.bitmapImageRepForCachingDisplay(in: view.bounds) {
+            view.cacheDisplay(in: view.bounds, to: image)
+            try image.representation(using: .png, properties: [:])?.write(to: root.appendingPathComponent("integrations-window.png"))
+        }
+        let report = object(["status": text("passed"), "nativeWindow": .bool(true), "privateRuntime": .bool(environment["SFL_RUNTIME_MODE"] != "system"), "runtimeMode": text(environment["SFL_RUNTIME_MODE"] ?? "bundled"), "syntheticUserActions": .bool(true), "flows": .array(["integrationGuide", "downloadedThumbnails", "downloadedExactPreviews", "onDemandCache", "binding", "upload", "import", "publish", "search", "imageDecode", "localConfirmation", "materialize", "replay"].map(text))])
         try Data(report.pretty.utf8).write(to: root.appendingPathComponent("native-smoke.json"))
         _ = await backend.shutdown()
         NSApplication.shared.terminate(nil)

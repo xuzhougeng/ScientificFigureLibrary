@@ -24,6 +24,7 @@ let libraryGreen = Color(red: 0.14, green: 0.42, blue: 0.30)
                     case .library: KnowledgeView(model: model)
                     case .add: ImportView(model: model)
                     case .settings: SettingsView(model: model)
+                    case .integrations: IntegrationsView(model: model)
                     }
                 }
             }
@@ -220,10 +221,73 @@ let libraryGreen = Color(red: 0.14, green: 0.42, blue: 0.30)
             SwiftUI.Section("外部调用") {
                 Text("本地客户端直接管理图片、代码与版本。其他 CLI 或桌面工具可通过 MCP 和核心 Skill 使用同一知识库。")
                 Button("复制 MCP 配置") { copyText(model.connectionConfiguration); model.message = "已复制 MCP 配置。" }.disabled(model.connectionConfiguration.isEmpty)
-                Text("安装包内附 Node 运行时，无需另外安装。客户端不执行绘图代码。").foregroundStyle(.secondary)
+                Button("查看安装与连接指令") { model.section = .integrations }
+                Text("内置 Node 版可直接使用；no-node 版要求本机 Node.js 22+。客户端不执行绘图代码。").foregroundStyle(.secondary)
             }
         }.formStyle(.grouped)
     }
 }
 
 func copyText(_ value: String) { NSPasteboard.general.clearContents(); NSPasteboard.general.setString(value, forType: .string) }
+
+
+@MainActor struct IntegrationsView: View {
+    @ObservedObject var model: LibraryModel
+    @State private var selectedHost = "codex"
+    var guide: JSON { model.integrations }
+    var host: JSON { guide["hosts"].array.first { $0["id"].string == selectedHost } ?? .null }
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 20) {
+                Text("把图库连接到你使用的 CLI 或桌面工具，获取候选图片与代码。").foregroundStyle(.secondary)
+                if guide == .null { ProgressView("正在读取本机连接配置…") }
+                else {
+                    Text("1. 选择外部工具").font(.title2)
+                    Picker("目标客户端", selection: $selectedHost) {
+                        ForEach(guide["hosts"].array.indices, id: \.self) { index in Text(guide["hosts"].array[index]["title"].string).tag(guide["hosts"].array[index]["id"].string) }
+                    }.frame(maxWidth: 440)
+                    ForEach(host["steps"].array.indices, id: \.self) { index in Text("\(index + 1). \(host["steps"].array[index].string)") }
+                    if let url = URL(string: host["documentationUrl"].string), url.scheme == "https" { Link("查看官方说明", destination: url) }
+                    ForEach(guide["snippets"].array.indices, id: \.self) { index in
+                        let snippet = guide["snippets"].array[index]
+                        if host["snippetIds"].array.contains(snippet["id"]) {
+                            Text(snippet["description"].string).font(.callout).foregroundStyle(.secondary)
+                            IntegrationSnippetView(title: snippet["title"].string + " · " + snippet["format"].string, value: snippet["content"].string)
+                        }
+                    }
+                    if selectedHost == "other" {
+                        IntegrationSnippetView(title: "命令", value: guide["command"].string)
+                        IntegrationSnippetView(title: "参数（JSON 数组）", value: guide["args"].pretty)
+                    }
+                    Divider()
+                    Text("2. 加载核心 Skill").font(.title2)
+                    Text(guide["skillInstructions"].string)
+                    IntegrationSnippetView(title: "Skill 文件夹", value: guide["skillDirectory"].string)
+                    IntegrationSnippetView(title: "SKILL.md 路径", value: guide["skillPath"].string)
+                    Button("在 Finder 中显示 Skill") { NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: guide["skillPath"].string)]) }
+                    Divider()
+                    Text("3. 验证连接").font(.title2)
+                    Text("在外部工具中发送下面的指令。工具连接成功和图片成功显示需要分别确认。")
+                    IntegrationSnippetView(title: "验证指令", value: guide["verificationPrompt"].string)
+                    ForEach(guide["notes"].array.indices, id: \.self) { index in Text(guide["notes"].array[index].string).font(.callout).foregroundStyle(.secondary) }
+                }
+            }.frame(maxWidth: 850, alignment: .leading).padding(28)
+        }.task {
+            do { model.integrations = try await model.backend.request("integrations") }
+            catch { model.error = error.localizedDescription }
+        }
+    }
+}
+
+@MainActor struct IntegrationSnippetView: View {
+    let title: String
+    let value: String
+    @State private var copied = false
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack { Text(title).font(.headline); Spacer(); Button(copied ? "已复制" : "复制") { copyText(value); copied = true } }
+            Text(value).font(.system(.caption, design: .monospaced)).textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading)
+        }.padding(16).background(Color(NSColor.controlBackgroundColor)).clipShape(RoundedRectangle(cornerRadius: 10))
+        .onChange(of: value) { _ in copied = false }
+    }
+}

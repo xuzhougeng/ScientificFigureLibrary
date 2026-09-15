@@ -51,6 +51,15 @@ macOS 可能阻止从网络下载的 App 首次运行；只在确认下载来源
 
 ## 外部 MCP 与 Skill
 
+打开客户端侧边栏的 **连接外部工具** 页面，选择目标客户端：
+
+1. Codex CLI / Desktop：复制添加命令或 TOML 片段；Claude Code：复制用户范围添加命令；Claude Desktop：按页面说明合并 JSON。
+2. zcode、WorkBuddy 等其他客户端：复制通用 JSON，或分别复制命令、参数填写 stdio 配置。
+3. 按页面说明通过 MCP 读取核心 Skill，或导入整个 Skill 文件夹。
+4. 将页面中的验证指令发送给外部工具，确认能读取图库状态并展示候选图片。
+
+页面显示真实的安装目录与当前 Node 路径，支持复制配置、命令、Skill 路径和验证指令；macOS 还可在 Finder 显示 Skill 文件。外部工具配置完成后可关闭 SFL 窗口。各外部会话的结果和确认凭据仍独立。
+
 本地 App 直接调用共享业务服务。外部 CLI/Desktop 可以另行配置 MCP：
 
 - 在 App 设置中点击“复制 MCP 配置”，得到使用包内 Node 和后端绝对路径的配置。
