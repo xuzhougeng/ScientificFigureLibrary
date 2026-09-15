@@ -46,7 +46,7 @@ macOS 可能阻止从网络下载的 App 首次运行；只在确认下载来源
 - macOS：`~/Library/Caches/ScientificFigureLibrary/previews/v1`
 - Windows：`%LOCALAPPDATA%/ScientificFigureLibrary/preview-cache/v1`
 
-关闭 App 和使用它的 MCP 进程后，可以删除缓存以释放空间；后续查看会重新下载。测试或高级配置可通过绝对路径 `SFL_PREVIEW_CACHE_DIR` 指定缓存目录。清除已确认图片的缓存后，需要重新预览再保存模板。
+设置页的「图片缓存」显示缓存目录和占用空间，可复制路径或清除缓存。关闭 App 和使用它的 MCP 进程后，也可以直接删除该目录以释放空间；后续查看会重新下载。测试或高级配置可通过绝对路径 `SFL_PREVIEW_CACHE_DIR` 指定缓存目录。清除已确认图片的缓存后，需要重新预览再保存模板。
 
 图片下载固定到构建时的源码提交，逐张校验大小、SHA-256 和图片格式。它与已有的 Provider 来源更新是两个流程：已启用的 Open Figure Modules 自动更新仍会获取签名快照及其预览包。模板代码归档仍在材料化流程中单独确认下载。
 

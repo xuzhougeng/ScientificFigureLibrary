@@ -23,12 +23,81 @@ export type PreviewDownloadFile = z.infer<typeof FileSchema>;
 export interface PreviewDownloadOptions { cacheDirectory?: string; fetcher?: Pick<SecureProviderSourceFetcher, "fetch"> }
 const sha256 = (bytes: Uint8Array) => createHash("sha256").update(bytes).digest("hex");
 
+const CACHE_FILE = /^[a-f0-9]{64}\.(png|jpe?g|webp|gif)$/u;
+
 export function previewCacheDirectory() {
   const override = process.env.SFL_PREVIEW_CACHE_DIR;
   if (override) { if (!path.isAbsolute(override)) throw new Error("Preview cache directory must be absolute"); return override; }
   if (process.platform === "win32") return path.join(process.env.LOCALAPPDATA ?? path.join(os.homedir(), "AppData/Local"), "ScientificFigureLibrary/preview-cache/v1");
   if (process.platform === "darwin") return path.join(os.homedir(), "Library/Caches/ScientificFigureLibrary/previews/v1");
   return path.join(process.env.XDG_CACHE_HOME ?? path.join(os.homedir(), ".cache"), "scientific-figure-library/previews/v1");
+}
+
+export interface PreviewCacheStatus {
+  schema: "figure-library.preview-cache.v1";
+  directory: string;
+  exists: boolean;
+  fileCount: number;
+  bytes: number;
+}
+
+async function previewCacheEntries(directory: string) {
+  const entries: Array<{ file: string; bytes: number }> = [];
+  for (const name of (await fs.readdir(directory)).sort()) {
+    if (!CACHE_FILE.test(name)) continue;
+    const file = path.join(directory, name);
+    const stat = await fs.lstat(file);
+    if (!stat.isFile() || stat.isSymbolicLink()) continue;
+    entries.push({ file, bytes: stat.size });
+  }
+  return entries;
+}
+
+async function assertPreviewCacheDirectory(directory: string) {
+  const stat = await fs.lstat(directory);
+  if (stat.isSymbolicLink() || !stat.isDirectory()) throw new Error("Preview cache must be a regular directory");
+}
+
+export async function inspectPreviewCache(): Promise<PreviewCacheStatus> {
+  const directory = previewCacheDirectory();
+  try {
+    await assertPreviewCacheDirectory(directory);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+      return { schema: "figure-library.preview-cache.v1", directory, exists: false, fileCount: 0, bytes: 0 };
+    }
+    throw error;
+  }
+  const entries = await previewCacheEntries(directory);
+  return {
+    schema: "figure-library.preview-cache.v1",
+    directory,
+    exists: true,
+    fileCount: entries.length,
+    bytes: entries.reduce((sum, entry) => sum + entry.bytes, 0),
+  };
+}
+
+export async function clearPreviewCache() {
+  const current = await inspectPreviewCache();
+  if (!current.exists) return { ...current, removed: 0, bytesFreed: 0 };
+  const entries = await previewCacheEntries(current.directory);
+  for (const entry of entries) await fs.unlink(entry.file);
+  for (const name of await fs.readdir(current.directory)) {
+    if (!name.endsWith(".tmp")) continue;
+    const file = path.join(current.directory, name);
+    const stat = await fs.lstat(file);
+    if (stat.isFile() && !stat.isSymbolicLink()) await fs.unlink(file);
+  }
+  return {
+    schema: "figure-library.preview-cache.v1" as const,
+    directory: current.directory,
+    exists: true,
+    fileCount: 0,
+    bytes: 0,
+    removed: entries.length,
+    bytesFreed: entries.reduce((sum, entry) => sum + entry.bytes, 0),
+  };
 }
 
 /** Explicit lightweight-package manifest. Catalog identities remain authoritative. */

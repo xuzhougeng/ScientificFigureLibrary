@@ -7,6 +7,7 @@ import { z } from "zod";
 import { integrationGuide, localConnection } from "./integrations.ts";
 import { VERSION } from "../version.ts";
 import { createLibraryService, type LibraryService } from "../library-service.ts";
+import { clearPreviewCache, inspectPreviewCache } from "../preview-downloads.ts";
 
 const BODY_LIMIT = 1024 * 1024;
 const UPLOAD_LIMIT = 32 * 1024 * 1024;
@@ -121,6 +122,7 @@ export async function startLocalHttp(options: {
       }
       if (request.method === "GET" && url.pathname === "/api/integrations") return json(response, 200, integrationGuide({ server: path.resolve(import.meta.dirname, "index.js") }));
       if (request.method === "GET" && url.pathname === "/api/library") return json(response, 200, await service.local.library());
+      if (request.method === "GET" && url.pathname === "/api/preview-cache") return json(response, 200, await inspectPreviewCache());
       if (request.method !== "POST") return json(response, 404, { error: "Unknown local client endpoint" });
       if (url.pathname === "/api/upload") {
         const filename = z.string().min(1).max(200).parse(request.headers["x-sfl-filename"]);
@@ -140,6 +142,10 @@ export async function startLocalHttp(options: {
           return json(response, 403, { error: "Approve the exact plan before applying it" });
         }
         return json(response, 200, await service.execute(call.name, call.arguments));
+      }
+      if (url.pathname === "/api/preview-cache") {
+        z.object({ action: z.literal("clear") }).strict().parse(input);
+        return json(response, 200, await clearPreviewCache());
       }
       if (url.pathname === "/api/preview") return json(response, 200, await service.local.preview(input));
       if (url.pathname === "/api/confirm") return json(response, 200, await service.local.confirm(input));

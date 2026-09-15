@@ -47,6 +47,7 @@
     <section id="settings-page" class="local-page" hidden>
       <div class="settings-grid"><section class="settings-card"><h2>本机目录</h2><p>这些目录跨项目共享。请输入由你选择的绝对路径。</p><form id="binding-form" class="local-form"><label>全局图库<input id="library-directory" required placeholder="例如：D:\ScientificFigures"></label><label>本地工作区<input id="workspace-directory" required placeholder="例如：D:\ScientificFigureWorkspace"></label><button type="submit">检查并确认目录</button></form></section>
       <section class="settings-card"><h2>外部调用接口</h2><p>其他 CLI 或桌面工具可以通过 MCP 和核心 Skill 使用这个知识库。本地客户端独立完成图片与代码的浏览和管理。</p><button data-page="integrations" class="quiet">查看安装与连接指令</button><button id="copy-mcp" class="quiet">复制 MCP 配置</button><h3>图片与代码</h3><p>客户端保存图片、代码、关联和版本，只做文件管理，不执行绘图代码。</p><button id="shutdown" class="quiet" hidden>退出本地客户端</button></section></div>
+      <section class="settings-card"><h2>图片缓存</h2><p>在线图库的缩略图和精确预览按需下载到此目录，与知识库分开。清除后下次查看会重新下载；已确认图片需重新预览再保存模板。</p><p>缓存目录 <code id="preview-cache-directory"></code></p><p id="preview-cache-summary"></p><button id="copy-cache-path" class="quiet">复制缓存路径</button><button id="clear-cache" class="quiet">清除缓存</button></section>
       <section class="settings-card"><h2>图片来源</h2><div id="provider-list"></div></section>
     </section>
   </main>

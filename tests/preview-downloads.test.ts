@@ -5,7 +5,7 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 import { pathToFileURL } from "node:url";
-import { PreviewDownloadStore, PREVIEW_DOWNLOAD_MANIFEST, type PreviewDownloadFile } from "../src/preview-downloads.ts";
+import { PreviewDownloadStore, PREVIEW_DOWNLOAD_MANIFEST, clearPreviewCache, inspectPreviewCache, type PreviewDownloadFile } from "../src/preview-downloads.ts";
 import { CatalogIndex } from "../src/catalog.ts";
 import { ModuleCatalogIndex } from "../src/module-catalog.ts";
 
@@ -86,6 +86,50 @@ test("matching digest alone cannot turn malformed bytes into a preview", async t
   const store = (await PreviewDownloadStore.load(dir, "test", [invalid], { cacheDirectory, fetcher: { fetch: async url => reply(url, bytes) } }))!;
   await assert.rejects(store.read(file.path), /image|PNG|png/u);
   assert.deepEqual(await fs.readdir(cacheDirectory), []);
+});
+
+test("preview cache status lists only hashed image files and clear leaves unrelated files", async t => {
+  const cacheDirectory = await fs.mkdtemp(path.join(os.tmpdir(), "sfl-preview-cache-status-"));
+  const previous = process.env.SFL_PREVIEW_CACHE_DIR;
+  process.env.SFL_PREVIEW_CACHE_DIR = cacheDirectory;
+  t.after(async () => {
+    if (previous === undefined) delete process.env.SFL_PREVIEW_CACHE_DIR;
+    else process.env.SFL_PREVIEW_CACHE_DIR = previous;
+    await fs.rm(cacheDirectory, { recursive: true, force: true });
+  });
+  const image = path.join(cacheDirectory, `${hash(png)}.png`);
+  const extra = path.join(cacheDirectory, "notes.txt");
+  await fs.writeFile(image, png);
+  await fs.writeFile(extra, "keep");
+  const emptyTmp = path.join(cacheDirectory, `${hash(png)}.png.${"a".repeat(36)}.tmp`);
+  await fs.writeFile(emptyTmp, "partial");
+  const status = await inspectPreviewCache();
+  assert.equal(status.schema, "figure-library.preview-cache.v1");
+  assert.equal(status.directory, cacheDirectory);
+  assert.equal(status.exists, true);
+  assert.equal(status.fileCount, 1);
+  assert.equal(status.bytes, png.length);
+  const cleared = await clearPreviewCache();
+  assert.equal(cleared.removed, 1);
+  assert.equal(cleared.bytesFreed, png.length);
+  assert.equal(cleared.fileCount, 0);
+  assert.deepEqual((await fs.readdir(cacheDirectory)).sort(), ["notes.txt"]);
+});
+
+test("missing preview cache reports empty status without creating the directory", async t => {
+  const missing = path.join(os.tmpdir(), `sfl-preview-cache-missing-${Date.now()}`);
+  const previous = process.env.SFL_PREVIEW_CACHE_DIR;
+  process.env.SFL_PREVIEW_CACHE_DIR = missing;
+  t.after(() => {
+    if (previous === undefined) delete process.env.SFL_PREVIEW_CACHE_DIR;
+    else process.env.SFL_PREVIEW_CACHE_DIR = previous;
+  });
+  const status = await inspectPreviewCache();
+  assert.equal(status.exists, false);
+  assert.equal(status.fileCount, 0);
+  await assert.rejects(fs.lstat(missing), { code: "ENOENT" });
+  const cleared = await clearPreviewCache();
+  assert.equal(cleared.removed, 0);
 });
 
 test("preview cache refuses symlink entries", { skip: process.platform === "win32" }, async t => {

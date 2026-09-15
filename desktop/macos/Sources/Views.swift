@@ -209,8 +209,20 @@ let libraryGreen = Color(red: 0.14, green: 0.42, blue: 0.30)
     }
 }
 
+func formatBytes(_ value: Int) -> String {
+    if value < 1024 { return "\(value) B" }
+    if value < 1_048_576 { return String(format: "%.1f KB", Double(value) / 1024) }
+    return String(format: "%.1f MB", Double(value) / 1_048_576)
+}
+
 @MainActor struct SettingsView: View {
     @ObservedObject var model: LibraryModel
+    @State private var confirmClearCache = false
+    var cacheSummary: String {
+        if !model.previewCache["exists"].bool { return "尚未下载过在线预览图。" }
+        if model.previewCache["fileCount"].int == 0 { return "缓存目录已创建，当前没有图片。" }
+        return "已缓存 \(model.previewCache["fileCount"].int) 张图片 · \(formatBytes(model.previewCache["bytes"].int))"
+    }
     var body: some View {
         Form {
             SwiftUI.Section("本机目录") {
@@ -219,13 +231,33 @@ let libraryGreen = Color(red: 0.14, green: 0.42, blue: 0.30)
                 Text("目录跨项目共享；更改绑定前会显示具体计划。").foregroundStyle(.secondary)
                 Button("检查并确认目录") { model.perform { try await model.bind() } }.disabled(model.busy || model.libraryDirectory.isEmpty || model.workspaceDirectory.isEmpty)
             }
+            SwiftUI.Section("图片缓存") {
+                LabeledContent("缓存目录") { Text(model.previewCache["directory"].string).textSelection(.enabled) }
+                Text(cacheSummary).foregroundStyle(.secondary)
+                Text("在线图库的缩略图和精确预览按需下载到此目录，与知识库分开。清除后下次查看会重新下载；已确认图片需重新预览再保存模板。").foregroundStyle(.secondary)
+                Button("在 Finder 中显示") { model.revealPreviewCache() }.disabled(model.previewCache["directory"].string.isEmpty)
+                Button("复制缓存路径") { copyText(model.previewCache["directory"].string); model.message = "已复制缓存路径。" }.disabled(model.previewCache["directory"].string.isEmpty)
+                Button("清除缓存", role: .destructive) { confirmClearCache = true }.disabled(model.busy || model.previewCache["fileCount"].int == 0)
+            }
             SwiftUI.Section("外部调用") {
                 Text("本地客户端直接管理图片、代码与版本。其他 CLI 或桌面工具可通过 MCP 和核心 Skill 使用同一知识库。")
                 Button("复制 MCP 配置") { copyText(model.connectionConfiguration); model.message = "已复制 MCP 配置。" }.disabled(model.connectionConfiguration.isEmpty)
                 Button("查看安装与连接指令") { model.section = .integrations }
                 Text("内置 Node 版可直接使用；no-node 版要求本机 Node.js 22+。客户端不执行绘图代码。").foregroundStyle(.secondary)
             }
+            SwiftUI.Section("图片来源") {
+                if model.providers.isEmpty { Text("默认检索本地已发布、FigureYa、Open Figure Modules 与已启用的个人来源。").foregroundStyle(.secondary) }
+                ForEach(model.providers.indices, id: \.self) { index in
+                    let source = model.providers[index]
+                    LabeledContent(source["sourceLabel"].string.isEmpty ? source["providerId"].string : source["sourceLabel"].string, value: source["health"].string.isEmpty ? "可用" : source["health"].string)
+                }
+            }
         }.formStyle(.grouped)
+        .confirmationDialog("清除已下载的在线预览图？下次查看会重新下载。已确认图片需要重新预览后再保存模板。", isPresented: $confirmClearCache) {
+            Button("清除缓存", role: .destructive) { model.perform { try await model.clearPreviewCache() } }
+            Button("取消", role: .cancel) {}
+        }
+        .task { if model.ready { model.perform { try await model.status() } } }
     }
 }
 

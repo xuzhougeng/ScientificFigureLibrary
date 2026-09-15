@@ -38,6 +38,8 @@ enum Sheet: Identifiable {
     @Published var setupRequired = true
     @Published var connectionConfiguration = ""
     @Published var integrations: JSON = .null
+    @Published var previewCache: JSON = .null
+    @Published var providers: [JSON] = []
     private var pages: [Int: (JSON, JSON)] = [:]
     private var starting = false
 
@@ -65,6 +67,21 @@ enum Sheet: Identifiable {
         if value["library"]["directorySource"].string != "legacy-default" { libraryDirectory = value["library"]["root"].string }
         workspaceDirectory = value["workspace"]["root"].string
         if let connection = try? await backend.request("connection") { connectionConfiguration = connection.pretty }
+        previewCache = try await backend.request("preview-cache")
+        providers = (try await backend.call("figure_library_list_provider_sources"))["sources"].array
+    }
+    func clearPreviewCache() async throws {
+        previewCache = try await backend.request("preview-cache", object(["action": text("clear")]))
+        message = "已清除 \(previewCache["removed"].int) 张缓存图片。"
+    }
+    func revealPreviewCache() {
+        let directory = previewCache["directory"].string
+        guard !directory.isEmpty else { return }
+        if FileManager.default.fileExists(atPath: directory) {
+            NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: directory)])
+        } else {
+            message = "缓存目录尚未创建；首次查看在线图片后会出现。"
+        }
     }
     func display(_ response: JSON) throws {
         let next = try backend.check(response)

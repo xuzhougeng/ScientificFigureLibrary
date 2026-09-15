@@ -172,7 +172,21 @@ async function loadStatus() {
     el("provider-list").append(line);
   }
   if (!sourceRows.length) el("provider-list").append(node("p", "默认检索本地已发布、FigureYa、Open Figure Modules 与已启用的个人来源。"));
+  const cache = await api<Record<string, unknown>>("preview-cache");
+  el("preview-cache-directory").textContent = String(cache.directory ?? "");
+  const cacheBytes = Number(cache.bytes ?? 0);
+  const cacheCount = Number(cache.fileCount ?? 0);
+  el("preview-cache-summary").textContent = cache.exists === true && cacheCount > 0
+    ? `已缓存 ${cacheCount} 张图片 · ${formatBytes(cacheBytes)}`
+    : cache.exists === true
+      ? "缓存目录已创建，当前没有图片。"
+      : "尚未下载过在线预览图。";
   refreshSelection();
+}
+function formatBytes(bytes: number) {
+  if (!Number.isFinite(bytes) || bytes < 1024) return `${Math.max(0, bytes | 0)} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 async function bindDirectories() {
   const libraryDirectory = input("library-directory").value.trim();
@@ -328,6 +342,18 @@ button("copy-mcp").onclick = () => void run(async () => {
   await navigator.clipboard.writeText(JSON.stringify(await api("connection"), null, 2));
   notify("已复制使用当前运行时的 MCP 配置。");
 }, button("copy-mcp"));
+button("copy-cache-path").onclick = () => void run(async () => {
+  const directory = el("preview-cache-directory").textContent?.trim();
+  if (!directory) throw new Error("还没有缓存目录");
+  await navigator.clipboard.writeText(directory);
+  notify("已复制缓存路径。");
+}, button("copy-cache-path"));
+button("clear-cache").onclick = () => void run(async () => {
+  if (!window.confirm("清除已下载的在线预览图？下次查看会重新下载。已确认图片需要重新预览后再保存模板。")) return;
+  const cleared = await api<Record<string, unknown>>("preview-cache", { action: "clear" });
+  await loadStatus();
+  notify(`已清除 ${Number(cleared.removed ?? 0)} 张缓存图片。`);
+}, button("clear-cache"));
 button("shutdown").onclick = () => void run(async () => {
   stopped = true;
   try { await api("shutdown", {}); }

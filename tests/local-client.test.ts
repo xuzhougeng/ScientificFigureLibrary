@@ -25,6 +25,7 @@ async function isolated(t: { after: (fn: () => Promise<void>) => void }) {
     XDG_CONFIG_HOME: path.join(root, "config"), XDG_DATA_HOME: path.join(root, "data"),
     APPDATA: path.join(root, "config"), LOCALAPPDATA: path.join(root, "data"),
     SFL_DIAGNOSTICS_DIR: path.join(root, "diagnostics"), SFL_WORKSPACE_LOCATOR_PATH: path.join(root, "config/workspace.json"),
+    SFL_PREVIEW_CACHE_DIR: path.join(root, "preview-cache"),
     FIGURE_LIBRARY_DIR: path.join(root, "library"), FIGURE_WORKSPACE_DIR: path.join(root, "workspace"),
   };
   const previous = Object.fromEntries(Object.keys(overrides).map((key) => [key, process.env[key]]));
@@ -101,6 +102,26 @@ test("local browser/native session enforces origin, authentication, one-use laun
   assert.equal((await request("/api/confirm", { previewChallenge: "fake", imageLoaded: false, displayedImageSha256: "0".repeat(64), confirmedBy: "user" })).status, 400);
   assert.equal(record(await api("/api/state?revision=0")).search, undefined);
   assert.equal((await request("/not-a-route")).status, 404);
+});
+
+test("local client reports and clears the on-demand preview cache", async (t) => {
+  const { api, overrides } = await isolated(t);
+  const empty = await api("/api/preview-cache");
+  assert.equal(empty.schema, "figure-library.preview-cache.v1");
+  assert.equal(empty.directory, overrides.SFL_PREVIEW_CACHE_DIR);
+  assert.equal(empty.exists, false);
+  assert.equal(empty.fileCount, 0);
+  await fs.mkdir(overrides.SFL_PREVIEW_CACHE_DIR, { recursive: true });
+  await fs.writeFile(path.join(overrides.SFL_PREVIEW_CACHE_DIR, `${hash(png)}.png`), png);
+  await fs.writeFile(path.join(overrides.SFL_PREVIEW_CACHE_DIR, "keep.txt"), "notes");
+  const filled = await api("/api/preview-cache");
+  assert.equal(filled.exists, true);
+  assert.equal(filled.fileCount, 1);
+  assert.equal(filled.bytes, png.length);
+  const cleared = await api("/api/preview-cache", { action: "clear" });
+  assert.equal(cleared.removed, 1);
+  assert.equal(cleared.fileCount, 0);
+  assert.deepEqual(await fs.readdir(overrides.SFL_PREVIEW_CACHE_DIR), ["keep.txt"]);
 });
 
 test("local client binds, uploads, imports, reviews, publishes, previews and materializes through existing contracts", async (t) => {
