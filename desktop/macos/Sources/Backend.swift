@@ -62,6 +62,7 @@ func sha256(_ data: Data) -> String { SHA256.hash(data: data).map { String(forma
         guard let launcher = Bundle.main.executableURL?.deletingLastPathComponent().appendingPathComponent("sfl-mcp") else { throw LocalError(message: "安装包缺少启动器") }
         var resolverEnvironment = ProcessInfo.processInfo.environment
         if resolverEnvironment["SFL_NODE_BINARY"] == nil, let selected = UserDefaults.standard.string(forKey: "SFLNodeBinary") { resolverEnvironment["SFL_NODE_BINARY"] = selected }
+        let launchEnvironment = resolverEnvironment
         nativeSmokeLog("resolve runtime")
         // The resolver emits only a bounded path/error. Wait off the main actor;
         // do not depend on asynchronous EOF delivery for this short-lived process.
@@ -69,7 +70,7 @@ func sha256(_ data: Data) -> String { SHA256.hash(data: data).map { String(forma
             let resolver = Process()
             resolver.executableURL = launcher
             resolver.arguments = ["--sfl-node-path"]
-            resolver.environment = resolverEnvironment
+            resolver.environment = launchEnvironment
             resolver.standardInput = FileHandle.nullDevice
             let output = Pipe(), errors = Pipe()
             resolver.standardOutput = output
