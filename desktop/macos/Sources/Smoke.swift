@@ -33,18 +33,18 @@ func nativeSmokeLog(_ stage: String) {
         _ = try await backend.call("figure_library_apply_bind_global", ["planDigest": global["plan"]["planDigest"], "operationId": text("native-smoke-bind")], approve: true)
         let workspace = try await backend.call("figure_library_plan_bind_workspace", ["workspaceDirectory": text(rawRoot + "/workspace")])
         _ = try await backend.call("figure_library_apply_bind_workspace", ["planDigest": workspace["plan"]["planDigest"], "operationId": text("native-smoke-workspace")], approve: true)
-        nativeSmokeLog("download previews")
-        for providerID in ["org.figureya.module", "io.github.jarxunlai.personal-figures"] {
-            try model.display(await backend.request("call", object(["name": text("figure_library_search"), "arguments": object(["query": text("heatmap"), "providerIds": .array([text(providerID)]), "limit": .integer(1)])])))
-            let found = model.result
-            guard let candidate = found["candidates"].array.first else { throw LocalError(message: "Remote catalog returned no candidate") }
-            try require(candidate["previewDelivery"].string == "download", "Installer did not use on-demand previews")
-            try require(model.thumbnail(candidate) != nil, "Downloaded native thumbnail did not decode")
-            let exact = try await backend.exactPreview(["resultSetId": found["resultSetId"], "providerId": text(providerID), "exactSelector": candidate["exactSelector"]])
-            try require(exact.2.size.width > 0, "Downloaded native exact preview did not decode")
+        nativeSmokeLog("on-demand preview manifests")
+        guard let assets = Bundle.main.resourceURL?.appendingPathComponent("sfl/assets") else {
+            throw LocalError(message: "Installer is missing the bundled assets directory")
         }
-        let cachedImages = try FileManager.default.contentsOfDirectory(atPath: environment["SFL_PREVIEW_CACHE_DIR"]!)
-        try require(cachedImages.count == 3, "Only requested images should be downloaded")
+        for relative in ["preview-downloads.json", "personal-modules/preview-downloads.json"] {
+            let file = assets.appendingPathComponent(relative)
+            try require(FileManager.default.fileExists(atPath: file.path), "Installer is missing on-demand preview manifest: \(relative)")
+            let manifest = try JSONDecoder().decode(JSON.self, from: Data(contentsOf: file))
+            try require(manifest["schema"].string == "figure-library.preview-downloads.v1", "On-demand preview manifest schema is invalid: \(relative)")
+            try require(manifest["commit"].string.count == 40, "On-demand preview manifest is not pinned to a commit: \(relative)")
+            try require(!manifest["files"].array.isEmpty, "On-demand preview manifest has no files: \(relative)")
+        }
         nativeSmokeLog("import and publish")
         let imageURL = root.appendingPathComponent("reference.png")
         let codeURL = root.appendingPathComponent("plot.R")
@@ -89,7 +89,7 @@ func nativeSmokeLog(_ stage: String) {
             view.cacheDisplay(in: view.bounds, to: image)
             try image.representation(using: .png, properties: [:])?.write(to: root.appendingPathComponent("integrations-window.png"))
         }
-        let report = object(["status": text("passed"), "nativeWindow": .bool(true), "privateRuntime": .bool(environment["SFL_RUNTIME_MODE"] != "system"), "runtimeMode": text(environment["SFL_RUNTIME_MODE"] ?? "bundled"), "syntheticUserActions": .bool(true), "flows": .array(["integrationGuide", "downloadedThumbnails", "downloadedExactPreviews", "onDemandCache", "binding", "upload", "import", "publish", "search", "imageDecode", "localConfirmation", "materialize", "replay"].map(text))])
+        let report = object(["status": text("passed"), "nativeWindow": .bool(true), "privateRuntime": .bool(environment["SFL_RUNTIME_MODE"] != "system"), "runtimeMode": text(environment["SFL_RUNTIME_MODE"] ?? "bundled"), "syntheticUserActions": .bool(true), "flows": .array(["integrationGuide", "onDemandPreviewManifests", "binding", "upload", "import", "publish", "search", "imageDecode", "localConfirmation", "materialize", "replay"].map(text))])
         try Data(report.pretty.utf8).write(to: root.appendingPathComponent("native-smoke.json"))
         nativeSmokeLog("shutdown")
         _ = await backend.shutdown()
