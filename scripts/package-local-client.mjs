@@ -5,12 +5,13 @@ import os from 'node:os';
 import { promisify } from 'node:util';
 import { zipSync } from 'fflate';
 import { commonPluginFiles, assertPluginReleaseReady } from './plugin-package-lib.mjs';
+import { previewDownloadManifests } from './preview-download-manifest.mjs';
 import { installRuntime, runtimeLock, sha256 } from './runtime/runtime-lib.mjs';
 
 const execFile = promisify(execFileCallback);
 const root = path.resolve(import.meta.dirname, '..');
 const pkg = JSON.parse(await fs.readFile(path.join(root, 'package.json'), 'utf8'));
-const target = process.argv[2];
+const target = process.argv[2] === 'macos-native' ? `macos-${process.arch}` : process.argv[2];
 const output = path.resolve(process.env.SFL_CLIENT_OUTPUT ?? path.join(root, 'release', 'local-client'));
 await assertPluginReleaseReady();
 await fs.mkdir(output, { recursive: true });
@@ -21,11 +22,20 @@ async function run(command, args, options = {}) {
   return result;
 }
 async function payload(destination) {
+  const commit = (await execFile('git', ['rev-parse', 'HEAD'], { cwd: root })).stdout.trim();
+  const downloads = await previewDownloadManifests(root, process.env.GITHUB_REPOSITORY ?? 'xuzhougeng/ScientificFigureLibrary', commit);
   const files = new Set([...(await commonPluginFiles()), 'dist/local-app.html', 'package.json', 'docs/LOCAL_CLIENT.md', 'docs/LOCAL_CLIENT_IMPLEMENTATION.md', 'docs/INSTALL_LOCAL.md']);
   for (const relative of files) {
+    if (downloads.excluded.has(relative)) continue;
+    if (/\.(png|jpe?g|webp|gif)$/i.test(relative) && relative.startsWith('assets/') && !relative.startsWith('assets/brand/')) throw new Error(`Undeclared gallery image in lightweight payload: ${relative}`);
     const to = path.join(destination, relative);
     await fs.mkdir(path.dirname(to), { recursive: true });
     await fs.copyFile(path.join(root, relative), to);
+  }
+  for (const [relative, bytes] of downloads.manifests) {
+    const to = path.join(destination, relative);
+    await fs.mkdir(path.dirname(to), { recursive: true });
+    await fs.writeFile(to, bytes);
   }
 }
 async function inventory(directory, relative = '') {
@@ -77,7 +87,7 @@ async function windows() {
   await digestFile(file);
   console.log(`WINDOWS_ZIP=${file}`);
 }
-async function macos() {
+async function macos(architecture) {
   if (process.platform !== 'darwin') throw new Error('The native macOS App and DMG must be built on macOS.');
   const volume = path.join(staging, 'volume');
   const app = path.join(volume, 'Scientific Figure Library.app');
@@ -90,7 +100,7 @@ async function macos() {
   const sources = (await fs.readdir(path.join(root, 'desktop/macos/Sources'))).filter(file => file.endsWith('.swift')).map(file => path.join(root, 'desktop/macos/Sources', file));
   const binaries = [];
   const launchers = [];
-  for (const [arch, triple] of [['arm64', 'arm64'], ['x64', 'x86_64']]) {
+  for (const [arch, triple] of [[architecture, architecture === 'arm64' ? 'arm64' : 'x86_64']]) {
     const runtimeDirectory = path.join(service, 'runtime', `darwin-${arch}`);
     const manifest = await installRuntime(`darwin-${arch}`, runtimeDirectory);
     const binary = path.join(staging, `sfl-${arch}`);
@@ -102,8 +112,10 @@ async function macos() {
     await run('codesign', ['--force', '--sign', '-', '--entitlements', path.join(root, 'desktop/macos/node-entitlements.plist'), path.join(runtimeDirectory, 'node')]);
     await fs.writeFile(path.join(runtimeDirectory, 'runtime.json'), JSON.stringify({ ...manifest, upstreamBinarySha256: manifest.binarySha256, binarySha256: sha256(await fs.readFile(path.join(runtimeDirectory, 'node'))), signing: 'ad-hoc' }, null, 2) + '\n');
   }
-  await run('lipo', ['-create', ...binaries, '-output', path.join(macOS, 'ScientificFigureLibrary')]);
-  await run('lipo', ['-create', ...launchers, '-output', path.join(macOS, 'sfl-mcp')]);
+  await fs.copyFile(binaries[0], path.join(macOS, 'ScientificFigureLibrary'));
+  await fs.copyFile(launchers[0], path.join(macOS, 'sfl-mcp'));
+  await fs.chmod(path.join(macOS, 'ScientificFigureLibrary'), 0o755);
+  await fs.chmod(path.join(macOS, 'sfl-mcp'), 0o755);
   await run('codesign', ['--force', '--sign', '-', path.join(macOS, 'sfl-mcp')]);
   const icon = path.join(staging, 'icon.png');
   await run('xcrun', ['swift', path.join(root, 'desktop/macos/Icon.swift'), icon]);
@@ -117,18 +129,18 @@ async function macos() {
   await run('codesign', ['--force', '--sign', '-', app]);
   await run('codesign', ['--verify', '--deep', '--strict', app]);
   const smokeRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'sfl-native-smoke-'));
-  const env = { ...process.env, PATH: '/usr/bin:/bin:/usr/sbin:/sbin', SFL_NATIVE_SMOKE: '1', SFL_SMOKE_ROOT: smokeRoot, SFL_OPEN_FIGURE_AUTO_REFRESH: '0', FIGURE_LIBRARY_DIR: path.join(smokeRoot, 'library'), XDG_CONFIG_HOME: path.join(smokeRoot, 'config'), XDG_DATA_HOME: path.join(smokeRoot, 'data'), SFL_DIAGNOSTICS_DIR: path.join(smokeRoot, 'diagnostics'), SFL_WORKSPACE_LOCATOR_PATH: path.join(smokeRoot, 'config/workspace.json') };
+  const env = { ...process.env, PATH: '/usr/bin:/bin:/usr/sbin:/sbin', SFL_NATIVE_SMOKE: '1', SFL_SMOKE_ROOT: smokeRoot, SFL_PREVIEW_CACHE_DIR: path.join(smokeRoot, 'preview-cache'), SFL_OPEN_FIGURE_AUTO_REFRESH: '0', FIGURE_LIBRARY_DIR: path.join(smokeRoot, 'library'), XDG_CONFIG_HOME: path.join(smokeRoot, 'config'), XDG_DATA_HOME: path.join(smokeRoot, 'data'), SFL_DIAGNOSTICS_DIR: path.join(smokeRoot, 'diagnostics'), SFL_WORKSPACE_LOCATOR_PATH: path.join(smokeRoot, 'config/workspace.json') };
   delete env.FIGURE_WORKSPACE_DIR;
   await run(path.join(macOS, 'ScientificFigureLibrary'), [], { env, timeout: 120_000 });
   const smoke = JSON.parse(await fs.readFile(path.join(smokeRoot, 'native-smoke.json'), 'utf8'));
   if (smoke.status !== 'passed') throw new Error(`Native smoke failed: ${JSON.stringify(smoke)}`);
-  await fs.copyFile(path.join(smokeRoot, 'native-smoke.json'), path.join(output, 'macos-native-smoke.json'));
-  await fs.copyFile(path.join(smokeRoot, 'native-window.png'), path.join(output, 'macos-native-window.png'));
+  await fs.copyFile(path.join(smokeRoot, 'native-smoke.json'), path.join(output, `macos-${architecture}-smoke.json`));
+  await fs.copyFile(path.join(smokeRoot, 'native-window.png'), path.join(output, `macos-${architecture}-window.png`));
   await fs.rm(smokeRoot, { recursive: true, force: true });
-  await fs.writeFile(path.join(volume, 'BUILD-INFO.json'), JSON.stringify({ version: pkg.version, platform: 'macos-universal', minimumOS: '13.0', nodeVersion: runtimeLock.version, signing: 'ad-hoc', notarized: false, smoke, appFiles: await inventory(app) }, null, 2) + '\n');
+  await fs.writeFile(path.join(volume, 'BUILD-INFO.json'), JSON.stringify({ version: pkg.version, platform: `macos-${architecture}`, minimumOS: '13.0', nodeVersion: runtimeLock.version, signing: 'ad-hoc', notarized: false, smoke, appFiles: await inventory(app) }, null, 2) + '\n');
   await fs.copyFile(path.join(root, 'docs/INSTALL_LOCAL.md'), path.join(volume, 'INSTALL.md'));
   await fs.symlink('/Applications', path.join(volume, 'Applications'));
-  const file = path.join(output, `ScientificFigureLibrary-${pkg.version}-macos-universal.dmg`);
+  const file = path.join(output, `ScientificFigureLibrary-${pkg.version}-macos-${architecture}.dmg`);
   await run('hdiutil', ['create', '-volname', 'Scientific Figure Library', '-srcfolder', volume, '-ov', '-format', 'UDZO', file]);
   await run('hdiutil', ['verify', file]);
   await digestFile(file);
@@ -136,6 +148,7 @@ async function macos() {
 }
 try {
   if (target === 'windows-x64') await windows();
-  else if (target === 'macos-universal') await macos();
-  else throw new Error('Usage: node scripts/package-local-client.mjs windows-x64|macos-universal');
+  else if (target === 'macos-arm64') await macos('arm64');
+  else if (target === 'macos-x64') await macos('x64');
+  else throw new Error('Usage: node scripts/package-local-client.mjs windows-x64|macos-arm64|macos-x64');
 } finally { await fs.rm(staging, { recursive: true, force: true }); }

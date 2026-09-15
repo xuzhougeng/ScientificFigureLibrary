@@ -1343,6 +1343,7 @@ export function defineMaterializationOperations(options: {
           providerContext,
         );
         const currentPreview = await loadProviderPreview({
+          allowDownload: false,
           context,
           index,
           providerId: input.providerId,

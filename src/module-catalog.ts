@@ -1,3 +1,4 @@
+import { PreviewDownloadStore, PREVIEW_DOWNLOAD_MANIFEST, type PreviewDownloadOptions } from "./preview-downloads.ts";
 import { createHash } from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
@@ -695,12 +696,14 @@ async function snapshotInventory(root: string) {
 function assertSnapshotInventory(
   files: string[],
   previewManifest: ModulePreviewManifest,
+  downloads?: PreviewDownloadStore,
 ) {
   const controls = new Set([
     "module-catalog.json",
     "module-preview.manifest.json",
     "module-source-pack.manifest.json",
     "PERSONAL_MODULES_LICENSE.txt",
+    ...(downloads ? [PREVIEW_DOWNLOAD_MANIFEST] : []),
   ]);
   const requiredControls = controls;
   const expected = new Set([
@@ -724,7 +727,7 @@ function assertSnapshotInventory(
       throw new Error(`personal module archive ZIP must not enter the SFL snapshot: ${file}`);
     }
   }
-  const missing = [...expected].filter((file) => !files.includes(file));
+  const missing = [...expected].filter((file) => !files.includes(file) && !downloads?.has(file));
   if (missing.length) {
     throw new Error(`personal module snapshot is missing declared files: ${missing.join(", ")}`);
   }
@@ -736,6 +739,7 @@ export class ModuleCatalogIndex {
   readonly previewManifest: ModulePreviewManifest;
   readonly sourcePackManifest: ModuleSourcePackManifest;
   readonly assetsDir: string;
+  private readonly downloads?: PreviewDownloadStore;
 
   private constructor(options: {
     catalog: ModuleCatalog;
@@ -743,12 +747,14 @@ export class ModuleCatalogIndex {
     previewManifest: ModulePreviewManifest;
     sourcePackManifest: ModuleSourcePackManifest;
     assetsDir: string;
+    downloads?: PreviewDownloadStore;
   }) {
     this.catalog = options.catalog;
     this.catalogSha256 = options.catalogSha256;
     this.previewManifest = options.previewManifest;
     this.sourcePackManifest = options.sourcePackManifest;
     this.assetsDir = options.assetsDir;
+    this.downloads = options.downloads;
   }
 
   static empty(options: {
@@ -795,6 +801,7 @@ export class ModuleCatalogIndex {
       expectedProviderId?: string;
       expectedRepository?: string;
       validatePreviews?: boolean;
+      downloads?: PreviewDownloadOptions;
     } = {},
   ) {
     const root = path.resolve(assetsDir);
@@ -868,15 +875,18 @@ export class ModuleCatalogIndex {
       1 * 1024 * 1024,
     );
     assertPortableMetadata(decodeUtf8(licenseBytes, "PERSONAL_MODULES_LICENSE.txt"), "personal module snapshot license");
-    assertSnapshotInventory(await snapshotInventory(root), previewManifest);
+    const downloads = await PreviewDownloadStore.load(root, catalog.provider.providerId,
+      previewManifest.entries.map(({ path, bytes, sha256, mediaType }) => ({ path, bytes, sha256, mediaType })), options.downloads);
+    assertSnapshotInventory(await snapshotInventory(root), previewManifest, downloads);
     const result = new ModuleCatalogIndex({
       catalog,
       catalogSha256: createHash("sha256").update(catalogBytes).digest("hex"),
       previewManifest,
       sourcePackManifest,
       assetsDir: root,
+      downloads,
     });
-    if (options.validatePreviews !== false) {
+    if (options.validatePreviews !== false && !downloads) {
       await Promise.all(
         catalog.modules.flatMap((module) => [
           result.loadPreview(module, "primary"),
@@ -986,6 +996,7 @@ export class ModuleCatalogIndex {
           materializable: true,
           previewAvailable,
           searchPreviewAvailable,
+          ...(this.downloads ? { previewDelivery: "download" as const } : {}),
           ...(previewAvailable
             ? {
                 previewRef: {
@@ -1032,13 +1043,14 @@ export class ModuleCatalogIndex {
   async preview(
     module: ModuleCatalogEntry,
     role: "primary" | "thumbnail" = "primary",
+    allowDownload = true,
   ) {
-    return this.loadPreview(module, role);
+    return this.loadPreview(module, role, allowDownload);
   }
 
-  async loadPreview(module: ModuleCatalogEntry, role: "primary" | "thumbnail" = "primary") {
+  async loadPreview(module: ModuleCatalogEntry, role: "primary" | "thumbnail" = "primary", allowDownload = true) {
     const identity = role === "primary" ? module.preview : module.thumbnail;
-    const bytes = await readRegularContainedFile(this.assetsDir, identity.path);
+    const bytes = this.downloads ? await this.downloads.read(identity.path, allowDownload) : await readRegularContainedFile(this.assetsDir, identity.path);
     const actual = createHash("sha256").update(bytes).digest("hex");
     if (bytes.byteLength !== identity.bytes || actual !== identity.sha256) {
       throw new Error(`${module.moduleId} ${role} preview differs from its pinned identity`);
@@ -1049,6 +1061,7 @@ export class ModuleCatalogIndex {
   }
 
   async primaryPreviewAvailable(module: ModuleCatalogEntry) {
+    if (this.downloads) return this.downloads.has(module.preview.path);
     try {
       await this.loadPreview(module, "primary");
       return true;
@@ -1058,6 +1071,7 @@ export class ModuleCatalogIndex {
   }
 
   async thumbnailAvailable(module: ModuleCatalogEntry) {
+    if (this.downloads) return this.downloads.has(module.thumbnail.path);
     try {
       await this.loadPreview(module, "thumbnail");
       return true;

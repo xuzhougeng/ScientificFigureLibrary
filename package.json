@@ -1,6 +1,6 @@
 {
   "name": "scientific-figure-library",
-  "version": "0.8.0",
+  "version": "0.8.1",
   "description": "Local image-code knowledge library with native macOS and local Web clients, plus MCP and Skill interfaces for external tools.",
   "keywords": [
     "scientific-figures",
@@ -61,7 +61,9 @@
     "modules:feed": "node scripts/publish-open-figure-feed.mjs",
     "start:local": "node dist/index.js --local",
     "package:windows": "npm run build && node scripts/package-local-client.mjs windows-x64",
-    "package:macos": "npm run build && node scripts/package-local-client.mjs macos-universal"
+    "package:macos": "npm run build && node scripts/package-local-client.mjs macos-native",
+    "package:macos:arm64": "npm run build && node scripts/package-local-client.mjs macos-arm64",
+    "package:macos:x64": "npm run build && node scripts/package-local-client.mjs macos-x64"
   },
   "devDependencies": {
     "@modelcontextprotocol/ext-apps": "^1.7.0",

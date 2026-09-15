@@ -19,12 +19,13 @@ for (const [relative, bytes] of Object.entries(zip)) {
   packageRoot ??= path.join(root, relative.split('/')[0]);
 }
 const manifest = JSON.parse(await fs.readFile(path.join(packageRoot, 'install-manifest.json'), 'utf8'));
+if (manifest.files.some(file => /^assets\/(thumbs|personal-modules\/(previews|thumbs))\//.test(file.file))) throw new Error('Gallery images must not be bundled in the lightweight installer');
 for (const file of manifest.files) {
   const bytes = await fs.readFile(path.join(packageRoot, file.file));
   if (bytes.length !== file.bytes || createHash('sha256').update(bytes).digest('hex') !== file.sha256) throw new Error(`Installer inventory mismatch: ${file.file}`);
 }
 const binary = path.join(packageRoot, 'runtime/node.exe');
-const env = { ...process.env, PATH: path.join(process.env.SystemRoot ?? 'C:\\Windows', 'System32'), FIGURE_LIBRARY_DIR: path.join(root, 'library'), SFL_WORKSPACE_LOCATOR_PATH: path.join(root, 'config/workspace.json'), SFL_DIAGNOSTICS_DIR: path.join(root, 'diagnostics'), APPDATA: path.join(root, 'config'), LOCALAPPDATA: path.join(root, 'data'), SFL_OPEN_FIGURE_AUTO_REFRESH: '0', SFL_NO_BROWSER: '1' };
+const env = { ...process.env, PATH: path.join(process.env.SystemRoot ?? 'C:\\Windows', 'System32'), FIGURE_LIBRARY_DIR: path.join(root, 'library'), SFL_WORKSPACE_LOCATOR_PATH: path.join(root, 'config/workspace.json'), SFL_DIAGNOSTICS_DIR: path.join(root, 'diagnostics'), SFL_PREVIEW_CACHE_DIR: path.join(root, 'preview-cache'), APPDATA: path.join(root, 'config'), LOCALAPPDATA: path.join(root, 'data'), SFL_OPEN_FIGURE_AUTO_REFRESH: '0', SFL_NO_BROWSER: '1' };
 delete env.FIGURE_WORKSPACE_DIR;
 delete env.NODE_OPTIONS;
 delete env.NODE_PATH;
@@ -61,6 +62,15 @@ try {
   await call('figure_library_apply_bind_global', { planDigest: binding.planDigest, operationId: 'windows-smoke-bind' }, true);
   binding = (await call('figure_library_plan_bind_workspace', { workspaceDirectory: path.join(root, 'workspace') })).plan;
   await call('figure_library_apply_bind_workspace', { planDigest: binding.planDigest, operationId: 'windows-smoke-workspace' }, true);
+  for (const providerId of ['org.figureya.module', 'io.github.jarxunlai.personal-figures']) {
+    const found = await call('figure_library_search', { query: 'heatmap', providerIds: [providerId], limit: 1 });
+    const remote = found.candidates[0];
+    if (!remote || remote.previewDelivery !== 'download' || remote.searchPreviewStatus !== 'ready') throw new Error(`On-demand thumbnail failed: ${JSON.stringify(found)}`);
+    const preview = await request('preview', { resultSetId: found.resultSetId, providerId, exactSelector: remote.exactSelector });
+    if (!preview.content?.some(item => item.type === 'image')) throw new Error(`Downloaded exact preview is missing: ${JSON.stringify(preview)}`);
+  }
+  const cachedImages = await fs.readdir(env.SFL_PREVIEW_CACHE_DIR);
+  if (cachedImages.length !== 3) throw new Error(`Expected only two requested thumbnails and one separate exact preview, got ${cachedImages.length}`);
   const upload = async (filename, bytes) => {
     const response = await fetch(`${launch.origin}/api/upload`, { method: 'POST', headers: { Authorization: `Bearer ${launch.token}`, 'x-sfl-filename': filename }, body: bytes });
     if (!response.ok) throw new Error('Installer fixture upload failed');
@@ -94,7 +104,7 @@ try {
   await call('figure_library_apply_materialize', apply, true);
   const replay = await call('figure_library_apply_materialize', apply, true);
   if (replay.envelope.outcome !== 'replayed') throw new Error('Installer materialization replay failed');
-  const result = { status: 'passed', target: 'windows-x64', version: manifest.version, nodeVersion: manifest.nodeVersion, systemNodeRemovedFromChildPath: true, syntheticUserActions: true, installedFilesVerified: manifest.files.length, binding: true, localWeb: true, import: true, publish: true, search: true, images: true, localConfirmation: true, materialize: true, replay: true };
+  const result = { status: 'passed', target: 'windows-x64', version: manifest.version, nodeVersion: manifest.nodeVersion, systemNodeRemovedFromChildPath: true, syntheticUserActions: true, downloadedPreviews: true, cachedImageCount: cachedImages.length, installedFilesVerified: manifest.files.length, binding: true, localWeb: true, import: true, publish: true, search: true, images: true, localConfirmation: true, materialize: true, replay: true };
   await request('shutdown', {});
   const stopped = await Promise.race([exit, new Promise((_, reject) => { setTimeout(() => reject(new Error('Local service did not stop')), 20_000).unref(); })]);
   if (stopped.code !== 0) throw new Error(`Local service exit failed: ${JSON.stringify(stopped)}`);

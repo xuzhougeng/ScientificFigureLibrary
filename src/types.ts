@@ -388,6 +388,7 @@ export interface ManagementReference {
 }
 
 export interface TemplateCandidate {
+  previewDelivery?: "download";
   matchKind?: "identity" | "similar";
   templateId: string;
   providerId: string;
