@@ -1,5 +1,7 @@
+import { OperationRegistry, resourceTemplate } from "./service/operations.ts";
+import { mountOperations } from "./mcp-adapter.ts";
 import { createHash } from "node:crypto";
-import { McpServer, ResourceTemplate } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 import { canonicalJson } from "./canonical-json.ts";
@@ -23,7 +25,7 @@ export function candidateImageUri(resultSetId: string, candidateId: string) {
   return `figure-library://candidate-images/${encodeURIComponent(resultSetId)}/${encodeURIComponent(candidateId)}`;
 }
 
-export function registerCandidateImages(server: McpServer, options: {
+export function defineCandidateImages(operations: OperationRegistry, options: {
   load: (resultSetId: string, candidateIds: string[]) => Promise<TemplateCandidate[]>;
   failure: (prefix: string, error: unknown) => CallToolResult;
 }) {
@@ -48,7 +50,7 @@ export function registerCandidateImages(server: McpServer, options: {
       };
     });
   };
-  server.registerTool("figure_library_get_candidate_images", {
+  operations.define("figure_library_get_candidate_images", {
     title: "Read candidate thumbnails for host display",
     description: "Get up to 12 current-result thumbnails as standard MCP images with exact candidate labels. Display a page for user selection; do not iterate the entire result set. Does not confirm exact previews or create materialization receipts.",
     inputSchema: {
@@ -68,7 +70,7 @@ export function registerCandidateImages(server: McpServer, options: {
       return result;
     } catch (error) { return options.failure("Candidate thumbnail retrieval failed", error); }
   });
-  server.registerResource("SFL candidate thumbnail", new ResourceTemplate(CANDIDATE_IMAGE_URI_TEMPLATE, { list: undefined }), {
+  operations.defineResource("SFL candidate thumbnail", resourceTemplate(CANDIDATE_IMAGE_URI_TEMPLATE), {
     description: "Session-bound thumbnail for a search candidate. Read the URI returned by search; this is not an exact-preview confirmation.",
   }, async (uri, variables) => {
     const { resultSetId, candidateId } = variables;
@@ -79,4 +81,10 @@ export function registerCandidateImages(server: McpServer, options: {
     if (!entry) throw new Error("Candidate thumbnail is unavailable");
     return { contents: [{ uri: entry.uri, mimeType: entry.mimeType, blob: entry.data }] };
   });
+}
+
+export function registerCandidateImages(server: McpServer, options: Parameters<typeof defineCandidateImages>[1]) {
+  const operations = new OperationRegistry();
+  defineCandidateImages(operations, options);
+  mountOperations(server, operations);
 }

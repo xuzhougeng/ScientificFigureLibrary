@@ -43,6 +43,7 @@ export async function loadProviderPreview(options: {
   moduleCatalogs?: ReadonlyMap<string, ModuleCatalogIndex>;
   officialOpenFigure?: OfficialOpenFigureRuntime;
   purpose?: "primary" | "search";
+  allowDownload?: boolean;
 }): Promise<LoadedProviderPreview> {
   const { context, index, providerId, exactSelector } = options;
   const registry = options.registry ?? createDefaultProviderRegistry();
@@ -52,6 +53,7 @@ export async function loadProviderPreview(options: {
   }
 
   const providerContext = createProviderContext(context, index, {
+    allowPreviewDownload: options.allowDownload !== false,
     ...(options.moduleCatalogs ? { moduleCatalogs: options.moduleCatalogs } : {}),
     ...(options.officialOpenFigure ? { officialOpenFigure: options.officialOpenFigure } : {}),
   });

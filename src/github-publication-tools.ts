@@ -1,9 +1,11 @@
+import { OperationRegistry } from "./service/operations.ts";
+import { mountOperations } from "./mcp-adapter.ts";
 import { createHash } from "node:crypto";
 import { spawn } from "node:child_process";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { unzipSync, zipSync, type UnzipFileInfo, type Zippable } from "fflate";
 import { z } from "zod";
@@ -2130,14 +2132,14 @@ const PlanInput = z.object({
 const ApplyInput = z.object({ planDigest: z.string().regex(HASH), operationId: z.string().regex(OPERATION_ID) });
 
 /** Register the four GitHub publication tools. The caller owns server integration. */
-export function registerGitHubPublicationTools(options: {
-  server: McpServer;
+export function defineGitHubPublicationOperations(options: {
+  operations: OperationRegistry;
   ghRunner?: GhRunner;
   receiptDirectory?: string;
   now?: () => Date;
 }) {
   const service = new GitHubPublicationService(options);
-  options.server.registerTool(
+  options.operations.define(
     "figure_library_github_auth_status",
     {
       title: "Inspect GitHub CLI publication authentication",
@@ -2153,7 +2155,7 @@ export function registerGitHubPublicationTools(options: {
       );
     },
   );
-  options.server.registerTool(
+  options.operations.define(
     "figure_library_github_auth_instructions",
     {
       title: "Show official GitHub CLI authentication instructions",
@@ -2166,7 +2168,7 @@ export function registerGitHubPublicationTools(options: {
       return response(envelope("ok", "github_auth_instructions", "Run the displayed official gh command yourself; SFL did not start it."), { instructions }, [instructions.command]);
     },
   );
-  options.server.registerTool(
+  options.operations.define(
     "figure_library_plan_publication_pr",
     {
       title: "Plan a staged central publication pull request",
@@ -2183,7 +2185,7 @@ export function registerGitHubPublicationTools(options: {
       }
     },
   );
-  options.server.registerTool(
+  options.operations.define(
     "figure_library_apply_publication_pr",
     {
       title: "Apply a reviewed staged central publication pull request",
@@ -2205,4 +2207,12 @@ export function registerGitHubPublicationTools(options: {
     },
   );
   return service;
+}
+
+/** Compatibility registration entry for external MCP integrations. */
+export function registerGitHubPublicationTools(options: Omit<Parameters<typeof defineGitHubPublicationOperations>[0], "operations"> & { server: McpServer }) {
+  const operations = new OperationRegistry();
+  const result = defineGitHubPublicationOperations({ ...options, operations });
+  mountOperations(options.server, operations);
+  return result;
 }

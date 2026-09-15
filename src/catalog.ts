@@ -1,3 +1,4 @@
+import { PreviewDownloadStore, type PreviewDownloadOptions } from "./preview-downloads.ts";
 import { markdownPlainText } from "./figure-description.ts";
 import { createHash } from "node:crypto";
 import fs from "node:fs/promises";
@@ -283,6 +284,8 @@ export interface SearchIntent {
 
 export interface SearchableTemplate {
   templateId: string;
+  /** Local asset IDs are identities, not plot-style hints (UUIDs can contain "3d"). */
+  opaqueTemplateId?: boolean;
   title: string;
   description: string;
   scientificQuestion?: string;
@@ -457,7 +460,7 @@ export function scoreSearchableTemplate(
   }
 
   const identifier = fields[0].value;
-  const compactTemplateId = normalizeSearchText(template.templateId).replace(/[^a-z0-9]+/gu, "");
+  const compactTemplateId = template.opaqueTemplateId ? "" : normalizeSearchText(template.templateId).replace(/[^a-z0-9]+/gu, "");
   const description = fields[2].value;
   const application = `${fields[4].value} ${fields[7].value}`;
   const familyMatches = [];
@@ -726,12 +729,14 @@ export class CatalogIndex {
   readonly catalog: FigureYaCatalog;
   readonly assetsDir: string;
 
-  private constructor(catalog: FigureYaCatalog, assetsDir: string) {
+  private readonly downloads?: PreviewDownloadStore;
+  private constructor(catalog: FigureYaCatalog, assetsDir: string, downloads?: PreviewDownloadStore) {
     this.catalog = catalog;
     this.assetsDir = assetsDir;
+    this.downloads = downloads;
   }
 
-  static async load(assetsDir = process.env.FIGUREYA_ASSETS_DIR ?? DEFAULT_ASSETS_DIR) {
+  static async load(assetsDir = process.env.FIGUREYA_ASSETS_DIR ?? DEFAULT_ASSETS_DIR, downloadOptions: PreviewDownloadOptions = {}) {
     const raw = await fs.readFile(path.join(assetsDir, "catalog.json"), "utf8");
     const catalog: unknown = JSON.parse(raw);
     validateFigureYaCatalog(catalog);
@@ -745,10 +750,16 @@ export class CatalogIndex {
       // Legacy/external catalogs remain readable, but their unpinned previews
       // are deliberately unavailable until an identity manifest is supplied.
     }
-    return new CatalogIndex(catalog, assetsDir);
+    const expected = catalog.modules.flatMap(module => {
+      const identity = figureYaPreviewIdentity(module);
+      const file = module.primaryPreview ?? module.thumbnail;
+      return identity && file ? [{ path: file, bytes: identity.bytes, sha256: identity.digest, mediaType: identity.mediaType }] : [];
+    });
+    const downloads = await PreviewDownloadStore.load(assetsDir, FIGUREYA_PROVIDER_ID, expected, downloadOptions);
+    return new CatalogIndex(catalog, assetsDir, downloads);
   }
 
-  private async loadPreview(module: FigureYaModule) {
+  private async loadPreview(module: FigureYaModule, allowDownload = true) {
     const previewPath = module.primaryPreview ?? module.thumbnail;
     if (!previewPath) return undefined;
     const identity = figureYaPreviewIdentity(module);
@@ -757,6 +768,12 @@ export class CatalogIndex {
       throw new Error(
         `preview format ${path.extname(previewPath) || "unknown"} cannot be returned as an MCP image`,
       );
+    }
+    if (this.downloads) {
+      const bytes = await this.downloads.read(previewPath, allowDownload);
+      const mimeType = previewMediaType(previewPath);
+      if (!mimeType || mimeType !== identity.mediaType) throw new Error("Downloaded preview MIME disagrees with the catalog");
+      return { bytes, mimeType, extension: path.posix.extname(previewPath).toLowerCase() };
     }
     const file = path.resolve(this.assetsDir, ...previewPath.split("/"));
     const relative = path.relative(path.resolve(this.assetsDir), file);
@@ -792,6 +809,7 @@ export class CatalogIndex {
   }
 
   async previewAvailable(module: FigureYaModule) {
+    if (this.downloads) return this.downloads.has(module.primaryPreview ?? module.thumbnail ?? "");
     try {
       return Boolean(await this.loadPreview(module));
     } catch {
@@ -862,6 +880,7 @@ export class CatalogIndex {
           packages: module.packages,
           materializable: module.archiveAvailable,
           previewAvailable,
+          ...(this.downloads ? { previewDelivery: "download" as const, searchPreviewAvailable: previewAvailable } : {}),
           previewRef: previewAvailable
             ? {
                 schema: "figure-library.provider-preview-ref.v1" as const,
@@ -894,7 +913,7 @@ export class CatalogIndex {
     return (await this.searchAll(request)).slice(0, limit);
   }
 
-  async preview(templateIdOrSelector: string | ExactTemplateSelector) {
+  async preview(templateIdOrSelector: string | ExactTemplateSelector, allowDownload = true) {
     let templateId: string;
     if (typeof templateIdOrSelector === "string") {
       templateId = templateIdOrSelector;
@@ -935,7 +954,7 @@ export class CatalogIndex {
     }
     const module = this.get(templateId);
     if (!module) return;
-    return this.loadPreview(module);
+    return this.loadPreview(module, allowDownload);
   }
 
   /**

@@ -48,6 +48,7 @@ export type DiagnosticEventName =
   | "tool.failed";
 
 export type DiagnosticInvocationSource =
+  | "local"
   | "agent"
   | "app"
   | "headless"

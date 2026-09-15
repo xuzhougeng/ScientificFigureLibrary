@@ -66,6 +66,7 @@ export interface ProviderDescriptor {
 }
 
 export interface ProviderContext {
+  allowPreviewDownload?: boolean;
   library: CurrentLibraryContext;
   catalog: CatalogIndex;
   moduleCatalogs?: ReadonlyMap<string, ModuleCatalogIndex>;
@@ -345,6 +346,7 @@ export class LocalPublishedProviderAdapter implements ProviderAdapter {
           {
             templateId: item.templateId,
             title: item.title,
+            opaqueTemplateId: true,
             ...resolveFigureDescription(item.description, item.application),
             visualProfile: item.visualProfile,
             scientificQuestion: item.scientificQuestion,
@@ -685,7 +687,7 @@ export class FigureYaProviderAdapter implements ProviderAdapter {
   }
 
   async loadPreview(context: ProviderContext, resolved: ResolvedProviderTemplate) {
-    const loaded = await context.catalog.preview(resolved.exactSelector);
+    const loaded = await context.catalog.preview(resolved.exactSelector, context.allowPreviewDownload !== false);
     return completePreview(this.descriptor.providerId, resolved, loaded);
   }
 
@@ -945,7 +947,7 @@ export class ModuleCatalogProviderAdapter implements ProviderAdapter {
     if (resolved.value.kind !== "module-catalog") throw new Error("invalid module Catalog resolution");
     let loaded;
     try {
-      loaded = await resolved.value.catalog.preview(resolved.value.module, "primary");
+      loaded = await resolved.value.catalog.preview(resolved.value.module, "primary", _context.allowPreviewDownload !== false);
     } catch (error) {
       throw new Error(
         `preview_unavailable: ${error instanceof Error ? error.message : String(error)}`,
@@ -958,7 +960,7 @@ export class ModuleCatalogProviderAdapter implements ProviderAdapter {
     if (resolved.value.kind !== "module-catalog") throw new Error("invalid module Catalog resolution");
     let loaded;
     try {
-      loaded = await resolved.value.catalog.preview(resolved.value.module, "thumbnail");
+      loaded = await resolved.value.catalog.preview(resolved.value.module, "thumbnail", _context.allowPreviewDownload !== false);
     } catch (error) {
       throw new Error(
         `preview_unavailable: ${error instanceof Error ? error.message : String(error)}`,

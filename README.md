@@ -39,6 +39,10 @@ continues across other providers.
 
 <p align="center"><em>Search your local published library in the MCP App, confirm one exact template, then materialize it into a project.</em></p>
 
+## Local client preview
+
+Separate native macOS Apple Silicon and Intel DMGs and a Windows x64 ZIP with bundled Node are available through the local-client release workflow. Both bundled-Node and `no-node` editions (requiring installed Node.js 22+) omit gallery images and download previews on demand. See [installation and preview limitations](docs/INSTALL_LOCAL.md). The macOS preview is ad-hoc signed and is not notarized.
+
 ## Install with a coding agent
 
 Give Claude Code, Codex, Cursor, or another local coding agent with terminal access

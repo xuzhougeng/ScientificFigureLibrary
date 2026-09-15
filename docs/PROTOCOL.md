@@ -572,6 +572,32 @@ an image is not proof the user saw it on their screen.
 
 ## Exact materialization
 
+### Local application and shared business service
+
+The local application directly calls the shared Library service. It does not
+create an MCP Client, perform an internal MCP handshake, or proxy its requests
+through an MCP Server. `src/server.ts` mounts the same business operations as
+external MCP tools; the SDK and ordinary stdio integration remain available.
+Each service instance owns its result sets, preview challenges and cached plans.
+Sharing a Library directory does not make different service sessions interchangeable.
+
+The local HTTP interface is a local application API, not a Streamable HTTP MCP
+endpoint. It validates its loopback origin and authenticates requests. Its
+operation allowlist excludes model/headless preview confirmation and remote PR
+creation. Local writes require an explicit approval of the submitted plan digest
+in addition to the existing business Plan/Apply checks.
+
+A private local preview/confirmation path uses `confirmationMode: local`.
+Confirmation requires the exact displayed transport-image SHA-256, an image-load
+assertion and an explicit user-confirmation assertion. These are client facts,
+not proof obtained by the server that the screen was visible to a human. Local
+challenges cannot be confirmed through the App or headless confirmation tools;
+other newly issued challenges are likewise bound to their originating interface.
+Local receipts obey the existing one-use and stale-state materialization gates.
+No local confirmation tool is added to the standard model-visible MCP inventory.
+
+### Preview, confirmation and writes
+
 Materialization protocol v2 is preview/confirm/plan/apply only. A plotting task
 may be submitted before every exact preview has been viewed; the Host/Agent
 performs the required preview/confirmation sequence for each item before
@@ -964,10 +990,10 @@ npm run package:plugins
 
 This writes four artifacts into `release/`:
 
-- `scientific-figure-library-wisp-0.7.0.zip` — install from Wisp **Settings → Plugins**
-- `scientific-figure-library-codex-0.7.0.zip` — Codex plugin with `.codex-plugin/plugin.json`, `.codex-plugin/mcp.json`, and `skills/figure-library`
-- `scientific-figure-library-claude-0.7.0.zip` — Claude Code plugin with `.claude-plugin/plugin.json`, `.claude-plugin/mcp.json`, and auto-discovered `skills/`
-- `scientific-figure-library-cursor-0.7.0.zip` — Cursor plugin with `.cursor-plugin/plugin.json`, plugin-root `mcp.json`, and auto-discovered `skills/`
+- `scientific-figure-library-wisp-0.8.0.zip` — install from Wisp **Settings → Plugins**
+- `scientific-figure-library-codex-0.8.0.zip` — Codex plugin with `.codex-plugin/plugin.json`, `.codex-plugin/mcp.json`, and `skills/figure-library`
+- `scientific-figure-library-claude-0.8.0.zip` — Claude Code plugin with `.claude-plugin/plugin.json`, `.claude-plugin/mcp.json`, and auto-discovered `skills/`
+- `scientific-figure-library-cursor-0.8.0.zip` — Cursor plugin with `.cursor-plugin/plugin.json`, plugin-root `mcp.json`, and auto-discovered `skills/`
 
 Each package uses its Host's plugin-root contract. Codex resolves `cwd: "."`
 from the installed plugin root, Claude expands `${CLAUDE_PLUGIN_ROOT}`, Cursor
@@ -991,7 +1017,7 @@ Build a standalone npm package:
 
 ```bash
 npm run package:npm
-npm install --global ./release/scientific-figure-library-0.7.0.tgz
+npm install --global ./release/scientific-figure-library-0.8.0.tgz
 ```
 
 Use `scientific-figure-library` as the MCP command after installation.
@@ -1034,7 +1060,7 @@ npm run package:source-pack -- \
 
 The helper verifies selected ZIP identities and caps a transport pack at 200
 MiB. Extract the resulting
-`release/figure-library-source-pack-volcano-0.7.0.zip` before use.
+`release/figure-library-source-pack-volcano-0.8.0.zip` before use.
 
 ## Catalog development
 
@@ -1073,7 +1099,7 @@ and exact inventory before atomically replacing `assets/community`. The source
 checkout and target must be separate directory trees. Packaging has an
 additional final-release gate that requires the three reviewed 1.0.0 seed
 releases; the empty bootstrap snapshot is valid for development tests but
-cannot be packaged as the 0.7.0 release.
+cannot be packaged as the 0.8.0 release.
 
 ## Markdown descriptions and bundled Skills
 
@@ -1122,3 +1148,12 @@ CC BY 4.0 and retain per-release attribution in the Community Catalog and
 archive. User-supplied and adapter-imported material keeps its recorded source
 license. See
 [`THIRD_PARTY_NOTICES.md`](../THIRD_PARTY_NOTICES.md).
+
+
+## 本地轻量安装包的预览交付
+
+本地 DMG / Windows ZIP 的 FigureYa 与 Open Figure Modules bootstrap 可包含 `preview-downloads.json`，其每个图片身份必须与既有预览 manifest 完全一致。图片来源固定为构建提交中的文件；不改变 Provider、exact selector 或 Published Release 的身份。
+
+候选可返回 `previewDelivery: "download"`。此模式下 `previewAvailable` 表示存在可获取的固定身份，并不承诺网络可达或已经缓存；当前页图片传输结果由 `searchPreviewAvailable` / `searchPreviewStatus` 表达。搜索不会下载非当前页候选的图片。精确预览只有取得、校验和传输真实图片后才可确认。缩略图下载失败不改变精确图片身份，可重新请求预览。
+
+图片缓存位于用户缓存目录，按 SHA-256 寻址并校验大小和格式。确认后的材料化重验证仅允许读取缓存，不隐式重新下载已确认图片；缓存缺失或损坏需重新预览确认。`allowNetwork` 仍控制模板归档材料化，不能当作此前浏览图片的网络开关。既有 Provider 签名快照更新策略保持独立。

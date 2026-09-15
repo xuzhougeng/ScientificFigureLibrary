@@ -1,5 +1,7 @@
+import { OperationRegistry } from "./service/operations.ts";
+import { mountOperations } from "./mcp-adapter.ts";
 import path from "node:path";
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 import {
@@ -173,13 +175,13 @@ const ApplyPlanInput = z.object({
 });
 const RecoveryPlanInput = z.object({ reason: z.string().min(1).max(2_000) });
 
-export function registerLibraryBindingTools(options: {
-  server: McpServer;
+export function defineLibraryBindingOperations(options: {
+  operations: OperationRegistry;
   runtime: LibraryRuntime;
   workspaceRuntime?: WorkspaceRuntime;
   currentLibraries: () => Promise<CurrentLibraryContext>;
 }) {
-  const { server, runtime, currentLibraries } = options;
+  const { operations, runtime, currentLibraries } = options;
   const workspaceRuntime = options.workspaceRuntime;
   const bindingPlans = new Map<
     string,
@@ -228,7 +230,7 @@ export function registerLibraryBindingTools(options: {
     );
   }
 
-  server.registerTool(
+  operations.define(
     "figure_library_plan_bind_global",
     {
       title: "Plan global ScientificFigureLibrary binding",
@@ -328,7 +330,7 @@ export function registerLibraryBindingTools(options: {
     },
   );
 
-  server.registerTool(
+  operations.define(
     "figure_library_apply_bind_global",
     {
       title: "Apply confirmed global Library binding",
@@ -404,7 +406,7 @@ export function registerLibraryBindingTools(options: {
       .describe("Absolute native path for the machine-local draft knowledge base (inbox/drafts/gallery)."),
   });
 
-  server.registerTool(
+  operations.define(
     "figure_library_plan_bind_workspace",
     {
       title: "Plan Local workspace binding",
@@ -469,7 +471,7 @@ export function registerLibraryBindingTools(options: {
     },
   );
 
-  server.registerTool(
+  operations.define(
     "figure_library_apply_bind_workspace",
     {
       title: "Apply confirmed Local workspace binding",
@@ -515,7 +517,7 @@ export function registerLibraryBindingTools(options: {
     },
   );
 
-  server.registerTool(
+  operations.define(
     "figure_library_plan_recover_write_lock",
     {
       title: "Plan abandoned global write-lock recovery",
@@ -570,7 +572,7 @@ export function registerLibraryBindingTools(options: {
     },
   );
 
-  server.registerTool(
+  operations.define(
     "figure_library_apply_recover_write_lock",
     {
       title: "Apply confirmed global write-lock recovery",
@@ -619,4 +621,12 @@ export function registerLibraryBindingTools(options: {
       }
     },
   );
+}
+
+/** Compatibility registration entry for external MCP integrations. */
+export function registerLibraryBindingTools(options: Omit<Parameters<typeof defineLibraryBindingOperations>[0], "operations"> & { server: McpServer }) {
+  const operations = new OperationRegistry();
+  const result = defineLibraryBindingOperations({ ...options, operations });
+  mountOperations(options.server, operations);
+  return result;
 }

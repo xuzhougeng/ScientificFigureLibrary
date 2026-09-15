@@ -1,0 +1,21 @@
+{
+  "version": "v22.23.2",
+  "source": "https://nodejs.org/dist/v22.23.2/SHASUMS256.txt",
+  "archives": {
+    "win-x64": {
+      "file": "node-v22.23.2-win-x64.zip",
+      "url": "https://nodejs.org/dist/v22.23.2/node-v22.23.2-win-x64.zip",
+      "sha256": "1177b4137ba5adaa56354ae40f1080c7450e8ae09cecb47da459d1c52ac99f97"
+    },
+    "darwin-arm64": {
+      "file": "node-v22.23.2-darwin-arm64.tar.gz",
+      "url": "https://nodejs.org/dist/v22.23.2/node-v22.23.2-darwin-arm64.tar.gz",
+      "sha256": "61130f394c1630d211dd50aecc4353d379480f36d3ac913cd85dbba1aed585c6"
+    },
+    "darwin-x64": {
+      "file": "node-v22.23.2-darwin-x64.tar.gz",
+      "url": "https://nodejs.org/dist/v22.23.2/node-v22.23.2-darwin-x64.tar.gz",
+      "sha256": "58e99022c2ff89395576cc7fd4d98cea24bb68081475d5f88b801ee8729fb026"
+    }
+  }
+}

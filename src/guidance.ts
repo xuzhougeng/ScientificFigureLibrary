@@ -1,3 +1,5 @@
+import { OperationRegistry, resourceTemplate } from "./service/operations.ts";
+import { mountOperations } from "./mcp-adapter.ts";
 import { createHash } from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
@@ -37,18 +39,18 @@ export async function loadGuidance(root = GUIDANCE_ROOT) {
   return documents;
 }
 
-export async function registerGuidanceTools(server: McpServer, capabilities: Record<string, unknown>) {
+export async function defineGuidanceOperations(operations: OperationRegistry, capabilities: Record<string, unknown>) {
   const documents = await loadGuidance();
   const inventory = [...documents.values()].map(({ text: _text, ...entry }) => entry);
   const guidanceRevision = createHash("sha256").update(JSON.stringify(inventory)).digest("hex");
   for (const entry of documents.values()) {
-    server.registerResource(`SFL guidance: ${entry.document}`, entry.uri, {
+    operations.defineResource(`SFL guidance: ${entry.document}`, entry.uri, {
       title: entry.document,
       description: "Bundled SFL guidance or helper source. Reading does not execute or install it.",
       mimeType: entry.mimeType,
     }, async () => ({ contents: [{ uri: entry.uri, mimeType: entry.mimeType, text: entry.text }] }));
   }
-  server.registerTool("figure_library_get_skill", {
+  operations.define("figure_library_get_skill", {
     title: "Read the core SFL Skill or one bundled reference",
     description: "Start here for SFL guidance and host capabilities. Returns the same bundled SKILL.md without requiring Library setup. Use only listed document IDs for on-demand references; does not install a Skill or execute helper code.",
     inputSchema: { document: z.string().min(1).max(300).optional().default("SKILL.md") },
@@ -61,4 +63,10 @@ export async function registerGuidanceTools(server: McpServer, capabilities: Rec
       `GUIDANCE_METADATA: ${JSON.stringify({ ...metadata, text: undefined })}`, entry.text,
     ]);
   });
+}
+
+export async function registerGuidanceTools(server: McpServer, capabilities: Record<string, unknown>) {
+  const operations = new OperationRegistry();
+  await defineGuidanceOperations(operations, capabilities);
+  mountOperations(server, operations);
 }

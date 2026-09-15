@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="zh-CN">
+<head><meta charset="UTF-8"><link rel="icon" href="data:,"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Scientific Figure Library · 本地知识库</title></head>
+<body class="local-client">
+  <aside class="local-sidebar" aria-label="主导航">
+    <div class="local-brand"><img id="local-logo" alt=""><div>Scientific Figure Library<small>本地图片 · 代码知识库</small></div></div>
+    <nav><button data-page="discover" class="active">发现模板</button><button data-page="library">我的知识库</button><button data-page="import">导入图片与代码</button><button data-page="integrations">连接外部工具</button><button data-page="settings">设置与连接</button></nav>
+    <div class="sidebar-bottom"><span class="connection-dot"></span><span id="connection-state">正在连接本地服务</span><p>图片和代码留在你指定的图库中。</p></div>
+  </aside>
+  <main class="local-main">
+    <header class="local-header"><div><p class="eyebrow">YOUR VISUAL KNOWLEDGE, CONNECTED.</p><h1 id="page-title">发现可复用的科学图</h1></div><button id="refresh" class="quiet">刷新</button></header>
+    <p id="notice" role="status" aria-live="polite" hidden></p>
+    <section id="setup-banner" class="setup-banner" hidden><strong>欢迎建立你的本地知识库</strong><p>先选择全局图库与工作区，之后可跨项目复用。</p><button data-page="settings">设置本机目录</button></section>
+    <section id="discover-page" class="local-page">
+      <form id="search-form" class="search-form"><label class="sr-only" for="search-query">搜索模板</label><input id="search-query" placeholder="描述你想找的图，例如：单细胞分组比例、火山图…" required><button type="submit">搜索图库</button></form>
+      <div class="search-filters"><label>图片来源<select id="search-provider"><option value="">全部默认来源</option><option value="org.scientificfigurelibrary.local">我的已发布图片</option><option value="org.figureya.module">FigureYa</option><option value="io.github.jarxunlai.personal-figures">Open Figure Modules</option></select></label><label>数据特征<input id="search-data" placeholder="可选：gene、log2FC、padj"></label></div>
+      <p>在线图库图片首次查看时下载，已缓存的图片可离线查看。</p>
+      <div id="suggestions" class="suggestions"><span>从常见图形开始</span><button data-query="volcano differential expression">火山图</button><button data-query="heatmap expression matrix">热图</button><button data-query="UMAP single cell">UMAP</button><button data-query="barplot proportion cell type">细胞比例</button><button data-query="GO enrichment pathway">富集分析</button></div>
+      <div class="results-heading"><h2 id="results-title">找到适合你数据的表达方式</h2><span id="results-count"></span></div>
+      <div id="empty" class="local-empty"><h3>让图片成为下一次研究的起点</h3><p>搜索图库中的图片与代码，查看细节后再选用。也可以导入自己的资产。</p></div>
+      <section id="cards" class="cards" aria-label="候选图片"></section>
+      <div id="selection-bar" class="local-selection" hidden><span id="selection-count"></span><button id="copy-selection">复制所选模板信息</button></div>
+      <nav id="local-pagination" class="pagination" hidden><button id="previous">上一页</button><span id="page-label"></span><button id="next">下一页</button></nav>
+    </section>
+    <section id="library-page" class="local-page" hidden><div class="section-heading"><p>草稿与已发布版本分别管理，保留每次修订的来源和代码。</p><button data-page="import">导入资产</button></div><div id="library-items" class="library-items"></div></section>
+    <section id="import-page" class="local-page" hidden>
+      <form id="import-form" class="local-form">
+        <p>将一张参考图及相关代码收入知识库。文件只会保存和校验，不会执行。</p>
+        <label>名称<input name="title" required maxlength="500" placeholder="例如：单细胞分组比例图"></label>
+        <label>图片<input name="image" type="file" accept=".png,.jpg,.jpeg,.webp" required></label>
+        <label>对应代码（可选）<input name="code" type="file" accept=".R,.r,.py,.txt"></label>
+        <div class="form-row"><label>语言<select name="language"><option>R</option><option>Python</option></select></label><label>许可证或使用范围<input name="license" required value="仅供本地参考"></label></div>
+        <label>图片说明<textarea name="description" rows="3" placeholder="图中展示什么，包含哪些视觉编码"></textarea></label>
+        <label>适用场景<textarea name="application" rows="3" required placeholder="什么问题、什么研究场景适合使用这张图"></textarea></label>
+        <label>数据要求<textarea name="dataProfile" rows="2" placeholder="所需列名、数据形状和含义"></textarea></label>
+        <label>标签<input name="tags" placeholder="逗号分隔，例如：单细胞, 比例, 柱状图"></label>
+        <label class="checkbox"><input name="confirmed" type="checkbox" required>确认这是一份完整的图片资产；如附代码，由我提供并确认与图片关联。执行与科学验证状态记为未验证。</label>
+        <button type="submit">预览导入计划</button>
+      </form>
+    </section>
+    <section id="integrations-page" class="local-page" hidden>
+      <p>把图库连接到你使用的 CLI 或桌面工具，获取候选图片与代码。</p>
+      <section class="settings-card"><h2>1. 选择外部工具</h2><label>目标客户端 <select id="integration-host"></select></label><div id="integration-instructions"></div><div id="integration-snippets"></div></section>
+      <section class="settings-card"><h2>2. 加载核心 Skill</h2><p id="integration-skill-help"></p><div id="integration-skill"></div></section>
+      <section class="settings-card"><h2>3. 验证连接</h2><p>在外部工具中发送下面的指令。工具连接成功和图片成功显示需要分别确认。</p><div id="integration-verify"></div><div id="integration-notes"></div></section>
+    </section>
+    <section id="settings-page" class="local-page" hidden>
+      <div class="settings-grid"><section class="settings-card"><h2>本机目录</h2><p>这些目录跨项目共享。请输入由你选择的绝对路径。</p><form id="binding-form" class="local-form"><label>全局图库<input id="library-directory" required placeholder="例如：D:\ScientificFigures"></label><label>本地工作区<input id="workspace-directory" required placeholder="例如：D:\ScientificFigureWorkspace"></label><button type="submit">检查并确认目录</button></form></section>
+      <section class="settings-card"><h2>外部调用接口</h2><p>其他 CLI 或桌面工具可以通过 MCP 和核心 Skill 使用这个知识库。本地客户端独立完成图片与代码的浏览和管理。</p><button data-page="integrations" class="quiet">查看安装与连接指令</button><button id="copy-mcp" class="quiet">复制 MCP 配置</button><h3>图片与代码</h3><p>客户端保存图片、代码、关联和版本，只做文件管理，不执行绘图代码。</p><button id="shutdown" class="quiet" hidden>退出本地客户端</button></section></div>
+      <section class="settings-card"><h2>图片来源</h2><div id="provider-list"></div></section>
+    </section>
+  </main>
+  <dialog id="plan-dialog" class="local-dialog"><form method="dialog"><button class="dialog-close" aria-label="关闭计划">×</button></form><h2 id="plan-title">确认操作</h2><div id="plan-summary"></div><details><summary>查看完整计划与校验信息</summary><pre id="plan-json"></pre></details><div class="dialog-actions"><button id="plan-cancel" class="quiet">取消</button><button id="plan-apply">确认执行</button></div></dialog>
+  <dialog id="materialize-dialog" class="local-dialog"><form id="materialize-form" class="local-form"><h2>将模板保存到项目</h2><p>保存原始图片、代码和版本记录；不会执行代码。</p><label>项目中的目标父目录<input id="materialize-directory" required placeholder="填写绝对路径"></label><label class="checkbox"><input id="allow-network" type="checkbox">允许下载选定模板的固定版本归档</label><div class="dialog-actions"><button type="button" id="materialize-cancel" class="quiet">取消</button><button type="submit">生成保存计划</button></div></form></dialog>
+  <script type="module" src="/local/main.ts"></script>
+</body></html>

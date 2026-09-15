@@ -8,3 +8,7 @@ release/
 
 __pycache__/
 *.py[cod]
+.playwright-mcp/
+
+.runtime-cache/
+desktop/macos/.build/

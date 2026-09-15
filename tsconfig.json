@@ -5,12 +5,23 @@
     "moduleResolution": "NodeNext",
     "allowImportingTsExtensions": true,
     "resolveJsonModule": true,
-    "lib": ["ES2023", "DOM"],
+    "lib": [
+      "ES2023",
+      "DOM"
+    ],
     "strict": true,
     "noUncheckedIndexedAccess": true,
     "skipLibCheck": true,
-    "types": ["node"],
+    "types": [
+      "node"
+    ],
     "noEmit": true
   },
-  "include": ["app/**/*.ts", "src/**/*.ts", "tests/**/*.ts", "vite.config.ts"]
+  "include": [
+    "app/**/*.ts",
+    "src/**/*.ts",
+    "tests/**/*.ts",
+    "vite.config.ts",
+    "vite.local.config.ts"
+  ]
 }

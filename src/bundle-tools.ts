@@ -1,5 +1,7 @@
+import { OperationRegistry } from "./service/operations.ts";
+import { mountOperations } from "./mcp-adapter.ts";
 import path from "node:path";
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 import type {
@@ -125,11 +127,11 @@ function sameNativePath(left: string, right: string) {
   return normalize(left) === normalize(right);
 }
 
-export function registerBundleTools(options: {
-  server: McpServer;
+export function defineBundleOperations(options: {
+  operations: OperationRegistry;
   currentLibraries: () => Promise<CurrentLibraryContext>;
 }) {
-  const { server, currentLibraries } = options;
+  const { operations, currentLibraries } = options;
   const exportPlans = new Map<string, { plan: BundleExportPlanV1; expiresAt: number }>();
   const restorePlans = new Map<
     string,
@@ -176,7 +178,7 @@ export function registerBundleTools(options: {
     );
   }
 
-  server.registerTool(
+  operations.define(
     "figure_library_plan_bundle_export",
     {
       title: "Plan a portable Library or Published-template bundle",
@@ -246,12 +248,12 @@ export function registerBundleTools(options: {
     },
   );
 
-  server.registerTool(
+  operations.define(
     "figure_library_apply_bundle_export",
     {
       title: "Apply a confirmed portable bundle export",
       description:
-        "Reverify the exact source inventory and visible expectedTarget, write a new directory bundle without overwrite, and persist an idempotent export receipt. A durable pre-write intent can recover a completed target after server restart.",
+        "Reverify the exact source inventory and visible expectedTarget, write a new directory bundle without overwrite, and persist an idempotent export receipt. A durable pre-write intent can recover a completed target after operations restart.",
       inputSchema: ExportApplyInput.shape,
       annotations: {
         readOnlyHint: false,
@@ -321,7 +323,7 @@ export function registerBundleTools(options: {
     },
   );
 
-  server.registerTool(
+  operations.define(
     "figure_library_plan_full_restore",
     {
       title: "Plan full-Library Restore or Fork",
@@ -374,7 +376,7 @@ export function registerBundleTools(options: {
     },
   );
 
-  server.registerTool(
+  operations.define(
     "figure_library_apply_full_restore",
     {
       title: "Apply confirmed full-Library Restore or Fork",
@@ -418,7 +420,7 @@ export function registerBundleTools(options: {
     },
   );
 
-  server.registerTool(
+  operations.define(
     "figure_library_plan_template_bundle_import",
     {
       title: "Plan Published-template bundle import as Working",
@@ -468,7 +470,7 @@ export function registerBundleTools(options: {
     },
   );
 
-  server.registerTool(
+  operations.define(
     "figure_library_apply_template_bundle_import",
     {
       title: "Apply confirmed template-bundle import as Working",
@@ -515,4 +517,12 @@ export function registerBundleTools(options: {
       }
     },
   );
+}
+
+/** Compatibility registration entry for external MCP integrations. */
+export function registerBundleTools(options: Omit<Parameters<typeof defineBundleOperations>[0], "operations"> & { server: McpServer }) {
+  const operations = new OperationRegistry();
+  const result = defineBundleOperations({ ...options, operations });
+  mountOperations(options.server, operations);
+  return result;
 }
