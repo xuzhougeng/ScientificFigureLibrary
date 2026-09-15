@@ -51,16 +51,30 @@ func sha256(_ data: Data) -> String { SHA256.hash(data: data).map { String(forma
     private var errorPipe: Pipe?
     private var stopping = false
 
+    var usesSystemNode: Bool {
+        guard let file = Bundle.main.resourceURL?.appendingPathComponent("sfl/runtime-mode.json"), let data = try? Data(contentsOf: file), let value = try? JSONDecoder().decode(JSON.self, from: data) else { return false }
+        return value["mode"].string == "system"
+    }
+
     func start() async throws {
         if ready { return }
         guard let root = Bundle.main.resourceURL?.appendingPathComponent("sfl") else { throw LocalError(message: "安装包缺少后端目录") }
-        #if arch(arm64)
-        let architecture = "arm64"
-        #else
-        let architecture = "x64"
-        #endif
-        let node = root.appendingPathComponent("runtime/darwin-\(architecture)/node")
-        guard FileManager.default.isExecutableFile(atPath: node.path) else { throw LocalError(message: "安装包缺少当前架构的 Node 运行时，请重新下载完整 DMG。") }
+        guard let launcher = Bundle.main.executableURL?.deletingLastPathComponent().appendingPathComponent("sfl-mcp") else { throw LocalError(message: "安装包缺少启动器") }
+        let resolver = Process()
+        resolver.executableURL = launcher
+        resolver.arguments = ["--sfl-node-path"]
+        var resolverEnvironment = ProcessInfo.processInfo.environment
+        if resolverEnvironment["SFL_NODE_BINARY"] == nil, let selected = UserDefaults.standard.string(forKey: "SFLNodeBinary") { resolverEnvironment["SFL_NODE_BINARY"] = selected }
+        resolver.environment = resolverEnvironment
+        let resolvedOutput = Pipe(), resolvedError = Pipe()
+        resolver.standardOutput = resolvedOutput
+        resolver.standardError = resolvedError
+        try resolver.run()
+        let nodeData = try await resolvedOutput.fileHandleForReading.bytes.reduce(into: Data()) { $0.append($1) }
+        resolver.waitUntilExit()
+        let message = String(data: resolvedError.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? "Node.js 22+ 检查失败"
+        guard resolver.terminationStatus == 0, let nodePath = String(data: nodeData, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines), nodePath.hasPrefix("/") else { throw LocalError(message: message) }
+        let node = URL(fileURLWithPath: nodePath)
         let child = Process()
         child.executableURL = node
         child.arguments = [root.appendingPathComponent("dist/index.js").path, "--local", "--no-open"]

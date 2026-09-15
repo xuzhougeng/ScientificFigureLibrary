@@ -36,12 +36,14 @@ jobs:
       - run: npm ci
       - run: npm run build
       - run: node scripts/package-local-client.mjs windows-x64
-      - name: Verify the ZIP using its private runtime
+      - run: node scripts/package-local-client.mjs windows-x64 --system-node
+      - name: Verify ZIPs and both runtime modes
         shell: pwsh
         run: |
-          $archive = Get-ChildItem release/local-client/*windows-x64.zip | Select-Object -First 1
-          node scripts/smoke-local-package.mjs $archive.FullName
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          foreach ($archive in Get-ChildItem release/local-client/*windows-x64*.zip) {
+            node scripts/smoke-local-package.mjs $archive.FullName
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: windows-local-client
@@ -76,7 +78,9 @@ jobs:
       - run: npm ci
       - run: npm run build
       - name: Build native App, run native smoke, and create architecture-specific DMG
-        run: node scripts/package-local-client.mjs macos-${{ matrix.architecture }}
+        run: |
+          node scripts/package-local-client.mjs macos-${{ matrix.architecture }}
+          node scripts/package-local-client.mjs macos-${{ matrix.architecture }} --system-node
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: macos-${{ matrix.architecture }}-local-client

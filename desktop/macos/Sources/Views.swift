@@ -13,7 +13,7 @@ let libraryGreen = Color(red: 0.14, green: 0.42, blue: 0.30)
         } detail: {
             VStack(alignment: .leading, spacing: 0) {
                 if !model.ready {
-                    VStack(spacing: 18) { ProgressView(); Text("正在启动本地知识库…"); Button("重试") { Task { await model.start() } } }.frame(maxWidth: .infinity, maxHeight: .infinity)
+                    VStack(spacing: 18) { ProgressView(); Text(model.error ?? "正在启动本地知识库…"); Button("重试") { Task { await model.start() } }; if model.backend.usesSystemNode { Button("选择本机 Node…") { let panel = NSOpenPanel(); panel.canChooseDirectories = false; panel.allowsMultipleSelection = false; if panel.runModal() == .OK, let url = panel.url { UserDefaults.standard.set(url.path, forKey: "SFLNodeBinary"); Task { await model.start() } } } } }.frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
                     if model.setupRequired && model.section != .settings {
                         HStack { Label("先选择全局图库和本地工作区", systemImage: "folder.badge.gearshape"); Spacer(); Button("设置目录") { model.section = .settings } }.padding().background(libraryGreen.opacity(0.10))

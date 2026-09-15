@@ -12,6 +12,8 @@ const execFile = promisify(execFileCallback);
 const root = path.resolve(import.meta.dirname, '..');
 const pkg = JSON.parse(await fs.readFile(path.join(root, 'package.json'), 'utf8'));
 const target = process.argv[2] === 'macos-native' ? `macos-${process.arch}` : process.argv[2];
+const runtimeMode = process.argv.includes('--system-node') ? 'system' : 'bundled';
+const variant = runtimeMode === 'system' ? '-no-node' : '';
 const output = path.resolve(process.env.SFL_CLIENT_OUTPUT ?? path.join(root, 'release', 'local-client'));
 await assertPluginReleaseReady();
 await fs.mkdir(output, { recursive: true });
@@ -32,6 +34,7 @@ async function payload(destination) {
     await fs.mkdir(path.dirname(to), { recursive: true });
     await fs.copyFile(path.join(root, relative), to);
   }
+  await fs.writeFile(path.join(destination, 'runtime-mode.json'), JSON.stringify({ mode: runtimeMode, minimumNodeMajor: 22 }) + '\n');
   for (const [relative, bytes] of downloads.manifests) {
     const to = path.join(destination, relative);
     await fs.mkdir(path.dirname(to), { recursive: true });
@@ -50,36 +53,42 @@ async function inventory(directory, relative = '') {
 }
 async function digestFile(file) { await fs.writeFile(`${file}.sha256`, `${sha256(await fs.readFile(file))}  ${path.basename(file)}\n`); }
 async function windows() {
-  const name = `ScientificFigureLibrary-${pkg.version}-windows-x64`;
+  const name = `ScientificFigureLibrary-${pkg.version}-windows-x64${variant}`;
   const directory = path.join(staging, name);
   await payload(directory);
-  await installRuntime('win-x64', path.join(directory, 'runtime'));
+  if (runtimeMode === 'bundled') await installRuntime('win-x64', path.join(directory, 'runtime'));
   for (const host of ['wisp', 'codex', 'claude', 'cursor']) {
     const hostDirectory = `.${host}-plugin`;
     await fs.cp(path.join(root, hostDirectory), path.join(directory, hostDirectory), { recursive: true });
   }
   const wispFile = path.join(directory, '.wisp-plugin/plugin.json');
   const wisp = JSON.parse(await fs.readFile(wispFile, 'utf8'));
-  wisp.mcp_servers[0].command = '${WISP_PLUGIN_ROOT}/runtime/node.exe';
+  wisp.mcp_servers[0].command = runtimeMode === 'system' ? 'node' : '${WISP_PLUGIN_ROOT}/runtime/node.exe';
   await fs.writeFile(wispFile, JSON.stringify(wisp, null, 2) + '\n');
   const codexFile = path.join(directory, '.codex-plugin/mcp.json');
   const codex = JSON.parse(await fs.readFile(codexFile, 'utf8'));
-  codex.mcpServers['figure-library'].command = './runtime/node.exe';
+  codex.mcpServers['figure-library'].command = runtimeMode === 'system' ? 'node' : './runtime/node.exe';
   await fs.writeFile(codexFile, JSON.stringify(codex, null, 2) + '\n');
   const claudeFile = path.join(directory, '.claude-plugin/mcp.json');
   const claude = JSON.parse(await fs.readFile(claudeFile, 'utf8'));
-  claude['figure-library'].command = '${CLAUDE_PLUGIN_ROOT}/runtime/node.exe';
+  claude['figure-library'].command = runtimeMode === 'system' ? 'node' : '${CLAUDE_PLUGIN_ROOT}/runtime/node.exe';
   await fs.writeFile(claudeFile, JSON.stringify(claude, null, 2) + '\n');
   const cursorFile = path.join(directory, '.cursor-plugin/mcp.json');
   const cursor = JSON.parse(await fs.readFile(cursorFile, 'utf8'));
-  cursor.mcpServers['figure-library'].command = '${PLUGIN_ROOT}/runtime/node.exe';
+  cursor.mcpServers['figure-library'].command = runtimeMode === 'system' ? 'node' : '${PLUGIN_ROOT}/runtime/node.exe';
   await fs.writeFile(cursorFile, JSON.stringify(cursor, null, 2) + '\n');
   await fs.copyFile(cursorFile, path.join(directory, 'mcp.json'));
   await fs.writeFile(path.join(directory, 'Start SFL.cmd'), '@echo off\r\nstart "Scientific Figure Library" /min "%~dp0runtime\\node.exe" "%~dp0dist\\index.js" --local --quiet\r\n');
   await fs.writeFile(path.join(directory, 'MCP.cmd'), '@echo off\r\n"%~dp0runtime\\node.exe" "%~dp0dist\\index.js" %*\r\n');
   await fs.writeFile(path.join(directory, 'READ-ME.txt'), 'Scientific Figure Library\r\n\r\nExtract the entire ZIP, then double-click Start SFL.cmd.\r\nNo Node.js or npm installation is needed.\r\nKeep the extracted folder intact. Quit using the local page.\r\nMCP configuration can be copied from Settings in the app.\r\nSee docs/INSTALL_LOCAL.md for Chinese instructions and preview limitations.\r\n');
+  if (runtimeMode === 'system') {
+    await fs.copyFile(path.join(root, 'desktop/windows/Launch-SFL.ps1'), path.join(directory, 'Launch-SFL.ps1'));
+    await fs.writeFile(path.join(directory, 'Start SFL.cmd'), '@echo off\r\npowershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0Launch-SFL.ps1"\r\nif errorlevel 1 pause\r\n');
+    await fs.writeFile(path.join(directory, 'MCP.cmd'), '@echo off\r\npowershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0Launch-SFL.ps1" -Mcp %*\r\n');
+    await fs.writeFile(path.join(directory, 'READ-ME.txt'), 'Scientific Figure Library - system Node edition\r\n\r\nRequires installed Node.js 22+. No npm install is needed.\r\nExtract the entire ZIP, then double-click Start SFL.cmd.\r\nSet SFL_NODE_BINARY to an absolute node.exe path if detection fails.\r\nAlternatively download the bundled-Node ZIP.\r\nSee docs/INSTALL_LOCAL.md.\r\n');
+  }
   const files = await inventory(directory);
-  await fs.writeFile(path.join(directory, 'install-manifest.json'), JSON.stringify({ schema: 'figure-library.local-install.v1', version: pkg.version, target: 'windows-x64', nodeVersion: runtimeLock.version, files }, null, 2) + '\n');
+  await fs.writeFile(path.join(directory, 'install-manifest.json'), JSON.stringify({ schema: 'figure-library.local-install.v1', version: pkg.version, target: 'windows-x64', runtimeMode, minimumNodeMajor: 22, nodeVersion: runtimeMode === 'bundled' ? runtimeLock.version : null, files }, null, 2) + '\n');
   const archive = {};
   for (const entry of await inventory(directory)) archive[`${name}/${entry.file}`] = new Uint8Array(await fs.readFile(path.join(directory, entry.file)));
   const file = path.join(output, `${name}.zip`);
@@ -102,15 +111,17 @@ async function macos(architecture) {
   const launchers = [];
   for (const [arch, triple] of [[architecture, architecture === 'arm64' ? 'arm64' : 'x86_64']]) {
     const runtimeDirectory = path.join(service, 'runtime', `darwin-${arch}`);
-    const manifest = await installRuntime(`darwin-${arch}`, runtimeDirectory);
+    const manifest = runtimeMode === 'bundled' ? await installRuntime(`darwin-${arch}`, runtimeDirectory) : undefined;
     const binary = path.join(staging, `sfl-${arch}`);
     await run('xcrun', ['swiftc', '-swift-version', '5', '-O', '-target', `${triple}-apple-macos13.0`, '-o', binary, ...sources]);
     binaries.push(binary);
     const launcher = path.join(staging, `mcp-${arch}`);
-    await run('xcrun', ['clang', '-arch', triple, '-mmacosx-version-min=13.0', '-O2', path.join(root, 'desktop/macos/Launcher.c'), '-o', launcher]);
+    await run('xcrun', ['clang', ...(runtimeMode === 'system' ? ['-DSFL_SYSTEM_NODE=1'] : []), '-arch', triple, '-mmacosx-version-min=13.0', '-O2', path.join(root, 'desktop/macos/Launcher.c'), '-o', launcher]);
     launchers.push(launcher);
-    await run('codesign', ['--force', '--sign', '-', '--entitlements', path.join(root, 'desktop/macos/node-entitlements.plist'), path.join(runtimeDirectory, 'node')]);
-    await fs.writeFile(path.join(runtimeDirectory, 'runtime.json'), JSON.stringify({ ...manifest, upstreamBinarySha256: manifest.binarySha256, binarySha256: sha256(await fs.readFile(path.join(runtimeDirectory, 'node'))), signing: 'ad-hoc' }, null, 2) + '\n');
+    if (manifest) {
+      await run('codesign', ['--force', '--sign', '-', '--entitlements', path.join(root, 'desktop/macos/node-entitlements.plist'), path.join(runtimeDirectory, 'node')]);
+      await fs.writeFile(path.join(runtimeDirectory, 'runtime.json'), JSON.stringify({ ...manifest, upstreamBinarySha256: manifest.binarySha256, binarySha256: sha256(await fs.readFile(path.join(runtimeDirectory, 'node'))), signing: 'ad-hoc' }, null, 2) + '\n');
+    }
   }
   await fs.copyFile(binaries[0], path.join(macOS, 'ScientificFigureLibrary'));
   await fs.copyFile(launchers[0], path.join(macOS, 'sfl-mcp'));
@@ -129,18 +140,28 @@ async function macos(architecture) {
   await run('codesign', ['--force', '--sign', '-', app]);
   await run('codesign', ['--verify', '--deep', '--strict', app]);
   const smokeRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'sfl-native-smoke-'));
-  const env = { ...process.env, PATH: '/usr/bin:/bin:/usr/sbin:/sbin', SFL_NATIVE_SMOKE: '1', SFL_SMOKE_ROOT: smokeRoot, SFL_PREVIEW_CACHE_DIR: path.join(smokeRoot, 'preview-cache'), SFL_OPEN_FIGURE_AUTO_REFRESH: '0', FIGURE_LIBRARY_DIR: path.join(smokeRoot, 'library'), XDG_CONFIG_HOME: path.join(smokeRoot, 'config'), XDG_DATA_HOME: path.join(smokeRoot, 'data'), SFL_DIAGNOSTICS_DIR: path.join(smokeRoot, 'diagnostics'), SFL_WORKSPACE_LOCATOR_PATH: path.join(smokeRoot, 'config/workspace.json') };
+  const env = { ...process.env, PATH: '/usr/bin:/bin:/usr/sbin:/sbin', SFL_NATIVE_SMOKE: '1', SFL_NODE_BINARY: process.execPath, SFL_RUNTIME_MODE: runtimeMode, SFL_SMOKE_ROOT: smokeRoot, SFL_PREVIEW_CACHE_DIR: path.join(smokeRoot, 'preview-cache'), SFL_OPEN_FIGURE_AUTO_REFRESH: '0', FIGURE_LIBRARY_DIR: path.join(smokeRoot, 'library'), XDG_CONFIG_HOME: path.join(smokeRoot, 'config'), XDG_DATA_HOME: path.join(smokeRoot, 'data'), SFL_DIAGNOSTICS_DIR: path.join(smokeRoot, 'diagnostics'), SFL_WORKSPACE_LOCATOR_PATH: path.join(smokeRoot, 'config/workspace.json') };
   delete env.FIGURE_WORKSPACE_DIR;
+  if (runtimeMode === 'system') {
+    let missingRejected = false;
+    try { await execFile(path.join(macOS, 'sfl-mcp'), ['--sfl-node-path'], { env: { ...env, SFL_NODE_BINARY: path.join(smokeRoot, 'missing-node') } }); } catch { missingRejected = true; }
+    if (!missingRejected) throw new Error('System Node launcher accepted a missing runtime');
+    const oldNode = path.join(smokeRoot, 'old-node');
+    await fs.writeFile(oldNode, '#!/bin/sh\nexit 1\n', { mode: 0o755 });
+    let oldRejected = false;
+    try { await execFile(path.join(macOS, 'sfl-mcp'), ['--sfl-node-path'], { env: { ...env, SFL_NODE_BINARY: oldNode } }); } catch { oldRejected = true; }
+    if (!oldRejected) throw new Error('System Node launcher accepted an incompatible runtime');
+  }
   await run(path.join(macOS, 'ScientificFigureLibrary'), [], { env, timeout: 120_000 });
   const smoke = JSON.parse(await fs.readFile(path.join(smokeRoot, 'native-smoke.json'), 'utf8'));
   if (smoke.status !== 'passed') throw new Error(`Native smoke failed: ${JSON.stringify(smoke)}`);
-  await fs.copyFile(path.join(smokeRoot, 'native-smoke.json'), path.join(output, `macos-${architecture}-smoke.json`));
-  await fs.copyFile(path.join(smokeRoot, 'native-window.png'), path.join(output, `macos-${architecture}-window.png`));
+  await fs.copyFile(path.join(smokeRoot, 'native-smoke.json'), path.join(output, `macos-${architecture}${variant}-smoke.json`));
+  await fs.copyFile(path.join(smokeRoot, 'native-window.png'), path.join(output, `macos-${architecture}${variant}-window.png`));
   await fs.rm(smokeRoot, { recursive: true, force: true });
-  await fs.writeFile(path.join(volume, 'BUILD-INFO.json'), JSON.stringify({ version: pkg.version, platform: `macos-${architecture}`, minimumOS: '13.0', nodeVersion: runtimeLock.version, signing: 'ad-hoc', notarized: false, smoke, appFiles: await inventory(app) }, null, 2) + '\n');
+  await fs.writeFile(path.join(volume, 'BUILD-INFO.json'), JSON.stringify({ version: pkg.version, platform: `macos-${architecture}`, minimumOS: '13.0', runtimeMode, minimumNodeMajor: 22, nodeVersion: runtimeMode === 'bundled' ? runtimeLock.version : null, signing: 'ad-hoc', notarized: false, smoke, appFiles: await inventory(app) }, null, 2) + '\n');
   await fs.copyFile(path.join(root, 'docs/INSTALL_LOCAL.md'), path.join(volume, 'INSTALL.md'));
   await fs.symlink('/Applications', path.join(volume, 'Applications'));
-  const file = path.join(output, `ScientificFigureLibrary-${pkg.version}-macos-${architecture}.dmg`);
+  const file = path.join(output, `ScientificFigureLibrary-${pkg.version}-macos-${architecture}${variant}.dmg`);
   await run('hdiutil', ['create', '-volname', 'Scientific Figure Library', '-srcfolder', volume, '-ov', '-format', 'UDZO', file]);
   await run('hdiutil', ['verify', file]);
   await digestFile(file);

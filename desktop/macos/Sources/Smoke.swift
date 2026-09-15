@@ -13,6 +13,13 @@ import AppKit
     do {
         try require(model.ready, model.error ?? "Native backend did not start")
         let backend = model.backend
+        let connection = try await backend.request("connection")
+        let activeNode = connection["mcpServers"]["figure-library"]["command"].string
+        if environment["SFL_RUNTIME_MODE"] == "system" {
+            try require(URL(fileURLWithPath: activeNode).resolvingSymlinksInPath() == URL(fileURLWithPath: environment["SFL_NODE_BINARY"]!).resolvingSymlinksInPath(), "App did not use selected system Node")
+        } else {
+            try require(activeNode.contains("/Resources/sfl/runtime/darwin-"), "App did not use private Node")
+        }
         let global = try await backend.call("figure_library_plan_bind_global", ["libraryDirectory": text(rawRoot + "/library"), "migrationMode": text("none")])
         _ = try await backend.call("figure_library_apply_bind_global", ["planDigest": global["plan"]["planDigest"], "operationId": text("native-smoke-bind")], approve: true)
         let workspace = try await backend.call("figure_library_plan_bind_workspace", ["workspaceDirectory": text(rawRoot + "/workspace")])
@@ -43,7 +50,7 @@ import AppKit
         model.query = "sflnativefixture"
         model.provider = "org.scientificfigurelibrary.local"
         try await model.search()
-        guard let candidate = model.result["candidates"].array.first else { throw LocalError(message: "Native search did not return the published reference") }
+        guard let candidate = model.result["candidates"].array.first else { throw LocalError(message: "Native search did not return the published reference: query=\(model.query), provider=\(model.provider), result=\(model.result.pretty), library=\(model.library)") }
         try require(model.thumbnail(candidate) != nil, "Native thumbnail did not decode")
         let preview = try await backend.exactPreview(["resultSetId": model.result["resultSetId"], "providerId": candidate["providerId"], "exactSelector": candidate["exactSelector"]])
         try require(preview.2.size.width > 0, "Native exact preview is empty")
@@ -62,7 +69,7 @@ import AppKit
             view.cacheDisplay(in: view.bounds, to: image)
             try image.representation(using: .png, properties: [:])?.write(to: root.appendingPathComponent("native-window.png"))
         }
-        let report = object(["status": text("passed"), "nativeWindow": .bool(true), "privateRuntime": .bool(true), "syntheticUserActions": .bool(true), "flows": .array(["downloadedThumbnails", "downloadedExactPreviews", "onDemandCache", "binding", "upload", "import", "publish", "search", "imageDecode", "localConfirmation", "materialize", "replay"].map(text))])
+        let report = object(["status": text("passed"), "nativeWindow": .bool(true), "privateRuntime": .bool(environment["SFL_RUNTIME_MODE"] != "system"), "runtimeMode": text(environment["SFL_RUNTIME_MODE"] ?? "bundled"), "syntheticUserActions": .bool(true), "flows": .array(["downloadedThumbnails", "downloadedExactPreviews", "onDemandCache", "binding", "upload", "import", "publish", "search", "imageDecode", "localConfirmation", "materialize", "replay"].map(text))])
         try Data(report.pretty.utf8).write(to: root.appendingPathComponent("native-smoke.json"))
         _ = await backend.shutdown()
         NSApplication.shared.terminate(nil)

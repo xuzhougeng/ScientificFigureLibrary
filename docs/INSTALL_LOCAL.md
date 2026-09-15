@@ -1,7 +1,16 @@
 # 本地客户端安装与使用
 
 本地客户端是简单的图片—代码知识库，不内置 AI，也不执行模板代码。
-macOS 使用原生 SwiftUI，Windows 使用本机网页；两端均随包携带 Node 运行时。
+macOS 使用原生 SwiftUI，Windows 使用本机网页；两端均提供内置 Node 和使用本机 Node 两种安装包。
+
+## 选择是否携带 Node
+
+- **默认包**（文件名不含 `no-node`）：内置 Node，无需安装 Node.js 或 npm。
+- **本机 Node 包**（文件名含 `no-node`）：不含 Node，要求已安装 **Node.js 22+**；程序依赖已构建打包，不需要 `npm install`。缺失或版本过低时停止启动并提示。
+
+macOS 两种架构、Windows x64 都提供这两个版本。首次查看在线图库图片仍需联网下载。
+
+Windows 默认从 PATH 查找 `node.exe`。macOS 从 Homebrew 常用位置和 App 的 PATH 查找；Finder 的 PATH 与终端可能不同。未能自动找到时，可在启动界面点击“选择本机 Node…”，指定可执行文件。CLI/MCP 可通过绝对路径环境变量 `SFL_NODE_BINARY` 指定。成功启动后，在 App 中复制的 MCP 配置使用实际选中的 Node 绝对路径。
 
 ## Windows ZIP
 
@@ -10,7 +19,7 @@ macOS 使用原生 SwiftUI，Windows 使用本机网页；两端均随包携带 
 3. 在“设置与连接”中确认全局图库和本地工作区的绝对目录。
 4. 使用“退出本地客户端”结束服务，再关闭页面。
 
-不需要安装 Node.js 或 npm。请保留整个解压目录，不要单独移动 `node.exe`、`dist/` 或 `assets/`。
+内置 Node 版不需要安装 Node.js；本机 Node 版要求 Node.js 22+。请保留整个解压目录，不要单独移动 `node.exe`、`dist/` 或 `assets/`。
 当前提供 x64 包；其他处理器架构不在此包的验证范围内。网页需要现代浏览器。
 
 ## macOS DMG
@@ -19,7 +28,7 @@ macOS 使用原生 SwiftUI，Windows 使用本机网页；两端均随包携带 
 2. 打开 DMG，将 `Scientific Figure Library.app` 拖入“Applications/应用程序”。
 3. 打开 App，在设置中选择全局图库和本地工作区。
 
-原生界面最低目标为 macOS 13。应用内已携带 Node，不需要使用 Homebrew 或 npm。
+原生界面最低目标为 macOS 13。选择内置 Node 版即可免装运行时；`no-node` 版复用本机 Node.js 22+。
 
 **预览版签名状态：当前产物使用 ad-hoc 签名，尚未经过 Developer ID 签名和 Apple 公证。**
 macOS 可能阻止从网络下载的 App 首次运行；只在确认下载来源与校验信息后，按系统的
@@ -61,8 +70,9 @@ macOS 可能阻止从网络下载的 App 首次运行；只在确认下载来源
 
 ## 构建与验证
 
-- Windows：`npm run package:windows`
+- Windows：`npm run package:windows`；本机 Node 版为 `npm run package:windows:no-node`
 - macOS：在 macOS/Xcode 环境运行 `npm run package:macos` 构建本机架构；显式入口为 `npm run package:macos:arm64` 和 `npm run package:macos:x64`，须在对应架构运行原生 smoke。
+- 本机 Node 版 macOS：`npm run package:macos:no-node`；显式架构可运行 `node scripts/package-local-client.mjs macos-arm64 --system-node`（先构建）。
 - 固定运行时来源与 SHA-256：`scripts/runtime/node-runtime.json`
 - 每个安装文件旁提供 `.sha256` 校验文件。
 

@@ -24,11 +24,30 @@ for (const file of manifest.files) {
   const bytes = await fs.readFile(path.join(packageRoot, file.file));
   if (bytes.length !== file.bytes || createHash('sha256').update(bytes).digest('hex') !== file.sha256) throw new Error(`Installer inventory mismatch: ${file.file}`);
 }
-const binary = path.join(packageRoot, 'runtime/node.exe');
+const systemNode = manifest.runtimeMode === 'system';
+if (systemNode && manifest.files.some(file => file.file.startsWith('runtime/'))) throw new Error('System-Node ZIP must not contain a runtime');
+const binary = systemNode ? process.execPath : path.join(packageRoot, 'runtime/node.exe');
 const env = { ...process.env, PATH: path.join(process.env.SystemRoot ?? 'C:\\Windows', 'System32'), FIGURE_LIBRARY_DIR: path.join(root, 'library'), SFL_WORKSPACE_LOCATOR_PATH: path.join(root, 'config/workspace.json'), SFL_DIAGNOSTICS_DIR: path.join(root, 'diagnostics'), SFL_PREVIEW_CACHE_DIR: path.join(root, 'preview-cache'), APPDATA: path.join(root, 'config'), LOCALAPPDATA: path.join(root, 'data'), SFL_OPEN_FIGURE_AUTO_REFRESH: '0', SFL_NO_BROWSER: '1' };
 delete env.FIGURE_WORKSPACE_DIR;
 delete env.NODE_OPTIONS;
 delete env.NODE_PATH;
+if (systemNode) {
+  const { execFileSync } = await import('node:child_process');
+  const powershell = path.join(process.env.SystemRoot ?? 'C:\\Windows', 'System32/WindowsPowerShell/v1.0/powershell.exe');
+  const resolver = ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', path.join(packageRoot, 'Launch-SFL.ps1'), '-ResolveOnly'];
+  const found = execFileSync(powershell, resolver, { env: { ...env, SFL_NODE_BINARY: binary }, encoding: 'utf8' }).trim();
+  if (path.resolve(found) !== path.resolve(binary)) throw new Error('System Node resolver selected the wrong executable');
+  const detected = execFileSync(powershell, resolver, { env: { ...env, SFL_NODE_BINARY: '', PATH: path.dirname(binary) + path.delimiter + env.PATH }, encoding: 'utf8' }).trim();
+  if (path.resolve(detected) !== path.resolve(binary)) throw new Error('Node on PATH was not detected');
+  const oldNode = path.join(root, 'old-node.ps1');
+  await fs.writeFile(oldNode, "Write-Output 'v20.0.0'\nexit 0\n");
+  let oldRejected = false;
+  try { execFileSync(powershell, resolver, { env: { ...env, SFL_NODE_BINARY: oldNode }, stdio: 'pipe' }); } catch { oldRejected = true; }
+  if (!oldRejected) throw new Error('Unsupported Node version was not rejected');
+  let rejected = false;
+  try { execFileSync(powershell, resolver, { env: { ...env, SFL_NODE_BINARY: path.join(root, 'missing-node.exe') }, stdio: 'pipe' }); } catch { rejected = true; }
+  if (!rejected) throw new Error('Missing Node was not rejected');
+}
 const child = spawn(binary, [path.join(packageRoot, 'dist/index.js'), '--local', '--no-open'], { cwd: root, env, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
 let log = '';
 child.stderr.on('data', bytes => { log = (log + bytes).slice(-8000); });
@@ -104,11 +123,11 @@ try {
   await call('figure_library_apply_materialize', apply, true);
   const replay = await call('figure_library_apply_materialize', apply, true);
   if (replay.envelope.outcome !== 'replayed') throw new Error('Installer materialization replay failed');
-  const result = { status: 'passed', target: 'windows-x64', version: manifest.version, nodeVersion: manifest.nodeVersion, systemNodeRemovedFromChildPath: true, syntheticUserActions: true, downloadedPreviews: true, cachedImageCount: cachedImages.length, installedFilesVerified: manifest.files.length, binding: true, localWeb: true, import: true, publish: true, search: true, images: true, localConfirmation: true, materialize: true, replay: true };
+  const result = { status: 'passed', target: 'windows-x64', version: manifest.version, nodeVersion: manifest.nodeVersion, runtimeMode: manifest.runtimeMode, systemNodeRemovedFromChildPath: !systemNode, syntheticUserActions: true, downloadedPreviews: true, cachedImageCount: cachedImages.length, installedFilesVerified: manifest.files.length, binding: true, localWeb: true, import: true, publish: true, search: true, images: true, localConfirmation: true, materialize: true, replay: true };
   await request('shutdown', {});
   const stopped = await Promise.race([exit, new Promise((_, reject) => { setTimeout(() => reject(new Error('Local service did not stop')), 20_000).unref(); })]);
   if (stopped.code !== 0) throw new Error(`Local service exit failed: ${JSON.stringify(stopped)}`);
-  await fs.writeFile(path.join(path.dirname(artifact), 'windows-install-smoke.json'), JSON.stringify(result, null, 2) + '\n');
+  await fs.writeFile(path.join(path.dirname(artifact), `windows${systemNode ? '-no-node' : ''}-install-smoke.json`), JSON.stringify(result, null, 2) + '\n');
   console.log(JSON.stringify(result));
 } finally {
   if (child.exitCode === null) child.kill();
