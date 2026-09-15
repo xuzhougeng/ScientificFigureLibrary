@@ -312,6 +312,13 @@ async function loadStatus() {
   canShutdown = state.canShutdown === true;
   button("shutdown").hidden = !canShutdown;
   el("connection-state").textContent = `本地服务 · ${String(state.version)}`;
+  const proxy = await api<Record<string, unknown>>("https-proxy");
+  if (stopped) return;
+  input("https-proxy").value = proxy.proxyUrl ? String(proxy.proxyUrl) : "";
+  const source = String(proxy.source ?? "none");
+  el("https-proxy-source").textContent = source === "environment"
+    ? "当前来自环境变量 SFL_HTTPS_PROXY / HTTPS_PROXY。"
+    : source === "file" ? "当前来自本机保存的代理设置。" : "未设置代理，直连 GitHub。";
   const providers = await call("figure_library_list_provider_sources");
   const cache = await loadPreviewCache();
   if (stopped) return;
@@ -331,6 +338,12 @@ function formatBytes(bytes: number) {
   if (!Number.isFinite(bytes) || bytes < 1024) return `${Math.max(0, bytes | 0)} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+async function saveHttpsProxySetting() {
+  const saved = await api<Record<string, unknown>>("https-proxy", { proxyUrl: input("https-proxy").value.trim() });
+  input("https-proxy").value = saved.proxyUrl ? String(saved.proxyUrl) : "";
+  notify(saved.proxyUrl ? "已保存本机 GitHub 代理。" : "已清除代理，将直连 GitHub。");
+  await loadStatus();
 }
 async function bindDirectories() {
   const libraryDirectory = input("library-directory").value.trim();
@@ -458,6 +471,7 @@ for (const control of document.querySelectorAll<HTMLButtonElement>("button[data-
 for (const control of document.querySelectorAll<HTMLButtonElement>("button[data-query]")) control.addEventListener("click", () => { input("search-query").value = control.dataset.query!; void run(search, control); });
 form("search-form").addEventListener("submit", (event) => { event.preventDefault(); void run(search, form("search-form").querySelector("button")!); });
 form("binding-form").addEventListener("submit", (event) => { event.preventDefault(); void run(bindDirectories); });
+form("proxy-form").addEventListener("submit", (event) => { event.preventDefault(); void run(saveHttpsProxySetting, form("proxy-form").querySelector("button")!); });
 form("add-source-form").addEventListener("submit", (event) => { event.preventDefault(); void run(addProviderSource, form("add-source-form").querySelector("button")!); });
 button("cache-previews").onclick = () => void run(() => cachePreviews(), button("cache-previews"));
 form("import-form").addEventListener("submit", (event) => { event.preventDefault(); void run(importAsset, form("import-form").querySelector<HTMLButtonElement>("button[type=submit]")!); });

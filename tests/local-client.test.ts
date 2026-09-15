@@ -28,9 +28,10 @@ async function isolated(t: { after: (fn: () => Promise<void>) => void }) {
     SFL_PREVIEW_CACHE_DIR: path.join(root, "preview-cache"),
     FIGURE_LIBRARY_DIR: path.join(root, "library"), FIGURE_WORKSPACE_DIR: path.join(root, "workspace"),
   };
-  const previous = Object.fromEntries(Object.keys(overrides).map((key) => [key, process.env[key]]));
+  const previous = Object.fromEntries([...Object.keys(overrides), "SFL_HTTPS_PROXY"].map((key) => [key, process.env[key]]));
   Object.assign(process.env, overrides);
   delete process.env.FIGURE_WORKSPACE_DIR;
+  process.env.SFL_HTTPS_PROXY = "";
   const htmlPath = path.join(root, "index.html");
   await fs.writeFile(htmlPath, "<!doctype html><title>SFL local test</title>");
   const service = await createLibraryService({ registry: createDefaultProviderRegistry() });
@@ -62,6 +63,7 @@ test("Windows local app HTML exposes setup, preview cache and provider source co
   for (const id of [
     "setup-banner", "cache-banner", "cache-previews", "preview-cache-hint",
     "provider-list", "add-source-form", "source-provider-id", "source-manifest-url", "source-public-key", "source-default-search",
+    "proxy-form", "https-proxy",
   ]) {
     assert.match(html, new RegExp(`id="${id}"`, "u"));
   }
@@ -125,6 +127,16 @@ test("local browser/native session enforces origin, authentication, one-use laun
   assert.ok(Array.isArray(cache.sources));
   const filled = await api("/api/preview-cache", { limit: 1 });
   assert.equal(filled.schema, "figure-library.local-preview-cache.v1");
+  const proxy = await api("/api/https-proxy");
+  assert.equal(proxy.schema, "figure-library.https-proxy.v1");
+  assert.equal(proxy.proxyUrl, null);
+  const saved = await api("/api/https-proxy", { proxyUrl: "http://127.0.0.1:7890" });
+  assert.equal(saved.proxyUrl, "http://127.0.0.1:7890");
+  const denied = await request("/api/https-proxy", { proxyUrl: "http://8.8.8.8:7890" });
+  assert.equal(denied.status, 400);
+  assert.match(String(record(await denied.json()).error), /loopback/u);
+  const cleared = await api("/api/https-proxy", { proxyUrl: "" });
+  assert.equal(cleared.proxyUrl, null);
   assert.equal((await request("/api/state", undefined, { Origin: "https://unrelated.example" })).status, 403);
   const wrongHost = await new Promise<number | undefined>((resolve, reject) => {
     const request = get(local.origin + "/api/state", { headers: { Host: "unrelated.example", Authorization: `Bearer ${local.token}` } }, (response) => {

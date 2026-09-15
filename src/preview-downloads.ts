@@ -186,7 +186,7 @@ export class PreviewDownloadStore {
   private constructor(manifest: z.infer<typeof ManifestSchema>, options: PreviewDownloadOptions) {
     this.manifest = manifest;
     this.files = new Map(manifest.files.map(file => [file.path, file]));
-    this.fetcher = options.fetcher ?? new SecureProviderSourceFetcher({ timeoutMs: 15000, maxRedirects: 2 });
+    this.fetcher = options.fetcher ?? new SecureProviderSourceFetcher({ timeoutMs: 60_000, maxRedirects: 2 });
     this.cache = path.resolve(options.cacheDirectory ?? previewCacheDirectory());
   }
   static async load(root: string, providerId: string, expected: PreviewDownloadFile[], options: PreviewDownloadOptions = {}) {

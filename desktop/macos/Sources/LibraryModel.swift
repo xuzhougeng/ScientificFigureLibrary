@@ -45,6 +45,8 @@ enum Sheet: Identifiable {
     @Published var sourceManifestURL = ""
     @Published var sourcePublicKey = ""
     @Published var sourceDefaultSearch = false
+    @Published var httpsProxy = ""
+    @Published var httpsProxySource = ""
     private var pages: [Int: (JSON, JSON)] = [:]
     private var starting = false
 
@@ -95,6 +97,10 @@ enum Sheet: Identifiable {
         if sources.isEmpty { sources = listed["sources"].array }
         providers = sources
         previewCache = try await backend.request("preview-cache")
+        let proxy = try await backend.request("https-proxy")
+        httpsProxy = proxy["proxyUrl"].string
+        let source = proxy["source"].string
+        httpsProxySource = source == "environment" ? "当前来自环境变量 SFL_HTTPS_PROXY / HTTPS_PROXY。" : source == "file" ? "当前来自本机保存的代理设置。" : "未设置代理，直连 GitHub。"
         if !searchProviders.contains(where: { $0["providerId"].string == provider }) { provider = "" }
         if let connection = try? await backend.request("connection") { connectionConfiguration = connection.pretty }
     }
@@ -176,6 +182,12 @@ enum Sheet: Identifiable {
             }
             try await self.status()
         }))
+    }
+    func saveHttpsProxy() async throws {
+        let saved = try await backend.request("https-proxy", object(["proxyUrl": text(httpsProxy.trimmingCharacters(in: .whitespacesAndNewlines))]))
+        httpsProxy = saved["proxyUrl"].string
+        message = httpsProxy.isEmpty ? "已清除代理，将直连 GitHub。" : "已保存本机 GitHub 代理。"
+        try await status()
     }
     func addProviderSource() async throws {
         try await changeProviderSource(title: "添加图片来源", arguments: [
