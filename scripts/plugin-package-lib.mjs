@@ -82,6 +82,7 @@ export async function commonPluginFiles() {
     "dist/local-app.html",
     "docs/GLOBAL_LIBRARY_0.6.md",
     "docs/PROTOCOL.md",
+    "docs/INSTALL_LOCAL.md",
 
     "assets/catalog.json",
     "assets/FIGUREYA_LICENSE.txt",

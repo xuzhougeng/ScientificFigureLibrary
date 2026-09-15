@@ -24,6 +24,11 @@ Community 代码和旧资产保留用于显式兼容访问，但已冻结，且�
   <img src="docs/assets/sfl-gallery.png" alt="Scientific Figure Library：浏览本机已发布的科学图模板。" width="100%" />
 </p>
 
+## 本地客户端预览版
+
+提供 macOS 原生 Universal DMG 与内置 Node 的 Windows x64 ZIP。安装方式和签名限制见
+[本地客户端安装说明](docs/INSTALL_LOCAL.md)。macOS 预览版尚未经过 Developer ID 签名和 Apple 公证。
+
 ## 安装
 
 ```text

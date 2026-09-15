@@ -33,7 +33,8 @@
     "LICENSE",
     "README.md",
     "README.zh-CN.md",
-    "THIRD_PARTY_NOTICES.md"
+    "THIRD_PARTY_NOTICES.md",
+    "docs/INSTALL_LOCAL.md"
   ],
   "scripts": {
     "build": "tsc --noEmit && vite build && vite build --config vite.local.config.ts && node scripts/esbuild-server.mjs",

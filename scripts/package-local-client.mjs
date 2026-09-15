@@ -21,7 +21,7 @@ async function run(command, args, options = {}) {
   return result;
 }
 async function payload(destination) {
-  const files = new Set([...(await commonPluginFiles()), 'dist/local-app.html', 'package.json', 'docs/LOCAL_CLIENT.md', 'docs/INSTALL_LOCAL.md']);
+  const files = new Set([...(await commonPluginFiles()), 'dist/local-app.html', 'package.json', 'docs/LOCAL_CLIENT.md', 'docs/LOCAL_CLIENT_IMPLEMENTATION.md', 'docs/INSTALL_LOCAL.md']);
   for (const relative of files) {
     const to = path.join(destination, relative);
     await fs.mkdir(path.dirname(to), { recursive: true });

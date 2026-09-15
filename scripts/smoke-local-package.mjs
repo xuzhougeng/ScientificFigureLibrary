@@ -7,7 +7,7 @@ import { unzipSync } from 'fflate';
 
 if (process.platform !== 'win32') throw new Error('Run this package smoke on Windows, using the extracted bundled node.exe if needed.');
 const artifact = path.resolve(process.argv[2]);
-const root = await fs.mkdtemp(path.join(os.tmpdir(), 'sfl-windows-install-'));
+const root = await fs.realpath(await fs.mkdtemp(path.join(os.tmpdir(), 'sfl-windows-install-')));
 const zip = unzipSync(new Uint8Array(await fs.readFile(artifact)));
 let packageRoot;
 for (const [relative, bytes] of Object.entries(zip)) {
@@ -61,12 +61,40 @@ try {
   await call('figure_library_apply_bind_global', { planDigest: binding.planDigest, operationId: 'windows-smoke-bind' }, true);
   binding = (await call('figure_library_plan_bind_workspace', { workspaceDirectory: path.join(root, 'workspace') })).plan;
   await call('figure_library_apply_bind_workspace', { planDigest: binding.planDigest, operationId: 'windows-smoke-workspace' }, true);
-  const search = await call('figure_library_search', { query: 'volcano differential expression', limit: 2 });
+  const upload = async (filename, bytes) => {
+    const response = await fetch(`${launch.origin}/api/upload`, { method: 'POST', headers: { Authorization: `Bearer ${launch.token}`, 'x-sfl-filename': filename }, body: bytes });
+    if (!response.ok) throw new Error('Installer fixture upload failed');
+    return (await response.json()).sourcePath;
+  };
+  const imagePath = await upload('reference.png', Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=', 'base64'));
+  const codePath = await upload('plot.R', Buffer.from("stop('installer smoke must never execute this code')\n"));
+  const working = (await call('figure_library_plan_working_revision', {
+    mode: 'create', title: 'windowsinstallfixture reference', description: 'Synthetic Windows installer fixture', application: 'windowsinstallfixture test', dataProfile: 'x y', license: 'MIT', language: 'R',
+    assetKind: 'plot_template', codeStatus: 'scaffold', executionStatus: 'not_run',
+    visualAssets: [{ assetId: 'reference', sourcePath: imagePath, visualRole: 'source_reference' }],
+    codeAssets: [{ assetId: 'code', sourcePath: codePath, codeOrigin: 'user_supplied', language: 'R' }], canonicalCodeAssetId: 'code',
+    figureCodeLinks: [{ visualAssetId: 'reference', codeAssetIds: ['code'], relationship: 'user_supplied_pair', confirmedBy: 'user', evidence: 'Synthetic local installer test confirmation.' }],
+    confirmations: { createOrUpdate: true, figureUnitBoundary: true, multiImageGrouping: true, primaryPreview: true, assetKind: true, canonicalImplementation: true, codeRelationships: true, codeOrigin: true, executionClaim: true, duplicateDecision: 'create_new' },
+  })).plan;
+  await call('figure_library_apply_working_revision', { planDigest: working.planDigest, operationId: 'windows-smoke-import', expectedAction: working.action, expectedTemplateId: working.templateId, expectedSeriesDigest: working.expectedSeriesDigest }, true);
+  const publication = (await call('figure_library_plan_publish_working_revision', { templateId: working.templateId })).plan;
+  await call('figure_library_apply_publish_working_revision', { planDigest: publication.planDigest, operationId: 'windows-smoke-publish', expectedTemplateId: working.templateId, expectedSeriesDigest: publication.expectedSeriesDigest }, true);
+  const search = await call('figure_library_search', { query: 'windowsinstallfixture', providerIds: ['org.scientificfigurelibrary.local'], limit: 2 });
   const candidate = search.candidates.find(value => value.previewAvailable);
-  if (!candidate) throw new Error('Bundled catalog returned no readable candidates');
+  if (!candidate) throw new Error('Published fixture returned no readable candidate');
   const images = await call('figure_library_get_candidate_images', { resultSetId: search.resultSetId, candidateIds: [candidate.candidateId] });
   if (images.images[0].candidateId !== candidate.candidateId) throw new Error('Thumbnail identity mismatch');
-  const result = { status: 'passed', target: 'windows-x64', version: manifest.version, nodeVersion: manifest.nodeVersion, systemNodeRemovedFromChildPath: true, installedFilesVerified: manifest.files.length, binding: true, localWeb: true, search: true, images: true };
+  const preview = await request('preview', { resultSetId: search.resultSetId, providerId: candidate.providerId, exactSelector: candidate.exactSelector });
+  const image = preview.content.find(item => item.type === 'image');
+  const imageHash = createHash('sha256').update(Buffer.from(image.data, 'base64')).digest('hex');
+  if (imageHash !== preview.structuredContent.transportSha256) throw new Error('Exact image checksum mismatch');
+  const confirmed = await request('confirm', { previewChallenge: preview.structuredContent.previewChallenge, displayedImageSha256: imageHash, imageLoaded: true, confirmedBy: 'user' });
+  const materialization = (await call('figure_library_plan_materialize', { providerId: candidate.providerId, exactSelector: candidate.exactSelector, previewReceipt: confirmed.structuredContent.previewReceipt, destination: path.join(root, 'project'), allowNetwork: false })).plan;
+  const apply = { planDigest: materialization.planDigest, operationId: 'windows-smoke-materialize', expectedProviderId: candidate.providerId, expectedTarget: materialization.target };
+  await call('figure_library_apply_materialize', apply, true);
+  const replay = await call('figure_library_apply_materialize', apply, true);
+  if (replay.envelope.outcome !== 'replayed') throw new Error('Installer materialization replay failed');
+  const result = { status: 'passed', target: 'windows-x64', version: manifest.version, nodeVersion: manifest.nodeVersion, systemNodeRemovedFromChildPath: true, syntheticUserActions: true, installedFilesVerified: manifest.files.length, binding: true, localWeb: true, import: true, publish: true, search: true, images: true, localConfirmation: true, materialize: true, replay: true };
   await request('shutdown', {});
   const stopped = await Promise.race([exit, new Promise((_, reject) => { setTimeout(() => reject(new Error('Local service did not stop')), 20_000).unref(); })]);
   if (stopped.code !== 0) throw new Error(`Local service exit failed: ${JSON.stringify(stopped)}`);
