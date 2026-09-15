@@ -479,6 +479,13 @@ plan. It must not inspect other candidates, Apply, or claim that the exact
 image loaded in the App. If `updateModelContext` is also absent, selection
 handoff remains disabled with an explicit capability error.
 
+When the Host has no Apps UI, the Agent can call
+`figure_library_create_plot_task_headless` after the user explicitly selects
+one or more candidates in conversation. The tool verifies each unchanged
+provider-qualified selector against the session-bound result set and returns
+the same v2 task structure as the App handoff. It creates no persistent queue
+and grants no preview, Materialize, execution, or installation approval.
+
 The current plotting-task handoff is
 `figure-library.app-plot-task-handoff.v2`. It contains one `plotTask` with a
 `taskItems[]` array; a single-item task and a batch use the same structure. Each
@@ -863,7 +870,7 @@ alone must not be described as delivery to the user.
 
 | Area | Tools |
 | --- | --- |
-| Workbench and retrieval | `figure_library_open`, `figure_library_search`, `figure_library_describe`, `figure_library_preview`, `figure_library_preview_exact_headless`, `figure_library_confirm_selection_headless`, `figure_library_source_status` |
+| Workbench and retrieval | `figure_library_open`, `figure_library_search`, `figure_library_describe`, `figure_library_preview`, `figure_library_preview_exact_headless`, `figure_library_confirm_selection_headless`, `figure_library_create_plot_task_headless`, `figure_library_source_status` |
 | App-only component tools | `figure_library_search_page`, `figure_library_preview_exact`, `figure_library_confirm_selection`, `figure_library_record_ui_event` |
 | Diagnostics export | `figure_library_export_diagnostics` |
 | Global binding | `figure_library_plan_bind_global`, `figure_library_apply_bind_global` |

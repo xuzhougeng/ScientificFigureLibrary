@@ -448,9 +448,11 @@ anything during preview.
   `figure_library_confirm_selection_headless`. Do not inspect another
   candidate, Apply, or claim the exact image loaded inside the App.
 - Host with no Apps UI: wait for the user's selection or explicit delegation,
-  then use the same headless preview/confirmation sequence for one selected
-  candidate. Both headless routes cannot prove that the user actually saw an
-  App image; say so in any acceptance report.
+  then call `figure_library_create_plot_task_headless` once with the unchanged
+  `resultSetId` and only the explicitly selected `providerId` + `exactSelector`
+  pairs. Process every returned `taskItems` entry. For each item, use the same
+  headless preview/confirmation sequence before Materialize. This route cannot
+  prove that the user saw an App image; say so in any acceptance report.
 
 An explicit request such as “use this selected template to complete the plot”
 is explicit delegation for that one exact candidate. On a headless route, call
@@ -477,6 +479,11 @@ data and output requirements. A v1 `agent_plot_set` or
 must be normalized conservatively to this task model; it must not be treated as
 having a receipt, ready material, or execution authorization that it did not
 carry.
+
+In an agent-only Host, `figure_library_create_plot_task_headless` returns the
+same v2 task structure after verifying every selection against the current
+session-bound search result. It is read-only and does not grant preview,
+Materialize, code-execution, or dependency-installation approval.
 
 Both paths return a session-local, opaque, single-use `previewReceipt` bound to
 the exact result set, provider, selector digest, preview hash, catalog/Library

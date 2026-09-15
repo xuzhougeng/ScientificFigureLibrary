@@ -94,6 +94,7 @@ try {
     "figure_library_preview_exact_headless",
     "figure_library_confirm_selection",
     "figure_library_confirm_selection_headless",
+    "figure_library_create_plot_task_headless",
     "figure_library_record_ui_event",
     "figure_library_export_diagnostics",
     "figure_library_source_status",
@@ -151,6 +152,7 @@ try {
     ["figure_library_search_page", "app"],
     ["figure_library_preview_exact", "app"],
     ["figure_library_preview_exact_headless", "model"],
+    ["figure_library_create_plot_task_headless", "model"],
     ["figure_library_record_ui_event", "app"],
     ["figure_library_export_diagnostics", "model"],
   ]) {

@@ -63,6 +63,7 @@ const STANDARD_TOOLS = [
   "figure_library_apply_working_revision",
   "figure_library_confirm_selection",
   "figure_library_confirm_selection_headless",
+  "figure_library_create_plot_task_headless",
   "figure_library_describe",
   "figure_library_diff_revisions",
   "figure_library_export_diagnostics",
@@ -271,6 +272,7 @@ test("standard server unifies Local Published and FigureYa while hiding Working/
         ["figure_library_search_page", "app"],
         ["figure_library_preview_exact", "app"],
         ["figure_library_preview_exact_headless", "model"],
+        ["figure_library_create_plot_task_headless", "model"],
         ["figure_library_record_ui_event", "app"],
         ["figure_library_export_diagnostics", "model"],
       ] as const) {
@@ -328,6 +330,50 @@ test("standard server unifies Local Published and FigureYa while hiding Working/
           (item) => record(item.exactSelector).providerId === item.providerId,
         ),
       );
+      const selectedCandidate = candidates[0]!;
+      const headlessPlotTask = await client.callTool({
+        name: "figure_library_create_plot_task_headless",
+        arguments: {
+          resultSetId: searchedStructured.resultSetId,
+          selections: [{
+            providerId: selectedCandidate.providerId,
+            exactSelector: selectedCandidate.exactSelector,
+          }],
+        },
+      });
+      assert.equal(headlessPlotTask.isError, undefined);
+      const headlessPlotTaskStructured = record(headlessPlotTask.structuredContent);
+      assert.equal(headlessPlotTaskStructured.schema, "figure-library.app-plot-task-handoff.v2");
+      assert.equal(headlessPlotTaskStructured.handoffMode, "agent_plot_task");
+      const headlessTaskItems = records(headlessPlotTaskStructured.taskItems);
+      assert.equal(headlessTaskItems.length, 1);
+      assert.equal(headlessTaskItems[0]!.providerId, selectedCandidate.providerId);
+      assert.deepEqual(headlessTaskItems[0]!.exactSelector, selectedCandidate.exactSelector);
+      assert.deepEqual(record(headlessTaskItems[0]!.previewState), {
+        appPreviewViewed: "unknown",
+        agentReviewRequired: true,
+        previewReceipt: null,
+      });
+      assert.equal(record(headlessPlotTaskStructured.authorization).mayExecuteCode, false);
+
+      const rejectedPlotTask = await client.callTool({
+        name: "figure_library_create_plot_task_headless",
+        arguments: {
+          resultSetId: searchedStructured.resultSetId,
+          selections: [{
+            providerId: selectedCandidate.providerId,
+            exactSelector: {
+              ...record(selectedCandidate.exactSelector),
+              identity: {
+                ...record(record(selectedCandidate.exactSelector).identity),
+                issue41UnknownSelection: true,
+              },
+            },
+          }],
+        },
+      });
+      assert.equal(record(record(rejectedPlotTask.structuredContent).envelope).outcome, "conflict");
+      assert.equal(record(record(rejectedPlotTask.structuredContent).envelope).code, "search_results_stale");
       const localOnlySearch = await client.callTool({
         name: "figure_library_search",
         arguments: {
@@ -665,6 +711,7 @@ test("standard server unifies Local Published and FigureYa while hiding Working/
         appPaginationTool: "figure_library_search_page",
         appExactPreviewTool: "figure_library_preview_exact",
         headlessExactPreviewTool: "figure_library_preview_exact_headless",
+        headlessPlotTaskTool: "figure_library_create_plot_task_headless",
         updateModelContextFallback: true,
         fallbackHandoffMode: "headless_exact_review",
         fallbackCandidateLimit: 1,
@@ -941,6 +988,7 @@ test("standard server unifies Local Published and FigureYa while hiding Working/
       const alreadyAudited = new Set([
         "figure_library_confirm_selection",
         "figure_library_confirm_selection_headless",
+        "figure_library_create_plot_task_headless",
         "figure_library_export_diagnostics",
         "figure_library_github_auth_instructions",
         "figure_library_github_auth_status",
@@ -968,6 +1016,7 @@ test("standard server unifies Local Published and FigureYa while hiding Working/
       for (const [toolName, result] of [
         ["figure_library_confirm_selection", appConfirmation],
         ["figure_library_confirm_selection_headless", headlessConfirmation],
+        ["figure_library_create_plot_task_headless", headlessPlotTask],
         ["figure_library_export_diagnostics", diagnosticsExport],
         ["figure_library_open", opened],
         ["figure_library_preview", preview],

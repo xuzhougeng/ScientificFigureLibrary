@@ -41,6 +41,7 @@ export const STANDARD_TOOL_NAMES = Object.freeze([
   "figure_library_apply_working_revision",
   "figure_library_confirm_selection",
   "figure_library_confirm_selection_headless",
+  "figure_library_create_plot_task_headless",
   "figure_library_describe",
   "figure_library_diff_revisions",
   "figure_library_export_diagnostics",

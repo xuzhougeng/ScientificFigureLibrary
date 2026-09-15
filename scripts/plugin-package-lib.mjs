@@ -165,6 +165,7 @@ export function assertPackagedGuidance({ packagedReadme, packagedProtocol, packa
     !packagedProtocol.includes("three-part validation state") ||
     !packagedProtocol.includes("Structured diagnostics and export") ||
     !packagedProtocol.includes("figure_library_search_page") ||
+    !packagedProtocol.includes("figure_library_create_plot_task_headless") ||
     !packagedProtocol.includes("figure_library_list_provider_sources") ||
     !packagedProtocol.includes("figure_library_plan_publication_export") ||
     !packagedProtocol.includes("figure_library_plan_publication_pr") ||
@@ -193,6 +194,7 @@ export function assertPackagedGuidance({ packagedReadme, packagedProtocol, packa
     "figure_library_search_page",
     "figure-library.app-plot-task-handoff.v2",
     "figure_library_preview_exact_headless",
+    "figure_library_create_plot_task_headless",
     "figure_library_preview_working_revision",
     "updateModelContextFallback",
     "figure_library_record_ui_event",

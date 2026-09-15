@@ -117,6 +117,10 @@ const ExactPreviewInput = ProviderSelectionInput.extend({
 const ConfirmPreviewInput = z.object({
   previewChallenge: z.string().min(1).max(256),
 });
+const HeadlessPlotTaskInput = z.object({
+  resultSetId: z.string().min(1).max(256),
+  selections: z.array(ProviderSelectionInput).min(1).max(12),
+});
 const PreviewInput = ProviderSelectionInput.extend({
   destination: z.string().min(1).max(4_000).optional(),
 });
@@ -223,6 +227,42 @@ function candidateValidationState(candidate: TemplateCandidate) {
   return candidate.validationState ?? compatibilityValidationState(candidate.executionStatus);
 }
 
+function sourcePackForProvider(providerId: string) {
+  if (providerId === "org.figureya.module") return "global-figureya";
+  if (providerId === PERSONAL_MODULE_PROVIDER_ID) return "global-open-modules";
+  if (providerId === LOCAL_LIBRARY_PROVIDER_ID) return "global-store";
+  return "provider-default";
+}
+
+function headlessPlotTaskItem(candidate: TemplateCandidate) {
+  return {
+    providerId: candidate.providerId,
+    templateId: candidate.templateId,
+    exactSelector: candidate.exactSelector,
+    ...(candidate.materializationSelectors ? { materializationSelectors: candidate.materializationSelectors } : {}),
+    ...(candidate.materializationModes ? { materializationModes: candidate.materializationModes } : {}),
+    title: candidate.title,
+    description: candidate.description,
+    application: candidate.application ?? "",
+    dataProfile: candidate.dataProfile ?? "",
+    ...(candidate.visualProfile ? { visualProfile: candidate.visualProfile } : {}),
+    validationState: candidateValidationState(candidate),
+    warnings: candidate.warnings,
+    inputFiles: candidate.inputFiles,
+    codeFiles: candidate.codeFiles ?? [],
+    packages: candidate.packages,
+    ...(candidate.scientificQuestion ? { scientificQuestion: candidate.scientificQuestion } : {}),
+    ...(candidate.previewSha256 ? { candidateThumbnailSha256: candidate.previewSha256 } : {}),
+    previewState: { appPreviewViewed: "unknown", agentReviewRequired: true, previewReceipt: null },
+    materialState: {
+      status: "unknown",
+      sourcePack: sourcePackForProvider(candidate.providerId),
+      networkRequired: "unknown",
+    },
+    executionState: { status: "not_started" },
+  };
+}
+
 function validationStateText(state: ValidationStateSummaryV1) {
   return [
     `plotExecution=${state.plotExecution.status} (scope=${state.plotExecution.scope})`,
@@ -269,7 +309,7 @@ function candidateText(candidates: TemplateCandidate[]) {
         ? [`   WARNINGS: ${candidate.warnings.join("; ")}`]
         : []),
     ]),
-    publicationReview ? "NEXT_STEP: wait for the user to confirm whether these publication candidates are duplicates. No Apply before confirmation." : "NEXT_STEP: wait for App updateModelContext. If it reports schema=figure-library.app-plot-task-handoff.v2 and handoffMode=agent_plot_task, process every taskItems entry in the current project. If it reports the legacy handoffMode=agent_plot_set, normalize its selectedCandidates conservatively during the compatibility window. If it reports handoffMode=headless_exact_review, review only that one candidate. Otherwise do not call an exact-preview tool unless the user explicitly delegates headless visual review.",
+    publicationReview ? "NEXT_STEP: wait for the user to confirm whether these publication candidates are duplicates. No Apply before confirmation." : "NEXT_STEP: wait for user selection. In an agent-only Host, call figure_library_create_plot_task_headless with only the explicitly selected candidates. In an Apps Host, wait for updateModelContext. When either path returns schema=figure-library.app-plot-task-handoff.v2 and handoffMode=agent_plot_task, process every taskItems entry in the current project. Otherwise do not call an exact-preview tool unless the user explicitly delegates headless visual review.",
   ].join("\n");
 }
 
@@ -1059,6 +1099,7 @@ export async function createServer(options: {
     appPaginationTool: "figure_library_search_page",
     appExactPreviewTool: "figure_library_preview_exact",
     headlessExactPreviewTool: "figure_library_preview_exact_headless",
+    headlessPlotTaskTool: "figure_library_create_plot_task_headless",
     updateModelContextFallback: true,
     fallbackHandoffMode: "headless_exact_review",
     fallbackCandidateLimit: 1,
@@ -1429,6 +1470,99 @@ export async function createServer(options: {
         invocationSource: "headless",
         toolName: "figure_library_preview_exact_headless",
       }),
+  );
+
+  server.registerTool(
+    "figure_library_create_plot_task_headless",
+    {
+      title: "Create a plotting task from explicit headless selections",
+      description:
+        "Create the same v2 plotting-task handoff used by the App after the user selects candidates in an agent-only session. Selections must belong to the current cached result set. This read-only tool does not preview, materialize, execute code, or install dependencies.",
+      inputSchema: HeadlessPlotTaskInput.shape,
+      annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: false,
+      },
+      _meta: { ui: { visibility: ["model"] } },
+    },
+    async ({ resultSetId, selections }): Promise<CallToolResult> => {
+      try {
+        const state = searchSessions.get(resultSetId);
+        if (!state) {
+          throw new PreviewProtocolError(
+            "search_results_stale",
+            "The search result set is unavailable in this server session; run the search again.",
+          );
+        }
+        const context = await currentLibraries();
+        const currentCatalogRevision = await registry.catalogRevision(
+          state.input.providerIds,
+          createProviderContext(context, index, {
+            ...(liveModuleCatalogs() ? { moduleCatalogs: liveModuleCatalogs() } : {}),
+          }),
+        );
+        previewConfirmations.requireResultSet({
+          resultSetId,
+          queryDigest: state.queryDigest,
+          catalogRevision: currentCatalogRevision,
+          libraryBindingDigest: libraryBindingDigest(context),
+        });
+
+        const seen = new Set<string>();
+        const taskItems = selections.map(({ providerId, exactSelector: raw }) => {
+          const exactSelector = raw as unknown as ExactTemplateSelector;
+          assertExactTemplateSelector(exactSelector);
+          if (exactSelector.providerId !== providerId) {
+            throw new Error("providerId does not match exactSelector.providerId");
+          }
+          const key = `${providerId}:${exactSelectorDigest(exactSelector)}`;
+          if (seen.has(key)) throw new Error("Duplicate plot-task selection");
+          seen.add(key);
+          const candidate = state.candidates.find(
+            (item) => item.providerId === providerId && exactSelectorDigest(item.exactSelector) === exactSelectorDigest(exactSelector),
+          );
+          if (!candidate) {
+            throw new PreviewProtocolError(
+              "search_results_stale",
+              "A selected candidate does not belong to this result set.",
+            );
+          }
+          return headlessPlotTaskItem(candidate);
+        });
+        const plotTask = {
+          schema: "figure-library.app-plot-task-handoff.v2",
+          source: "Scientific Figure Library MCP Server",
+          handoffMode: "agent_plot_task",
+          userAction: "submitted_headless_plot_task",
+          resultSetId,
+          taskItems,
+          authorization: {
+            mustProcessAllSelected: true,
+            mayInspectUnselected: false,
+            mayApplyWithoutDestination: false,
+            mayExecuteCode: false,
+            mayInstallDependencies: false,
+          },
+        } as const;
+        return terminal(
+          outcome(
+            "ok",
+            "headless_plot_task_ready",
+            `Created a session-bound plotting task with ${taskItems.length} explicitly selected item(s).`,
+            "ask_user",
+          ),
+          { plotTask, ...plotTask },
+          [
+            `PLOT_TASK: ${JSON.stringify(plotTask)}`,
+            "Preview and confirm each item before Materialize. Code execution and dependency installation still require separate approval.",
+          ],
+        );
+      } catch (error) {
+        return previewFailure("Headless plot task creation failed", error);
+      }
+    },
   );
 
   registerAppTool(
