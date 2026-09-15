@@ -44,6 +44,8 @@ export const STANDARD_TOOL_NAMES = Object.freeze([
   "figure_library_create_plot_task_headless",
   "figure_library_describe",
   "figure_library_diff_revisions",
+  "figure_library_get_skill",
+  "figure_library_get_candidate_images",
   "figure_library_export_diagnostics",
   "figure_library_github_auth_instructions",
   "figure_library_github_auth_status",

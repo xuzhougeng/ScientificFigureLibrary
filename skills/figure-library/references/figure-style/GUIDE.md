@@ -1,9 +1,3 @@
----
-name: figure-style
-description: Check correctness, legibility and faithful visual reproduction of selected scientific figure templates in R or Python. Use when adapting plotting code or inspecting rendered output, not for browsing templates. Includes an optional matplotlib sidecar and R-specific guidance; does not install packages or execute code automatically.
-license: Apache-2.0
----
-
 # Figure Style — faithful template first
 
 This SFL-bundled entrypoint adapts Wisp Science's Apache-2.0 figure-style
@@ -31,6 +25,6 @@ Read [correctness and render checks](references/checks.md) before finalizing the
 
 ## Execution and output
 
-Materialization downloads/verifies/writes references; it does not authorize arbitrary code execution. Inspect sources before adapting them, use only the project's approved runtime, never install packages automatically, and keep references immutable. A Gitee mirror, GitHub archive, or global Source Pack proves transport/provenance only; it does not replace visual QA, scientific validation, or render evidence. Write adapted project code under [figure-organization](../figure-organization/SKILL.md).
+Materialization downloads/verifies/writes references; it does not authorize arbitrary code execution. Inspect sources before adapting them, use only the project's approved runtime, never install packages automatically, and keep references immutable. A Gitee mirror, GitHub archive, or global Source Pack proves transport/provenance only; it does not replace visual QA, scientific validation, or render evidence. Write adapted project code under [figure-organization](../figure-organization/GUIDE.md).
 
 After an authorized render, verify file existence and meaningful dimensions, then inspect the actual output with the Host's available image viewer. Inspect per-panel crops when needed. If no image viewer is available, disclose that visual QA remains unverified. Collision scans and successful process exit do not prove visual correctness or scientific validity. Do not rerun expensive upstream analysis merely to restyle a plot.

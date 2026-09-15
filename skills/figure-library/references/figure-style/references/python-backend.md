@@ -2,7 +2,7 @@
 
 Inspect the selected script before executing it. Use the existing project Python environment; do not install dependencies or replace it with the Host's default interpreter.
 
-The local sidecar is `../kernel.py` relative to this reference file's directory (that is, `skills/figure-style/kernel.py`). Resolve it from the installed plugin directory, never from a hard-coded user path. Load it by file path using importlib.util when needed; importing it only defines helpers. Calling functions needs the relevant existing packages (matplotlib, numpy; scipy for t-intervals; Pillow for image crops).
+The local sidecar is `../kernel.py` relative to this reference file's directory (that is, `skills/figure-library/references/figure-style/kernel.py`). Resolve it from the installed plugin directory, never from a hard-coded user path. Load it by file path using importlib.util when needed; importing it only defines helpers. Calling functions needs the relevant existing packages (matplotlib, numpy; scipy for t-intervals; Pillow for image crops).
 
 For faithful replication retain the template's rcParams and artist settings. Call apply_figure_style(preserve_reference=True) only to set export mechanics; frame/font/size/grid defaults must not overwrite a specified template. Explicitly set styles only when they are unspecified or the user approved restyling. Dense point-layer rasterization is an option, not permission to rasterize every vector figure.
 

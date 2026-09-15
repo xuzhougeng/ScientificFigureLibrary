@@ -95,11 +95,18 @@ export async function commonPluginFiles() {
     "README.zh-CN.md",
     "THIRD_PARTY_NOTICES.md",
   ];
-  for (const skill of ["figure-library", "figure-description", "figure-organization", "figure-style"]) {
-    const skillRoot = path.join(root, "skills", skill);
-    for (const relative of ["SKILL.md", "agents/openai.yaml", "assets/sfl-logo.svg"]) await fs.access(path.join(skillRoot, relative));
-    files.push(...(await walk(skillRoot, "skills/" + skill)).filter((file) => !file.includes("/__pycache__/") && !file.endsWith(".pyc")));
+  const skillRoot = path.join(root, "skills", "figure-library");
+  for (const relative of [
+    "SKILL.md", "agents/openai.yaml", "assets/sfl-logo.svg",
+    "references/library-workflows.md",
+    "references/figure-description/GUIDE.md",
+    "references/figure-organization/GUIDE.md", "references/figure-organization/NOTICE.md",
+    "references/figure-style/GUIDE.md", "references/figure-style/kernel.py",
+    "references/figure-style/LICENSE", "references/figure-style/NOTICE.md",
+  ]) {
+    await fs.access(path.join(skillRoot, relative));
   }
+  files.push(...(await walk(skillRoot, "skills/figure-library")).filter((file) => !file.includes("/__pycache__/") && !file.endsWith(".pyc")));
   files.push(...(await walk(path.join(root, "assets", "thumbs"), "assets/thumbs")));
   files.push(...(await walk(path.join(root, "assets", "brand"), "assets/brand")));
   files.push(...(await walk(path.join(root, "assets", "licenses"), "assets/licenses")));
@@ -171,18 +178,15 @@ export function assertPackagedGuidance({ packagedReadme, packagedProtocol, packa
     !packagedProtocol.includes("figure_library_plan_publication_pr") ||
     !packagedProtocol.includes("updateModelContext.text") ||
     !packagedSkill.includes(`Scientific Figure Library ${version}`) ||
-    !packagedSkill.includes("materialization protocol v2") ||
-    !packagedSkill.includes("bundled Community") ||
-    !packagedSkill.includes("Open Figure Modules") ||
-    !packagedSkill.includes("includeInDefaultSearch") ||
-    !packagedSkill.includes("module-archive.v1") ||
-    !packagedSkill.includes("source-packs/open-modules") ||
-    !packagedSkill.includes("figure-library.app-plot-task-handoff.v2") ||
-    !packagedSkill.includes("figure_library_plan_provider_source_change") ||
-    !packagedSkill.includes("figure_library_plan_publication_export") ||
-    !packagedSkill.includes("figure_library_plan_publication_pr") ||
-    !packagedSkill.includes("figure_library_preview_working_revision") ||
-    !packagedSkill.includes("选择并交给 Agent 审核") ||
+    !packagedSkill.includes("Materialization protocol v2") ||
+    !packagedSkill.includes("figure_library_get_skill") ||
+    !packagedSkill.includes("figure_library_get_candidate_images") ||
+    !packagedSkill.includes("figure_library_search_page") ||
+    !packagedSkill.includes("references/library-workflows.md") ||
+    !packagedSkill.includes("references/figure-description/GUIDE.md") ||
+    !packagedSkill.includes("references/figure-organization/GUIDE.md") ||
+    !packagedSkill.includes("references/figure-style/GUIDE.md") ||
+    !packagedSkill.includes("figure_library_preview_exact_headless") ||
     !packagedSkill.includes("figure_library_export_diagnostics")
   ) {
     throw new Error("packaged current-version guidance is incomplete");
@@ -191,6 +195,8 @@ export function assertPackagedGuidance({ packagedReadme, packagedProtocol, packa
     throw new Error(`packaged server omitted ${versionedAppUri}`);
   }
   for (const marker of [
+    "figure_library_get_skill",
+    "figure_library_get_candidate_images",
     "figure_library_search_page",
     "figure-library.app-plot-task-handoff.v2",
     "figure_library_preview_exact_headless",
@@ -451,6 +457,20 @@ export async function smokePackagedPlugin({ host, unpacked, version }) {
     await withTimeout(client.connect(transport), 20_000, `${host} MCP initialize`);
     const listed = await withTimeout(client.listTools(), 20_000, `${host} MCP tools/list`);
     const names = assertExactToolInventory(listed.tools, `${host} plugin`);
+    const skillFiles = Object.keys(unpacked).filter((file) => file.endsWith("/SKILL.md"));
+    if (JSON.stringify(skillFiles) !== JSON.stringify(["skills/figure-library/SKILL.md"])) {
+      throw new Error(`${host} must package exactly one core Skill`);
+    }
+    const guidance = await withTimeout(client.callTool({ name: "figure_library_get_skill", arguments: {} }), 20_000, `${host} MCP guidance`);
+    if (guidance.structuredContent?.text !== utf8(unpacked[skillFiles[0]])) {
+      throw new Error(`${host} MCP guidance differs from the packaged Skill`);
+    }
+    for (const document of guidance.structuredContent.documents) {
+      const resource = await withTimeout(client.readResource({ uri: document.uri }), 20_000, `${host} guidance resource`);
+      if (resource.contents[0]?.text !== utf8(unpacked[`skills/figure-library/${document.document}`])) {
+        throw new Error(`${host} guidance resource differs from ${document.document}`);
+      }
+    }
     return { host, toolCount: names.length, pluginRoot, foreignProjectDirectory };
   } catch (error) {
     const detail = stderr.trim() ? `\npackaged server stderr:\n${stderr.trim()}` : "";

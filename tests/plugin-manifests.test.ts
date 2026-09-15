@@ -45,7 +45,7 @@ test("host plugin manifests share version, skill, and MCP identity", () => {
   assert.equal(codex.mcpServers, "./.codex-plugin/mcp.json");
   assert.equal(claude.mcpServers, "./.claude-plugin/mcp.json");
   assert.equal(cursor.mcpServers, "./.cursor-plugin/mcp.json");
-  assert.deepEqual(wisp.skills, ["figure-library", "figure-description", "figure-organization", "figure-style"].map((name) => `skills/${name}`));
+  assert.deepEqual(wisp.skills, ["figure-library"].map((name) => `skills/${name}`));
   assert.equal(fs.existsSync(path.join(root, ".mcp.json")), false);
 
   assert.equal(pkg.homepage, WEBSITE);
@@ -170,18 +170,19 @@ test("brand and Skill UI assets are self-contained, portable, and consistent", a
   }
 
   const files = await commonPluginFiles();
+  assert.deepEqual(files.filter((file: string) => file.endsWith("/SKILL.md")), ["skills/figure-library/SKILL.md"]);
   assert.ok(files.every((file: string) => !file.includes("__pycache__") && !file.endsWith(".pyc")));
   for (const required of [
     BRAND_ASSET,
     "skills/figure-library/agents/openai.yaml",
     "skills/figure-library/assets/sfl-logo.svg",
-    "skills/figure-description/SKILL.md",
-    "skills/figure-organization/SKILL.md",
-    "skills/figure-organization/NOTICE.md",
-    "skills/figure-style/SKILL.md",
-    "skills/figure-style/kernel.py",
-    "skills/figure-style/LICENSE",
-    "skills/figure-style/NOTICE.md",
+    "skills/figure-library/references/figure-description/GUIDE.md",
+    "skills/figure-library/references/figure-organization/GUIDE.md",
+    "skills/figure-library/references/figure-organization/NOTICE.md",
+    "skills/figure-library/references/figure-style/GUIDE.md",
+    "skills/figure-library/references/figure-style/kernel.py",
+    "skills/figure-library/references/figure-style/LICENSE",
+    "skills/figure-library/references/figure-style/NOTICE.md",
     "assets/licenses/markdown-it.txt",
     "assets/licenses/dompurify.txt",
   ]) {

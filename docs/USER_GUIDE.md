@@ -81,8 +81,8 @@ Collapsible plotting tips and a copyable example help express current-task requi
 **What the host model does (🤖):** editing code, running R/Python, inspecting
 images, and iterating all happen in the host session and depend on the
 runtimes you approved for the project plus the host's image-viewing tools.
-The three auxiliary Skills (figure-description, figure-organization,
-figure-style) guide those behaviors; see [section 9](#9-advanced-reference).
+The core Skill loads description, organization and style references on demand
+to guide those behaviors; see [section 9](#9-advanced-reference).
 
 **Planned (🕓, none implemented at the time of writing):**
 
@@ -305,7 +305,7 @@ same unit, the host will confirm with you among `create_new` /
 
 ## 6. Fonts, colors, sizes, and export
 
-**Current mechanism (✅ + 🤖):** the bundled figure-style Skill gives the host
+**Current mechanism (✅ + 🤖):** the bundled figure-style guidance gives the host
 model general plotting-style guidance (fonts, colors, sizes, export checks,
 with per-backend details for R and Python), and the model follows your
 **current-session** instructions first. SFL itself does **not** remember your
@@ -376,7 +376,7 @@ changes back as a new version, return to the import/publish flow in
 [section 5](#5-prepare-your-own-figure-and-data) and create a new
 Revision/Release (native versioning, ✅).
 
-**Per-figure organization:** the figure-organization Skill already requires
+**Per-figure organization:** the figure-organization guidance already requires
 traceable inputs/outputs (✅ as guidance), but enforced one-figure-one-folder
 archival units and submission packaging are still planned
 (🕓 [#19](https://github.com/xuzhougeng/ScientificFigureLibrary/issues/19)).
@@ -478,7 +478,7 @@ ScientificFigureLibrary/
 │   ├── QUICKSTART.md              # Install quickstart
 │   └── GLOBAL_LIBRARY_0.6.md      # Current Library design
 ├── scripts/                       # Build/package/document-check scripts
-├── skills/                        # The four bundled Skills
+├── skills/                        # One core Skill and its references
 └── src/                           # MCP server implementation
 ```
 
@@ -488,17 +488,25 @@ complete Open Figure Modules Source Pack is a separate sibling at
 It is populated only after a verified materialization download; Local Published
 never uses this Source Pack.
 
-### 9.2 Bundled Skills
+### 9.2 One core Skill and on-demand guidance
 
-| Skill | Responsibility |
+| Entry or reference | Responsibility |
 | --- | --- |
 | figure-library | SFL tool and workbench discipline: search, confirm, materialize |
 | figure-description | Template description writing: requirements, use cases, data profile in safe Markdown |
 | figure-organization | Figure Unit organization: traceable inputs/outputs, intake boundaries |
 | figure-style | Plotting style guidance: fonts, colors, sizes, export; R/Python backend checks |
 
-All four plugin packages (Wisp/Codex/Claude/Cursor) bundle every Skill; hosts
-do not need to install them separately.
+All four plugin packages (Wisp/Codex/Claude/Cursor) bundle one figure-library
+Skill and its references. The other three topics in this table are on-demand
+references, not independent Skills.
+
+Without the App, call `figure_library_get_skill` to read the same guidance.
+Search returns candidate IDs and thumbnail URIs; use
+`figure_library_get_candidate_images` or MCP resource reads to display the page,
+and `figure_library_search_page` to continue browsing. After the user selects a
+candidate, use the existing exact headless preview/confirmation and Plan/Apply
+flow. Host image display must be tested separately from tool execution.
 
 ### 9.3 Protocol and related documents
 

@@ -66,6 +66,8 @@ const STANDARD_TOOLS = [
   "figure_library_create_plot_task_headless",
   "figure_library_describe",
   "figure_library_diff_revisions",
+  "figure_library_get_skill",
+  "figure_library_get_candidate_images",
   "figure_library_export_diagnostics",
   "figure_library_github_auth_instructions",
   "figure_library_github_auth_status",
@@ -269,7 +271,6 @@ test("standard server unifies Local Published and FigureYa while hiding Working/
       assert.ok(names.includes("figure_library_list_provider_sources"));
       for (const [toolName, visibility] of [
         ["figure_library_search", "model"],
-        ["figure_library_search_page", "app"],
         ["figure_library_preview_exact", "app"],
         ["figure_library_preview_exact_headless", "model"],
         ["figure_library_create_plot_task_headless", "model"],
@@ -867,6 +868,8 @@ test("standard server unifies Local Published and FigureYa while hiding Working/
         operationId: "anti-loop-audit",
       };
       const auditArguments: Record<string, Record<string, unknown>> = {
+        figure_library_get_skill: { document: "missing.md" },
+        figure_library_get_candidate_images: { resultSetId: "missing", candidateIds: [`candidate-${"0".repeat(32)}`] },
         figure_library_apply_adopt_versioning: genericApply,
         figure_library_apply_bind_global: opaqueApply,
         figure_library_apply_bind_workspace: opaqueApply,

@@ -8,10 +8,7 @@
   "license": "MIT (SFL and Community code); Apache-2.0 (figure-style and DOMPurify); see bundled third-party/Skill notices; CC BY 4.0 (Community synthetic content); CC BY-NC-SA 4.0 (FigureYa assets)",
   "source_format": "wisp-plugin",
   "skills": [
-    "skills/figure-library",
-    "skills/figure-description",
-    "skills/figure-organization",
-    "skills/figure-style"
+    "skills/figure-library"
   ],
   "mcp_servers": [
     {

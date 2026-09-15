@@ -63,7 +63,7 @@ SFL 是一个**本机优先**的 stdio MCP 服务器加 MCP App。它把你的�
 - 不把上游的审核状态说成本地验证:FigureYa 模板标记为 `not_reviewed`、代码 `not_run`
 
 **宿主模型负责什么(🤖):** 真正改代码、跑 R/Python、看图、迭代,都发生在宿主会话里,
-依赖项目里你批准的运行时和宿主的看图工具。SFL 的三个辅助 Skill
+依赖项目里你批准的运行时和宿主的看图工具。SFL 核心 Skill 按需读取三类指导资料
 (figure-description、figure-organization、figure-style)为这些行为提供指导,详见
 [第 9 节](#9-进阶参考)。
 
@@ -256,7 +256,7 @@ T2,Treatment,T-cells,40
 
 ## 6. 字体、配色、尺寸与导出调整
 
-**当前机制(✅ + 🤖):** SFL 内置的 figure-style Skill 为宿主模型提供通用绘图风格
+**当前机制(✅ + 🤖):** SFL 内置的 figure-style 指导资料 为宿主模型提供通用绘图风格
 指导(字体、配色、尺寸、导出等检查项,R/Python 后端各有细则),模型会优先遵循你
 **当次会话**里的明确要求。SFL 本身**不会**跨会话记住你的偏好——持久化的用户绘图
 规范仍在规划中(🕓 [#17](https://github.com/xuzhougeng/ScientificFigureLibrary/issues/17))。
@@ -315,7 +315,7 @@ SFL 服务器不参与执行;格式能力取决于实际运行后端,图库导�
 Release 不受影响。想把这些修改沉淀为新版本时,回到[第 5 节](#5-准备你自己的图与数据)
 的导入发布流程,生成新的 Revision/Release(SFL 原生版本化,✅)。
 
-**按图组织文件:** figure-organization Skill 已要求输入/输出可追溯(✅ 的指导),
+**按图组织文件:** figure-organization 指导资料 已要求输入/输出可追溯(✅ 的指导),
 但"一图一文件夹"的强制归档单元与投稿打包仍在规划中
 (🕓 [#19](https://github.com/xuzhougeng/ScientificFigureLibrary/issues/19))。
 当前你可以直接要求宿主模型按该结构组织,例如:
@@ -404,7 +404,7 @@ ScientificFigureLibrary/
 │   ├── QUICKSTART.md              # 安装快速上手
 │   └── GLOBAL_LIBRARY_0.6.md      # 当前 Library 设计说明
 ├── scripts/                       # 构建/打包/文档检查脚本
-├── skills/                        # 四个内置 Skills
+├── skills/                        # 一个核心 Skill 及其按需资料
 └── src/                           # MCP 服务器实现
 ```
 
@@ -413,16 +413,22 @@ Figure Modules Source Pack 是并列目录 `source-packs/open-modules/`，其中
 保存 `archives/` 和解压后的模板缓存。它只在物化下载完成并通过校验后写入，
 Local Published 不使用这个 Source Pack。
 
-### 9.2 内置 Skills 分工
+### 9.2 一个核心 Skill 与按需指导
 
-| Skill | 职责 |
+| 入口或资料 | 职责 |
 | --- | --- |
 | figure-library | SFL 工具与工作台使用规范:搜索、确认、物化纪律 |
 | figure-description | 模板描述写作:需求、应用场景、数据特征的安全 Markdown 呈现 |
 | figure-organization | 图形单元组织:输入/输出可追溯,导入边界约定 |
 | figure-style | 绘图风格指导:字体、配色、尺寸、导出;R/Python 后端检查细则 |
 
-四个插件包(Wisp/Codex/Claude/Cursor)都包含全部 Skills,宿主无需另装。
+四个插件包(Wisp/Codex/Claude/Cursor)均包含一个 figure-library 核心 Skill 及其资料。
+表中另外三个主题是按需读取的资料，不再作为独立 Skill 分发。
+
+不使用 App 时，调用 `figure_library_get_skill` 读取同源指导。搜索返回候选 ID 和
+缩略图 URI，宿主通过 `figure_library_get_candidate_images` 或 MCP 资源读取展示
+当前页，再用 `figure_library_search_page` 翻页。用户选择后沿用精确 headless
+预览、确认和 Plan/Apply 流程。工具成功返回图片与用户实际看到图片需分别验证。
 
 ### 9.3 协议与相关文档
 
