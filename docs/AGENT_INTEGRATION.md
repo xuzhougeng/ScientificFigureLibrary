@@ -8,7 +8,7 @@
 **SFL 是本地图片—代码知识库客户端，以 MCP 和一个核心 Skill 向外部 CLI/Desktop 提供候选图片列表及资产使用能力。**
 
 目标宿主包括 zcode、WorkBuddy、Claude Desktop、Codex Desktop、Wisp Science 等。
-本地客户端采用 macOS 原生 SwiftUI、Windows Node 服务与本地 Web 页面，详见
+本地客户端采用 macOS 原生 SwiftUI、Windows / Linux Node 服务与本地 Web 页面，详见
 [本地客户端架构](LOCAL_CLIENT.md)。外部宿主可通过自己的对话、图片控件或 WebView
 展示候选图，也可使用面向支持客户端的简化 MCP App。
 上述名称表示目标宿主，不代表所有版本均已完成兼容性验收。

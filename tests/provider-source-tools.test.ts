@@ -17,8 +17,11 @@ import {
   ed25519PublicKeyIdentity,
   type RawHttpsResponse,
 } from "../src/provider-source-fetch.ts";
-import { registerProviderSourceTools } from "../src/provider-source-tools.ts";
+import { defineProviderSourceOperations, registerProviderSourceTools } from "../src/provider-source-tools.ts";
 import { ProviderSourceManager, type ProviderSourcePaths } from "../src/provider-sources.ts";
+import { OFFICIAL_OPEN_FIGURE_PROVIDER_ID } from "../src/open-figure-official-channel.ts";
+import type { OfficialOpenFigureSourceManager } from "../src/open-figure-official-source.ts";
+import { OperationRegistry } from "../src/service/operations.ts";
 import { createServer } from "../src/server.ts";
 
 function record(value: unknown): Record<string, unknown> {
@@ -506,4 +509,42 @@ test("provider source MCP Apply reports missing and stale cached plans as termin
   } finally {
     await state.close();
   }
+});
+
+test("official Open Figure Apply is dispatched to the official manager", async () => {
+  const operations = new OperationRegistry();
+  const calls: unknown[] = [];
+  const digest = "a".repeat(64);
+  defineProviderSourceOperations({
+    operations,
+    manager: {
+      applyChange: async () => {
+        throw new Error("personal manager must not receive official Apply");
+      },
+    } as unknown as ProviderSourceManager,
+    officialOpenFigure: {
+      applyChange: async (input: { planDigest: string; operationId: string; expectedAction: "update" | "configure" }) => {
+        calls.push(input);
+        return {
+          action: input.expectedAction,
+          providerId: OFFICIAL_OPEN_FIGURE_PROVIDER_ID,
+          planDigest: input.planDigest,
+          operationId: input.operationId,
+          manifestSha256: "b".repeat(64),
+        };
+      },
+    } as unknown as OfficialOpenFigureSourceManager,
+  });
+  const applied = await operations.execute("figure_library_apply_provider_source_change", {
+    planDigest: digest,
+    operationId: "official-apply-route",
+    expectedAction: "update",
+    expectedProviderId: OFFICIAL_OPEN_FIGURE_PROVIDER_ID,
+  });
+  assert.equal(record(record(applied.structuredContent).envelope).outcome, "applied");
+  assert.deepEqual(calls, [{
+    planDigest: digest,
+    operationId: "official-apply-route",
+    expectedAction: "update",
+  }]);
 });

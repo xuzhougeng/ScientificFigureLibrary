@@ -45,6 +45,26 @@ test("preview downloads fetch only on read, deduplicate, pin the URL, and reuse 
   await assert.rejects(offline!.read(file.path, false), /no longer cached/u);
 });
 
+test("preview cache status and batch fill report missing files then reuse the verified cache", async t => {
+  const { dir, cacheDirectory } = await fixture(t);
+  let requests = 0;
+  const store = (await PreviewDownloadStore.load(dir, "test", [file], { cacheDirectory, fetcher: { fetch: async url => {
+    requests++;
+    return reply(url, png);
+  } } }))!;
+  assert.deepEqual(await store.status(), { total: 1, cached: 0, missing: 1, bytesTotal: png.length, bytesCached: 0 });
+  const filled = await store.cacheMissing(1);
+  assert.equal(filled.filled, 1);
+  assert.equal(filled.failed, 0);
+  assert.equal(filled.cached, 1);
+  assert.equal(filled.missing, 0);
+  assert.equal(requests, 1);
+  const again = await store.cacheMissing();
+  assert.equal(again.filled, 0);
+  assert.equal(again.cached, 1);
+  assert.equal(requests, 1);
+});
+
 test("bad downloads never populate cache and corrupted cache requires a fresh preview", async t => {
   const { dir, cacheDirectory } = await fixture(t);
   let bytes: Uint8Array = Buffer.alloc(png.length);

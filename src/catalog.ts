@@ -817,6 +817,10 @@ export class CatalogIndex {
     }
   }
 
+  previewDownloads() {
+    return this.downloads;
+  }
+
   get(moduleId: string) {
     return this.catalog.modules.find((module) => module.moduleId === moduleId);
   }

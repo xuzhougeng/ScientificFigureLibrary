@@ -122,7 +122,7 @@ export async function startLocalHttp(options: {
       }
       if (request.method === "GET" && url.pathname === "/api/integrations") return json(response, 200, integrationGuide({ server: path.resolve(import.meta.dirname, "index.js") }));
       if (request.method === "GET" && url.pathname === "/api/library") return json(response, 200, await service.local.library());
-      if (request.method === "GET" && url.pathname === "/api/preview-cache") return json(response, 200, await inspectPreviewCache());
+      if (request.method === "GET" && url.pathname === "/api/preview-cache") return json(response, 200, await service.local.previewCache());
       if (request.method !== "POST") return json(response, 404, { error: "Unknown local client endpoint" });
       if (url.pathname === "/api/upload") {
         const filename = z.string().min(1).max(200).parse(request.headers["x-sfl-filename"]);
@@ -144,8 +144,20 @@ export async function startLocalHttp(options: {
         return json(response, 200, await service.execute(call.name, call.arguments));
       }
       if (url.pathname === "/api/preview-cache") {
-        z.object({ action: z.literal("clear") }).strict().parse(input);
-        return json(response, 200, await clearPreviewCache());
+        const body = z.object({
+          action: z.literal("clear").optional(),
+          providerId: z.string().min(1).max(200).optional(),
+          limit: z.number().int().min(1).max(500).optional(),
+        }).strict().parse(input ?? {});
+        if (body.action === "clear") {
+          const cleared = await clearPreviewCache();
+          return json(response, 200, { ...await service.local.previewCache(), removed: cleared.removed, bytesFreed: cleared.bytesFreed });
+        }
+        request.socket?.setTimeout(0);
+        return json(response, 200, await service.local.cachePreviews({
+          ...(body.providerId ? { providerId: body.providerId } : {}),
+          ...(body.limit ? { limit: body.limit } : {}),
+        }));
       }
       if (url.pathname === "/api/preview") return json(response, 200, await service.local.preview(input));
       if (url.pathname === "/api/confirm") return json(response, 200, await service.local.confirm(input));

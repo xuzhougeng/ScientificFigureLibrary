@@ -16,7 +16,15 @@ let libraryGreen = Color(red: 0.14, green: 0.42, blue: 0.30)
                     VStack(spacing: 18) { ProgressView(); Text(model.error ?? "正在启动本地知识库…"); Button("重试") { Task { await model.start() } }; if model.backend.usesSystemNode { Button("选择本机 Node…") { let panel = NSOpenPanel(); panel.canChooseDirectories = false; panel.allowsMultipleSelection = false; if panel.runModal() == .OK, let url = panel.url { UserDefaults.standard.set(url.path, forKey: "SFLNodeBinary"); Task { await model.start() } } } } }.frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
                     if model.setupRequired && model.section != .settings {
-                        HStack { Label("先选择全局图库和本地工作区", systemImage: "folder.badge.gearshape"); Spacer(); Button("设置目录") { model.section = .settings } }.padding().background(libraryGreen.opacity(0.10))
+                        HStack { Label("安装包未包含图库图片。先选择全局图库和本地工作区，然后缓存图片。", systemImage: "folder.badge.gearshape"); Spacer(); Button("设置目录") { model.section = .settings } }.padding().background(libraryGreen.opacity(0.10))
+                    } else if model.showCacheBanner {
+                        HStack {
+                            Label("缓存图库图片", systemImage: "arrow.down.circle")
+                            if !model.cacheProgress.isEmpty { Text(model.cacheProgress).foregroundStyle(.secondary) }
+                            Spacer()
+                            Button("缓存图片") { model.perform { try await model.cachePreviews() } }.disabled(model.busy)
+                            Button("管理来源") { model.section = .settings }
+                        }.padding().background(libraryGreen.opacity(0.10))
                     }
                     if !model.message.isEmpty { Text(model.message).font(.callout).foregroundStyle(.secondary).padding(.horizontal).padding(.top, 8) }
                     switch model.section ?? .discover {
@@ -54,9 +62,9 @@ let libraryGreen = Color(red: 0.14, green: 0.42, blue: 0.30)
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
                 HStack { TextField("搜索图片、图形类型或应用场景", text: $model.query).textFieldStyle(.roundedBorder).onSubmit { model.perform { try await model.search() } }; Button("搜索") { model.perform { try await model.search() } }.buttonStyle(.borderedProminent).disabled(model.busy || model.query.isEmpty) }
-                HStack { Picker("来源", selection: $model.provider) { Text("全部默认来源").tag(""); Text("我的已发布图片").tag("org.scientificfigurelibrary.local"); Text("FigureYa").tag("org.figureya.module"); Text("Open Figure Modules").tag("io.github.jarxunlai.personal-figures") }.frame(maxWidth: 330); TextField("数据特征（可选）", text: $model.dataProfile).textFieldStyle(.roundedBorder) }
+                HStack { Picker("来源", selection: $model.provider) { Text("全部默认来源").tag(""); ForEach(model.searchProviders.indices, id: \.self) { index in Text(model.searchProviders[index]["sourceLabel"].string.isEmpty ? model.searchProviders[index]["providerId"].string : model.searchProviders[index]["sourceLabel"].string).tag(model.searchProviders[index]["providerId"].string) } }.frame(maxWidth: 360); TextField("数据特征（可选）", text: $model.dataProfile).textFieldStyle(.roundedBorder) }
                 HStack { ForEach(["火山图", "热图", "UMAP", "细胞比例", "富集分析"], id: \.self) { label in Button(label) { model.query = ["火山图": "volcano differential expression", "热图": "heatmap expression", "UMAP": "UMAP single cell", "细胞比例": "cell proportion barplot", "富集分析": "GO enrichment"][label]!; model.perform { try await model.search() } }.disabled(model.busy) } }
-                Text("在线图库图片首次查看时下载，已缓存的图片可离线查看。").font(.callout).foregroundStyle(.secondary)
+                Text(model.previewCacheHint).font(.callout).foregroundStyle(.secondary)
                 HStack { Text("候选图片").font(.headline); Spacer(); if model.result != .null { Text("\(model.result["total"].int) 个结果").foregroundStyle(.secondary) } }
                 if candidates.isEmpty { VStack(spacing: 12) { Image(systemName: "photo.on.rectangle.angled").font(.system(size: 40)).foregroundStyle(.secondary); Text("图片与代码，成为下一次研究的起点").font(.headline); Text("搜索可复用的模板，或导入自己的图片与代码。").foregroundStyle(.secondary) }.frame(maxWidth: .infinity).padding(.vertical, 80) }
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 230, maximum: 360))], spacing: 20) {
@@ -119,11 +127,27 @@ let libraryGreen = Color(red: 0.14, green: 0.42, blue: 0.30)
 @MainActor struct PlanView: View {
     @ObservedObject var model: LibraryModel
     let plan: PendingPlan
-    var target: String { let value = plan.value["plan"]; return [value["target"], value["libraryDirectory"], value["workspaceDirectory"]].first(where: { !$0.string.isEmpty })?.string ?? "" }
+    var details: JSON { plan.value["plan"] }
+    var target: String { [details["target"], details["libraryDirectory"], details["workspaceDirectory"], details["directory"], details["configPath"]].first(where: { !$0.string.isEmpty })?.string ?? "" }
+    func joined(_ value: JSON) -> String {
+        value.array.map { item in
+            if !item.string.isEmpty { return item.string }
+            let identity = item["identity"].string
+            return identity.isEmpty ? item["moduleId"].string : identity
+        }.filter { !$0.isEmpty }.joined(separator: "、")
+    }
+    var added: String { joined(details["templateDiff"]["added"]) }
+    var updated: String { joined(details["templateDiff"]["updated"]) }
+    var withdrawn: String { joined(details["templateDiff"]["withdrawn"]) }
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
             Text(plan.title).font(.title2).bold()
+            if !details["providerId"].string.isEmpty { LabeledContent("来源", value: details["providerId"].string).textSelection(.enabled) }
+            if !details["manifestUrl"].string.isEmpty { LabeledContent("清单地址", value: details["manifestUrl"].string).textSelection(.enabled) }
             if !target.isEmpty { LabeledContent("目标目录", value: target).textSelection(.enabled) }
+            if !added.isEmpty { LabeledContent("新增模板", value: added).textSelection(.enabled) }
+            if !updated.isEmpty { LabeledContent("更新模板", value: updated).textSelection(.enabled) }
+            if !withdrawn.isEmpty { LabeledContent("撤回模板", value: withdrawn).textSelection(.enabled) }
             Text(plan.value["envelope"]["summary"].string).foregroundStyle(.secondary).textSelection(.enabled)
             DisclosureGroup("完整计划与校验信息") { ScrollView { Text(plan.value.pretty).font(.system(.caption, design: .monospaced)).textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading) }.frame(maxHeight: 260) }
             HStack { Button("取消") { model.sheet = nil }; Spacer(); Button("确认执行") { model.perform { try await model.apply(plan) } }.buttonStyle(.borderedProminent).disabled(model.busy) }
@@ -219,9 +243,16 @@ func formatBytes(_ value: Int) -> String {
     @ObservedObject var model: LibraryModel
     @State private var confirmClearCache = false
     var cacheSummary: String {
-        if !model.previewCache["exists"].bool { return "尚未下载过在线预览图。" }
-        if model.previewCache["fileCount"].int == 0 { return "缓存目录已创建，当前没有图片。" }
-        return "已缓存 \(model.previewCache["fileCount"].int) 张图片 · \(formatBytes(model.previewCache["bytes"].int))"
+        let rows = model.previewCache["sources"].array.filter { $0["delivery"].string == "download" }
+        let cached = rows.reduce(0) { $0 + $1["cached"].int }
+        let bytes = rows.reduce(0) { $0 + $1["bytesCached"].int }
+        if cached == 0 { return "尚未缓存任何在线预览图。请先选择某个图库。" }
+        return "已缓存 \(cached) 张图片 · \(formatBytes(bytes))"
+    }
+    var addReady: Bool {
+        !model.sourceProviderId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            && !model.sourceManifestURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            && !model.sourcePublicKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
     var body: some View {
         Form {
@@ -234,10 +265,26 @@ func formatBytes(_ value: Int) -> String {
             SwiftUI.Section("图片缓存") {
                 LabeledContent("缓存目录") { Text(model.previewCache["directory"].string).textSelection(.enabled) }
                 Text(cacheSummary).foregroundStyle(.secondary)
-                Text("在线图库的缩略图和精确预览按需下载到此目录，与知识库分开。清除后下次查看会重新下载；已确认图片需重新预览再保存模板。").foregroundStyle(.secondary)
+                Text("安装不会下载在线图库图片。请对某个图库执行「缓存图片」；搜索当前页或打开精确预览也会写入同一目录。").foregroundStyle(.secondary)
                 Button("在 Finder 中显示") { model.revealPreviewCache() }.disabled(model.previewCache["directory"].string.isEmpty)
                 Button("复制缓存路径") { copyText(model.previewCache["directory"].string); model.message = "已复制缓存路径。" }.disabled(model.previewCache["directory"].string.isEmpty)
-                Button("清除缓存", role: .destructive) { confirmClearCache = true }.disabled(model.busy || model.previewCache["fileCount"].int == 0)
+                Button("清除缓存", role: .destructive) { confirmClearCache = true }.disabled(model.busy || model.previewCache["sources"].array.allSatisfy { $0["cached"].int == 0 })
+            }
+            SwiftUI.Section("图片来源") {
+                Text("内置来源可缓存预览图。手动添加的签名来源会下载并缓存目录快照，之后可更新。").foregroundStyle(.secondary)
+                if !model.cacheProgress.isEmpty { Text(model.cacheProgress).foregroundStyle(.secondary) }
+                if model.showCacheBanner {
+                    Button("缓存图片") { model.perform { try await model.cachePreviews() } }.disabled(model.busy)
+                }
+                if model.sources.isEmpty { Text("默认检索本地已发布、FigureYa、Open Figure Modules 与已启用的个人来源。").foregroundStyle(.secondary) }
+                ForEach(model.sources.indices, id: \.self) { index in ProviderSourceRow(model: model, source: model.sources[index]) }
+            }
+            SwiftUI.Section("添加签名图片来源") {
+                TextField("Provider ID", text: $model.sourceProviderId)
+                TextField("清单 URL", text: $model.sourceManifestURL)
+                TextField("独立获取的公钥（Base64）", text: $model.sourcePublicKey)
+                Toggle("加入默认搜索", isOn: $model.sourceDefaultSearch)
+                Button("检查并添加来源") { model.perform { try await model.addProviderSource() } }.disabled(model.busy || !addReady)
             }
             SwiftUI.Section("外部调用") {
                 Text("本地客户端直接管理图片、代码与版本。其他 CLI 或桌面工具可通过 MCP 和核心 Skill 使用同一知识库。")
@@ -245,19 +292,39 @@ func formatBytes(_ value: Int) -> String {
                 Button("查看安装与连接指令") { model.section = .integrations }
                 Text("内置 Node 版可直接使用；no-node 版要求本机 Node.js 22+。客户端不执行绘图代码。").foregroundStyle(.secondary)
             }
-            SwiftUI.Section("图片来源") {
-                if model.providers.isEmpty { Text("默认检索本地已发布、FigureYa、Open Figure Modules 与已启用的个人来源。").foregroundStyle(.secondary) }
-                ForEach(model.providers.indices, id: \.self) { index in
-                    let source = model.providers[index]
-                    LabeledContent(source["sourceLabel"].string.isEmpty ? source["providerId"].string : source["sourceLabel"].string, value: source["health"].string.isEmpty ? "可用" : source["health"].string)
-                }
-            }
         }.formStyle(.grouped)
         .confirmationDialog("清除已下载的在线预览图？下次查看会重新下载。已确认图片需要重新预览后再保存模板。", isPresented: $confirmClearCache) {
             Button("清除缓存", role: .destructive) { model.perform { try await model.clearPreviewCache() } }
             Button("取消", role: .cancel) {}
         }
         .task { if model.ready { model.perform { try await model.status() } } }
+    }
+}
+
+@MainActor struct ProviderSourceRow: View {
+    @ObservedObject var model: LibraryModel
+    let source: JSON
+    var status: JSON { model.cacheStatus(for: source) }
+    var kind: String { source["sourceKind"].string }
+    var includeInDefaultSearch: Bool { source["includeInDefaultSearch"] != .bool(false) }
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(source["sourceLabel"].string.isEmpty ? source["providerId"].string : source["sourceLabel"].string)
+            Text(model.sourceDetail(source)).font(.caption).foregroundStyle(.secondary).textSelection(.enabled)
+            HStack {
+                if status["delivery"].string == "download" && status["missing"].int > 0 {
+                    Button("缓存图片") { model.perform { try await model.cachePreviews(providerId: source["providerId"].string) } }.disabled(model.busy)
+                }
+                if kind == "official-signed-overlay" || kind == "signed-personal" {
+                    Button("更新图库") { model.perform { try await model.changeProviderSource(title: "更新图库", arguments: ["action": text("update"), "providerId": source["providerId"]]) } }.disabled(model.busy)
+                }
+                if kind == "signed-personal" {
+                    Button(includeInDefaultSearch ? "移出默认搜索" : "加入默认搜索") {
+                        model.perform { try await model.changeProviderSource(title: includeInDefaultSearch ? "移出默认搜索" : "加入默认搜索", arguments: ["action": text("configure"), "providerId": source["providerId"], "includeInDefaultSearch": .bool(!includeInDefaultSearch)]) }
+                    }.disabled(model.busy)
+                }
+            }
+        }.padding(.vertical, 4)
     }
 }
 

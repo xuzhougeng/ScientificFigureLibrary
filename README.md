@@ -41,7 +41,7 @@ continues across other providers.
 
 ## Local client preview
 
-Separate native macOS Apple Silicon and Intel DMGs and a Windows x64 ZIP with bundled Node are available through the local-client release workflow. Both bundled-Node and `no-node` editions (requiring installed Node.js 22+) omit gallery images and download previews on demand. See [installation and preview limitations](docs/INSTALL_LOCAL.md). The macOS preview is ad-hoc signed and is not notarized.
+Separate native macOS Apple Silicon and Intel DMGs, plus Windows and Linux ZIPs with bundled Node, are available through the local-client release workflow. Both bundled-Node and `no-node` editions (requiring installed Node.js 22+) omit gallery images and download previews on demand. See [installation and preview limitations](docs/INSTALL_LOCAL.md). The macOS preview is ad-hoc signed and is not notarized.
 
 ## Install with a coding agent
 

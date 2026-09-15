@@ -50,6 +50,46 @@ jobs:
           path: release/local-client/
           compression-level: 0
           if-no-files-found: error
+  linux:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - architecture: x64
+            runner: ubuntu-latest
+          - architecture: arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        env:
+          GIT_CONFIG_COUNT: '2'
+          GIT_CONFIG_KEY_0: core.autocrlf
+          GIT_CONFIG_VALUE_0: 'false'
+          GIT_CONFIG_KEY_1: core.eol
+          GIT_CONFIG_VALUE_1: lf
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - run: node scripts/package-local-client.mjs linux-${{ matrix.architecture }}
+      - run: node scripts/package-local-client.mjs linux-${{ matrix.architecture }} --system-node
+      - name: Verify ZIPs and both runtime modes
+        run: |
+          for archive in release/local-client/*linux-${{ matrix.architecture }}*.zip; do
+            node scripts/smoke-local-package.mjs "$archive"
+          done
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: linux-${{ matrix.architecture }}-local-client
+          path: release/local-client/
+          compression-level: 0
+          if-no-files-found: error
   macos:
     strategy:
       fail-fast: false

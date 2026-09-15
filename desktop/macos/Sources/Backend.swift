@@ -115,12 +115,12 @@ func sha256(_ data: Data) -> String { SHA256.hash(data: data).map { String(forma
         startupError = nil
     }
 
-    func request(_ route: String, _ body: JSON? = nil) async throws -> JSON {
+    func request(_ route: String, _ body: JSON? = nil, timeout: TimeInterval = 180) async throws -> JSON {
         guard let origin = origin, ready else { throw LocalError(message: "本地服务尚未连接") }
         let url = origin.appendingPathComponent("api").appendingPathComponent(route)
         var request = URLRequest(url: url)
         request.httpMethod = body == nil ? "GET" : "POST"
-        request.timeoutInterval = 180
+        request.timeoutInterval = timeout
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         if let body = body { request.httpBody = try JSONEncoder().encode(body); request.setValue("application/json", forHTTPHeaderField: "Content-Type") }
         let (bytes, response) = try await URLSession.shared.data(for: request)

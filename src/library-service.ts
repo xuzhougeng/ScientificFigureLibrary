@@ -51,10 +51,12 @@ import {
   searchPerImageBudget,
   singlePreviewBudget,
 } from "./transport-image.ts";
-import { assertExactTemplateSelector, exactSelectorDigest } from "./providers.ts";
 import {
-  PERSONAL_MODULE_PROVIDER_ID,
+  FIGUREYA_PROVIDER_ID,
   LOCAL_LIBRARY_PROVIDER_ID,
+  PERSONAL_MODULE_PROVIDER_ID,
+  assertExactTemplateSelector,
+  exactSelectorDigest,
 } from "./providers.ts";
 import { COMMUNITY_PROVIDER_ID } from "./public-catalog-provider.ts";
 import {
@@ -70,6 +72,13 @@ import type {
   ValidationStateSummaryV1,
 } from "./types.ts";
 import { legacyValidationStateFromExecutionStatus, VersionedTemplateLibrary } from "./versioned-library.ts";
+import {
+  describePreviewCache,
+  previewCacheDirectory,
+  previewCacheSnapshot,
+  type PreviewCacheFillResult,
+  type PreviewCacheSourceStatus,
+} from "./preview-downloads.ts";
 import { VERSION } from "./version.ts";
 import { outcome, terminal } from "./tool-outcome.ts";
 import { defineGuidanceOperations } from "./guidance.ts";
@@ -1466,7 +1475,60 @@ export async function createLibraryService(options: LibraryServiceOptions = {}) 
         mimeType: asset.mediaType, data: Buffer.from(bytes).toString("base64"), sha256: asset.sha256, logicalPath: asset.logicalPath,
       });
     },
+    previewCache: () => collectPreviewCache(),
+    cachePreviews: async (raw) => {
+      const input = z.object({
+        providerId: z.string().min(1).max(200).optional(),
+        limit: z.number().int().min(1).max(500).optional(),
+      }).strict().parse(raw ?? {});
+      const limit = input.limit ?? 24;
+      const stores = previewDownloadStores();
+      const selected = input.providerId ? stores.filter((item) => item.providerId === input.providerId) : stores;
+      if (input.providerId && !selected.length) throw new Error("Provider does not use on-demand preview downloads");
+      const fills = new Map<string, PreviewCacheFillResult>();
+      for (const item of selected) {
+        if (!item.store) continue;
+        fills.set(item.providerId, await item.store.cacheMissing(limit));
+      }
+      const snapshot = await collectPreviewCache();
+      return {
+        ...snapshot,
+        sources: snapshot.sources.map((source) => {
+          const fill = fills.get(source.providerId);
+          return fill
+            ? { ...source, filled: fill.filled, failed: fill.failed, errors: fill.errors }
+            : source;
+        }),
+      };
+    },
   };
+
+  function previewDownloadStores() {
+    const stores: Array<{ providerId: string; sourceLabel: string; store: ReturnType<typeof index.previewDownloads> }> = [
+      { providerId: FIGUREYA_PROVIDER_ID, sourceLabel: "FigureYa", store: index.previewDownloads() },
+    ];
+    const modules = liveModuleCatalogs()?.get(PERSONAL_MODULE_PROVIDER_ID);
+    if (modules) {
+      stores.push({
+        providerId: PERSONAL_MODULE_PROVIDER_ID,
+        sourceLabel: "Open Figure Modules",
+        store: modules.previewDownloads(),
+      });
+    }
+    return stores;
+  }
+
+  async function collectPreviewCache() {
+    const sources: PreviewCacheSourceStatus[] = [];
+    for (const item of previewDownloadStores()) {
+      sources.push({
+        providerId: item.providerId,
+        sourceLabel: item.sourceLabel,
+        ...(await describePreviewCache(item.store)),
+      });
+    }
+    return previewCacheSnapshot(previewCacheDirectory(), sources);
+  }
 
   operations.define(
     "figure_library_preview_exact",
@@ -2259,6 +2321,8 @@ export async function createLibraryService(options: LibraryServiceOptions = {}) 
       confirm: (input: unknown) => operations.run(() => localOperations.confirm(input)),
       library: () => operations.run(() => localOperations.library()),
       asset: (input: unknown) => operations.run(() => localOperations.asset(input)),
+      previewCache: () => operations.run(() => localOperations.previewCache()),
+      cachePreviews: (input: unknown) => operations.run(() => localOperations.cachePreviews(input)),
     },
     execute: (name: string, input: unknown = {}) => operations.execute(name, input),
     readResource: (uri: string) => operations.readResource(uri),

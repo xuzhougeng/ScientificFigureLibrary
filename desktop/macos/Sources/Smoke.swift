@@ -74,12 +74,22 @@ func nativeSmokeLog(_ stage: String) {
         let replay = try await backend.call(materialization.operation, materialization.arguments, approve: true)
         try require(replay["envelope"]["outcome"].string == "replayed", "Native materialization did not replay")
         try await model.status()
+        try require(model.sources.contains(where: { $0["providerId"].string == "org.figureya.module" }), "Provider sources were not listed")
+        try require(model.previewCache["schema"].string == "figure-library.local-preview-cache.v1", "Preview cache status is missing")
         await Task.yield()
         guard let window = NSApplication.shared.windows.first(where: { $0.isVisible }), let view = window.contentView else { throw LocalError(message: "SwiftUI window was not created") }
         view.layoutSubtreeIfNeeded()
         if let image = view.bitmapImageRepForCachingDisplay(in: view.bounds) {
             view.cacheDisplay(in: view.bounds, to: image)
             try image.representation(using: .png, properties: [:])?.write(to: root.appendingPathComponent("native-window.png"))
+        }
+        nativeSmokeLog("capture settings page")
+        model.section = .settings
+        try await Task.sleep(nanoseconds: 200_000_000)
+        view.layoutSubtreeIfNeeded()
+        if let image = view.bitmapImageRepForCachingDisplay(in: view.bounds) {
+            view.cacheDisplay(in: view.bounds, to: image)
+            try image.representation(using: .png, properties: [:])?.write(to: root.appendingPathComponent("settings-window.png"))
         }
         nativeSmokeLog("capture integration page")
         model.section = .integrations
@@ -89,7 +99,7 @@ func nativeSmokeLog(_ stage: String) {
             view.cacheDisplay(in: view.bounds, to: image)
             try image.representation(using: .png, properties: [:])?.write(to: root.appendingPathComponent("integrations-window.png"))
         }
-        let report = object(["status": text("passed"), "nativeWindow": .bool(true), "privateRuntime": .bool(environment["SFL_RUNTIME_MODE"] != "system"), "runtimeMode": text(environment["SFL_RUNTIME_MODE"] ?? "bundled"), "syntheticUserActions": .bool(true), "flows": .array(["integrationGuide", "onDemandPreviewManifests", "binding", "upload", "import", "publish", "search", "imageDecode", "localConfirmation", "materialize", "replay"].map(text))])
+        let report = object(["status": text("passed"), "nativeWindow": .bool(true), "privateRuntime": .bool(environment["SFL_RUNTIME_MODE"] != "system"), "runtimeMode": text(environment["SFL_RUNTIME_MODE"] ?? "bundled"), "syntheticUserActions": .bool(true), "flows": .array(["integrationGuide", "onDemandPreviewManifests", "providerSources", "previewCacheStatus", "binding", "upload", "import", "publish", "search", "imageDecode", "localConfirmation", "materialize", "replay"].map(text))])
         try Data(report.pretty.utf8).write(to: root.appendingPathComponent("native-smoke.json"))
         nativeSmokeLog("shutdown")
         _ = await backend.shutdown()

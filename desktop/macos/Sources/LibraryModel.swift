@@ -2,7 +2,7 @@ import SwiftUI
 import AppKit
 
 enum Section: String, CaseIterable, Identifiable, Hashable {
-    case discover = "发现模板", library = "我的知识库", add = "导入图片与代码", settings = "设置", integrations = "连接外部工具"
+    case discover = "发现模板", library = "我的知识库", add = "导入图片与代码", settings = "设置与连接", integrations = "连接外部工具"
     var id: String { rawValue }
     var icon: String { switch self { case .discover: return "square.grid.2x2"; case .library: return "books.vertical"; case .add: return "square.and.arrow.down"; case .settings: return "gearshape"; case .integrations: return "link" } }
 }
@@ -38,10 +38,34 @@ enum Sheet: Identifiable {
     @Published var setupRequired = true
     @Published var connectionConfiguration = ""
     @Published var integrations: JSON = .null
+    @Published var sources: [JSON] = []
     @Published var previewCache: JSON = .null
     @Published var providers: [JSON] = []
+    @Published var sourceProviderId = ""
+    @Published var sourceManifestURL = ""
+    @Published var sourcePublicKey = ""
+    @Published var sourceDefaultSearch = false
     private var pages: [Int: (JSON, JSON)] = [:]
     private var starting = false
+
+    var cacheDownloadable: Bool { previewCache["downloadable"].bool }
+    var cacheComplete: Bool { previewCache["complete"].bool }
+    var showCacheBanner: Bool { !setupRequired && cacheDownloadable && !cacheComplete }
+    var cacheProgress: String {
+        let items = previewCache["sources"].array.filter { $0["delivery"].string == "download" }
+        let cached = items.reduce(0) { $0 + $1["cached"].int }
+        let total = items.reduce(0) { $0 + $1["total"].int }
+        return total == 0 ? "" : "已缓存 \(cached) / \(total)"
+    }
+    var previewCacheHint: String {
+        if setupRequired { return "安装包默认不包含图库图片。请先设置本机目录，再缓存图片；未缓存时，当前页仍会在首次查看时下载。" }
+        if !cacheDownloadable { return "图库图片来自本机目录或安装包，可直接浏览。" }
+        if cacheComplete { return "图库图片已缓存，可离线浏览。" }
+        return "安装包未包含图库图片。可一次性缓存，或在首次查看当前页时下载。"
+    }
+    var searchProviders: [JSON] {
+        sources.filter { $0["enabled"] != .bool(false) && $0["frozen"] != .bool(true) }
+    }
 
     func perform(_ task: @escaping () async throws -> Void) {
         if busy { return }
@@ -66,9 +90,13 @@ enum Sheet: Identifiable {
         setupRequired = value["setup"]["required"].bool
         if value["library"]["directorySource"].string != "legacy-default" { libraryDirectory = value["library"]["root"].string }
         workspaceDirectory = value["workspace"]["root"].string
-        if let connection = try? await backend.request("connection") { connectionConfiguration = connection.pretty }
+        let listed = try await backend.call("figure_library_list_provider_sources")
+        sources = listed["result"]["sources"].array
+        if sources.isEmpty { sources = listed["sources"].array }
+        providers = sources
         previewCache = try await backend.request("preview-cache")
-        providers = (try await backend.call("figure_library_list_provider_sources"))["sources"].array
+        if !searchProviders.contains(where: { $0["providerId"].string == provider }) { provider = "" }
+        if let connection = try? await backend.request("connection") { connectionConfiguration = connection.pretty }
     }
     func clearPreviewCache() async throws {
         previewCache = try await backend.request("preview-cache", object(["action": text("clear")]))
@@ -82,6 +110,81 @@ enum Sheet: Identifiable {
         } else {
             message = "缓存目录尚未创建；首次查看在线图片后会出现。"
         }
+    }
+    func cacheStatus(for source: JSON) -> JSON {
+        previewCache["sources"].array.first { $0["providerId"].string == source["providerId"].string } ?? .null
+    }
+    func cacheLabel(for source: JSON) -> String {
+        let status = cacheStatus(for: source)
+        if status == .null { return source["sourceKind"].string == "signed-personal" ? "目录快照已缓存" : "" }
+        if status["delivery"].string == "local" { return "图片已随目录提供" }
+        if status["missing"].int == 0 { return "图片已缓存 \(status["cached"].int)/\(status["total"].int)" }
+        return "待缓存图片 \(status["cached"].int)/\(status["total"].int)"
+    }
+    func sourceDetail(_ source: JSON) -> String {
+        let health = source["health"].string.isEmpty ? (source["enabled"] == .bool(false) ? "未启用" : "可用") : source["health"].string
+        let count = source["templateCount"] == .null ? "模板数量未知" : "\(source["templateCount"].int) 个模板"
+        let search = source["includeInDefaultSearch"] == .bool(false) ? "未加入默认搜索" : "默认搜索"
+        return [source["providerId"].string, health, count, search, cacheLabel(for: source)].filter { !$0.isEmpty }.joined(separator: " · ")
+    }
+    func cachePreviews(providerId: String? = nil) async throws {
+        let selected = providerId ?? ""
+        var safety = 0
+        while safety < 200 {
+            safety += 1
+            var body: [String: JSON] = ["limit": .integer(24)]
+            if !selected.isEmpty { body["providerId"] = text(selected) }
+            let cache = try await backend.request("preview-cache", object(body), timeout: 300)
+            previewCache = cache
+            let rows = cache["sources"].array.filter { selected.isEmpty || $0["providerId"].string == selected }
+            let missing = rows.filter { $0["delivery"].string == "download" && $0["missing"].int > 0 }
+            let filled = rows.reduce(0) { $0 + $1["filled"].int }
+            let failed = rows.reduce(0) { $0 + $1["failed"].int }
+            if missing.isEmpty {
+                message = selected.isEmpty ? "图库图片已缓存，可以离线浏览。" : "该来源的图片已缓存。"
+                try await status()
+                return
+            }
+            if filled == 0 && failed > 0 {
+                let detail = ((rows.first ?? .null)["errors"].array.first ?? .null)["message"].string
+                throw LocalError(message: detail.isEmpty ? "缓存失败，请检查网络后重试" : detail)
+            }
+        }
+        throw LocalError(message: "缓存尚未完成，请再试一次")
+    }
+    func changeProviderSource(title: String, arguments: [String: JSON]) async throws {
+        let planned = try await backend.call("figure_library_plan_provider_source_change", arguments)
+        if planned["envelope"]["code"].string == "provider_source_already_current" || planned["result"]["status"].string == "already_current" {
+            message = "该图库已是最新，无需更新。"
+            return
+        }
+        let plan = planned["plan"]
+        let added = (arguments["action"] ?? .null).string == "add"
+        sheet = .plan(PendingPlan(title: title, value: planned, operation: "figure_library_apply_provider_source_change", arguments: [
+            "planDigest": plan["planDigest"], "operationId": text(UUID().uuidString),
+            "expectedAction": plan["action"], "expectedProviderId": plan["providerId"],
+        ], after: { [weak self] in
+            guard let self = self else { return }
+            if added {
+                self.sourceProviderId = ""
+                self.sourceManifestURL = ""
+                self.sourcePublicKey = ""
+                self.sourceDefaultSearch = false
+                self.message = "来源已添加，目录快照已缓存。可在列表中更新，或加入默认搜索。"
+            } else {
+                self.message = "图库来源已更新。"
+            }
+            try await self.status()
+        }))
+    }
+    func addProviderSource() async throws {
+        try await changeProviderSource(title: "添加图片来源", arguments: [
+            "action": text("add"),
+            "expectedProviderId": text(sourceProviderId.trimmingCharacters(in: .whitespacesAndNewlines)),
+            "manifestUrl": text(sourceManifestURL.trimmingCharacters(in: .whitespacesAndNewlines)),
+            "publicKeyBase64": text(sourcePublicKey.trimmingCharacters(in: .whitespacesAndNewlines)),
+            "includeInDefaultSearch": .bool(sourceDefaultSearch),
+        ])
     }
     func display(_ response: JSON) throws {
         let next = try backend.check(response)
@@ -128,7 +231,8 @@ enum Sheet: Identifiable {
             guard let self = self else { return }
             let value = try await self.backend.call("figure_library_plan_bind_workspace", ["workspaceDirectory": text(workspace)])
             self.sheet = .plan(PendingPlan(title: "绑定本地工作区", value: value, operation: "figure_library_apply_bind_workspace", arguments: ["planDigest": value["plan"]["planDigest"], "operationId": text(UUID().uuidString)], after: { [weak self] in
-                try await self?.status(); self?.message = "本机目录已绑定。"
+                guard let self = self else { return }
+                self.message = self.cacheDownloadable && !self.cacheComplete ? "本机目录已绑定。请缓存图库图片。" : "本机目录已绑定，可以搜索或导入资产。"
             }))
         }))
     }

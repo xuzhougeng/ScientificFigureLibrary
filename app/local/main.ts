@@ -18,6 +18,7 @@ let selected = new Map<string, Candidate>();
 const pages = new Map<number, SearchResult>();
 let editingTemplateId: string | undefined;
 let planAction: (() => Promise<void>) | undefined;
+let planGeneration = 0;
 let pendingMaterialize: { candidate: Candidate; receipt: string; resultSetId: string } | undefined;
 let canShutdown = false;
 let stopped = false;
@@ -132,6 +133,14 @@ function planLine(label: string, value: unknown) {
   line.append(node("strong", label), node("span", typeof value === "string" ? value : JSON.stringify(value)));
   el("plan-summary").append(line);
 }
+function joined(value: unknown) {
+  if (!Array.isArray(value) || !value.length) return undefined;
+  return value.map((item) => {
+    if (typeof item === "string") return item;
+    const entry = record(item);
+    return String(entry.identity ?? entry.moduleId ?? JSON.stringify(item));
+  }).join("、");
+}
 function reviewPlan(title: string, response: CallToolResult, apply: () => Promise<void>) {
   const data = details(requireResult(response));
   const plan = record(data.plan);
@@ -140,14 +149,154 @@ function reviewPlan(title: string, response: CallToolResult, apply: () => Promis
   el("plan-summary").replaceChildren();
   planLine("操作", title);
   planLine("资产名称", record(plan.content).title ?? plan.templateId);
-  planLine("目标目录", plan.target ?? plan.libraryDirectory ?? plan.workspaceDirectory ?? plan.directory);
+  planLine("来源", plan.providerId ?? plan.sourceLabel);
+  planLine("清单地址", plan.manifestUrl);
+  planLine("目标目录", plan.target ?? plan.libraryDirectory ?? plan.workspaceDirectory ?? plan.directory ?? plan.configPath);
   planLine("网络下载", plan.allowNetwork === undefined ? undefined : plan.allowNetwork ? "允许下载所选固定版本" : "仅使用本地内容");
+  planLine("新增模板", joined(record(plan.templateDiff).added));
+  planLine("更新模板", joined(record(plan.templateDiff).updated));
+  planLine("撤回模板", joined(record(plan.templateDiff).withdrawn));
   planLine("说明", record(data.envelope).summary);
   const review = record(data.reviewSummary);
   for (const warning of records(review.warnings)) planLine("注意事项", warning.message);
   el("plan-json").textContent = JSON.stringify(data, null, 2);
-  planAction = async () => { await apply(); dialog("plan-dialog").close(); planAction = undefined; await loadStatus(); };
+  const generation = ++planGeneration;
+  planAction = async () => {
+    await apply();
+    if (generation !== planGeneration) return;
+    dialog("plan-dialog").close();
+    planAction = undefined;
+    await loadStatus();
+  };
   dialog("plan-dialog").showModal();
+}
+function providerSources(result: Awaited<ReturnType<typeof call>>) {
+  const data = details(result);
+  return records(record(data.result).sources ?? data.sources ?? data.providers);
+}
+function cacheLabel(source: Record<string, unknown>, cache: Record<string, unknown>) {
+  const status = records(cache.sources).find((item) => item.providerId === source.providerId);
+  if (!status) return source.sourceKind === "signed-personal" ? "目录快照已缓存" : undefined;
+  if (status.delivery === "local") return "图片已随目录提供";
+  if (Number(status.missing) === 0) return `图片已缓存 ${status.cached}/${status.total}`;
+  return `待缓存图片 ${status.cached}/${status.total}`;
+}
+function renderCacheBanner(setupRequired: boolean, cache: Record<string, unknown>) {
+  const downloadable = cache.downloadable === true;
+  const complete = cache.complete === true;
+  el("setup-banner").hidden = !setupRequired;
+  el("cache-banner").hidden = setupRequired || !downloadable || complete;
+  const hint = el("preview-cache-hint");
+  if (setupRequired) hint.textContent = "安装包默认不包含图库图片。请先设置本机目录，再缓存图片；未缓存时，当前页仍会在首次查看时下载。";
+  else if (!downloadable) hint.textContent = "图库图片来自本机目录或安装包，可直接浏览。";
+  else if (complete) hint.textContent = "图库图片已缓存，可离线浏览。";
+  else hint.textContent = "安装包未包含图库图片。可一次性缓存，或在首次查看当前页时下载。";
+  const totals = records(cache.sources).filter((item) => item.delivery === "download");
+  const cached = totals.reduce((sum, item) => sum + Number(item.cached ?? 0), 0);
+  const total = totals.reduce((sum, item) => sum + Number(item.total ?? 0), 0);
+  el("cache-progress").textContent = total ? `已缓存 ${cached} / ${total}` : "";
+}
+function renderSearchProviders(sources: Array<Record<string, unknown>>) {
+  const picker = el<HTMLSelectElement>("search-provider");
+  const previous = picker.value;
+  picker.replaceChildren();
+  picker.append(Object.assign(node("option", "全部默认来源"), { value: "" }));
+  for (const source of sources) {
+    if (source.enabled === false || source.frozen === true) continue;
+    const option = node("option", String(source.sourceLabel ?? source.providerId));
+    option.value = String(source.providerId);
+    picker.append(option);
+  }
+  if ([...picker.options].some((item) => item.value === previous)) picker.value = previous;
+}
+function renderProviderList(sources: Array<Record<string, unknown>>, cache: Record<string, unknown>) {
+  const target = el("provider-list");
+  target.replaceChildren();
+  if (!sources.length) {
+    target.append(node("p", "默认检索本地已发布、FigureYa、Open Figure Modules 与已启用的个人来源。"));
+    return;
+  }
+  for (const source of sources) {
+    const providerId = String(source.providerId);
+    const kind = String(source.sourceKind ?? "");
+    const row = node("article", undefined, "provider-row");
+    const info = node("div");
+    const health = String(source.health ?? (source.enabled === false ? "未启用" : "可用"));
+    const count = source.templateCount === undefined ? "模板数量未知" : `${source.templateCount} 个模板`;
+    const cacheText = cacheLabel(source, cache);
+    info.append(
+      node("h3", String(source.sourceLabel ?? source.name ?? providerId)),
+      node("p", [providerId, health, count, source.includeInDefaultSearch === false ? "未加入默认搜索" : "默认搜索", cacheText].filter(Boolean).join(" · ")),
+    );
+    const actions = node("div", undefined, "provider-actions");
+    const status = records(cache.sources).find((item) => item.providerId === providerId);
+    if (status?.delivery === "download" && Number(status.missing) > 0) {
+      actions.append(action("缓存图片", () => cachePreviews(providerId)));
+    }
+    if (kind === "official-signed-overlay" || kind === "signed-personal") {
+      actions.append(action("更新图库", () => changeProviderSource("更新图库", { action: "update", providerId }), true));
+    }
+    if (kind === "signed-personal") {
+      const include = source.includeInDefaultSearch !== false;
+      actions.append(action(include ? "移出默认搜索" : "加入默认搜索", () => changeProviderSource(include ? "移出默认搜索" : "加入默认搜索", {
+        action: "configure", providerId, includeInDefaultSearch: !include,
+      }), true));
+    }
+    row.append(info, actions);
+    target.append(row);
+  }
+}
+async function loadPreviewCache() {
+  return api<Record<string, unknown>>("preview-cache");
+}
+async function cachePreviews(providerId?: string) {
+  let safety = 0;
+  while (safety++ < 200) {
+    if (stopped) return;
+    const cache = await api<Record<string, unknown>>("preview-cache", { limit: 24, ...(providerId ? { providerId } : {}) });
+    renderCacheBanner(el("setup-banner").hidden === false, cache);
+    const sources = records(cache.sources).filter((item) => !providerId || item.providerId === providerId);
+    const missing = sources.filter((item) => item.delivery === "download" && Number(item.missing) > 0);
+    const filled = sources.reduce((sum, item) => sum + Number(item.filled ?? 0), 0);
+    const failed = sources.reduce((sum, item) => sum + Number(item.failed ?? 0), 0);
+    if (!missing.length) {
+      notify(providerId ? "该来源的图片已缓存。" : "图库图片已缓存，可以离线浏览。");
+      await loadStatus();
+      return;
+    }
+    if (filled === 0 && failed > 0) {
+      const first = records(sources[0]?.errors)[0];
+      throw new Error(String(first?.message ?? "缓存失败，请检查网络后重试"));
+    }
+  }
+  throw new Error("缓存尚未完成，请再试一次");
+}
+async function changeProviderSource(title: string, args: Record<string, unknown>) {
+  const planned = await call("figure_library_plan_provider_source_change", args);
+  const data = details(planned);
+  if (record(data.envelope).code === "provider_source_already_current" || record(data.result).status === "already_current") {
+    notify("该图库已是最新，无需更新。");
+    return;
+  }
+  const plan = record(data.plan);
+  reviewPlan(title, planned, async () => {
+    await call("figure_library_apply_provider_source_change", {
+      planDigest: plan.planDigest, operationId: crypto.randomUUID(),
+      expectedAction: plan.action, expectedProviderId: plan.providerId,
+    }, true);
+    if (args.action === "add") form("add-source-form").reset();
+    notify(args.action === "add" ? "来源已添加，目录快照已缓存。可在列表中更新，或加入默认搜索。" : "图库来源已更新。");
+    await loadStatus();
+  });
+}
+async function addProviderSource() {
+  await changeProviderSource("添加图片来源", {
+    action: "add",
+    expectedProviderId: input("source-provider-id").value.trim(),
+    manifestUrl: input("source-manifest-url").value.trim(),
+    publicKeyBase64: input("source-public-key").value.trim(),
+    includeInDefaultSearch: input("source-default-search").checked,
+  });
 }
 async function loadStatus() {
   const response = await call("figure_library_source_status");
@@ -155,7 +304,7 @@ async function loadStatus() {
   const data = details(response);
   const library = record(data.library);
   const workspace = record(data.workspace);
-  el("setup-banner").hidden = record(data.setup).required !== true;
+  const setupRequired = record(data.setup).required === true;
   if (library.root && library.directorySource !== "legacy-default") input("library-directory").value = String(library.root);
   if (workspace.root) input("workspace-directory").value = String(workspace.root);
   const state = await api<Record<string, unknown>>("state");
@@ -164,23 +313,18 @@ async function loadStatus() {
   button("shutdown").hidden = !canShutdown;
   el("connection-state").textContent = `本地服务 · ${String(state.version)}`;
   const providers = await call("figure_library_list_provider_sources");
-  const providerData = details(providers);
-  el("provider-list").replaceChildren();
-  const sourceRows = records(providerData.sources ?? providerData.providers);
-  for (const source of sourceRows) {
-    const line = node("p", `${String(source.sourceLabel ?? source.name ?? source.providerId)} · ${String(source.health ?? (source.enabled === false ? "未启用" : "可用"))}`);
-    el("provider-list").append(line);
-  }
-  if (!sourceRows.length) el("provider-list").append(node("p", "默认检索本地已发布、FigureYa、Open Figure Modules 与已启用的个人来源。"));
-  const cache = await api<Record<string, unknown>>("preview-cache");
+  const cache = await loadPreviewCache();
+  if (stopped) return;
+  const sourceRows = providerSources(providers);
+  renderCacheBanner(setupRequired, cache);
+  renderSearchProviders(sourceRows);
+  renderProviderList(sourceRows, cache);
   el("preview-cache-directory").textContent = String(cache.directory ?? "");
-  const cacheBytes = Number(cache.bytes ?? 0);
-  const cacheCount = Number(cache.fileCount ?? 0);
-  el("preview-cache-summary").textContent = cache.exists === true && cacheCount > 0
-    ? `已缓存 ${cacheCount} 张图片 · ${formatBytes(cacheBytes)}`
-    : cache.exists === true
-      ? "缓存目录已创建，当前没有图片。"
-      : "尚未下载过在线预览图。";
+  const cached = records(cache.sources).reduce((sum, item) => sum + Number(item.cached ?? 0), 0);
+  const bytes = records(cache.sources).reduce((sum, item) => sum + Number(item.bytesCached ?? 0), 0);
+  el("preview-cache-summary").textContent = cached > 0
+    ? `已缓存 ${cached} 张图片 · ${formatBytes(bytes)}`
+    : "尚未缓存任何在线预览图。请先选择某个图库并缓存。";
   refreshSelection();
 }
 function formatBytes(bytes: number) {
@@ -195,14 +339,13 @@ async function bindDirectories() {
   const plan = record(details(planned).plan);
   reviewPlan("绑定全局图库", planned, async () => {
     await call("figure_library_apply_bind_global", { planDigest: plan.planDigest, operationId: crypto.randomUUID() }, true);
-    // The workspace has its own independent plan and approval.
-    dialog("plan-dialog").close();
     const workspacePlan = await call("figure_library_plan_bind_workspace", { workspaceDirectory: localWorkspaceDirectory });
     const prepared = record(details(workspacePlan).plan);
-    setTimeout(() => reviewPlan("绑定本地工作区", workspacePlan, async () => {
+    reviewPlan("绑定本地工作区", workspacePlan, async () => {
       await call("figure_library_apply_bind_workspace", { planDigest: prepared.planDigest, operationId: crypto.randomUUID() }, true);
-      notify("本机目录已绑定，可以搜索或导入资产。");
-    }), 0);
+      const cache = await loadPreviewCache();
+      notify(cache.downloadable === true && cache.complete !== true ? "本机目录已绑定。请缓存图库图片。" : "本机目录已绑定，可以搜索或导入资产。");
+    });
   });
 }
 async function loadLibrary() {
@@ -315,6 +458,8 @@ for (const control of document.querySelectorAll<HTMLButtonElement>("button[data-
 for (const control of document.querySelectorAll<HTMLButtonElement>("button[data-query]")) control.addEventListener("click", () => { input("search-query").value = control.dataset.query!; void run(search, control); });
 form("search-form").addEventListener("submit", (event) => { event.preventDefault(); void run(search, form("search-form").querySelector("button")!); });
 form("binding-form").addEventListener("submit", (event) => { event.preventDefault(); void run(bindDirectories); });
+form("add-source-form").addEventListener("submit", (event) => { event.preventDefault(); void run(addProviderSource, form("add-source-form").querySelector("button")!); });
+button("cache-previews").onclick = () => void run(() => cachePreviews(), button("cache-previews"));
 form("import-form").addEventListener("submit", (event) => { event.preventDefault(); void run(importAsset, form("import-form").querySelector<HTMLButtonElement>("button[type=submit]")!); });
 button("refresh").onclick = () => void run(async () => { if (page === "library") await loadLibrary(); else await loadStatus(); });
 button("next").onclick = () => void run(async () => { if (result?.pagination.nextCursor) displayResult(await call("figure_library_search_page", { resultSetId: result.resultSetId, cursor: result.pagination.nextCursor })); }, button("next"));
