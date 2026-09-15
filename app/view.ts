@@ -367,6 +367,7 @@ export function renderCandidateCards(options: {
   empty: HTMLElement;
   result: SearchResult;
   selectedIds?: Set<string>;
+  selectionPurpose?: string;
   onToggleSelect?: (candidate: Candidate, selected: boolean) => void;
   onDetail: (
     candidate: Candidate,
@@ -386,7 +387,7 @@ export function renderCandidateCards(options: {
     const selectBox = document.createElement("input");
     selectBox.type = "checkbox";
     selectBox.className = "candidate-select-input";
-    selectBox.setAttribute("aria-label", `选择 ${candidate.title} 交给 Agent 绘制`);
+    selectBox.setAttribute("aria-label", `选择 ${candidate.title} ${options.selectionPurpose ?? "交给 Agent 绘制"}`);
     selectBox.addEventListener("click", (event) => event.stopPropagation());
     const selectionText = element(document, "span");
     selectLabel.append(selectBox, selectionText);
@@ -409,7 +410,7 @@ export function renderCandidateCards(options: {
     const heading = element(document, "div");
     const headingNode = element(document, "h2", "module");
     const titleButton = button(document, "candidate-title", candidate.title);
-    titleButton.setAttribute("aria-label", `选择 ${candidate.title} 交给 Agent 绘制`);
+    titleButton.setAttribute("aria-label", `选择 ${candidate.title} ${options.selectionPurpose ?? "交给 Agent 绘制"}`);
     titleButton.title = "点击选择或取消选择；查看详情请用「查看详情」按钮";
     headingNode.append(titleButton);
     heading.append(

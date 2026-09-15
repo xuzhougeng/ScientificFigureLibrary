@@ -2,7 +2,7 @@ import { randomBytes } from "node:crypto";
 import type { ExactTemplateSelector } from "./types.ts";
 import { exactSelectorDigest } from "./providers.ts";
 
-export type ConfirmationMode = "app" | "headless";
+export type ConfirmationMode = "app" | "headless" | "local";
 
 export class PreviewProtocolError extends Error {
   readonly code: string;
@@ -42,6 +42,7 @@ export interface PreviewBinding {
   libraryBindingDigest: string;
   transportRenditionSha256?: string;
   encoderPolicyVersion?: string;
+  confirmationMode?: ConfirmationMode;
 }
 
 interface ChallengeState extends PreviewBinding {
@@ -185,13 +186,19 @@ export class PreviewConfirmationStore {
     return previewChallenge;
   }
 
-  confirm(previewChallenge: string, confirmationMode: ConfirmationMode) {
+  confirm(previewChallenge: string, confirmationMode: ConfirmationMode, displayedImageSha256?: string) {
     const challenge = this.challenges.get(previewChallenge);
     if (!challenge) {
       throw new PreviewProtocolError(
         "preview_challenge_invalid",
         "The preview challenge is invalid, already confirmed, or belongs to another server session.",
       );
+    }
+    if (challenge.confirmationMode && challenge.confirmationMode !== confirmationMode) {
+      throw new PreviewProtocolError("preview_confirmation_mode_mismatch", "The preview challenge belongs to another confirmation interface.");
+    }
+    if (confirmationMode === "local" && (!displayedImageSha256 || displayedImageSha256 !== challenge.transportRenditionSha256)) {
+      throw new PreviewProtocolError("preview_display_mismatch", "Local confirmation requires the exact displayed transport image hash.");
     }
     this.challenges.delete(previewChallenge);
     const previewReceipt = token("receipt");

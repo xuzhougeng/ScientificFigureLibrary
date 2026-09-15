@@ -1,8 +1,10 @@
+import { OperationRegistry } from "./service/operations.ts";
+import { mountOperations } from "./mcp-adapter.ts";
 import { createHash } from "node:crypto";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 import { canonicalJson, compareCanonicalStrings } from "./canonical-json.ts";
@@ -1000,8 +1002,8 @@ const ApplyInput = z.object({
   expectedResultSetId: z.string().min(1).max(256).optional(),
 });
 
-export function registerOpenFigurePrTools(options: {
-  server: McpServer;
+export function defineOpenFigurePrOperations(options: {
+  operations: OperationRegistry;
   currentLibraries: () => Promise<CurrentLibraryContext>;
   searchSimilar: (request: SimilarSearchRequest, matchKind: (candidate: TemplateCandidate) => "identity" | "similar") => Promise<SimilarSearchResult>;
   lookupSearchSession: (resultSetId: string) => SimilarSearchSession | undefined;
@@ -1012,7 +1014,7 @@ export function registerOpenFigurePrTools(options: {
   now?: () => Date;
 }) {
   const service = new OpenFigurePublicationService(options);
-  options.server.registerTool(
+  options.operations.define(
     "figure_library_plan_open_figure_module_pr",
     {
       title: "Plan an Open Figure Modules pull request",
@@ -1058,7 +1060,7 @@ export function registerOpenFigurePrTools(options: {
       }
     },
   );
-  options.server.registerTool(
+  options.operations.define(
     "figure_library_apply_open_figure_module_pr",
     {
       title: "Apply a reviewed Open Figure Modules pull request",
@@ -1088,4 +1090,12 @@ export function registerOpenFigurePrTools(options: {
     },
   );
   return service;
+}
+
+/** Compatibility registration entry for external MCP integrations. */
+export function registerOpenFigurePrTools(options: Omit<Parameters<typeof defineOpenFigurePrOperations>[0], "operations"> & { server: McpServer }) {
+  const operations = new OperationRegistry();
+  const result = defineOpenFigurePrOperations({ ...options, operations });
+  mountOperations(options.server, operations);
+  return result;
 }

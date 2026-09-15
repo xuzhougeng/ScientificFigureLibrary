@@ -1,0 +1,65 @@
+name: Local client installers
+
+on:
+  push:
+    branches: [main, 'codex/local-client-*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: local-clients-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  SFL_OPEN_FIGURE_AUTO_REFRESH: '0'
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - run: node scripts/package-local-client.mjs windows-x64
+      - name: Verify the ZIP using its private runtime
+        shell: pwsh
+        run: |
+          $archive = Get-ChildItem release/local-client/*windows-x64.zip | Select-Object -First 1
+          node scripts/smoke-local-package.mjs $archive.FullName
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: windows-local-client
+          path: release/local-client/
+          compression-level: 0
+          if-no-files-found: error
+  macos:
+    runs-on: macos-14
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - name: Build native Universal App, run native smoke, and create DMG
+        run: node scripts/package-local-client.mjs macos-universal
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: macos-local-client
+          path: release/local-client/
+          compression-level: 0
+          if-no-files-found: error

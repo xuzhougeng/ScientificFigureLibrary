@@ -1,7 +1,9 @@
+import { OperationRegistry } from "./service/operations.ts";
+import { mountOperations } from "./mcp-adapter.ts";
 import { createHash, randomUUID } from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 import type { CatalogIndex } from "./catalog.ts";
@@ -66,7 +68,7 @@ interface MaterializationPlan {
   allowNetwork: boolean;
   previewConfirmation: {
     protocolVersion: 2;
-    confirmationMode: "app" | "headless";
+    confirmationMode: "app" | "headless" | "local";
     resultSetId: string;
     previewSha256: string;
     receiptDigest: string;
@@ -1227,8 +1229,8 @@ const ApplyInput = z.object({
   expectedTarget: z.string().min(1).max(4_000),
 });
 
-export function registerMaterializationTools(options: {
-  server: McpServer;
+export function defineMaterializationOperations(options: {
+  operations: OperationRegistry;
   index: CatalogIndex;
   registry?: ProviderRegistry;
   currentLibraries: () => Promise<CurrentLibraryContext>;
@@ -1242,7 +1244,7 @@ export function registerMaterializationTools(options: {
   ) => Promise<void> | void;
 }) {
   const {
-    server,
+    operations,
     index,
     currentLibraries,
     previewConfirmations,
@@ -1264,7 +1266,7 @@ export function registerMaterializationTools(options: {
     }
   }
 
-  server.registerTool(
+  operations.define(
     "figure_library_plan_materialize",
     {
       title: "Plan exact template materialization",
@@ -1440,7 +1442,7 @@ export function registerMaterializationTools(options: {
     },
   );
 
-  server.registerTool(
+  operations.define(
     "figure_library_apply_materialize",
     {
       title: "Apply confirmed exact materialization",
@@ -1597,4 +1599,12 @@ export function registerMaterializationTools(options: {
       }
     },
   );
+}
+
+/** Compatibility registration entry for external MCP integrations. */
+export function registerMaterializationTools(options: Omit<Parameters<typeof defineMaterializationOperations>[0], "operations"> & { server: McpServer }) {
+  const operations = new OperationRegistry();
+  const result = defineMaterializationOperations({ ...options, operations });
+  mountOperations(options.server, operations);
+  return result;
 }

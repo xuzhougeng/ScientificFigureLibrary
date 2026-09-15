@@ -79,6 +79,7 @@ export async function commonPluginFiles() {
   const files = [
     "dist/index.js",
     "dist/mcp-app.html",
+    "dist/local-app.html",
     "docs/GLOBAL_LIBRARY_0.6.md",
     "docs/PROTOCOL.md",
 

@@ -1,7 +1,9 @@
+import { OperationRegistry } from "./service/operations.ts";
+import { mountOperations } from "./mcp-adapter.ts";
 import { createHash, randomUUID } from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { PNG } from "pngjs";
 import { z } from "zod";
@@ -838,8 +840,8 @@ const ApplyInput = z.object({
   expectedTarget: z.string().min(1).max(4_000),
 });
 
-export function registerPublicationExportTools(options: {
-  server: McpServer;
+export function definePublicationExportOperations(options: {
+  operations: OperationRegistry;
   currentLibraries: () => Promise<CurrentLibraryContext>;
   faultInjector?: (
     point: PublicationExportFaultPoint,
@@ -857,7 +859,7 @@ export function registerPublicationExportTools(options: {
     }
   };
 
-  options.server.registerTool(
+  options.operations.define(
     "figure_library_plan_publication_export",
     {
       title: "Plan a sanitized public-template submission export",
@@ -900,7 +902,7 @@ export function registerPublicationExportTools(options: {
     },
   );
 
-  options.server.registerTool(
+  options.operations.define(
     "figure_library_apply_publication_export",
     {
       title: "Apply a confirmed sanitized publication export",
@@ -1043,4 +1045,12 @@ export function registerPublicationExportTools(options: {
       }
     },
   );
+}
+
+/** Compatibility registration entry for external MCP integrations. */
+export function registerPublicationExportTools(options: Omit<Parameters<typeof definePublicationExportOperations>[0], "operations"> & { server: McpServer }) {
+  const operations = new OperationRegistry();
+  const result = definePublicationExportOperations({ ...options, operations });
+  mountOperations(options.server, operations);
+  return result;
 }

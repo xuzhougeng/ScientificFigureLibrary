@@ -1,7 +1,7 @@
 {
   "name": "scientific-figure-library",
-  "version": "0.7.0",
-  "description": "Local-first MCP server and MCP App for your scientific figures: import, review, and publish a global library on disk, then reuse exact templates in Claude Science and Wisp Science.",
+  "version": "0.8.0",
+  "description": "Local image-code knowledge library with native macOS and local Web clients, plus MCP and Skill interfaces for external tools.",
   "keywords": [
     "scientific-figures",
     "figure-library",
@@ -36,7 +36,7 @@
     "THIRD_PARTY_NOTICES.md"
   ],
   "scripts": {
-    "build": "tsc --noEmit && vite build && node scripts/esbuild-server.mjs",
+    "build": "tsc --noEmit && vite build && vite build --config vite.local.config.ts && node scripts/esbuild-server.mjs",
     "catalog": "node scripts/build-catalog.mjs",
     "package:source-pack": "node scripts/package-source-pack.mjs",
     "package:npm": "node scripts/release-preflight.mjs && npm run build && node scripts/package-npm.mjs",
@@ -57,7 +57,10 @@
     "modules:archive": "node scripts/archive-personal-modules.mjs",
     "modules:catalog": "node scripts/build-personal-module-catalog.mjs",
     "modules:source-pack": "node scripts/package-personal-module-source-pack.mjs",
-    "modules:feed": "node scripts/publish-open-figure-feed.mjs"
+    "modules:feed": "node scripts/publish-open-figure-feed.mjs",
+    "start:local": "node dist/index.js --local",
+    "package:windows": "npm run build && node scripts/package-local-client.mjs windows-x64",
+    "package:macos": "npm run build && node scripts/package-local-client.mjs macos-universal"
   },
   "devDependencies": {
     "@modelcontextprotocol/ext-apps": "^1.7.0",

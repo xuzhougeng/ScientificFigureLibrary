@@ -1,4 +1,6 @@
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { OperationRegistry } from "./service/operations.ts";
+import { mountOperations } from "./mcp-adapter.ts";
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 import {
@@ -272,18 +274,18 @@ function officialProviderId(input: { action: string; expectedProviderId?: string
   return input.action === "add" ? input.expectedProviderId : input.providerId;
 }
 
-export function registerProviderSourceTools(options: {
-  server: McpServer;
+export function defineProviderSourceOperations(options: {
+  operations: OperationRegistry;
   manager?: ProviderSourceManager;
   officialOpenFigure?: OfficialOpenFigureSourceManager;
   builtInSources?: () => Promise<Array<Record<string, unknown>>>;
   personalSourceStatuses?: () => Promise<PersonalProviderRuntimeStatus[]>;
   onApplied?: () => Promise<void>;
 }) {
-  const { server } = options;
+  const { operations } = options;
   const manager = options.manager ?? new ProviderSourceManager();
 
-  server.registerTool(
+  operations.define(
     "figure_library_list_provider_sources",
     {
       title: "List configured personal figure providers",
@@ -376,7 +378,7 @@ export function registerProviderSourceTools(options: {
     },
   );
 
-  server.registerTool(
+  operations.define(
     "figure_library_plan_provider_source_change",
     {
       title: "Plan a signed personal provider change",
@@ -494,7 +496,7 @@ export function registerProviderSourceTools(options: {
     },
   );
 
-  server.registerTool(
+  operations.define(
     "figure_library_apply_provider_source_change",
     {
       title: "Apply a confirmed signed provider change",
@@ -538,3 +540,11 @@ export function registerProviderSourceTools(options: {
 }
 
 export type { ProviderSourceChangeAction };
+
+/** Compatibility registration entry for external MCP integrations. */
+export function registerProviderSourceTools(options: Omit<Parameters<typeof defineProviderSourceOperations>[0], "operations"> & { server: McpServer }) {
+  const operations = new OperationRegistry();
+  const result = defineProviderSourceOperations({ ...options, operations });
+  mountOperations(options.server, operations);
+  return result;
+}

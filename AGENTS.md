@@ -9,10 +9,11 @@
 - 新需求先判断管理对象和责任归属。混合需求只在 SFL 中实现图库职责内的部分；涉及产品范围变更时参阅 [产品原则](docs/PRODUCT_PRINCIPLES.md)，不要因功能与绘图有关就扩大职责。
 - 通过 MCP 和一个核心 Skill 向外部 CLI/Desktop 提供知识库能力与候选图片列表；简化的 MCP App 仅为支持它的宿主提供可选交互。见 [Agent 接入方案](docs/AGENT_INTEGRATION.md)。
 - 本地客户端采用 macOS 原生 SwiftUI、Windows 内置 Node 运行时启动本地 Web 页面；共用 TypeScript/Node 后端。确定方向与实现状态见 [本地客户端架构](docs/LOCAL_CLIENT.md)。
+- 本地 App 是简单的知识库应用，不内置 AI、模型调用或 Agent 任务编排；直接调用共享业务层。MCP/Skill 仅供外部工具接入，不在 App 内新增 MCP Client 或代理链路。
 
 ## 仓库导航
 
-- `src/`：MCP 服务、图库存储、Provider 和材料化逻辑；入口为 `src/index.ts`、`src/server.ts`。
+- `src/`：图库存储、Provider 和材料化逻辑；`library-service.ts` 管理共享业务与会话，`server.ts` 为外部 MCP 适配，`local/` 为本地界面连接；启动入口为 `src/index.ts`。
 - `app/`：MCP App 界面。`tests/`：Node 测试。`scripts/`：构建、目录生成、版本和打包脚本。
 - `skills/`：随插件分发给宿主的绘图指导。`.wisp-plugin/`、`.codex-plugin/`、`.claude-plugin/`、`.cursor-plugin/`：各宿主插件配置。
 - 修改工具契约前阅读 [PROTOCOL](docs/PROTOCOL.md)；修改存储、身份或 Provider 前阅读 [全局图库架构](docs/GLOBAL_LIBRARY_0.6.md)。

@@ -1,7 +1,9 @@
+import { OperationRegistry } from "./service/operations.ts";
+import { mountOperations } from "./mcp-adapter.ts";
 import { createHash } from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 import { canonicalJson, canonicalJsonClone } from "./canonical-json.ts";
@@ -948,11 +950,11 @@ function planDetails(plan: ReturnType<typeof planSummary>) {
   return details;
 }
 
-export function registerLifecycleTools(options: {
-  server: McpServer;
+export function defineLifecycleOperations(options: {
+  operations: OperationRegistry;
   currentLibrary: () => Promise<VersionedTemplateLibrary>;
 }) {
-  const { server, currentLibrary } = options;
+  const { operations, currentLibrary } = options;
   const plans = new PublicPlanCache();
   const pendingWorkingPlans = new Map<string, string>();
 
@@ -1073,7 +1075,7 @@ export function registerLifecycleTools(options: {
     };
   }
 
-  server.registerTool(
+  operations.define(
     "figure_library_review_open",
     {
       title: "Inspect template review state",
@@ -1205,7 +1207,7 @@ export function registerLifecycleTools(options: {
     },
   );
 
-  server.registerTool(
+  operations.define(
     "figure_library_preview_working_revision",
     {
       title: "Preview an exact active Working selector",
@@ -1389,7 +1391,7 @@ export function registerLifecycleTools(options: {
     },
   );
 
-  server.registerTool(
+  operations.define(
     "figure_library_template_history",
     {
       title: "Inspect immutable template history",
@@ -1424,7 +1426,7 @@ export function registerLifecycleTools(options: {
     },
   );
 
-  server.registerTool(
+  operations.define(
     "figure_library_diff_revisions",
     {
       title: "Diff two immutable Content Revisions",
@@ -1465,11 +1467,11 @@ export function registerLifecycleTools(options: {
     },
   );
 
-  server.registerTool(
+  operations.define(
     "figure_library_plan_working_revision",
     {
       title: "Plan a direct-intake Working Revision",
-      description: "Validate user-confirmed image/code intake and return an immutable Working Revision plan. The server never calls a model or executes code.",
+      description: "Validate user-confirmed image/code intake and return an immutable Working Revision plan. The operations never calls a model or executes code.",
       inputSchema: WorkingPlanInput.shape,
       annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
     },
@@ -1554,7 +1556,7 @@ export function registerLifecycleTools(options: {
     },
   );
 
-  server.registerTool(
+  operations.define(
     "figure_library_apply_working_revision",
     {
       title: "Apply a confirmed Working Revision plan",
@@ -1573,7 +1575,7 @@ export function registerLifecycleTools(options: {
             : undefined;
           return result
             ? applyResult(input.planDigest, result, reviewSummary)
-            : terminalResult(envelope("blocked", "plan_not_available", "The unapplied plan expired or the server restarted", "create_new_plan"));
+            : terminalResult(envelope("blocked", "plan_not_available", "The unapplied plan expired or the operations restarted", "create_new_plan"));
         }
         if (entry.kind !== "working") return terminalResult(envelope("conflict", "plan_kind_mismatch", "The plan is not a Working Revision plan", "create_new_plan"));
         if (entry.backendPlan.templateId !== input.expectedTemplateId || entry.backendPlan.expectedSeriesDigest !== input.expectedSeriesDigest || entry.backendPlan.action !== input.expectedAction) {
@@ -1603,7 +1605,7 @@ export function registerLifecycleTools(options: {
     planSchema: z.ZodType;
     plan: (library: VersionedTemplateLibrary, input: never) => Promise<LifecyclePlan>;
   }) {
-    server.registerTool(
+    operations.define(
       config.planName,
       {
         title: config.planTitle,
@@ -1660,7 +1662,7 @@ export function registerLifecycleTools(options: {
         }
       },
     );
-    server.registerTool(
+    operations.define(
       config.applyName,
       {
         title: config.applyTitle,
@@ -1680,7 +1682,7 @@ export function registerLifecycleTools(options: {
                 : undefined;
             return result
               ? applyResult(input.planDigest, result, reviewSummary)
-              : terminalResult(envelope("blocked", "plan_not_available", "The unapplied plan expired or the server restarted", "create_new_plan"));
+              : terminalResult(envelope("blocked", "plan_not_available", "The unapplied plan expired or the operations restarted", "create_new_plan"));
           }
           if (entry.kind !== config.kind) return terminalResult(envelope("conflict", "plan_kind_mismatch", `The plan does not match ${config.applyName}`, "create_new_plan"));
           if (entry.backendPlan.templateId !== input.expectedTemplateId || entry.backendPlan.expectedSeriesDigest !== input.expectedSeriesDigest) {
@@ -1744,4 +1746,12 @@ export function registerLifecycleTools(options: {
     planSchema: AdoptPlanInput,
     plan: (library, input: z.infer<typeof AdoptPlanInput>) => library.planAdoptLegacy(input),
   });
+}
+
+/** Compatibility registration entry for external MCP integrations. */
+export function registerLifecycleTools(options: Omit<Parameters<typeof defineLifecycleOperations>[0], "operations"> & { server: McpServer }) {
+  const operations = new OperationRegistry();
+  const result = defineLifecycleOperations({ ...options, operations });
+  mountOperations(options.server, operations);
+  return result;
 }
