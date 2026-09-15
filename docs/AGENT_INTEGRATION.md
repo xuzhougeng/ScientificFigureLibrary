@@ -5,10 +5,12 @@
 
 ## 1. 目标与职责
 
-**SFL 提供图库资产服务、一个核心 Skill 和宿主可调用接口，让外部 Agent 完成选图与后续任务。**
+**SFL 是本地图片—代码知识库客户端，以 MCP 和一个核心 Skill 向外部 CLI/Desktop 提供候选图片列表及资产使用能力。**
 
 目标宿主包括 zcode、WorkBuddy、Claude Desktop、Codex Desktop、Wisp Science 等。
-宿主可通过自己的对话、图片控件或 WebView 展示候选图，也可使用可选的 MCP App。
+本地客户端采用 macOS 原生 SwiftUI、Windows Node 服务与本地 Web 页面，详见
+[本地客户端架构](LOCAL_CLIENT.md)。外部宿主可通过自己的对话、图片控件或 WebView
+展示候选图，也可使用面向支持客户端的简化 MCP App。
 上述名称表示目标宿主，不代表所有版本均已完成兼容性验收。
 
 ```mermaid
@@ -20,6 +22,8 @@ flowchart TB
     Host --> Native[宿主自己的图片展示与选择]
     Host --> App[可选 MCP App]
     App --> MCP
+    Mac[macOS SwiftUI 本地客户端] --> Core
+    Windows[Windows Node 服务与本地 Web 页面] --> Core
 ```
 
 SFL 管理可复用资产及其身份、版本、来源。具体研究任务、项目文件组织和绘图执行由
@@ -38,7 +42,8 @@ SFL 管理可复用资产及其身份、版本、来源。具体研究任务、�
 | 翻页 | `figure_library_search_page` 同时对 Agent 和 App 开放，复用原有不透明游标与过期检查 |
 | 精确看图与确认 | 复用 `figure_library_preview_exact_headless` 和 `figure_library_confirm_selection_headless` |
 | 材料化 | 复用 receipt、plan/apply、过期状态检查及重放语义 |
-| HTTP 图片 URL、常驻 Desktop 服务 | 尚未实现，本轮后置；MCP URI 不能直接充当浏览器 URL |
+| 本地客户端与内置运行时 | macOS SwiftUI、Windows Node/Web 及随包运行时已确定为下一阶段方向，尚未实现；当前插件仍需可调用的 Node.js 22+ |
+| 独立 Web 入口与 MCP App 精简 | 当前已有 MCP App 界面，尚未拆出独立网页入口或完成精简；MCP URI 不能直接充当浏览器 URL |
 
 接口分别位于 [guidance.ts](../src/guidance.ts)、[candidate-images.ts](../src/candidate-images.ts)
 和 [server.ts](../src/server.ts)。服务初始化说明提示宿主先读取核心 Skill。
@@ -78,21 +83,22 @@ Data URL 上限。返回数据分别记录原始缩略图哈希和传输图片�
 缩略图加载、Agent 看图、用户看图和批准写入是不同事实。服务端不能以工具返回成功
 证明用户界面已显示图片；材料化成功也不代表绘图已执行或科学结论已验证。
 
-## 5. Desktop 与其他传输方式：待设计
+## 5. 本地客户端与外部会话
 
-根据本轮范围，先完成不依赖 Desktop 形态的 Skill 和 MCP 图片接口。独立桌面应用、
-控制已运行 SFL 的共享进程、HTTP 接入及 WebView 图片 URL 均未在本阶段实现。
+本地客户端的平台方向已确定：macOS 原生 SwiftUI；Windows 随插件携带 `node.exe`，
+启动本地服务并打开 Web 页面。两端共用现有 TypeScript/Node 后端与一个核心 Skill。
+运行时分发、独立界面和浏览器连接仍待实现，不能把确定方案写成当前安装能力。
 
 当前各宿主可启动自己的 stdio MCP 进程并显式绑定同一全局 Library，但各进程拥有
 独立会话。结果集、challenge、receipt 和待应用计划不得跨进程传递；选图到 Apply
 应保持原 MCP 会话。
 
-若宿主只能读取 HTTP(S) 图片，再根据真实接入测试设计图片 URL 适配。需确认宿主
-网络可达性、图片加载策略、资产访问范围与凭据有效期；跨机器宿主的 localhost
-不代表 SFL 所在机器。不要默认把服务器本地路径放进 WebView 的 `img.src`。
+Windows Web 客户端需要本机 HTTP 服务与图片读取入口。需确认图片加载策略、资产访问
+范围与会话有效期；跨机器宿主的 localhost 不代表 SFL 所在机器。不要默认把服务器
+本地路径放进浏览器的 `img.src`。
 
-后续的共享服务、CLI 或其他接口应复用现有图库、Provider、精确身份与写入校验，
-并明确会话隔离和连接生命周期；MCP App 继续作为图库的一个可选客户端。
+具体进程组织、界面连接与选图交接应保持会话隔离和既有确认契约。简化 MCP App 只
+承担支持宿主内的候选交互，完整的本地知识库界面由上述两种客户端承接。
 
 ## 6. 验证与剩余工作
 
