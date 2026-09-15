@@ -78,14 +78,14 @@ async function windows() {
   cursor.mcpServers['figure-library'].command = runtimeMode === 'system' ? 'node' : '${PLUGIN_ROOT}/runtime/node.exe';
   await fs.writeFile(cursorFile, JSON.stringify(cursor, null, 2) + '\n');
   await fs.copyFile(cursorFile, path.join(directory, 'mcp.json'));
-  await fs.writeFile(path.join(directory, 'Start SFL.cmd'), '@echo off\r\nstart "Scientific Figure Library" /min "%~dp0runtime\\node.exe" "%~dp0dist\\index.js" --local --quiet\r\n');
+  await fs.writeFile(path.join(directory, 'Start SFL.cmd'), '@echo off\r\ntitle Scientific Figure Library\r\ncd /d "%~dp0"\r\n"%~dp0runtime\\node.exe" "%~dp0dist\\index.js" --local --quiet\r\nif errorlevel 1 pause\r\n');
   await fs.writeFile(path.join(directory, 'MCP.cmd'), '@echo off\r\n"%~dp0runtime\\node.exe" "%~dp0dist\\index.js" %*\r\n');
-  await fs.writeFile(path.join(directory, 'READ-ME.txt'), 'Scientific Figure Library\r\n\r\nExtract the entire ZIP, then double-click Start SFL.cmd.\r\nNo Node.js or npm installation is needed.\r\nKeep the extracted folder intact. Quit using the local page.\r\nMCP configuration can be copied from Settings in the app.\r\nSee docs/INSTALL_LOCAL.md for Chinese instructions and preview limitations.\r\n');
+  await fs.writeFile(path.join(directory, 'READ-ME.txt'), 'Scientific Figure Library\r\n\r\nExtract the entire ZIP, then double-click Start SFL.cmd.\r\nNo Node.js or npm installation is needed.\r\nThe service window stays open and the default browser should open the app.\r\nIf it does not, paste the address from that window into Edge or Chrome.\r\nKeep the extracted folder intact. Quit using the local page.\r\nMCP configuration can be copied from Settings in the app.\r\nSee docs/INSTALL_LOCAL.md for Chinese instructions and preview limitations.\r\n');
   if (runtimeMode === 'system') {
     await fs.copyFile(path.join(root, 'desktop/windows/Launch-SFL.ps1'), path.join(directory, 'Launch-SFL.ps1'));
     await fs.writeFile(path.join(directory, 'Start SFL.cmd'), '@echo off\r\npowershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0Launch-SFL.ps1"\r\nif errorlevel 1 pause\r\n');
     await fs.writeFile(path.join(directory, 'MCP.cmd'), '@echo off\r\npowershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0Launch-SFL.ps1" -Mcp %*\r\n');
-    await fs.writeFile(path.join(directory, 'READ-ME.txt'), 'Scientific Figure Library - system Node edition\r\n\r\nRequires installed Node.js 22+. No npm install is needed.\r\nExtract the entire ZIP, then double-click Start SFL.cmd.\r\nSet SFL_NODE_BINARY to an absolute node.exe path if detection fails.\r\nAlternatively download the bundled-Node ZIP.\r\nSee docs/INSTALL_LOCAL.md.\r\n');
+    await fs.writeFile(path.join(directory, 'READ-ME.txt'), 'Scientific Figure Library - system Node edition\r\n\r\nRequires installed Node.js 22+. No npm install is needed.\r\nExtract the entire ZIP, then double-click Start SFL.cmd.\r\nThe service window stays open and the default browser should open the app.\r\nIf it does not, paste the address from that window into Edge or Chrome.\r\nSet SFL_NODE_BINARY to an absolute node.exe path if detection fails.\r\nAlternatively download the bundled-Node ZIP.\r\nSee docs/INSTALL_LOCAL.md.\r\n');
   }
   const files = await inventory(directory);
   await fs.writeFile(path.join(directory, 'install-manifest.json'), JSON.stringify({ schema: 'figure-library.local-install.v1', version: pkg.version, target: 'windows-x64', runtimeMode, minimumNodeMajor: 22, nodeVersion: runtimeMode === 'bundled' ? runtimeLock.version : null, files }, null, 2) + '\n');

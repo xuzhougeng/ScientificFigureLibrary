@@ -7,6 +7,7 @@ import path from "node:path";
 import test from "node:test";
 import { createLibraryService } from "../src/library-service.ts";
 import { startLocalHttp } from "../src/local/http.ts";
+import { browserLaunchSpec } from "../src/local/launch.ts";
 import { createDefaultProviderRegistry } from "../src/provider-registry.ts";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
@@ -54,6 +55,18 @@ async function isolated(t: { after: (fn: () => Promise<void>) => void }) {
   });
   return { root, local, service, request, api, call, overrides };
 }
+
+test("Windows local client opens loopback URLs with cmd start so #connect= reaches the browser", () => {
+  const url = "http://127.0.0.1:12345/#connect=ticket";
+  const windows = browserLaunchSpec(url, "win32");
+  assert.equal(windows.command, process.env.ComSpec && process.env.ComSpec.length > 0 ? process.env.ComSpec : "cmd.exe");
+  assert.deepEqual(windows.args, ["/c", "start", '""', `"${url}"`]);
+  assert.equal(windows.windowsVerbatimArguments, true);
+  assert.ok(!JSON.stringify(windows).toLowerCase().includes("explorer"));
+  assert.deepEqual(browserLaunchSpec(url, "darwin"), { command: "/usr/bin/open", args: [url] });
+  assert.deepEqual(browserLaunchSpec(url, "linux"), { command: "xdg-open", args: [url] });
+  assert.throws(() => browserLaunchSpec("https://example.com/", "win32"), /non-local/u);
+});
 
 test("local browser/native session enforces origin, authentication, one-use launch tickets and operation boundaries", async (t) => {
   const { local, request, api } = await isolated(t);
