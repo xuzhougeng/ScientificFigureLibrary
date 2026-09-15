@@ -514,6 +514,31 @@ export function defineProviderSourceOperations(options: {
     },
     async (input): Promise<CallToolResult> => {
       try {
+        if (isOfficialOpenFigureProviderId(input.expectedProviderId)) {
+          if (!options.officialOpenFigure) throw new Error("official Open Figure Modules manager is unavailable");
+          if (input.expectedAction !== "update" && input.expectedAction !== "configure") {
+            throw new Error(`official Open Figure Modules does not support ${input.expectedAction}; it is a compiled channel`);
+          }
+          const result = await options.officialOpenFigure.applyChange({
+            planDigest: input.planDigest,
+            operationId: input.operationId,
+            expectedAction: input.expectedAction,
+          });
+          const outcome = envelope(
+            "applied",
+            "provider_source_change_applied",
+            `Applied ${result.action} for provider ${result.providerId}.`,
+            "none",
+          );
+          return response(outcome, { result }, [
+            `ACTION: ${result.action}`,
+            `PROVIDER_ID: ${result.providerId}`,
+            `MANIFEST_SHA256: ${"manifestSha256" in result ? result.manifestSha256 ?? "none" : "none"}`,
+            `PLAN_DIGEST: ${result.planDigest}`,
+            `OPERATION_ID: ${result.operationId}`,
+            "IDEMPOTENT_REPLAY: false",
+          ]);
+        }
         const result = await manager.applyChange(input);
         await options.onApplied?.();
         const replayed = result.idempotentReplay === true;

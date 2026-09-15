@@ -1,16 +1,16 @@
 # 本地客户端安装与使用
 
 本地客户端是简单的图片—代码知识库，不内置 AI，也不执行模板代码。
-macOS 使用原生 SwiftUI，Windows 使用本机网页；两端均提供内置 Node 和使用本机 Node 两种安装包。
+macOS 使用原生 SwiftUI，Windows 与 Linux 使用本机网页；均提供内置 Node 和使用本机 Node 两种安装包。
 
 ## 选择是否携带 Node
 
 - **默认包**（文件名不含 `no-node`）：内置 Node，无需安装 Node.js 或 npm。
 - **本机 Node 包**（文件名含 `no-node`）：不含 Node，要求已安装 **Node.js 22+**；程序依赖已构建打包，不需要 `npm install`。缺失或版本过低时停止启动并提示。
 
-macOS 两种架构、Windows x64 都提供这两个版本。首次查看在线图库图片仍需联网下载。
+macOS 两种架构、Windows x64、Linux x64 / arm64 都提供这两个版本。首次查看在线图库图片仍需联网下载。
 
-Windows 默认从 PATH 查找 `node.exe`。macOS 从 Homebrew 常用位置和 App 的 PATH 查找；Finder 的 PATH 与终端可能不同。未能自动找到时，可在启动界面点击“选择本机 Node…”，指定可执行文件。CLI/MCP 可通过绝对路径环境变量 `SFL_NODE_BINARY` 指定。成功启动后，在 App 中复制的 MCP 配置使用实际选中的 Node 绝对路径。
+Windows 默认从 PATH 查找 `node.exe`。Linux 从 PATH 查找 `node`。macOS 从 Homebrew 常用位置和 App 的 PATH 查找；Finder 的 PATH 与终端可能不同。未能自动找到时，macOS 可在启动界面点击“选择本机 Node…”，指定可执行文件。CLI/MCP 可通过绝对路径环境变量 `SFL_NODE_BINARY` 指定。成功启动后，在 App 中复制的 MCP 配置使用实际选中的 Node 绝对路径。
 
 ## Windows ZIP
 
@@ -18,16 +18,30 @@ Windows 默认从 PATH 查找 `node.exe`。macOS 从 Homebrew 常用位置和 Ap
 2. 双击 `Start SFL.cmd`。本地服务窗口会保持打开，并在默认浏览器打开页面。
    若浏览器没有自动打开，把服务窗口里的地址复制到 Edge 或 Chrome。使用期间不要关闭该窗口。
 3. 在“设置与连接”中确认全局图库和本地工作区的绝对目录。
-4. 使用“退出本地客户端”结束服务，再关闭页面。
+4. 安装包不含图库图片。目录绑定后按提示缓存图片，或在设置中稍后缓存。也可在同一页添加签名图片来源，并更新已添加的图库。
+5. 使用“退出本地客户端”结束服务，再关闭页面。
 
 内置 Node 版不需要安装 Node.js；本机 Node 版要求 Node.js 22+。请保留整个解压目录，不要单独移动 `node.exe`、`dist/` 或 `assets/`。
 当前提供 x64 包；其他处理器架构不在此包的验证范围内。网页需要现代浏览器。
+
+## Linux ZIP
+
+1. 按处理器架构选择 ZIP：常见 PC 用 `linux-x64`，ARM 用 `linux-arm64`。
+2. 解压整个文件夹，在终端运行 `./start-sfl.sh`。服务会保持在该终端中，并尝试用默认浏览器打开页面。
+   若浏览器没有自动打开，把终端里打印的地址复制到 Firefox、Chrome 或 Chromium。使用期间不要关闭该终端。
+3. 在“设置与连接”中确认全局图库和本地工作区的绝对目录。
+4. 安装包不含图库图片。目录绑定后按提示缓存图片，或在设置中稍后缓存。也可在同一页添加签名图片来源，并更新已添加的图库。
+5. 使用“退出本地客户端”结束服务，再关闭页面。
+
+内置 Node 版不需要安装 Node.js；本机 Node 版要求 Node.js 22+。请保留整个解压目录，不要单独移动 `runtime/node`、`dist/` 或 `assets/`。
+网页需要现代浏览器。本机 Node 版可设置 `SFL_NODE_BINARY` 指向绝对路径。
 
 ## macOS DMG
 
 1. 按“关于本机”中的芯片选择 DMG：Apple Silicon（M 系列）用 `macos-arm64`，Intel 用 `macos-x64`。每个包仅携带对应架构的运行时。
 2. 打开 DMG，将 `Scientific Figure Library.app` 拖入“Applications/应用程序”。
-3. 打开 App，在设置中选择全局图库和本地工作区。
+3. 打开 App，在“设置与连接”中选择全局图库和本地工作区。
+4. 安装包不含图库图片。目录绑定后按提示缓存图片，或在设置中稍后缓存。也可添加签名图片来源并更新已添加的图库。
 
 原生界面最低目标为 macOS 13。选择内置 Node 版即可免装运行时；`no-node` 版复用本机 Node.js 22+。
 
@@ -37,14 +51,15 @@ macOS 可能阻止从网络下载的 App 首次运行；只在确认下载来源
 
 ## 图片按需下载
 
-本地安装包不携带 FigureYa 与 Open Figure Modules 的图库缩略图、精确预览图，仅保留目录、许可和图片校验信息。浏览搜索结果时下载当前页缩略图，打开精确预览时下载对应图片；FigureYa 使用同一张参考图。
+本地安装包不携带 FigureYa 与 Open Figure Modules 的图库缩略图、精确预览图，仅保留目录、许可和图片校验信息。绑定本机目录后，本地网页会提示一次性缓存这些预览图；也可以继续在浏览搜索结果时下载当前页缩略图，打开精确预览时下载对应图片。FigureYa 使用同一张参考图。
 
-首次查看需要能访问 GitHub 的图片下载地址。下载校验成功后写入本机缓存，之后可离线复用；未缓存或下载失败的图片不能用于确认，恢复网络后重新搜索或打开预览即可重试。自己的图库图片继续从指定的本地图库读取。
+首次缓存或查看需要能访问 GitHub 的图片下载地址。下载校验成功后写入本机缓存，之后可离线复用；未缓存或下载失败的图片不能用于确认，恢复网络后重新缓存、搜索或打开预览即可重试。自己的图库图片继续从指定的本地图库读取。签名图片来源在“设置与连接”中手动添加：确认后会缓存该来源的目录快照，之后可再更新。
 
 缓存与安装目录分开：
 
 - macOS：`~/Library/Caches/ScientificFigureLibrary/previews/v1`
 - Windows：`%LOCALAPPDATA%/ScientificFigureLibrary/preview-cache/v1`
+- Linux：`$XDG_CACHE_HOME/scientific-figure-library/previews/v1`，未设置时为 `~/.cache/scientific-figure-library/previews/v1`
 
 关闭 App 和使用它的 MCP 进程后，可以删除缓存以释放空间；后续查看会重新下载。测试或高级配置可通过绝对路径 `SFL_PREVIEW_CACHE_DIR` 指定缓存目录。清除已确认图片的缓存后，需要重新预览再保存模板。
 
@@ -65,8 +80,8 @@ macOS 可能阻止从网络下载的 App 首次运行；只在确认下载来源
 
 - 在 App 设置中点击“复制 MCP 配置”，得到使用包内 Node 和后端绝对路径的配置。
 - macOS 包同时提供 `Contents/MacOS/sfl-mcp`，可作为 stdio MCP 启动命令。
-- Windows 包提供 `MCP.cmd`，以及 Wisp/Codex/Claude/Cursor 的插件元数据。
-- 一个核心 Skill 位于 Windows 包的 `skills/figure-library/`，或 macOS App 的
+- Windows 包提供 `MCP.cmd`，Linux 包提供 `mcp.sh`，以及 Wisp/Codex/Claude/Cursor 的插件元数据。
+- 一个核心 Skill 位于 Windows / Linux 包的 `skills/figure-library/`，或 macOS App 的
   `Contents/Resources/sfl/skills/figure-library/`。
 
 各宿主对插件安装路径的处理不同；通用 MCP 配置是直接接入方式，真实宿主的插件安装
@@ -81,6 +96,7 @@ macOS 可能阻止从网络下载的 App 首次运行；只在确认下载来源
 ## 构建与验证
 
 - Windows：`npm run package:windows`；本机 Node 版为 `npm run package:windows:no-node`
+- Linux：`npm run package:linux`（x64）或 `npm run package:linux:arm64`；本机 Node 版为 `npm run package:linux:no-node` / `npm run package:linux:arm64:no-node`
 - macOS：在 macOS/Xcode 环境运行 `npm run package:macos` 构建本机架构；显式入口为 `npm run package:macos:arm64` 和 `npm run package:macos:x64`，须在对应架构运行原生 smoke。
 - 本机 Node 版 macOS：`npm run package:macos:no-node`；显式架构可运行 `node scripts/package-local-client.mjs macos-arm64 --system-node`（先构建）。
 - 固定运行时来源与 SHA-256：`scripts/runtime/node-runtime.json`

@@ -1154,6 +1154,6 @@ license. See
 
 本地 DMG / Windows ZIP 的 FigureYa 与 Open Figure Modules bootstrap 可包含 `preview-downloads.json`，其每个图片身份必须与既有预览 manifest 完全一致。图片来源固定为构建提交中的文件；不改变 Provider、exact selector 或 Published Release 的身份。
 
-候选可返回 `previewDelivery: "download"`。此模式下 `previewAvailable` 表示存在可获取的固定身份，并不承诺网络可达或已经缓存；当前页图片传输结果由 `searchPreviewAvailable` / `searchPreviewStatus` 表达。搜索不会下载非当前页候选的图片。精确预览只有取得、校验和传输真实图片后才可确认。缩略图下载失败不改变精确图片身份，可重新请求预览。
+候选可返回 `previewDelivery: "download"`。此模式下 `previewAvailable` 表示存在可获取的固定身份，并不承诺网络可达或已经缓存；当前页图片传输结果由 `searchPreviewAvailable` / `searchPreviewStatus` 表达。搜索不会下载非当前页候选的图片。本地客户端可在用户确认后，按同一份 `preview-downloads.json` 身份预取未缓存图片并写入同一缓存；这不改变 Provider、exact selector 或 Published Release 身份。精确预览只有取得、校验和传输真实图片后才可确认。缩略图下载失败不改变精确图片身份，可重新请求预览。
 
 图片缓存位于用户缓存目录，按 SHA-256 寻址并校验大小和格式。确认后的材料化重验证仅允许读取缓存，不隐式重新下载已确认图片；缓存缺失或损坏需重新预览确认。`allowNetwork` 仍控制模板归档材料化，不能当作此前浏览图片的网络开关。既有 Provider 签名快照更新策略保持独立。

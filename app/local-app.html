@@ -10,11 +10,12 @@
   <main class="local-main">
     <header class="local-header"><div><p class="eyebrow">YOUR VISUAL KNOWLEDGE, CONNECTED.</p><h1 id="page-title">发现可复用的科学图</h1></div><button id="refresh" class="quiet">刷新</button></header>
     <p id="notice" role="status" aria-live="polite" hidden></p>
-    <section id="setup-banner" class="setup-banner" hidden><strong>欢迎建立你的本地知识库</strong><p>先选择全局图库与工作区，之后可跨项目复用。</p><button data-page="settings">设置本机目录</button></section>
+    <section id="setup-banner" class="setup-banner" hidden><strong>欢迎建立你的本地知识库</strong><p>安装包为减小体积未包含图库图片。请先选择全局图库与工作区，然后缓存图片。</p><button data-page="settings">设置本机目录</button></section>
+    <section id="cache-banner" class="setup-banner" hidden><strong>缓存图库图片</strong><p>本机目录已就绪。安装包不含 FigureYa 与 Open Figure Modules 的预览图，缓存后可离线浏览当前图库。</p><p id="cache-progress" class="cache-progress"></p><button type="button" id="cache-previews">缓存图片</button><button data-page="settings" class="quiet">管理图片来源</button></section>
     <section id="discover-page" class="local-page">
       <form id="search-form" class="search-form"><label class="sr-only" for="search-query">搜索模板</label><input id="search-query" placeholder="描述你想找的图，例如：单细胞分组比例、火山图…" required><button type="submit">搜索图库</button></form>
       <div class="search-filters"><label>图片来源<select id="search-provider"><option value="">全部默认来源</option><option value="org.scientificfigurelibrary.local">我的已发布图片</option><option value="org.figureya.module">FigureYa</option><option value="io.github.jarxunlai.personal-figures">Open Figure Modules</option></select></label><label>数据特征<input id="search-data" placeholder="可选：gene、log2FC、padj"></label></div>
-      <p>在线图库图片首次查看时下载，已缓存的图片可离线查看。</p>
+      <p id="preview-cache-hint">安装包默认不包含图库图片。请先设置本机目录，再缓存图片；未缓存时，当前页仍会在首次查看时下载。</p>
       <div id="suggestions" class="suggestions"><span>从常见图形开始</span><button data-query="volcano differential expression">火山图</button><button data-query="heatmap expression matrix">热图</button><button data-query="UMAP single cell">UMAP</button><button data-query="barplot proportion cell type">细胞比例</button><button data-query="GO enrichment pathway">富集分析</button></div>
       <div class="results-heading"><h2 id="results-title">找到适合你数据的表达方式</h2><span id="results-count"></span></div>
       <div id="empty" class="local-empty"><h3>让图片成为下一次研究的起点</h3><p>搜索图库中的图片与代码，查看细节后再选用。也可以导入自己的资产。</p></div>
@@ -47,7 +48,19 @@
     <section id="settings-page" class="local-page" hidden>
       <div class="settings-grid"><section class="settings-card"><h2>本机目录</h2><p>这些目录跨项目共享。请输入由你选择的绝对路径。</p><form id="binding-form" class="local-form"><label>全局图库<input id="library-directory" required placeholder="例如：D:\ScientificFigures"></label><label>本地工作区<input id="workspace-directory" required placeholder="例如：D:\ScientificFigureWorkspace"></label><button type="submit">检查并确认目录</button></form></section>
       <section class="settings-card"><h2>外部调用接口</h2><p>其他 CLI 或桌面工具可以通过 MCP 和核心 Skill 使用这个知识库。本地客户端独立完成图片与代码的浏览和管理。</p><button data-page="integrations" class="quiet">查看安装与连接指令</button><button id="copy-mcp" class="quiet">复制 MCP 配置</button><h3>图片与代码</h3><p>客户端保存图片、代码、关联和版本，只做文件管理，不执行绘图代码。</p><button id="shutdown" class="quiet" hidden>退出本地客户端</button></section></div>
-      <section class="settings-card"><h2>图片来源</h2><div id="provider-list"></div></section>
+      <section class="settings-card">
+        <h2>图片来源</h2>
+        <p>内置来源可缓存预览图。手动添加的签名来源会下载并缓存目录快照，之后可更新。</p>
+        <div id="provider-list"></div>
+        <form id="add-source-form" class="local-form">
+          <h3>添加签名图片来源</h3>
+          <label>Provider ID<input id="source-provider-id" required maxlength="128" spellcheck="false" placeholder="例如：io.example.figures"></label>
+          <label>清单 URL<input id="source-manifest-url" type="url" required maxlength="4000" spellcheck="false" placeholder="https://"></label>
+          <label>独立获取的公钥（Base64）<input id="source-public-key" required maxlength="100" spellcheck="false" placeholder="32 字节 Ed25519 公钥的 Base64"></label>
+          <label class="checkbox"><input id="source-default-search" type="checkbox">加入默认搜索</label>
+          <button type="submit">检查并添加来源</button>
+        </form>
+      </section>
     </section>
   </main>
   <dialog id="plan-dialog" class="local-dialog"><form method="dialog"><button class="dialog-close" aria-label="关闭计划">×</button></form><h2 id="plan-title">确认操作</h2><div id="plan-summary"></div><details><summary>查看完整计划与校验信息</summary><pre id="plan-json"></pre></details><div class="dialog-actions"><button id="plan-cancel" class="quiet">取消</button><button id="plan-apply">确认执行</button></div></dialog>

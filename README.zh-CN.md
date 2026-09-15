@@ -26,7 +26,7 @@ Community 代码和旧资产保留用于显式兼容访问，但已冻结，且�
 
 ## 本地客户端预览版
 
-提供 macOS 原生 Apple Silicon / Intel 独立 DMG 与内置 Node 的 Windows x64 ZIP。均提供内置 Node 与使用本机 Node.js 22+ 的 `no-node` 版；图库预览按需下载。安装方式和签名限制见
+提供 macOS 原生 Apple Silicon / Intel 独立 DMG，以及内置 Node 的 Windows 与 Linux ZIP。均提供内置 Node 与使用本机 Node.js 22+ 的 `no-node` 版；图库预览按需下载。安装方式和签名限制见
 [本地客户端安装说明](docs/INSTALL_LOCAL.md)。macOS 预览版尚未经过 Developer ID 签名和 Apple 公证。
 
 ## 安装

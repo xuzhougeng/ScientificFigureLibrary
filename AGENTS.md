@@ -8,7 +8,7 @@
 - 不将跨会话绘图偏好自动应用、研究项目归档/投稿打包、论文主图/子图编排新增为 SFL 原生职责。图库自身的资产身份、版本和来源管理仍属于核心能力。
 - 新需求先判断管理对象和责任归属。混合需求只在 SFL 中实现图库职责内的部分；涉及产品范围变更时参阅 [产品原则](docs/PRODUCT_PRINCIPLES.md)，不要因功能与绘图有关就扩大职责。
 - 通过 MCP 和一个核心 Skill 向外部 CLI/Desktop 提供知识库能力与候选图片列表；简化的 MCP App 仅为支持它的宿主提供可选交互。见 [Agent 接入方案](docs/AGENT_INTEGRATION.md)。
-- 本地客户端采用 macOS 原生 SwiftUI、Windows 内置 Node 运行时启动本地 Web 页面；共用 TypeScript/Node 后端，另提供复用本机 Node.js 22+ 的 `no-node` 安装包。确定方向与实现状态见 [本地客户端架构](docs/LOCAL_CLIENT.md)。
+- 本地客户端采用 macOS 原生 SwiftUI、Windows / Linux 内置 Node 运行时启动本地 Web 页面；共用 TypeScript/Node 后端，另提供复用本机 Node.js 22+ 的 `no-node` 安装包。确定方向与实现状态见 [本地客户端架构](docs/LOCAL_CLIENT.md)。
 - 本地 App 是简单的知识库应用，不内置 AI、模型调用或 Agent 任务编排；直接调用共享业务层。MCP/Skill 仅供外部工具接入，不在 App 内新增 MCP Client 或代理链路。
 
 ## 仓库导航

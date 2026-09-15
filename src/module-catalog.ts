@@ -1083,4 +1083,8 @@ export class ModuleCatalogIndex {
   async previewAvailable(module: ModuleCatalogEntry) {
     return this.primaryPreviewAvailable(module);
   }
+
+  previewDownloads() {
+    return this.downloads;
+  }
 }

@@ -23,12 +23,89 @@ export type PreviewDownloadFile = z.infer<typeof FileSchema>;
 export interface PreviewDownloadOptions { cacheDirectory?: string; fetcher?: Pick<SecureProviderSourceFetcher, "fetch"> }
 const sha256 = (bytes: Uint8Array) => createHash("sha256").update(bytes).digest("hex");
 
+export const PREVIEW_CACHE_CONCURRENCY = 3;
+
 export function previewCacheDirectory() {
   const override = process.env.SFL_PREVIEW_CACHE_DIR;
   if (override) { if (!path.isAbsolute(override)) throw new Error("Preview cache directory must be absolute"); return override; }
   if (process.platform === "win32") return path.join(process.env.LOCALAPPDATA ?? path.join(os.homedir(), "AppData/Local"), "ScientificFigureLibrary/preview-cache/v1");
   if (process.platform === "darwin") return path.join(os.homedir(), "Library/Caches/ScientificFigureLibrary/previews/v1");
   return path.join(process.env.XDG_CACHE_HOME ?? path.join(os.homedir(), ".cache"), "scientific-figure-library/previews/v1");
+}
+
+export interface PreviewCacheCounts {
+  total: number;
+  cached: number;
+  missing: number;
+  bytesTotal: number;
+  bytesCached: number;
+}
+
+export interface PreviewCacheFillResult extends PreviewCacheCounts {
+  filled: number;
+  failed: number;
+  errors: Array<{ path: string; message: string }>;
+}
+
+export interface PreviewCacheSourceStatus extends PreviewCacheCounts {
+  providerId: string;
+  sourceLabel: string;
+  delivery: "download" | "local";
+  filled?: number;
+  failed?: number;
+  errors?: Array<{ path: string; message: string }>;
+}
+
+export interface PreviewCacheSnapshot {
+  schema: "figure-library.local-preview-cache.v1";
+  directory: string;
+  complete: boolean;
+  downloadable: boolean;
+  sources: PreviewCacheSourceStatus[];
+}
+
+export function describePreviewCache(downloads?: PreviewDownloadStore): Promise<
+  PreviewCacheCounts & { delivery: "download" | "local" }
+> {
+  if (!downloads) {
+    return Promise.resolve({
+      delivery: "local",
+      total: 0,
+      cached: 0,
+      missing: 0,
+      bytesTotal: 0,
+      bytesCached: 0,
+    });
+  }
+  return downloads.status().then((status) => ({ delivery: "download" as const, ...status }));
+}
+
+export function previewCacheSnapshot(
+  directory: string,
+  sources: PreviewCacheSourceStatus[],
+): PreviewCacheSnapshot {
+  return {
+    schema: "figure-library.local-preview-cache.v1",
+    directory,
+    downloadable: sources.some((source) => source.delivery === "download"),
+    complete: sources.every((source) => source.delivery === "local" || source.missing === 0),
+    sources,
+  };
+}
+
+async function mapLimited<T>(items: readonly T[], limit: number, worker: (item: T) => Promise<void>) {
+  let next = 0;
+  const workers = Array.from(
+    { length: Math.max(1, Math.min(limit, items.length || 1)) },
+    async () => {
+      while (next < items.length) {
+        const index = next;
+        next += 1;
+        await worker(items[index]!);
+      }
+    },
+  );
+  await Promise.all(workers);
 }
 
 /** Explicit lightweight-package manifest. Catalog identities remain authoritative. */
@@ -63,10 +140,57 @@ export class PreviewDownloadStore {
     return new PreviewDownloadStore(manifest, options);
   }
   has(relative: string) { return this.files.has(relative); }
+  private cacheFile(identity: PreviewDownloadFile) {
+    return path.join(this.cache, identity.sha256 + path.posix.extname(identity.path).toLowerCase());
+  }
   private verify(bytes: Uint8Array, identity: PreviewDownloadFile) {
     if (bytes.byteLength !== identity.bytes || sha256(bytes) !== identity.sha256) throw new Error("Downloaded preview differs from its pinned size or SHA-256");
     assertMcpImageBytes({ bytes, mimeType: identity.mediaType, extension: path.posix.extname(identity.path).toLowerCase() });
     return bytes;
+  }
+  /** Size-only presence check for inventory; `read()` still verifies SHA-256 and image bytes. */
+  async isCached(relative: string) {
+    const identity = this.files.get(relative);
+    if (!identity) return false;
+    try {
+      const stat = await fs.lstat(this.cacheFile(identity));
+      return stat.isFile() && !stat.isSymbolicLink() && stat.size === identity.bytes;
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === "ENOENT") return false;
+      return false;
+    }
+  }
+  async status(): Promise<PreviewCacheCounts> {
+    let cached = 0;
+    let bytesCached = 0;
+    let bytesTotal = 0;
+    for (const file of this.files.values()) {
+      bytesTotal += file.bytes;
+      if (await this.isCached(file.path)) {
+        cached += 1;
+        bytesCached += file.bytes;
+      }
+    }
+    return { total: this.files.size, cached, missing: this.files.size - cached, bytesTotal, bytesCached };
+  }
+  async cacheMissing(limit = Number.POSITIVE_INFINITY, concurrency = PREVIEW_CACHE_CONCURRENCY): Promise<PreviewCacheFillResult> {
+    const missing: PreviewDownloadFile[] = [];
+    for (const file of this.files.values()) {
+      if (await this.isCached(file.path)) continue;
+      missing.push(file);
+      if (missing.length >= limit) break;
+    }
+    const errors: Array<{ path: string; message: string }> = [];
+    let filled = 0;
+    await mapLimited(missing, concurrency, async (file) => {
+      try {
+        await this.read(file.path, true);
+        filled += 1;
+      } catch (error) {
+        errors.push({ path: file.path, message: error instanceof Error ? error.message : String(error) });
+      }
+    });
+    return { ...(await this.status()), filled, failed: errors.length, errors: errors.slice(0, 8) };
   }
   async read(relative: string, allowDownload = true): Promise<Uint8Array> {
     const identity = this.files.get(relative);
@@ -74,7 +198,7 @@ export class PreviewDownloadStore {
     await fs.mkdir(this.cache, { recursive: true });
     const directory = await fs.lstat(this.cache);
     if (!directory.isDirectory() || directory.isSymbolicLink()) throw new Error("Preview cache must be a regular directory");
-    const cacheFile = path.join(this.cache, identity.sha256 + path.posix.extname(identity.path).toLowerCase());
+    const cacheFile = this.cacheFile(identity);
     try {
       const stat = await fs.lstat(cacheFile);
       if (!stat.isFile() || stat.isSymbolicLink()) throw new Error("Preview cache entry is not a regular file");

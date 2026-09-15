@@ -50,6 +50,16 @@ body.local-client { min-width: 360px; background: #f7f8f5; color: #23382d; color
 .settings-card h3 { font-size: 14px; }
 .settings-card p, .section-heading p { color: #718074; font-size: 13px; line-height: 1.8; }
 #notice, .setup-banner { border-radius: 9px; background: #e7efe3; padding: 15px 18px; margin-bottom: 22px; font-size: 13px; line-height: 1.7; }
+.setup-banner p { margin: 8px 0 12px; }
+.setup-banner button { margin-right: 8px; }
+.cache-progress { color: #56665a; min-height: 1.2em; }
+.provider-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; padding: 16px 0; border-bottom: 1px solid #e0e6de; }
+.provider-row:last-of-type { border-bottom: 0; }
+.provider-row h3 { margin: 0 0 6px; font-size: 15px; }
+.provider-row p { margin: 0; color: #718074; font-size: 12px; line-height: 1.7; }
+.provider-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
+#add-source-form { margin-top: 22px; padding-top: 18px; border-top: 1px solid #e0e6de; }
+#add-source-form h3 { margin: 0; }
 #notice.error { background: #fff0e8; color: #824125; }
 .library-items { display: grid; gap: 13px; }
 .library-row { display: flex; justify-content: space-between; align-items: center; gap: 18px; padding: 19px 22px; border: 1px solid #dfe6db; border-radius: 10px; background: #fff; }

@@ -121,6 +121,7 @@ export async function startLocalHttp(options: {
       }
       if (request.method === "GET" && url.pathname === "/api/integrations") return json(response, 200, integrationGuide({ server: path.resolve(import.meta.dirname, "index.js") }));
       if (request.method === "GET" && url.pathname === "/api/library") return json(response, 200, await service.local.library());
+      if (request.method === "GET" && url.pathname === "/api/preview-cache") return json(response, 200, await service.local.previewCache());
       if (request.method !== "POST") return json(response, 404, { error: "Unknown local client endpoint" });
       if (url.pathname === "/api/upload") {
         const filename = z.string().min(1).max(200).parse(request.headers["x-sfl-filename"]);
@@ -144,6 +145,7 @@ export async function startLocalHttp(options: {
       if (url.pathname === "/api/preview") return json(response, 200, await service.local.preview(input));
       if (url.pathname === "/api/confirm") return json(response, 200, await service.local.confirm(input));
       if (url.pathname === "/api/asset") return json(response, 200, await service.local.asset(input));
+      if (url.pathname === "/api/preview-cache") return json(response, 200, await service.local.cachePreviews(input));
       if (url.pathname === "/api/resource") {
         const { uri } = z.object({ uri: z.string().max(2_000) }).strict().parse(input);
         if (!uri.startsWith("figure-library://candidate-images/") && !uri.startsWith("figure-library://guidance/")) throw new Error("Unsupported resource");
