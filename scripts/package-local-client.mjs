@@ -4,7 +4,7 @@ import path from 'node:path';
 import os from 'node:os';
 import { promisify } from 'node:util';
 import { zipSync } from 'fflate';
-import { commonPluginFiles } from './plugin-package-lib.mjs';
+import { commonPluginFiles, assertPluginReleaseReady } from './plugin-package-lib.mjs';
 import { installRuntime, runtimeLock, sha256 } from './runtime/runtime-lib.mjs';
 
 const execFile = promisify(execFileCallback);
@@ -12,6 +12,7 @@ const root = path.resolve(import.meta.dirname, '..');
 const pkg = JSON.parse(await fs.readFile(path.join(root, 'package.json'), 'utf8'));
 const target = process.argv[2];
 const output = path.resolve(process.env.SFL_CLIENT_OUTPUT ?? path.join(root, 'release', 'local-client'));
+await assertPluginReleaseReady();
 await fs.mkdir(output, { recursive: true });
 const staging = await fs.mkdtemp(path.join(os.tmpdir(), 'sfl-client-package-'));
 async function run(command, args, options = {}) {
@@ -88,17 +89,22 @@ async function macos() {
   await payload(service);
   const sources = (await fs.readdir(path.join(root, 'desktop/macos/Sources'))).filter(file => file.endsWith('.swift')).map(file => path.join(root, 'desktop/macos/Sources', file));
   const binaries = [];
+  const launchers = [];
   for (const [arch, triple] of [['arm64', 'arm64'], ['x64', 'x86_64']]) {
     const runtimeDirectory = path.join(service, 'runtime', `darwin-${arch}`);
     const manifest = await installRuntime(`darwin-${arch}`, runtimeDirectory);
     const binary = path.join(staging, `sfl-${arch}`);
     await run('xcrun', ['swiftc', '-swift-version', '5', '-O', '-target', `${triple}-apple-macos13.0`, '-o', binary, ...sources]);
     binaries.push(binary);
+    const launcher = path.join(staging, `mcp-${arch}`);
+    await run('xcrun', ['clang', '-arch', triple, '-mmacosx-version-min=13.0', '-O2', path.join(root, 'desktop/macos/Launcher.c'), '-o', launcher]);
+    launchers.push(launcher);
     await run('codesign', ['--force', '--sign', '-', '--entitlements', path.join(root, 'desktop/macos/node-entitlements.plist'), path.join(runtimeDirectory, 'node')]);
     await fs.writeFile(path.join(runtimeDirectory, 'runtime.json'), JSON.stringify({ ...manifest, upstreamBinarySha256: manifest.binarySha256, binarySha256: sha256(await fs.readFile(path.join(runtimeDirectory, 'node'))), signing: 'ad-hoc' }, null, 2) + '\n');
   }
   await run('lipo', ['-create', ...binaries, '-output', path.join(macOS, 'ScientificFigureLibrary')]);
-  await fs.writeFile(path.join(macOS, 'sfl-mcp'), '#!/bin/sh\nSFL_ROOT="$(CDPATH= cd -- "$(dirname -- "$0")/../Resources/sfl" && pwd)"\ncase "$(uname -m)" in arm64) SFL_ARCH=arm64 ;; *) SFL_ARCH=x64 ;; esac\nexec "$SFL_ROOT/runtime/darwin-$SFL_ARCH/node" "$SFL_ROOT/dist/index.js" "$@"\n', { mode: 0o755 });
+  await run('lipo', ['-create', ...launchers, '-output', path.join(macOS, 'sfl-mcp')]);
+  await run('codesign', ['--force', '--sign', '-', path.join(macOS, 'sfl-mcp')]);
   const icon = path.join(staging, 'icon.png');
   await run('xcrun', ['swift', path.join(root, 'desktop/macos/Icon.swift'), icon]);
   const iconset = path.join(staging, 'AppIcon.iconset');
