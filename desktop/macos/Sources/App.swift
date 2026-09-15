@@ -24,6 +24,7 @@ import AppKit
         WindowGroup("Scientific Figure Library") {
             RootView(model: model).task {
                 appDelegate.backend = model.backend
+                nativeSmokeLog("start application")
                 await model.start()
                 if ProcessInfo.processInfo.environment["SFL_NATIVE_SMOKE"] == "1" {
                     await runNativeSmoke(model: model)

@@ -28,6 +28,7 @@ let libraryGreen = Color(red: 0.14, green: 0.42, blue: 0.30)
                     }
                 }
             }
+            .background(Color(NSColor.windowBackgroundColor))
             .navigationTitle((model.section ?? .discover).rawValue)
             .toolbar { if model.busy { ProgressView().controlSize(.small) }; Button { model.perform { try await model.status(); if model.section == .library { try await model.loadLibrary() } } } label: { Image(systemName: "arrow.clockwise") }.help("刷新").disabled(!model.ready || model.busy) }
         }

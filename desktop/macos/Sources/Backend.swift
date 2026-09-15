@@ -60,21 +60,30 @@ func sha256(_ data: Data) -> String { SHA256.hash(data: data).map { String(forma
         if ready { return }
         guard let root = Bundle.main.resourceURL?.appendingPathComponent("sfl") else { throw LocalError(message: "安装包缺少后端目录") }
         guard let launcher = Bundle.main.executableURL?.deletingLastPathComponent().appendingPathComponent("sfl-mcp") else { throw LocalError(message: "安装包缺少启动器") }
-        let resolver = Process()
-        resolver.executableURL = launcher
-        resolver.arguments = ["--sfl-node-path"]
         var resolverEnvironment = ProcessInfo.processInfo.environment
         if resolverEnvironment["SFL_NODE_BINARY"] == nil, let selected = UserDefaults.standard.string(forKey: "SFLNodeBinary") { resolverEnvironment["SFL_NODE_BINARY"] = selected }
-        resolver.environment = resolverEnvironment
-        let resolvedOutput = Pipe(), resolvedError = Pipe()
-        resolver.standardOutput = resolvedOutput
-        resolver.standardError = resolvedError
-        try resolver.run()
-        let nodeData = try await resolvedOutput.fileHandleForReading.bytes.reduce(into: Data()) { $0.append($1) }
-        resolver.waitUntilExit()
-        let message = String(data: resolvedError.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? "Node.js 22+ 检查失败"
-        guard resolver.terminationStatus == 0, let nodePath = String(data: nodeData, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines), nodePath.hasPrefix("/") else { throw LocalError(message: message) }
+        nativeSmokeLog("resolve runtime")
+        // The resolver emits only a bounded path/error. Wait off the main actor;
+        // do not depend on asynchronous EOF delivery for this short-lived process.
+        let resolved = try await Task.detached { () throws -> (Int32, String, String) in
+            let resolver = Process()
+            resolver.executableURL = launcher
+            resolver.arguments = ["--sfl-node-path"]
+            resolver.environment = resolverEnvironment
+            resolver.standardInput = FileHandle.nullDevice
+            let output = Pipe(), errors = Pipe()
+            resolver.standardOutput = output
+            resolver.standardError = errors
+            try resolver.run()
+            resolver.waitUntilExit()
+            return (resolver.terminationStatus,
+                    String(data: output.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? "",
+                    String(data: errors.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? "Node.js 22+ 检查失败")
+        }.value
+        let nodePath = resolved.1.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard resolved.0 == 0, nodePath.hasPrefix("/") else { throw LocalError(message: resolved.2) }
         let node = URL(fileURLWithPath: nodePath)
+        nativeSmokeLog("start backend")
         let child = Process()
         child.executableURL = node
         child.arguments = [root.appendingPathComponent("dist/index.js").path, "--local", "--no-open"]
@@ -100,6 +109,7 @@ func sha256(_ data: Data) -> String { SHA256.hash(data: data).map { String(forma
               !launch["token"].string.isEmpty else { child.terminate(); throw LocalError(message: "本地服务返回了无效的连接信息") }
         origin = url
         token = launch["token"].string
+        nativeSmokeLog("backend ready")
         ready = true
         startupError = nil
     }

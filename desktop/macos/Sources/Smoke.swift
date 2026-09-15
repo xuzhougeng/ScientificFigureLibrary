@@ -1,6 +1,10 @@
 import Foundation
 import AppKit
 
+func nativeSmokeLog(_ stage: String) {
+    if ProcessInfo.processInfo.environment["SFL_NATIVE_SMOKE"] == "1" { fputs("Native smoke: \(stage)\n", stderr) }
+}
+
 @MainActor func runNativeSmoke(model: LibraryModel) async {
     let environment = ProcessInfo.processInfo.environment
     guard let rawRoot = environment["SFL_SMOKE_ROOT"], URL(fileURLWithPath: rawRoot).lastPathComponent.hasPrefix("sfl-native-smoke-"),
@@ -12,6 +16,7 @@ import AppKit
     func require(_ condition: Bool, _ message: String) throws { if !condition { throw LocalError(message: message) } }
     do {
         try require(model.ready, model.error ?? "Native backend did not start")
+        nativeSmokeLog("connection guide and bindings")
         let backend = model.backend
         let connection = try await backend.request("connection")
         model.integrations = try await backend.request("integrations")
@@ -28,6 +33,7 @@ import AppKit
         _ = try await backend.call("figure_library_apply_bind_global", ["planDigest": global["plan"]["planDigest"], "operationId": text("native-smoke-bind")], approve: true)
         let workspace = try await backend.call("figure_library_plan_bind_workspace", ["workspaceDirectory": text(rawRoot + "/workspace")])
         _ = try await backend.call("figure_library_apply_bind_workspace", ["planDigest": workspace["plan"]["planDigest"], "operationId": text("native-smoke-workspace")], approve: true)
+        nativeSmokeLog("download previews")
         for providerID in ["org.figureya.module", "io.github.jarxunlai.personal-figures"] {
             try model.display(await backend.request("call", object(["name": text("figure_library_search"), "arguments": object(["query": text("heatmap"), "providerIds": .array([text(providerID)]), "limit": .integer(1)])])))
             let found = model.result
@@ -39,6 +45,7 @@ import AppKit
         }
         let cachedImages = try FileManager.default.contentsOfDirectory(atPath: environment["SFL_PREVIEW_CACHE_DIR"]!)
         try require(cachedImages.count == 3, "Only requested images should be downloaded")
+        nativeSmokeLog("import and publish")
         let imageURL = root.appendingPathComponent("reference.png")
         let codeURL = root.appendingPathComponent("plot.R")
         try Data(base64Encoded: "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=")!.write(to: imageURL)
@@ -51,6 +58,7 @@ import AppKit
         guard case .plan(let publication)? = model.sheet else { throw LocalError(message: "Native publish did not create a plan") }
         try await model.apply(publication)
         model.section = .discover
+        nativeSmokeLog("local search and materialization")
         model.query = "sflnativefixture"
         model.provider = "org.scientificfigurelibrary.local"
         try await model.search()
@@ -73,6 +81,7 @@ import AppKit
             view.cacheDisplay(in: view.bounds, to: image)
             try image.representation(using: .png, properties: [:])?.write(to: root.appendingPathComponent("native-window.png"))
         }
+        nativeSmokeLog("capture integration page")
         model.section = .integrations
         try await Task.sleep(nanoseconds: 200_000_000)
         view.layoutSubtreeIfNeeded()
@@ -82,13 +91,15 @@ import AppKit
         }
         let report = object(["status": text("passed"), "nativeWindow": .bool(true), "privateRuntime": .bool(environment["SFL_RUNTIME_MODE"] != "system"), "runtimeMode": text(environment["SFL_RUNTIME_MODE"] ?? "bundled"), "syntheticUserActions": .bool(true), "flows": .array(["integrationGuide", "downloadedThumbnails", "downloadedExactPreviews", "onDemandCache", "binding", "upload", "import", "publish", "search", "imageDecode", "localConfirmation", "materialize", "replay"].map(text))])
         try Data(report.pretty.utf8).write(to: root.appendingPathComponent("native-smoke.json"))
+        nativeSmokeLog("shutdown")
         _ = await backend.shutdown()
+        nativeSmokeLog("terminate application")
         NSApplication.shared.terminate(nil)
     } catch {
         let report = object(["status": text("failed"), "error": text(error.localizedDescription)])
         try? Data(report.pretty.utf8).write(to: root.appendingPathComponent("native-smoke.json"))
-        _ = await model.backend.shutdown()
         fputs("Native smoke failed: \(error.localizedDescription)\n", stderr)
+        _ = await model.backend.shutdown()
         exit(1)
     }
 }
