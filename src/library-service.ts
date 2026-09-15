@@ -79,6 +79,7 @@ import {
   type PreviewCacheFillResult,
   type PreviewCacheSourceStatus,
 } from "./preview-downloads.ts";
+import { applyStoredHttpsProxy } from "./https-proxy.ts";
 import { VERSION } from "./version.ts";
 import { outcome, terminal } from "./tool-outcome.ts";
 import { defineGuidanceOperations } from "./guidance.ts";
@@ -529,6 +530,7 @@ export interface LibraryServiceOptions {
 }
 
 export async function createLibraryService(options: LibraryServiceOptions = {}) {
+  await applyStoredHttpsProxy();
   const operations = new OperationRegistry();
   const index = await CatalogIndex.load();
   const providerController = options.registry

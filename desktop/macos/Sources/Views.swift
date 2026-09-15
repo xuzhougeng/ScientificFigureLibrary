@@ -248,6 +248,12 @@ let libraryGreen = Color(red: 0.14, green: 0.42, blue: 0.30)
                 Text("目录跨项目共享；更改绑定前会显示具体计划。").foregroundStyle(.secondary)
                 Button("检查并确认目录") { model.perform { try await model.bind() } }.disabled(model.busy || model.libraryDirectory.isEmpty || model.workspaceDirectory.isEmpty)
             }
+            SwiftUI.Section("GitHub 访问") {
+                Text("若直连 GitHub 超时，可设置本机回环 HTTP 代理（CONNECT）。目标仍是 GitHub 的 HTTPS 地址，下载后按 SHA-256 校验。").foregroundStyle(.secondary)
+                TextField("本地 HTTPS 代理", text: $model.httpsProxy, prompt: Text("http://127.0.0.1:7890"))
+                if !model.httpsProxySource.isEmpty { Text(model.httpsProxySource).font(.caption).foregroundStyle(.secondary) }
+                Button("保存代理") { model.perform { try await model.saveHttpsProxy() } }.disabled(model.busy)
+            }
             SwiftUI.Section("图片来源") {
                 Text("内置来源可缓存预览图。手动添加的签名来源会下载并缓存目录快照，之后可更新。").foregroundStyle(.secondary)
                 if !model.cacheProgress.isEmpty { Text(model.cacheProgress).foregroundStyle(.secondary) }

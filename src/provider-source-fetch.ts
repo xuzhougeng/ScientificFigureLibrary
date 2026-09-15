@@ -4,6 +4,8 @@ import { lookup as dnsLookup } from "node:dns/promises";
 import https from "node:https";
 import net from "node:net";
 import path from "node:path";
+import tls from "node:tls";
+import { openLoopbackProxyTunnel, resolveHttpsProxy, type LoopbackHttpProxy } from "./https-proxy.ts";
 import { unzipSync, type UnzipFileInfo } from "fflate";
 import { PNG } from "pngjs";
 import { canonicalJson } from "./canonical-json.ts";
@@ -293,9 +295,40 @@ function headerValue(headers: RawHttpsResponse["headers"], name: string) {
   return found;
 }
 
+async function tlsThroughProxy(
+  proxy: LoopbackHttpProxy,
+  hostname: string,
+  port: number,
+  options: SecureHttpsRequestOptions,
+) {
+  const socket = await openLoopbackProxyTunnel({
+    proxy,
+    hostname,
+    port,
+    timeoutMs: options.timeoutMs,
+    signal: options.signal,
+  });
+  return new Promise<tls.TLSSocket>((resolve, reject) => {
+    const tlsSocket = tls.connect({ socket, servername: hostname });
+    const fail = (error: Error) => {
+      tlsSocket.destroy();
+      socket.destroy();
+      reject(error);
+    };
+    tlsSocket.once("secureConnect", () => resolve(tlsSocket));
+    tlsSocket.once("error", fail);
+    options.signal?.addEventListener("abort", () => fail(new Error("provider source HTTPS request was aborted")), { once: true });
+    if (options.signal?.aborted) fail(new Error("provider source HTTPS request was aborted"));
+  });
+}
+
 async function defaultHttpsRequest(url: URL, options: SecureHttpsRequestOptions) {
   const selected = options.addresses[0];
-  if (!selected) throw new Error("provider source DNS resolution returned no address");
+  const proxy = resolveHttpsProxy();
+  if (!proxy && !selected) throw new Error("provider source DNS resolution returned no address");
+  const hostname = url.hostname.replace(/^\[|\]$/gu, "");
+  const port = url.port ? Number(url.port) : 443;
+  const proxied = proxy ? await tlsThroughProxy(proxy, hostname, port, options) : undefined;
   return new Promise<RawHttpsResponse>((resolve, reject) => {
     let settled = false;
     let responseEnded = false;
@@ -315,7 +348,7 @@ async function defaultHttpsRequest(url: URL, options: SecureHttpsRequestOptions)
           "Accept-Encoding": "identity",
           "User-Agent": "ScientificFigureLibrary-provider-source/0.6",
         },
-        lookup: pinnedAddressLookup(selected),
+        ...(proxied ? { createConnection: () => proxied } : { lookup: pinnedAddressLookup(selected!) }),
       },
       (response) => {
         const chunks: Buffer[] = [];
@@ -384,12 +417,13 @@ function promiseWithTimeout<T>(
 export class SecureProviderSourceFetcher {
   private readonly lookup: ProviderSourceLookup;
   private readonly request: ProviderSourceHttpsRequest;
+  private readonly useEnvProxy: boolean;
   private readonly timeoutMs: number;
   private readonly maxRedirects: number;
-
   constructor(options: SecureProviderSourceFetcherOptions = {}) {
     this.lookup = options.lookup ?? defaultLookup;
     this.request = options.request ?? defaultHttpsRequest;
+    this.useEnvProxy = options.request == null;
     this.timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
     this.maxRedirects = options.maxRedirects ?? DEFAULT_REDIRECTS;
     if (!Number.isSafeInteger(this.timeoutMs) || this.timeoutMs < 100 || this.timeoutMs > 120_000) {
@@ -411,15 +445,24 @@ export class SecureProviderSourceFetcher {
       if (visited.has(current.href)) throw new Error("provider source redirect loop detected");
       visited.add(current.href);
       accessUrls.push(current.href);
-      const addresses = await promiseWithTimeout(
-        this.lookup(current.hostname.replace(/^\[|\]$/gu, "")),
-        this.timeoutMs,
-        "provider source DNS lookup",
-      );
+      const proxy = this.useEnvProxy ? resolveHttpsProxy() : undefined;
+      const host = current.hostname.replace(/^\[|\]$/gu, "");
+      if (net.isIP(host) && !isGloballyRoutableAddress(host)) {
+        throw new Error(`provider source resolved to a non-public address: ${host}`);
+      }
+      const addresses = proxy
+        ? [{ address: "0.0.0.0", family: 4 as const }]
+        : await promiseWithTimeout(
+            this.lookup(host),
+            this.timeoutMs,
+            "provider source DNS lookup",
+          );
       if (!addresses.length) throw new Error("provider source DNS resolution returned no address");
-      for (const address of addresses) {
-        if ((address.family !== 4 && address.family !== 6) || !isGloballyRoutableAddress(address.address)) {
-          throw new Error(`provider source resolved to a non-public address: ${address.address}`);
+      if (!proxy) {
+        for (const address of addresses) {
+          if ((address.family !== 4 && address.family !== 6) || !isGloballyRoutableAddress(address.address)) {
+            throw new Error(`provider source resolved to a non-public address: ${address.address}`);
+          }
         }
       }
       const abortController = new AbortController();
