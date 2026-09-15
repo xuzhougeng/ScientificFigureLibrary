@@ -4,6 +4,7 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
+import { pathToFileURL } from "node:url";
 import { PreviewDownloadStore, PREVIEW_DOWNLOAD_MANIFEST, type PreviewDownloadFile } from "../src/preview-downloads.ts";
 import { CatalogIndex } from "../src/catalog.ts";
 import { ModuleCatalogIndex } from "../src/module-catalog.ts";
@@ -102,7 +103,7 @@ test("lightweight FigureYa and module catalogs search without image I/O and fetc
   const { dir, cacheDirectory } = await fixture(t);
   // Use the same payload descriptors as the installer, without copying any gallery image.
   const script = path.join(root, "scripts/preview-download-manifest.mjs");
-  const { previewDownloadManifests } = await import(script);
+  const { previewDownloadManifests } = await import(pathToFileURL(script).href);
   const { manifests, excluded } = await previewDownloadManifests(root, "xuzhougeng/ScientificFigureLibrary", "a".repeat(40));
   assert.equal(excluded.size, 388);
   for (const relative of ["assets/catalog.json", "assets/figureya-preview.manifest.json", ...["module-catalog.json", "module-preview.manifest.json", "module-source-pack.manifest.json", "PERSONAL_MODULES_LICENSE.txt"].map(name => "assets/personal-modules/" + name)]) {
