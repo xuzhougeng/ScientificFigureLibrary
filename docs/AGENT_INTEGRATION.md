@@ -87,7 +87,7 @@ Data URL 上限。返回数据分别记录原始缩略图哈希和传输图片�
 
 本地客户端的平台方向已确定：macOS 原生 SwiftUI；Windows 随插件携带 `node.exe`，
 启动本地服务并打开 Web 页面。两端共用现有 TypeScript/Node 后端与一个核心 Skill。
-0.8.1 已提供独立界面、浏览器连接和运行时分发，并同时提供内置 Node 与复用本机 Node.js 22+ 的安装包。两端的“连接外部工具”页面提供实际路径的 MCP 配置、CLI 命令、核心 Skill 加载方法和验证指令；见 [安装说明](INSTALL_LOCAL.md#外部-mcp-与-skill)。
+0.8.0 已提供独立界面、浏览器连接和运行时分发，并同时提供内置 Node 与复用本机 Node.js 22+ 的安装包。两端的“连接外部工具”页面提供实际路径的 MCP 配置、CLI 命令、核心 Skill 加载方法和验证指令；见 [安装说明](INSTALL_LOCAL.md#外部-mcp-与-skill)。
 
 当前各宿主可启动自己的 stdio MCP 进程并显式绑定同一全局 Library，但各进程拥有
 独立会话。结果集、challenge、receipt 和待应用计划不得跨进程传递；选图到 Apply
