@@ -51,18 +51,28 @@ import {
   searchPerImageBudget,
   singlePreviewBudget,
 } from "./transport-image.ts";
-import { assertExactTemplateSelector, exactSelectorDigest } from "./providers.ts";
+import { assertExactTemplateSelector, exactSelectorDigest, FIGUREYA_PROVIDER_ID } from "./providers.ts";
 import {
   PERSONAL_MODULE_PROVIDER_ID,
   LOCAL_LIBRARY_PROVIDER_ID,
 } from "./providers.ts";
+import {
+  clearPreviewCache,
+  inspectPreviewCache,
+  prefetchPreviewCache,
+  type PreviewCacheGallery,
+} from "./preview-downloads.ts";
+import { OFFICIAL_OPEN_FIGURE_MANIFEST_URL } from "./open-figure-official-channel.ts";
 import { COMMUNITY_PROVIDER_ID } from "./public-catalog-provider.ts";
 import {
   createDefaultProviderRegistry,
   createProviderContext,
   UnavailableProviderAdapter,
+  type MutableProviderRegistry,
   type ProviderRegistry,
 } from "./provider-registry.ts";
+import { BundledProviderPreferenceStore } from "./bundled-provider-preferences.ts";
+import { loadNetworkAccess } from "./network-access.ts";
 import type {
   ExactTemplateSelector,
   SearchRequest,
@@ -531,6 +541,13 @@ export async function createLibraryService(options: LibraryServiceOptions = {}) 
       });
   providerController?.officialOpenFigure?.refreshOnProcessStart();
   const registry = options.registry ?? providerController?.registry ?? createDefaultProviderRegistry();
+  const bundledPreferences = providerController?.bundledPreferences ?? (
+    "applyEnabledOverrides" in registry
+      ? new BundledProviderPreferenceStore({ registry: registry as MutableProviderRegistry })
+      : undefined
+  );
+  if (!providerController) await bundledPreferences?.load();
+  await loadNetworkAccess();
   const providerSourceManager =
     options.providerSourceManager ?? providerController?.manager ?? new ProviderSourceManager();
   const liveModuleCatalogs = () => providerController?.getModuleCatalogs();
@@ -582,6 +599,22 @@ export async function createLibraryService(options: LibraryServiceOptions = {}) 
     receiptRequired: true,
   };
   await defineGuidanceOperations(operations, hostIntegrationCapabilities);
+
+  const downloadableGalleries = (): PreviewCacheGallery[] => {
+    const galleries: PreviewCacheGallery[] = [];
+    if (index.previewDownloads) {
+      galleries.push({ providerId: FIGUREYA_PROVIDER_ID, sourceLabel: "FigureYa", store: index.previewDownloads });
+    }
+    for (const catalog of liveModuleCatalogs()?.values() ?? []) {
+      if (!catalog.previewDownloads) continue;
+      galleries.push({
+        providerId: catalog.catalog.provider.providerId,
+        sourceLabel: catalog.catalog.provider.displayName,
+        store: catalog.previewDownloads,
+      });
+    }
+    return galleries;
+  };
 
   const requireSearchState = async (resultSetId: string) => {
     const state = searchSessions.get(resultSetId);
@@ -2186,6 +2219,7 @@ export async function createLibraryService(options: LibraryServiceOptions = {}) 
     operations,
     manager: providerSourceManager,
     officialOpenFigure: providerController?.officialOpenFigure,
+    bundledPreferences,
     builtInSources: async () => {
       const descriptors = registry
         .list()
@@ -2209,11 +2243,9 @@ export async function createLibraryService(options: LibraryServiceOptions = {}) 
             : typeof details.catalogTemplates === "number"
               ? details.catalogTemplates
               : undefined;
+        const official = descriptor.kind === "module-catalog" && descriptor.providerId === PERSONAL_MODULE_PROVIDER_ID;
         return {
-          sourceKind:
-            descriptor.kind === "module-catalog" && descriptor.providerId === PERSONAL_MODULE_PROVIDER_ID
-              ? "official-signed-overlay"
-              : descriptor.kind,
+          sourceKind: official ? "official-signed-overlay" : descriptor.kind,
           providerId: descriptor.providerId,
           sourceLabel: descriptor.sourceLabel,
           enabled: descriptor.enabled !== false,
@@ -2222,6 +2254,7 @@ export async function createLibraryService(options: LibraryServiceOptions = {}) 
           frozen: descriptor.frozen === true,
           health: status?.health ?? "degraded",
           ...(templateCount !== undefined ? { templateCount } : {}),
+          ...(official ? { manifestUrl: OFFICIAL_OPEN_FIGURE_MANIFEST_URL, autoRefreshEnabled: details.autoRefreshEnabled === true } : {}),
           ...(status ? { details: status.details } : { errorCode: "library_context_unavailable" }),
         };
       });
@@ -2259,6 +2292,12 @@ export async function createLibraryService(options: LibraryServiceOptions = {}) 
       confirm: (input: unknown) => operations.run(() => localOperations.confirm(input)),
       library: () => operations.run(() => localOperations.library()),
       asset: (input: unknown) => operations.run(() => localOperations.asset(input)),
+      previewCache: () => operations.run(() => inspectPreviewCache({ galleries: downloadableGalleries() })),
+      prefetchPreviewCache: (providerId: string) => operations.run(() => prefetchPreviewCache(providerId, downloadableGalleries())),
+      clearPreviewCache: () => operations.run(async () => {
+        const cleared = await clearPreviewCache();
+        return { ...await inspectPreviewCache({ galleries: downloadableGalleries() }), removed: cleared.removed, bytesFreed: cleared.bytesFreed };
+      }),
     },
     execute: (name: string, input: unknown = {}) => operations.execute(name, input),
     readResource: (uri: string) => operations.readResource(uri),

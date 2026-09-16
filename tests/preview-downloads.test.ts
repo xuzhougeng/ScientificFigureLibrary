@@ -5,7 +5,7 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 import { pathToFileURL } from "node:url";
-import { PreviewDownloadStore, PREVIEW_DOWNLOAD_MANIFEST, clearPreviewCache, inspectPreviewCache, type PreviewDownloadFile } from "../src/preview-downloads.ts";
+import { PreviewDownloadStore, PREVIEW_DOWNLOAD_MANIFEST, clearPreviewCache, inspectPreviewCache, prefetchPreviewCache, type PreviewDownloadFile } from "../src/preview-downloads.ts";
 import { CatalogIndex } from "../src/catalog.ts";
 import { ModuleCatalogIndex } from "../src/module-catalog.ts";
 
@@ -109,6 +109,7 @@ test("preview cache status lists only hashed image files and clear leaves unrela
   assert.equal(status.exists, true);
   assert.equal(status.fileCount, 1);
   assert.equal(status.bytes, png.length);
+  assert.deepEqual(status.galleries, []);
   const cleared = await clearPreviewCache();
   assert.equal(cleared.removed, 1);
   assert.equal(cleared.bytesFreed, png.length);
@@ -127,9 +128,41 @@ test("missing preview cache reports empty status without creating the directory"
   const status = await inspectPreviewCache();
   assert.equal(status.exists, false);
   assert.equal(status.fileCount, 0);
+  assert.deepEqual(status.galleries, []);
   await assert.rejects(fs.lstat(missing), { code: "ENOENT" });
   const cleared = await clearPreviewCache();
   assert.equal(cleared.removed, 0);
+});
+
+test("prefetch downloads only the selected gallery, skips cached files, and reports failed identities", async t => {
+  const { dir, cacheDirectory } = await fixture(t);
+  const other = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==", "base64");
+  const extra: PreviewDownloadFile = { path: "previews/other.png", bytes: other.length, sha256: hash(other), mediaType: "image/png" };
+  const broken: PreviewDownloadFile = { path: "previews/broken.png", bytes: png.length, sha256: "b".repeat(64), mediaType: "image/png" };
+  await fs.writeFile(path.join(dir, PREVIEW_DOWNLOAD_MANIFEST), JSON.stringify(manifest([file, extra, broken])));
+  const requested: string[] = [];
+  const store = (await PreviewDownloadStore.load(dir, "test", [file, extra, broken], {
+    cacheDirectory,
+    fetcher: { fetch: async (url) => {
+      requested.push(url);
+      if (url.endsWith("broken.png")) return reply(url, png);
+      if (url.endsWith("other.png")) return reply(url, other);
+      return reply(url, png);
+    } },
+  }))!;
+  await store.read(file.path);
+  const inspected = await inspectPreviewCache({ galleries: [{ providerId: "test", sourceLabel: "Test gallery", store }] });
+  assert.equal(inspected.galleries[0]?.declared, 3);
+  assert.equal(inspected.galleries[0]?.cached, 1);
+  assert.equal(inspected.galleries[0]?.missing, 2);
+  const result = await prefetchPreviewCache("test", [{ providerId: "test", sourceLabel: "Test gallery", store }]);
+  assert.equal(result.prefetch.alreadyCached, 1);
+  assert.equal(result.prefetch.downloaded, 1);
+  assert.equal(result.prefetch.failed, 1);
+  assert.equal(result.prefetch.failures[0]?.path, broken.path);
+  assert.equal(result.galleries[0]?.cached, 2);
+  assert.equal(requested.filter((url) => url.endsWith("test.png")).length, 1);
+  await assert.rejects(prefetchPreviewCache("other", [{ providerId: "test", sourceLabel: "Test gallery", store }]), /没有可按需下载/u);
 });
 
 test("preview cache refuses symlink entries", { skip: process.platform === "win32" }, async t => {

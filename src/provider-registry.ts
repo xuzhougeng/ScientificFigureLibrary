@@ -200,6 +200,7 @@ export interface ProviderRegistry {
 
 export interface MutableProviderRegistry extends ProviderRegistry {
   replaceProviders(providerIdsToRemove: Iterable<string>, adapters: ProviderAdapter[]): void;
+  applyEnabledOverrides(enabled: ReadonlyMap<string, boolean>): void;
 }
 
 const DISPLAY_MIME_TYPES = new Set(["image/png", "image/jpeg", "image/webp"]);
@@ -1287,6 +1288,7 @@ export class UnavailableProviderAdapter implements ProviderAdapter {
 
 export class DefaultProviderRegistry implements ProviderRegistry {
   readonly #adapters: Map<string, ProviderAdapter>;
+  #enabledOverrides = new Map<string, boolean>();
 
   constructor(adapters: ProviderAdapter[]) {
     this.#adapters = new Map();
@@ -1306,9 +1308,19 @@ export class DefaultProviderRegistry implements ProviderRegistry {
     }
   }
 
+  applyEnabledOverrides(enabled: ReadonlyMap<string, boolean>) {
+    this.#enabledOverrides = new Map(enabled);
+  }
+
+  private descriptor(adapter: ProviderAdapter): ProviderDescriptor {
+    const enabled = this.#enabledOverrides.get(adapter.descriptor.providerId);
+    if (enabled === undefined) return { ...adapter.descriptor };
+    return { ...adapter.descriptor, enabled };
+  }
+
   list() {
     return [...this.#adapters.values()]
-      .map((adapter) => ({ ...adapter.descriptor }))
+      .map((adapter) => this.descriptor(adapter))
       .sort(
         (left, right) =>
           left.defaultSearchOrder - right.defaultSearchOrder ||

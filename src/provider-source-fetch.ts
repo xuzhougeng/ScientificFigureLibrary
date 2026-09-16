@@ -1,9 +1,12 @@
 import { createHash, createPublicKey, verify } from "node:crypto";
 import type { LookupAddress, LookupOptions } from "node:dns";
 import { lookup as dnsLookup } from "node:dns/promises";
+import http from "node:http";
 import https from "node:https";
 import net from "node:net";
+import tls from "node:tls";
 import path from "node:path";
+import { getActiveHttpsProxy, parseLoopbackHttpProxy } from "./network-access.ts";
 import { unzipSync, type UnzipFileInfo } from "fflate";
 import { PNG } from "pngjs";
 import { canonicalJson } from "./canonical-json.ts";
@@ -116,6 +119,7 @@ export interface SecureHttpsRequestOptions {
   timeoutMs: number;
   maxBytes: number;
   signal?: AbortSignal;
+  proxy?: string;
 }
 
 export type ProviderSourceLookup = (hostname: string) => Promise<PinnedAddress[]>;
@@ -293,7 +297,100 @@ function headerValue(headers: RawHttpsResponse["headers"], name: string) {
   return found;
 }
 
+async function httpsViaConnect(url: URL, proxyHref: string, options: SecureHttpsRequestOptions) {
+  const proxy = new URL(parseLoopbackHttpProxy(proxyHref));
+  const port = url.port ? Number(url.port) : 443;
+  return new Promise<RawHttpsResponse>((resolve, reject) => {
+    let settled = false;
+    const finish = (callback: () => void) => {
+      if (settled) return;
+      settled = true;
+      options.signal?.removeEventListener("abort", abortConnect);
+      callback();
+    };
+    const connect = http.request({
+      host: "127.0.0.1",
+      port: Number(proxy.port) || 80,
+      method: "CONNECT",
+      path: `${url.hostname}:${port}`,
+      headers: { Host: `${url.hostname}:${port}` },
+      timeout: options.timeoutMs,
+    });
+    const abortConnect = () => connect.destroy(new Error("provider source HTTPS request was aborted"));
+    options.signal?.addEventListener("abort", abortConnect, { once: true });
+    if (options.signal?.aborted) abortConnect();
+    connect.on("connect", (response, socket, head) => {
+      if ((response.statusCode ?? 0) !== 200) {
+        socket.destroy();
+        finish(() => reject(new Error(`proxy CONNECT failed with status ${response.statusCode}`)));
+        return;
+      }
+      if (head.length) socket.unshift(head);
+      const tlsSocket = tls.connect({ socket, servername: url.hostname }, () => {
+        void requestOverSocket(url, tlsSocket, options, finish, resolve, reject);
+      });
+      tlsSocket.on("error", (error) => finish(() => reject(error)));
+    });
+    connect.on("timeout", () => connect.destroy(new Error(`provider source request timed out after ${options.timeoutMs}ms`)));
+    connect.on("error", (error) => finish(() => reject(error)));
+    connect.end();
+  });
+}
+
+function requestOverSocket(
+  url: URL,
+  socket: tls.TLSSocket,
+  options: SecureHttpsRequestOptions,
+  finish: (callback: () => void) => void,
+  resolve: (value: RawHttpsResponse) => void,
+  reject: (error: Error) => void,
+) {
+  let responseEnded = false;
+  const abort = () => socket.destroy(new Error("provider source HTTPS request was aborted"));
+  const request = https.request(
+    url,
+    {
+      method: "GET",
+      createConnection: () => socket,
+      headers: {
+        Accept: "application/json, application/octet-stream;q=0.9",
+        "Accept-Encoding": "identity",
+        "User-Agent": "ScientificFigureLibrary-provider-source/0.6",
+      },
+    },
+    (response) => {
+      const chunks: Buffer[] = [];
+      let bytes = 0;
+      response.on("data", (chunk: Buffer) => {
+        bytes += chunk.byteLength;
+        if (bytes > options.maxBytes) {
+          request.destroy(new Error(`provider source response exceeds ${options.maxBytes} bytes`));
+        } else chunks.push(Buffer.from(chunk));
+      });
+      response.on("end", () => {
+        responseEnded = true;
+        finish(() => resolve({
+          statusCode: response.statusCode ?? 0,
+          headers: response.headers,
+          body: new Uint8Array(Buffer.concat(chunks)),
+        }));
+      });
+      response.on("error", (error) => finish(() => reject(error)));
+      response.on("close", () => {
+        if (!responseEnded) finish(() => reject(new Error("provider source HTTPS response closed before completion")));
+      });
+    },
+  );
+  options.signal?.addEventListener("abort", abort, { once: true });
+  request.setTimeout(options.timeoutMs, () => {
+    request.destroy(new Error(`provider source request timed out after ${options.timeoutMs}ms`));
+  });
+  request.on("error", (error) => finish(() => reject(error)));
+  request.end();
+}
+
 async function defaultHttpsRequest(url: URL, options: SecureHttpsRequestOptions) {
+  if (options.proxy) return httpsViaConnect(url, options.proxy, options);
   const selected = options.addresses[0];
   if (!selected) throw new Error("provider source DNS resolution returned no address");
   return new Promise<RawHttpsResponse>((resolve, reject) => {
@@ -411,24 +508,29 @@ export class SecureProviderSourceFetcher {
       if (visited.has(current.href)) throw new Error("provider source redirect loop detected");
       visited.add(current.href);
       accessUrls.push(current.href);
-      const addresses = await promiseWithTimeout(
-        this.lookup(current.hostname.replace(/^\[|\]$/gu, "")),
-        this.timeoutMs,
-        "provider source DNS lookup",
-      );
-      if (!addresses.length) throw new Error("provider source DNS resolution returned no address");
-      for (const address of addresses) {
-        if ((address.family !== 4 && address.family !== 6) || !isGloballyRoutableAddress(address.address)) {
-          throw new Error(`provider source resolved to a non-public address: ${address.address}`);
+      const proxy = getActiveHttpsProxy();
+      let addresses: PinnedAddress[] = [];
+      if (!proxy) {
+        addresses = await promiseWithTimeout(
+          this.lookup(current.hostname.replace(/^\[|\]$/gu, "")),
+          this.timeoutMs,
+          "provider source DNS lookup",
+        );
+        if (!addresses.length) throw new Error("provider source DNS resolution returned no address");
+        for (const address of addresses) {
+          if ((address.family !== 4 && address.family !== 6) || !isGloballyRoutableAddress(address.address)) {
+            throw new Error(`provider source resolved to a non-public address: ${address.address}`);
+          }
         }
       }
       const abortController = new AbortController();
       const response = await promiseWithTimeout(
         this.request(current, {
-          addresses: addresses.map((value) => ({ ...value })),
+          addresses: proxy ? [{ address: "127.0.0.1", family: 4 }] : addresses.map((value) => ({ ...value })),
           timeoutMs: this.timeoutMs,
           maxBytes: options.maxBytes,
           signal: abortController.signal,
+          ...(proxy ? { proxy } : {}),
         }),
         this.timeoutMs,
         "provider source HTTPS request",

@@ -12,10 +12,12 @@ import { createDefaultProviderRegistry } from "../src/provider-registry.ts";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { createServer } from "../src/server.ts";
+import { resetNetworkAccessForTests } from "../src/network-access.ts";
 
 const png = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=", "base64");
 const hash = (value: Uint8Array) => createHash("sha256").update(value).digest("hex");
 function record(value: unknown): Record<string, unknown> { assert.ok(value && typeof value === "object" && !Array.isArray(value)); return value as Record<string, unknown>; }
+function records(value: unknown) { return Array.isArray(value) ? value.map(record) : []; }
 const data = (value: unknown) => record(record(value).structuredContent);
 const code = (value: unknown) => record(data(value).envelope).code;
 
@@ -37,6 +39,7 @@ async function isolated(t: { after: (fn: () => Promise<void>) => void }) {
   const local = await startLocalHttp({ service, htmlPath });
   t.after(async () => {
     await local.close();
+    resetNetworkAccessForTests();
     for (const [key, value] of Object.entries(previous)) { if (value === undefined) delete process.env[key]; else process.env[key] = value; }
     await fs.rm(root, { recursive: true, force: true });
   });
@@ -104,13 +107,69 @@ test("local browser/native session enforces origin, authentication, one-use laun
   assert.equal((await request("/not-a-route")).status, 404);
 });
 
+test("local settings list built-in provider sources with the official manifest URL", async (t) => {
+  const { call } = await isolated(t);
+  const listed = data(await call("figure_library_list_provider_sources"));
+  const sources = records(record(listed.result).sources);
+  assert.ok(sources.some((source) => source.providerId === "org.figureya.module"), JSON.stringify(sources.map((source) => source.providerId)));
+  const official = sources.find((source) => source.providerId === "io.github.jarxunlai.personal-figures");
+  assert.equal(official?.sourceKind, "official-signed-overlay");
+  assert.match(String(official?.manifestUrl ?? ""), /^https:\/\/raw\.githubusercontent\.com\//u);
+  const missing = await call("figure_library_plan_provider_source_change", { action: "add" });
+  assert.equal(code(missing), "provider_source_fields_required");
+  const blockedLocal = await call("figure_library_plan_provider_source_change", {
+    action: "remove",
+    providerId: "org.scientificfigurelibrary.local",
+  });
+  assert.equal(code(blockedLocal), "provider_source_operation_failed");
+  const planned = await call("figure_library_plan_provider_source_change", {
+    action: "remove",
+    providerId: "org.figureya.module",
+  });
+  assert.equal(code(planned), "provider_source_plan_ready");
+  const plan = record(data(planned).plan);
+  const applied = await call("figure_library_apply_provider_source_change", {
+    planDigest: plan.planDigest,
+    operationId: "disable-figureya",
+    expectedAction: "remove",
+    expectedProviderId: "org.figureya.module",
+  }, true);
+  assert.equal(code(applied), "provider_source_change_applied");
+  const after = records(record(data(await call("figure_library_list_provider_sources")).result).sources);
+  assert.equal(after.find((source) => source.providerId === "org.figureya.module")?.enabled, false);
+});
+
+test("local client defaults GitHub access off the system proxy and can save a loopback CONNECT proxy", async (t) => {
+  const { api, request } = await isolated(t);
+  const previous = process.env.HTTPS_PROXY;
+  process.env.HTTPS_PROXY = "http://127.0.0.1:7897";
+  t.after(() => {
+    if (previous === undefined) delete process.env.HTTPS_PROXY;
+    else process.env.HTTPS_PROXY = previous;
+  });
+  const off = await api("/api/network-access");
+  assert.equal(off.schema, "figure-library.network-access.v1");
+  assert.equal(off.useSystemProxy, false);
+  assert.equal(off.activeProxy, null);
+  assert.equal(off.source, "off");
+  const saved = await api("/api/network-access", { useSystemProxy: true, httpsProxy: "http://127.0.0.1:7897" });
+  assert.equal(saved.useSystemProxy, true);
+  assert.equal(saved.activeProxy, "http://127.0.0.1:7897");
+  assert.equal(saved.source, "saved");
+  assert.equal((await request("/api/network-access", { useSystemProxy: true, httpsProxy: "http://8.8.8.8:8080" })).status, 400);
+});
+
 test("local client reports and clears the on-demand preview cache", async (t) => {
-  const { api, overrides } = await isolated(t);
+  const { api, request, overrides } = await isolated(t);
   const empty = await api("/api/preview-cache");
   assert.equal(empty.schema, "figure-library.preview-cache.v1");
   assert.equal(empty.directory, overrides.SFL_PREVIEW_CACHE_DIR);
   assert.equal(empty.exists, false);
   assert.equal(empty.fileCount, 0);
+  assert.deepEqual(empty.galleries, []);
+  const refused = await request("/api/preview-cache", { action: "prefetch", providerId: "org.figureya.module" });
+  assert.equal(refused.status, 400);
+  assert.match(JSON.stringify(await refused.json()), /没有可按需下载/u);
   await fs.mkdir(overrides.SFL_PREVIEW_CACHE_DIR, { recursive: true });
   await fs.writeFile(path.join(overrides.SFL_PREVIEW_CACHE_DIR, `${hash(png)}.png`), png);
   await fs.writeFile(path.join(overrides.SFL_PREVIEW_CACHE_DIR, "keep.txt"), "notes");

@@ -756,6 +756,7 @@ export class ModuleCatalogIndex {
     this.assetsDir = options.assetsDir;
     this.downloads = options.downloads;
   }
+  get previewDownloads() { return this.downloads; }
 
   static empty(options: {
     providerId?: string;
