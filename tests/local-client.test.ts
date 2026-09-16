@@ -60,6 +60,40 @@ async function isolated(t: { after: (fn: () => Promise<void>) => void }) {
   return { root, local, service, request, api, call, overrides };
 }
 
+test("local app HTML exposes browse-gallery", async () => {
+  const html = await fs.readFile(path.resolve(import.meta.dirname, "../app/local-app.html"), "utf8");
+  assert.match(html, /id="browse-gallery"/u);
+});
+
+test("bundled runtime lock pins official Linux Node archives", async () => {
+  const lock = JSON.parse(await fs.readFile(path.resolve(import.meta.dirname, "../scripts/runtime/node-runtime.json"), "utf8"));
+  assert.equal(lock.archives["linux-x64"].file, `node-${lock.version}-linux-x64.tar.gz`);
+  assert.equal(lock.archives["linux-arm64"].file, `node-${lock.version}-linux-arm64.tar.gz`);
+  assert.equal(lock.archives["linux-x64"].sha256.length, 64);
+  assert.equal(lock.archives["linux-arm64"].sha256.length, 64);
+});
+
+test("Linux no-node launcher resolves SFL_NODE_BINARY and rejects old Node", { skip: process.platform === "win32" }, async (t) => {
+  const { execFile } = await import("node:child_process");
+  const { promisify } = await import("node:util");
+  const execute = promisify(execFile);
+  const script = path.resolve(import.meta.dirname, "../desktop/linux/Launch-SFL.sh");
+  const found = (await execute(script, ["--resolve-only"], { env: { ...process.env, SFL_NODE_BINARY: process.execPath }, encoding: "utf8" })).stdout.trim();
+  assert.equal(path.resolve(found), path.resolve(process.execPath));
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), "sfl-linux-launcher-"));
+  t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  const oldNode = path.join(dir, "old-node");
+  await fs.writeFile(oldNode, "#!/bin/sh\necho v20.0.0\n", { mode: 0o755 });
+  await assert.rejects(
+    execute(script, ["--resolve-only"], { env: { ...process.env, SFL_NODE_BINARY: oldNode } }),
+    /Node\.js 22\+/u,
+  );
+  await assert.rejects(
+    execute(script, ["--resolve-only"], { env: { ...process.env, SFL_NODE_BINARY: path.join(dir, "missing") } }),
+    /absolute Node\.js executable/u,
+  );
+});
+
 test("Windows local client opens loopback URLs with cmd start so #connect= reaches the browser", () => {
   const url = "http://127.0.0.1:12345/#connect=ticket";
   const windows = browserLaunchSpec(url, "win32");
@@ -83,6 +117,13 @@ test("local browser/native session enforces origin, authentication, one-use laun
   assert.deepEqual(JSON.parse(integration.snippets.find((item: { id: string }) => item.id === "json").content), connection);
   assert.equal(integration.command, process.execPath);
   assert.ok(!JSON.stringify(integration).includes(local.token));
+  const gallery = await api("/api/gallery", { limit: 2, providerIds: ["org.figureya.module"] });
+  const listed = record(gallery.structuredContent);
+  assert.equal(record(listed.envelope).outcome, "ok");
+  assert.ok(Number(record(listed.pagination).total) > 2);
+  assert.ok(Array.isArray(listed.candidates));
+  assert.equal((listed.candidates as unknown[]).length, 2);
+  assert.equal(listed.query, "");
   assert.equal((await request("/api/state", undefined, { Origin: "https://unrelated.example" })).status, 403);
   const wrongHost = await new Promise<number | undefined>((resolve, reject) => {
     const request = get(local.origin + "/api/state", { headers: { Host: "unrelated.example", Authorization: `Bearer ${local.token}` } }, (response) => {

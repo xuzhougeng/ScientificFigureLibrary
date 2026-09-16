@@ -52,6 +52,12 @@ async function inventory(directory, relative = '') {
   return output;
 }
 async function digestFile(file) { await fs.writeFile(`${file}.sha256`, `${sha256(await fs.readFile(file))}  ${path.basename(file)}\n`); }
+function unixExecutable(bytes) {
+  return [bytes, { os: 3, attrs: (0o100755 << 16) >>> 0 }];
+}
+async function writeExecutable(file, content) {
+  await fs.writeFile(file, content, { mode: 0o755 });
+}
 async function windows() {
   const name = `ScientificFigureLibrary-${pkg.version}-windows-x64${variant}`;
   const directory = path.join(staging, name);
@@ -95,6 +101,60 @@ async function windows() {
   await fs.writeFile(file, zipSync(archive, { level: 6 }));
   await digestFile(file);
   console.log(`WINDOWS_ZIP=${file}`);
+}
+async function linux(architecture) {
+  const target = `linux-${architecture}`;
+  const runtimeTarget = architecture === 'arm64' ? 'linux-arm64' : 'linux-x64';
+  const name = `ScientificFigureLibrary-${pkg.version}-${target}${variant}`;
+  const directory = path.join(staging, name);
+  await payload(directory);
+  if (runtimeMode === 'bundled') await installRuntime(runtimeTarget, path.join(directory, 'runtime'));
+  for (const host of ['wisp', 'codex', 'claude', 'cursor']) {
+    const hostDirectory = `.${host}-plugin`;
+    await fs.cp(path.join(root, hostDirectory), path.join(directory, hostDirectory), { recursive: true });
+  }
+  const wispFile = path.join(directory, '.wisp-plugin/plugin.json');
+  const wisp = JSON.parse(await fs.readFile(wispFile, 'utf8'));
+  wisp.mcp_servers[0].command = runtimeMode === 'system' ? 'node' : '${WISP_PLUGIN_ROOT}/runtime/node';
+  await fs.writeFile(wispFile, JSON.stringify(wisp, null, 2) + '\n');
+  const codexFile = path.join(directory, '.codex-plugin/mcp.json');
+  const codex = JSON.parse(await fs.readFile(codexFile, 'utf8'));
+  codex.mcpServers['figure-library'].command = runtimeMode === 'system' ? 'node' : './runtime/node';
+  await fs.writeFile(codexFile, JSON.stringify(codex, null, 2) + '\n');
+  const claudeFile = path.join(directory, '.claude-plugin/mcp.json');
+  const claude = JSON.parse(await fs.readFile(claudeFile, 'utf8'));
+  claude['figure-library'].command = runtimeMode === 'system' ? 'node' : '${CLAUDE_PLUGIN_ROOT}/runtime/node';
+  await fs.writeFile(claudeFile, JSON.stringify(claude, null, 2) + '\n');
+  const cursorFile = path.join(directory, '.cursor-plugin/mcp.json');
+  const cursor = JSON.parse(await fs.readFile(cursorFile, 'utf8'));
+  cursor.mcpServers['figure-library'].command = runtimeMode === 'system' ? 'node' : '${PLUGIN_ROOT}/runtime/node';
+  await fs.writeFile(cursorFile, JSON.stringify(cursor, null, 2) + '\n');
+  await fs.copyFile(cursorFile, path.join(directory, 'mcp.json'));
+  const executables = new Set(['start-sfl.sh', 'mcp.sh']);
+  if (runtimeMode === 'bundled') {
+    await writeExecutable(path.join(directory, 'start-sfl.sh'), '#!/bin/sh\nset -eu\nroot="$(CDPATH= cd -- "$(dirname "$0")" && pwd)"\nexec "$root/runtime/node" "$root/dist/index.js" --local --quiet\n');
+    await writeExecutable(path.join(directory, 'mcp.sh'), '#!/bin/sh\nset -eu\nroot="$(CDPATH= cd -- "$(dirname "$0")" && pwd)"\nexec "$root/runtime/node" "$root/dist/index.js" "$@"\n');
+    await fs.writeFile(path.join(directory, 'READ-ME.txt'), 'Scientific Figure Library\n\nExtract the entire archive, then run ./start-sfl.sh.\nNo Node.js or npm installation is needed.\nThe service stays in this terminal and should open the app in your default browser.\nIf it does not, paste the printed address into Firefox, Chrome, or Chromium.\nKeep the extracted folder intact. Quit using the local page.\nMCP configuration can be copied from Settings in the app, or use ./mcp.sh.\nSee docs/INSTALL_LOCAL.md for Chinese instructions and preview limitations.\n');
+    executables.add('runtime/node');
+  } else {
+    await fs.copyFile(path.join(root, 'desktop/linux/Launch-SFL.sh'), path.join(directory, 'Launch-SFL.sh'));
+    await fs.chmod(path.join(directory, 'Launch-SFL.sh'), 0o755);
+    await writeExecutable(path.join(directory, 'start-sfl.sh'), '#!/bin/sh\nset -eu\ncd "$(CDPATH= cd -- "$(dirname "$0")" && pwd)"\nexec ./Launch-SFL.sh "$@"\n');
+    await writeExecutable(path.join(directory, 'mcp.sh'), '#!/bin/sh\nset -eu\ncd "$(CDPATH= cd -- "$(dirname "$0")" && pwd)"\nexec ./Launch-SFL.sh --mcp "$@"\n');
+    await fs.writeFile(path.join(directory, 'READ-ME.txt'), 'Scientific Figure Library - system Node edition\n\nRequires installed Node.js 22+. No npm install is needed.\nExtract the entire archive, then run ./start-sfl.sh.\nThe service stays in this terminal and should open the app in your default browser.\nIf it does not, paste the printed address into Firefox, Chrome, or Chromium.\nSet SFL_NODE_BINARY to an absolute node path if detection fails.\nAlternatively download the bundled-Node archive.\nSee docs/INSTALL_LOCAL.md.\n');
+    executables.add('Launch-SFL.sh');
+  }
+  const files = await inventory(directory);
+  await fs.writeFile(path.join(directory, 'install-manifest.json'), JSON.stringify({ schema: 'figure-library.local-install.v1', version: pkg.version, target, runtimeMode, minimumNodeMajor: 22, nodeVersion: runtimeMode === 'bundled' ? runtimeLock.version : null, files }, null, 2) + '\n');
+  const archive = {};
+  for (const entry of await inventory(directory)) {
+    const bytes = new Uint8Array(await fs.readFile(path.join(directory, entry.file)));
+    archive[`${name}/${entry.file}`] = executables.has(entry.file) ? unixExecutable(bytes) : bytes;
+  }
+  const file = path.join(output, `${name}.zip`);
+  await fs.writeFile(file, zipSync(archive, { level: 6 }));
+  await digestFile(file);
+  console.log(`LINUX_ZIP=${file}`);
 }
 async function macos(architecture) {
   if (process.platform !== 'darwin') throw new Error('The native macOS App and DMG must be built on macOS.');
@@ -157,6 +217,7 @@ async function macos(architecture) {
   if (smoke.status !== 'passed') throw new Error(`Native smoke failed: ${JSON.stringify(smoke)}`);
   await fs.copyFile(path.join(smokeRoot, 'native-smoke.json'), path.join(output, `macos-${architecture}${variant}-smoke.json`));
   await fs.copyFile(path.join(smokeRoot, 'native-window.png'), path.join(output, `macos-${architecture}${variant}-window.png`));
+  await fs.copyFile(path.join(smokeRoot, 'settings-window.png'), path.join(output, `macos-${architecture}${variant}-settings.png`));
   await fs.copyFile(path.join(smokeRoot, 'integrations-window.png'), path.join(output, `macos-${architecture}${variant}-integrations.png`));
   await fs.rm(smokeRoot, { recursive: true, force: true });
   await fs.writeFile(path.join(volume, 'BUILD-INFO.json'), JSON.stringify({ version: pkg.version, platform: `macos-${architecture}`, minimumOS: '13.0', runtimeMode, minimumNodeMajor: 22, nodeVersion: runtimeMode === 'bundled' ? runtimeLock.version : null, signing: 'ad-hoc', notarized: false, smoke, appFiles: await inventory(app) }, null, 2) + '\n');
@@ -170,7 +231,9 @@ async function macos(architecture) {
 }
 try {
   if (target === 'windows-x64') await windows();
+  else if (target === 'linux-x64') await linux('x64');
+  else if (target === 'linux-arm64') await linux('arm64');
   else if (target === 'macos-arm64') await macos('arm64');
   else if (target === 'macos-x64') await macos('x64');
-  else throw new Error('Usage: node scripts/package-local-client.mjs windows-x64|macos-arm64|macos-x64');
+  else throw new Error('Usage: node scripts/package-local-client.mjs windows-x64|linux-x64|linux-arm64|macos-arm64|macos-x64');
 } finally { await fs.rm(staging, { recursive: true, force: true }); }

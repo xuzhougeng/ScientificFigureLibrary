@@ -61,10 +61,10 @@ let libraryGreen = Color(red: 0.14, green: 0.42, blue: 0.30)
                         if source["enabled"] != .bool(false) { Text(source["sourceLabel"].string.isEmpty ? source["providerId"].string : source["sourceLabel"].string).tag(source["providerId"].string) }
                     }
                 }.frame(maxWidth: 330); TextField("数据特征（可选）", text: $model.dataProfile).textFieldStyle(.roundedBorder) }
-                HStack { ForEach(["火山图", "热图", "UMAP", "细胞比例", "富集分析"], id: \.self) { label in Button(label) { model.query = ["火山图": "volcano differential expression", "热图": "heatmap expression", "UMAP": "UMAP single cell", "细胞比例": "cell proportion barplot", "富集分析": "GO enrichment"][label]!; model.perform { try await model.search() } }.disabled(model.busy) } }
-                Text("在线图库图片不会在安装时下载。请到设置中对某个图库执行「缓存图片」，或搜索该图库后查看当前页。已缓存的图片可离线查看。").font(.callout).foregroundStyle(.secondary)
-                HStack { Text("候选图片").font(.headline); Spacer(); if model.result != .null { Text("\(model.result["total"].int) 个结果").foregroundStyle(.secondary) } }
-                if candidates.isEmpty { VStack(spacing: 12) { Image(systemName: "photo.on.rectangle.angled").font(.system(size: 40)).foregroundStyle(.secondary); Text("图片与代码，成为下一次研究的起点").font(.headline); Text("搜索可复用的模板，或导入自己的图片与代码。").foregroundStyle(.secondary) }.frame(maxWidth: .infinity).padding(.vertical, 80) }
+                HStack { Button("浏览图库") { model.perform { try await model.gallery() } }.disabled(model.busy); ForEach(["火山图", "热图", "UMAP", "细胞比例", "富集分析"], id: \.self) { label in Button(label) { model.query = ["火山图": "volcano differential expression", "热图": "heatmap expression", "UMAP": "UMAP single cell", "细胞比例": "cell proportion barplot", "富集分析": "GO enrichment"][label]!; model.perform { try await model.search() } }.disabled(model.busy) } }
+                Text("在线图库图片不会在安装时下载。请到设置中对某个图库执行「缓存图片」，或浏览/搜索该图库后查看当前页。已缓存的图片可离线查看。").font(.callout).foregroundStyle(.secondary)
+                HStack { Text(model.query.isEmpty && model.result != .null ? "图库" : "候选图片").font(.headline); Spacer(); if model.result != .null { Text("\(model.result["total"].int) 个结果").foregroundStyle(.secondary) } }
+                if candidates.isEmpty { VStack(spacing: 12) { Image(systemName: "photo.on.rectangle.angled").font(.system(size: 40)).foregroundStyle(.secondary); Text("图片与代码，成为下一次研究的起点").font(.headline); Text("可浏览全部图库图片，或搜索、导入自己的图片与代码。").foregroundStyle(.secondary) }.frame(maxWidth: .infinity).padding(.vertical, 80) }
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 230, maximum: 360))], spacing: 20) {
                     ForEach(candidates.indices, id: \.self) { index in
                         let candidate = candidates[index]

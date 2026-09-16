@@ -37,7 +37,7 @@ export async function openBrowser(url: string) {
 }
 
 function writeFallbackUrl(url: string) {
-  process.stdout.write(`If the browser did not open, paste this address into Microsoft Edge or Chrome:\n${url}\nKeep this window open while using the app.\n`);
+  process.stdout.write(`If the browser did not open, paste this address into a modern browser:\n${url}\nKeep this window open while using the app.\n`);
 }
 
 export async function launchLocalClient(args: string[]) {

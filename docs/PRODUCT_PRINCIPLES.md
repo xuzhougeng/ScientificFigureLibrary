@@ -16,8 +16,8 @@ SFL 不以接管完整科研绘图工作流或成为科研项目管理系统为�
 2026-09-15 用户明确归纳的产品定义以本节为准；此前将 SFL 整体定位为 MCP App，或要求
 两端都采用同一种桌面 UI 技术的描述不再作为实施依据。
 
-- **本地客户端**：macOS 使用原生 SwiftUI；Windows 使用 Node 服务器提供本地 Web 页面，
-  通过随包携带的 `node.exe` 启动。macOS 包也携带后端所需的私有 Node 运行时。
+- **本地客户端**：macOS 使用原生 SwiftUI；Windows 与 Linux 使用 Node 服务器提供本地 Web 页面，
+  通过随包携带的 Node 运行时启动。macOS 包也携带后端所需的私有 Node 运行时。
 - **共享后端**：复用现有 TypeScript/Node 服务、全局 Library、Provider、图片—代码关联及
   精确选择和写入契约。本地界面不另建权威图库或另写一套业务规则。
 - **简单本地应用**：本地 App 不内置 AI、模型调用或 Agent 任务编排，直接调用共享图库

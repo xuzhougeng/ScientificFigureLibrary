@@ -7,6 +7,8 @@ import { ModuleCatalogIndex } from "./module-catalog.ts";
 import type { OfficialOpenFigureRuntime } from "./open-figure-official-source.ts";
 import {
   buildSearchIntent,
+  compareSearchHits,
+  keepSearchHit,
   normalizeSearchText,
   scoreSearchableTemplate,
 } from "./catalog.ts";
@@ -360,11 +362,10 @@ export class LocalPublishedProviderAdapter implements ProviderAdapter {
           intent,
         ),
       }))
-      .filter(({ evidence }) => evidence.score > 0)
+      .filter(({ evidence }) => keepSearchHit(evidence.score, request))
       .sort(
         (left, right) =>
-          right.evidence.score - left.evidence.score ||
-          left.item.templateId.localeCompare(right.item.templateId),
+          compareSearchHits(left.item.templateId, left.evidence.score, right.item.templateId, right.evidence.score, request),
       );
 
     return Promise.all(
@@ -384,9 +385,9 @@ export class LocalPublishedProviderAdapter implements ProviderAdapter {
           exactSelector: selector,
           sourceLabel: this.descriptor.sourceLabel,
           title: item.title,
-          retrievalScore: evidence.score,
-          matchedTerms: evidence.matchedTerms.slice(0, 12),
-          reasons: evidence.reasons,
+          retrievalScore: request.browse ? 1 : evidence.score,
+          matchedTerms: request.browse ? [] : evidence.matchedTerms.slice(0, 12),
+          reasons: request.browse ? ["图库浏览"] : evidence.reasons,
           warnings: [...new Set(review.warnings.map((warning) => warning.message))],
           excerpt: item.description.slice(0, 420),
           ...resolveFigureDescription(item.description, item.application),
