@@ -78,9 +78,12 @@ func nativeSmokeLog(_ stage: String) {
         guard let window = NSApplication.shared.windows.first(where: { $0.isVisible }), let view = window.contentView else { throw LocalError(message: "SwiftUI window was not created") }
         func capture(_ name: String) throws {
             view.layoutSubtreeIfNeeded()
-            guard let image = view.bitmapImageRepForCachingDisplay(in: view.bounds),
-                  let png = image.representation(using: .png, properties: [:]) else {
+            guard let image = view.bitmapImageRepForCachingDisplay(in: view.bounds) else {
                 throw LocalError(message: "Native window capture failed: \(name)")
+            }
+            view.cacheDisplay(in: view.bounds, to: image)
+            guard let png = image.representation(using: .png, properties: [:]) else {
+                throw LocalError(message: "Native window PNG encoding failed: \(name)")
             }
             try png.write(to: root.appendingPathComponent(name))
         }
@@ -98,7 +101,7 @@ func nativeSmokeLog(_ stage: String) {
         nativeSmokeLog("shutdown")
         _ = await backend.shutdown()
         nativeSmokeLog("terminate application")
-        NSApplication.shared.terminate(nil)
+        exit(0)
     } catch {
         let report = object(["status": text("failed"), "error": text(error.localizedDescription)])
         try? Data(report.pretty.utf8).write(to: root.appendingPathComponent("native-smoke.json"))

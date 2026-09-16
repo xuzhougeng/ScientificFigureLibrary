@@ -486,14 +486,13 @@ func galleryCacheLabel(_ gallery: JSON) -> String {
             httpsProxy = saved.isEmpty ? value["detectedProxy"].string : saved
         }
         .task {
-            if model.ready {
-                model.perform {
-                    try await model.status()
-                    useSystemProxy = model.networkAccess["useSystemProxy"].bool
-                    let saved = model.networkAccess["httpsProxy"].string
-                    httpsProxy = saved.isEmpty ? model.networkAccess["detectedProxy"].string : saved
-                }
-            }
+            guard model.ready else { return }
+            do {
+                try await model.status()
+                useSystemProxy = model.networkAccess["useSystemProxy"].bool
+                let saved = model.networkAccess["httpsProxy"].string
+                httpsProxy = saved.isEmpty ? model.networkAccess["detectedProxy"].string : saved
+            } catch { model.error = error.localizedDescription }
         }
     }
 }
