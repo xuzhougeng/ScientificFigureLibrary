@@ -4,6 +4,7 @@ import { bindModalScrollLock, mountExactPreviewImage, openCandidateDetail, parse
 import { renderMarkdown } from "../markdown.ts";
 import { api, call, details, imageData, imageHash, record, records, requireResult, upload } from "./api.ts";
 import { formatUserNetworkError } from "../../src/process-log.ts";
+import { buildExternalPlotPrompt } from "../external-prompt.ts";
 import { PAGE_STORAGE_KEY, PAGE_TITLES, galleryMissingCount, isPageId, pageHash, prefetchButtonLabel, readSavedPage, type PageId } from "./ui-state.ts";
 import "../styles.css";
 import "./styles.css";
@@ -100,12 +101,11 @@ function display(parsed: SearchResult) {
       refreshSelection();
     },
     onDetail: (candidate, _elements, opener) => {
-      const elements = openCandidateDetail({ document, candidate, opener, serverToolsAvailable: true, updateModelContextAvailable: false, purpose: "save",
+      openCandidateDetail({ document, candidate, opener, serverToolsAvailable: true, updateModelContextAvailable: false, purpose: "save",
         onOpenLink: async (url) => safeLink(url),
-        onRequestExactPreview: (view) => void run(() => exactPreview(candidate, view), view.exactPreviewButton),
+        onRequestExactPreview: (view) => void run(() => exactPreview(candidate, view), view.confirmButton),
         onRequestAgentReview: () => {},
       });
-      elements.confirmButton.onclick = () => void run(() => exactPreview(candidate, elements), elements.confirmButton);
     },
   });
   el("results-title").textContent = parsed.query ? `“${parsed.query}”的候选图片` : "图库";
@@ -163,8 +163,8 @@ async function exactPreview(candidate: Candidate, view: DetailViewElements) {
   mountExactPreviewImage({ document, elements: view, dataUrl: image.url, alt: candidate.title,
     onLoaded: () => {
       loaded = true;
-      view.confirmButton.textContent = "确认并保存到项目";
-      view.status.textContent = "请核对上方精确图片。确认就是要保存的文件后，再点「确认并保存到项目」。";
+      view.confirmButton.textContent = "保存到项目";
+      view.status.textContent = "上方是将要保存的精确图片。确认无误后点右上角「保存到项目」。";
     },
     onError: () => { loaded = false; view.confirmButton.disabled = true; view.status.textContent = "图片加载失败，无法确认。"; },
   });
@@ -599,8 +599,10 @@ button("refresh").onclick = () => void run(async () => {
   }
 });
 button("copy-selection").onclick = () => void run(async () => {
-  await navigator.clipboard.writeText(JSON.stringify([...selected.values()].map(({ title, providerId, exactSelector }) => ({ title, providerId, exactSelector })), null, 2));
-  notify(`已复制 ${selected.size} 个模板的名称和精确引用。粘贴到 Cursor、Claude、Codex 等外部工具即可指定这些图。`);
+  const prompt = buildExternalPlotPrompt([...selected.values()]);
+  if (!prompt) throw new Error("还没有选择模板");
+  await navigator.clipboard.writeText(prompt);
+  notify(`已复制 ${selected.size} 个模板的绘图提示词。粘贴到 ChatGPT、Claude、Cursor 等即可按这些图写代码，不需要安装 MCP。`);
 }, button("copy-selection"));
 button("plan-apply").onclick = () => void run(async () => { await planAction?.(); }, button("plan-apply"));
 button("plan-cancel").onclick = () => { planAction = undefined; dialog("plan-dialog").close(); };

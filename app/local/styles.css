@@ -88,6 +88,8 @@ html.dialog-open .local-main { overflow: hidden; }
 .plan-line strong { color: #6d7d70; font-weight: 500; }
 .local-client .detail-panel { color: #23382d; background: #fff; }
 .local-client .candidate-dialog { background: #fff; color: #23382d; }
+.local-client .detail-toolbar-actions .dialog-close { float: none; }
+.local-client .detail-toolbar-actions .confirm-action { min-width: 8.5rem; }
 .local-client .detail-technical-panel { background: #f4f7f3; border-color: #dfe6db; }
 .local-client .detail-technical-toggle { width: auto; }
 .path-picker { display: flex; gap: 8px; align-items: center; }

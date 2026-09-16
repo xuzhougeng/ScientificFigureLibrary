@@ -196,8 +196,9 @@ func candidateValidationLines(_ candidate: JSON) -> [String] {
     @State private var exactImage: NSImage?
     @State private var displayed = false
     @State private var destination = ""
-    @State private var allowNetwork = false
+    @State private var allowNetwork = true
     @State private var showTechnical = false
+    @State private var loadingExact = false
     var chips: [String] {
         [candidate["sourceLabel"].string, candidate["assetKind"].string, candidate["language"].string, candidate["plotFamily"].string].filter { !$0.isEmpty }
     }
@@ -206,13 +207,20 @@ func candidateValidationLines(_ candidate: JSON) -> [String] {
             HStack {
                 Text(candidate["title"].string).font(.title2).bold()
                 Spacer()
+                Button("保存到项目") {
+                    guard let preview = preview, let bytes = bytes, displayed else { return }
+                    model.perform { try await model.materialize(candidate, preview: preview, image: bytes, destination: destination, network: allowNetwork) }
+                }.buttonStyle(.borderedProminent).disabled(model.busy || !displayed || destination.isEmpty)
                 Button(showTechnical ? "收起技术信息" : "技术与验证信息") { showTechnical.toggle() }
                 Button("关闭") { model.sheet = nil }
             }
+            HStack { TextField("保存到项目的目标父目录", text: $destination).textFieldStyle(.roundedBorder); Button("选择目录") { if let path = model.chooseDirectory() { destination = path } } }
+            Toggle("从 GitHub 下载该模板的固定版本（不会下载整个图库）", isOn: $allowNetwork).font(.callout)
             HStack(alignment: .top, spacing: 18) {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 18) {
-                        if let image = exactImage { Image(nsImage: image).resizable().scaledToFit().frame(maxWidth: .infinity, maxHeight: 360).onAppear { displayed = true } }
+                        if loadingExact { ProgressView("正在加载精确图片…").frame(maxWidth: .infinity).padding(.vertical, 40) }
+                        else if let image = exactImage { Image(nsImage: image).resizable().scaledToFit().frame(maxWidth: .infinity, maxHeight: 360).onAppear { displayed = true } }
                         else if let image = model.thumbnail(candidate) { Image(nsImage: image).resizable().scaledToFit().frame(maxWidth: .infinity, maxHeight: 300) }
                         if !candidate["titleEn"].string.isEmpty { Text(candidate["titleEn"].string).foregroundStyle(.secondary).textSelection(.enabled) }
                         if !chips.isEmpty {
@@ -241,31 +249,20 @@ func candidateValidationLines(_ candidate: JSON) -> [String] {
                     }.frame(width: 280).background(Color(NSColor.controlBackgroundColor)).clipShape(RoundedRectangle(cornerRadius: 10))
                 }
             }
-            Text(displayed ? "请核对上方精确图片，确认后保存到项目。" : "保存到项目前会先加载精确图片。请核对你看到的就是将要保存的文件。").font(.callout).foregroundStyle(.secondary)
-            Divider()
-            HStack { TextField("保存到项目的目标父目录", text: $destination).textFieldStyle(.roundedBorder); Button("选择目录") { if let path = model.chooseDirectory() { destination = path } } }
-            Toggle("允许下载所选模板的固定版本归档", isOn: $allowNetwork).font(.callout)
-            HStack {
-                Button("仅查看精确图片") { model.perform {
-                    displayed = false
-                    let result = try await model.backend.exactPreview(["resultSetId": model.result["resultSetId"], "providerId": candidate["providerId"], "exactSelector": candidate["exactSelector"]])
-                    preview = result.0; bytes = result.1; exactImage = result.2
-                } }.disabled(model.busy || !candidate["previewAvailable"].bool)
-                Spacer()
-                Button(displayed ? "确认并保存到项目" : "加载精确图片并保存") {
-                    if displayed {
-                        guard let preview = preview, let bytes = bytes else { return }
-                        model.perform { try await model.materialize(candidate, preview: preview, image: bytes, destination: destination, network: allowNetwork) }
-                    } else {
-                        model.perform {
-                            displayed = false
-                            let result = try await model.backend.exactPreview(["resultSetId": model.result["resultSetId"], "providerId": candidate["providerId"], "exactSelector": candidate["exactSelector"]])
-                            preview = result.0; bytes = result.1; exactImage = result.2
-                        }
-                    }
-                }.buttonStyle(.borderedProminent).disabled(model.busy || !candidate["previewAvailable"].bool || (displayed && destination.isEmpty))
-            }
+            Text(displayed ? "上方是将要保存的精确图片。" : "打开详情会加载精确图片。").font(.callout).foregroundStyle(.secondary)
         }.padding(26).frame(width: showTechnical ? 1080 : 780, height: 730)
+        .task {
+            guard candidate["previewAvailable"].bool else { return }
+            loadingExact = true
+            displayed = false
+            do {
+                let result = try await model.backend.exactPreview(["resultSetId": model.result["resultSetId"], "providerId": candidate["providerId"], "exactSelector": candidate["exactSelector"]])
+                preview = result.0
+                bytes = result.1
+                exactImage = result.2
+            } catch { model.error = friendlyNetworkError(error) }
+            loadingExact = false
+        }
     }
 }
 

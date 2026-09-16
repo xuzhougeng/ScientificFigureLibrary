@@ -1130,10 +1130,11 @@ test("FigureYa collapsed catalog prose is split before rendering", () => {
   detail.closeButton.click();
 });
 
-test("local save purpose starts from a single save action instead of a hidden exact-preview step", () => {
+test("local save purpose loads the exact image and puts save in the top toolbar", async () => {
   const document = createTestWindow().document as unknown as Document;
   const opener = document.createElement("button");
   document.body.append(opener);
+  let exactCalls = 0;
   const detail = openCandidateDetail({
     document,
     candidate: candidate("org.figureya.module", "save-flow", "ready", "data:image/png;base64,iVBORw0KGgo="),
@@ -1141,12 +1142,15 @@ test("local save purpose starts from a single save action instead of a hidden ex
     serverToolsAvailable: true,
     updateModelContextAvailable: false,
     purpose: "save",
-    onRequestExactPreview() {},
+    onRequestExactPreview() { exactCalls += 1; },
     onRequestAgentReview() {},
   });
-  assert.match(detail.exactPreviewButton.textContent ?? "", /仅查看精确图片/u);
-  assert.match(detail.confirmButton.textContent ?? "", /加载精确图片并保存/u);
-  assert.equal(detail.confirmButton.disabled, false);
-  assert.match(detail.status.textContent ?? "", /保存到项目前会先加载精确图片/u);
+  await Promise.resolve();
+  assert.equal(exactCalls, 1);
+  assert.equal(detail.dialog.classList.contains("detail-save-flow"), true);
+  assert.match(detail.confirmButton.textContent ?? "", /保存到项目/u);
+  assert.equal(detail.confirmButton.closest(".detail-toolbar-actions") !== null, true);
+  assert.match(detail.status.textContent ?? "", /正在加载精确图片/u);
+  assert.match(detail.preview.textContent ?? "", /正在加载精确图片/u);
   detail.closeButton.click();
 });

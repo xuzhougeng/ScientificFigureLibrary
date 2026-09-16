@@ -134,6 +134,7 @@ export function mountExactPreviewImage(options: {
     options.onError();
   });
   image.src = options.dataUrl;
+  options.elements.preview.classList.remove("detail-preview-pending");
   options.elements.preview.replaceChildren(image);
   return image;
 }
@@ -602,7 +603,12 @@ export function openCandidateDetail(options: {
     element(document, "code", "template-id", candidate.templateId),
   );
   const preview = element(document, "div", "detail-preview");
-  appendPreviewImage(document, preview, candidate, "detail");
+  if (saveFlow) {
+    preview.classList.add("detail-preview-pending");
+    preview.append(element(document, "p", "", "正在加载精确图片…"));
+  } else {
+    appendPreviewImage(document, preview, candidate, "detail");
+  }
   const projection = candidate.providerId === "org.scientificfigurelibrary.local"
     ? resolveFigureDescription(candidate.description, candidate.application)
     : { description: candidate.description, application: candidate.application ?? "" };
@@ -674,7 +680,7 @@ export function openCandidateDetail(options: {
   const confirmButton = button(
     document,
     "confirm-action",
-    saveFlow ? "加载精确图片并保存" : "确认并交给 Agent",
+    saveFlow ? "保存到项目" : "确认并交给 Agent",
     "send",
   );
   confirmButton.disabled = true;
@@ -697,8 +703,7 @@ export function openCandidateDetail(options: {
         "当前 Host 既未提供 App→Server Tool，也未提供 updateModelContext；只能查看基础详情，不能加载精确预览或交接选择。";
     }
   } else if (saveFlow) {
-    confirmButton.disabled = false;
-    status.textContent = "保存到项目前会先加载精确图片。请核对你看到的就是将要保存的文件，再确认保存。";
+    status.textContent = "正在加载精确图片…";
   } else {
     status.textContent = "基础详情来自搜索结果。需要时可仅为此候选加载一次精确预览。";
   }
@@ -730,15 +735,30 @@ export function openCandidateDetail(options: {
     dialog.remove();
   });
   controls.append(exactPreviewButton, confirmButton);
-  main.append(title, ...(titleEn ? [titleEn] : []), identity, preview, descriptionSection, metadata, technicalToggle, status, controls);
+  const toolbar = element(document, "div", "detail-toolbar");
+  const titleBlock = element(document, "div", "detail-toolbar-title");
+  titleBlock.append(title, ...(titleEn ? [titleEn] : []));
+  const actions = element(document, "div", "detail-toolbar-actions");
+  if (saveFlow) {
+    dialog.classList.add("detail-save-flow");
+    actions.append(confirmButton, technicalToggle);
+  }
+  actions.append(closeButton);
+  toolbar.append(titleBlock, actions);
+  main.append(identity, preview, descriptionSection, metadata);
+  if (saveFlow) main.append(status);
+  else main.append(technicalToggle, status, controls);
   shell.append(main, aside);
-  panel.append(closeButton, shell);
+  panel.append(toolbar, shell);
   dialog.append(panel);
   document.body.append(dialog);
   if (typeof dialog.showModal === "function") dialog.showModal();
   else dialog.setAttribute("open", "");
   bindModalScrollLock(document, dialog);
-  queueMicrotask(() => closeButton.focus());
+  queueMicrotask(() => {
+    closeButton.focus();
+    if (saveFlow && !exactPreviewButton.disabled) options.onRequestExactPreview(elements);
+  });
   return elements;
 }
 

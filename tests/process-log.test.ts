@@ -25,6 +25,18 @@ test("user-facing network errors explain timeout and connection reset in Chinese
     /访问 GitHub 超时/u,
   );
   assert.match(formatUserNetworkError(new Error("read ECONNRESET")), /连接被重置/u);
+  assert.match(
+    formatUserNetworkError(new Error("Materialization was not completed: archive unavailable. source pack: ENOENT: no such file or directory, open 'D:\\\\SFL\\\\Library\\\\source-packs\\\\figureya\\\\figureya-source-pack.manifest.json'. Provide sourcePackDir containing a validated figureya-source-pack.manifest.json and its archives; do not download the complete FigureYa repository.")),
+    /无法下载该模板的固定版本代码包/u,
+  );
+  assert.match(
+    formatUserNetworkError(new Error("Materialization was not completed: archive unavailable. network access is disabled.")),
+    /请勾选「从 GitHub 下载该模板的固定版本」/u,
+  );
+  assert.match(
+    formatUserNetworkError(new Error("Open Figure Modules archive unavailable. source pack: ENOENT: no such file or directory, lstat 'D:\\\\SFL\\\\Library\\\\source-packs\\\\open-modules'.")),
+    /无法下载该模板的固定版本代码包/u,
+  );
 });
 
 test("process log is silent until enabled and then writes stderr", () => {

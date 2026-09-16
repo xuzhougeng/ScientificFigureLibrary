@@ -663,6 +663,62 @@ html.dialog-open body {
   font-size: 0.78rem;
 }
 
+.detail-toolbar {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.detail-toolbar-title {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.detail-toolbar-title .detail-title {
+  margin: 0;
+}
+
+.detail-toolbar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.detail-toolbar-actions .confirm-action,
+.detail-toolbar-actions .detail-technical-toggle {
+  width: auto;
+}
+
+.detail-save-flow .detail-controls {
+  display: none;
+}
+
+.detail-preview-pending {
+  display: grid;
+  place-items: center;
+  gap: 10px;
+  min-height: 240px;
+  color: var(--color-text-secondary, #58645d);
+  font-size: 0.9rem;
+}
+
+.detail-preview-pending::before {
+  content: "";
+  width: 28px;
+  height: 28px;
+  border: 3px solid #d5ddd6;
+  border-top-color: #18583e;
+  border-radius: 50%;
+  animation: detail-spin 0.8s linear infinite;
+}
+
+@keyframes detail-spin {
+  to { transform: rotate(360deg); }
+}
+
 .dialog-close {
   position: sticky;
   z-index: 2;
@@ -674,6 +730,12 @@ html.dialog-open body {
   padding: 8px 11px;
   background: #edf0ee;
   color: #28342d;
+}
+
+.detail-toolbar-actions .dialog-close {
+  position: static;
+  margin: 0;
+  justify-self: auto;
 }
 
 .dialog-close:hover:not(:disabled),

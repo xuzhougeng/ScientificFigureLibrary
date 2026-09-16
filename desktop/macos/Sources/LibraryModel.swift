@@ -20,6 +20,12 @@ func friendlyNetworkError(_ error: Error) -> String {
     if raw.contains("timed out") { return "访问 GitHub 超时。请在设置打开系统代理并保存，或在外部图库关闭自动刷新。" }
     if raw.contains("ECONNRESET") { return "与 GitHub 的连接被重置。请检查网络或系统代理。" }
     if raw.contains("Provider source change plan failed") { return "图库来源更新失败。请检查网络或系统代理后，在外部图库重试。" }
+    if raw.contains("archive unavailable") || raw.contains("Open Figure Modules archive unavailable") {
+        if raw.contains("network access is disabled") { return "这个模板的代码包还没下载到本机。请打开「从 GitHub 下载该模板的固定版本」后再保存。" }
+        if raw.contains("timed out") { return "下载模板代码包时访问 GitHub 超时。请在设置打开系统代理并保存后重试。" }
+        if raw.contains("ECONNRESET") { return "下载模板代码包时连接被重置。请检查网络或系统代理。" }
+        return "无法下载该模板的固定版本代码包。请检查网络，或在设置打开系统代理后重试。不会下载整个图库。"
+    }
     return raw
 }
 
