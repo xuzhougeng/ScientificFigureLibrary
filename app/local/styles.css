@@ -86,7 +86,7 @@ body.local-client { min-width: 360px; background: #f7f8f5; color: #23382d; color
 .local-header > div { flex: 1; min-width: 0; }
 .local-client .card .preview-button { width: 100%; }
 
-#integrations-page > .settings-card { margin-top: 20px; }
+#integrations-page > .settings-card, #galleries-page > .settings-card { margin-top: 20px; }
 .integration-code { margin: 18px 0; }
 .integration-code pre { white-space: pre-wrap; overflow-wrap: anywhere; padding: 16px; border-radius: 8px; background: #f4f6f2; font-size: 12px; }
 #integration-instructions li { margin: 10px 0; line-height: 1.6; }

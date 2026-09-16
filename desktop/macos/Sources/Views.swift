@@ -22,9 +22,10 @@ let libraryGreen = Color(red: 0.14, green: 0.42, blue: 0.30)
                     switch model.section ?? .discover {
                     case .discover: DiscoverView(model: model)
                     case .library: KnowledgeView(model: model)
+                    case .galleries: GalleriesView(model: model)
                     case .add: ImportView(model: model)
-                    case .settings: SettingsView(model: model)
                     case .integrations: IntegrationsView(model: model)
+                    case .settings: SettingsView(model: model)
                     }
                 }
             }
@@ -62,9 +63,9 @@ let libraryGreen = Color(red: 0.14, green: 0.42, blue: 0.30)
                     }
                 }.frame(maxWidth: 330); TextField("数据特征（可选）", text: $model.dataProfile).textFieldStyle(.roundedBorder) }
                 HStack { Button("浏览图库") { model.perform { try await model.gallery() } }.disabled(model.busy); ForEach(["火山图", "热图", "UMAP", "细胞比例", "富集分析"], id: \.self) { label in Button(label) { model.query = ["火山图": "volcano differential expression", "热图": "heatmap expression", "UMAP": "UMAP single cell", "细胞比例": "cell proportion barplot", "富集分析": "GO enrichment"][label]!; model.perform { try await model.search() } }.disabled(model.busy) } }
-                Text("在线图库图片不会在安装时下载。请到设置中对某个图库执行「缓存图片」，或浏览/搜索该图库后查看当前页。已缓存的图片可离线查看。").font(.callout).foregroundStyle(.secondary)
+                Text("在线图库图片不会在安装时下载。请到「外部图库」或设置的「图片缓存」中对某个图库执行「缓存图片」，或浏览/搜索后查看当前页。已缓存的图片可离线查看。").font(.callout).foregroundStyle(.secondary)
                 HStack { Text(model.query.isEmpty && model.result != .null ? "图库" : "候选图片").font(.headline); Spacer(); if model.result != .null { Text("\(model.result["total"].int) 个结果").foregroundStyle(.secondary) } }
-                if candidates.isEmpty { VStack(spacing: 12) { Image(systemName: "photo.on.rectangle.angled").font(.system(size: 40)).foregroundStyle(.secondary); Text("图片与代码，成为下一次研究的起点").font(.headline); Text("可浏览全部图库图片，或搜索、导入自己的图片与代码。").foregroundStyle(.secondary) }.frame(maxWidth: .infinity).padding(.vertical, 80) }
+                if candidates.isEmpty { VStack(spacing: 12) { Image(systemName: "photo.on.rectangle.angled").font(.system(size: 40)).foregroundStyle(.secondary); Text("图片与代码，成为下一次研究的起点").font(.headline); Text("可浏览全部图库图片，或搜索后再选用。自己的资产在「我的图库」，也可以「创建参考图」。").foregroundStyle(.secondary) }.frame(maxWidth: .infinity).padding(.vertical, 80) }
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 230, maximum: 360))], spacing: 20) {
                     ForEach(candidates.indices, id: \.self) { index in
                         let candidate = candidates[index]
@@ -236,7 +237,7 @@ func candidateValidationLines(_ candidate: JSON) -> [String] {
     @ObservedObject var model: LibraryModel
     var body: some View {
         VStack {
-            if model.library.isEmpty { VStack(spacing: 16) { Image(systemName: "books.vertical").font(.system(size: 40)).foregroundStyle(.secondary); Text("知识库还没有资产").font(.title3); Button("导入图片与代码") { model.section = .add } }.frame(maxWidth: .infinity, maxHeight: .infinity) }
+            if model.library.isEmpty { VStack(spacing: 16) { Image(systemName: "books.vertical").font(.system(size: 40)).foregroundStyle(.secondary); Text("我的图库还没有资产").font(.title3); Button("创建参考图") { model.section = .add } }.frame(maxWidth: .infinity, maxHeight: .infinity) }
             else { List(model.library.indices, id: \.self) { index in let value = model.library[index]; HStack { VStack(alignment: .leading, spacing: 7) { Text(value["title"].string).font(.headline); Text(value["workingHead"] == .null ? "已发布" : "有待审阅草稿").font(.caption).foregroundStyle(.secondary) }; Spacer(); Button("查看与管理") { model.perform { try await model.inspect(value["templateId"].string) } }.disabled(model.busy) }.padding(.vertical, 8) } }
         }.padding(16)
     }
@@ -356,16 +357,79 @@ func galleryCacheLabel(_ gallery: JSON) -> String {
     return "可下载 \(declared) 张 · 已缓存 \(cached) 张 · 约 \(formatBytes(gallery["bytesDeclared"].int))"
 }
 
-@MainActor struct SettingsView: View {
+@MainActor struct GalleriesView: View {
     @ObservedObject var model: LibraryModel
-    @State private var confirmClearCache = false
-    @State private var prefetchingProviderId = ""
     @State private var addProviderId = ""
     @State private var addManifestUrl = ""
     @State private var addPublicKey = ""
     @State private var addDefaultSearch = false
     @State private var replacementUrls: [String: String] = [:]
     @State private var removingProviderId = ""
+    var body: some View {
+        Form {
+            SwiftUI.Section {
+                Text("这里管理 FigureYa、Open Figure、社区图库和你添加的已签名图库。它们与「我的图库」分开；本机已发布的资产请到「我的图库」查看。").foregroundStyle(.secondary)
+                if model.providers.filter({ $0["providerId"].string != "org.scientificfigurelibrary.local" }).isEmpty {
+                    Text("绑定本机目录后可查看内置外部图库。").foregroundStyle(.secondary)
+                }
+                ForEach(model.providers.indices, id: \.self) { index in
+                    if model.providers[index]["providerId"].string != "org.scientificfigurelibrary.local" {
+                        ProviderSourceRow(model: model, source: model.providers[index], replacementUrl: Binding(
+                            get: { replacementUrls[model.providers[index]["providerId"].string] ?? sourceAddress(model.providers[index]) },
+                            set: { replacementUrls[model.providers[index]["providerId"].string] = $0 }
+                        ), onRemove: { removingProviderId = model.providers[index]["providerId"].string })
+                    }
+                }
+            } header: {
+                Text("已安装的图库")
+            }
+            SwiftUI.Section {
+                Button("检查信息并预览添加计划") {
+                    model.perform {
+                        try await model.changeProvider(title: "添加图库", [
+                            "action": text("add"),
+                            "expectedProviderId": text(addProviderId.trimmingCharacters(in: .whitespacesAndNewlines)),
+                            "manifestUrl": text(addManifestUrl.trimmingCharacters(in: .whitespacesAndNewlines)),
+                            "publicKeyBase64": text(addPublicKey.trimmingCharacters(in: .whitespacesAndNewlines)),
+                            "includeInDefaultSearch": .bool(addDefaultSearch),
+                        ])
+                    }
+                }.disabled(model.busy || addProviderId.isEmpty || addManifestUrl.isEmpty || addPublicKey.isEmpty)
+            } header: {
+                Text("添加图库")
+            } footer: {
+                Text("向作者索取三份信息：图库 ID、HTTPS 清单地址、独立公钥。公钥不要从清单文件里抄。提交后先预览计划，确认才会写入。")
+            }
+            SwiftUI.Section {
+                TextField("例如 io.example.figures", text: $addProviderId)
+                Text("必须与签名清单中的 providerId 完全一致。").font(.caption).foregroundStyle(.secondary)
+                TextField("https://example.com/current/source-manifest.json", text: $addManifestUrl)
+                Text("公开的 source-manifest.json 地址，必须是 https://。").font(.caption).foregroundStyle(.secondary)
+                TextField("作者单独提供的 32 字节公钥", text: $addPublicKey)
+                Text("标准 base64。用于校验清单签名，不要用网页或清单里的其他密钥。").font(.caption).foregroundStyle(.secondary)
+                Toggle("加入默认搜索", isOn: $addDefaultSearch)
+                Text("建议先添加并确认能用，再打开。未打开时只能在来源筛选里显式选择。").font(.caption).foregroundStyle(.secondary)
+            }
+        }.formStyle(.grouped)
+        .confirmationDialog("移除这个图库？签名图库会取消注册；内置图库只退出搜索，可随时恢复。已物化项目不会删除。", isPresented: Binding(get: { !removingProviderId.isEmpty }, set: { if !$0 { removingProviderId = "" } })) {
+            Button("删除", role: .destructive) {
+                let providerId = removingProviderId
+                removingProviderId = ""
+                model.perform { try await model.changeProvider(title: "移除图库", ["action": text("remove"), "providerId": text(providerId)]) }
+            }
+            Button("取消", role: .cancel) { removingProviderId = "" }
+        }
+        .task {
+            guard model.ready else { return }
+            do { try await model.status() } catch { model.error = error.localizedDescription }
+        }
+    }
+}
+
+@MainActor struct SettingsView: View {
+    @ObservedObject var model: LibraryModel
+    @State private var confirmClearCache = false
+    @State private var prefetchingProviderId = ""
     @State private var useSystemProxy = false
     @State private var httpsProxy = ""
     var cacheSummary: String {
@@ -396,7 +460,7 @@ func galleryCacheLabel(_ gallery: JSON) -> String {
             SwiftUI.Section("图片缓存") {
                 LabeledContent("缓存目录") { Text(model.previewCache["directory"].string).textSelection(.enabled) }
                 Text(cacheSummary).foregroundStyle(.secondary)
-                Text("安装不会下载在线图库图片。请选择下面的某个图库并缓存；搜索该图库的当前页或打开精确预览也会写入同一目录。本机知识库不需要这一步。清除后需重新缓存或再次查看；已确认图片需重新预览再保存模板。").foregroundStyle(.secondary)
+                Text("安装不会下载在线图库图片。请选择下面的某个图库并缓存；搜索该图库的当前页或打开精确预览也会写入同一目录。「我的图库」不需要这一步。清除后需重新缓存或再次查看；已确认图片需重新预览再保存模板。").foregroundStyle(.secondary)
                 if model.previewCache["galleries"].array.isEmpty {
                     Text("当前安装已包含图库图片，或尚未出现可下载清单。轻量安装包里的 FigureYa 与 Open Figure 需要在这里按图库下载。").foregroundStyle(.secondary)
                 }
@@ -416,49 +480,6 @@ func galleryCacheLabel(_ gallery: JSON) -> String {
                 Button("复制缓存路径") { copyText(model.previewCache["directory"].string); model.message = "已复制缓存路径。" }.disabled(model.previewCache["directory"].string.isEmpty)
                 Button("清除缓存", role: .destructive) { confirmClearCache = true }.disabled(model.busy || model.previewCache["fileCount"].int == 0)
             }
-            SwiftUI.Section("外部调用") {
-                Text("本地客户端直接管理图片、代码与版本。其他 CLI 或桌面工具可通过 MCP 和核心 Skill 使用同一知识库。")
-                Button("复制 MCP 配置") { copyText(model.connectionConfiguration); model.message = "已复制 MCP 配置。" }.disabled(model.connectionConfiguration.isEmpty)
-                Button("查看安装与连接指令") { model.section = .integrations }
-                Text("内置 Node 版可直接使用；no-node 版要求本机 Node.js 22+。客户端不执行绘图代码。").foregroundStyle(.secondary)
-            }
-            SwiftUI.Section("图片来源") {
-                Text("本机已发布是你的知识库，不能移除。其他图库可从搜索中移除；安装文件仍保留，可随时恢复。已物化模板不受影响。").foregroundStyle(.secondary)
-                if model.providers.isEmpty { Text("绑定本机目录后可查看内置来源。").foregroundStyle(.secondary) }
-                ForEach(model.providers.indices, id: \.self) { index in
-                    ProviderSourceRow(model: model, source: model.providers[index], replacementUrl: Binding(
-                        get: { replacementUrls[model.providers[index]["providerId"].string] ?? sourceAddress(model.providers[index]) },
-                        set: { replacementUrls[model.providers[index]["providerId"].string] = $0 }
-                    ), onRemove: { removingProviderId = model.providers[index]["providerId"].string })
-                }
-            }
-            SwiftUI.Section {
-                Button("检查信息并预览添加计划") {
-                    model.perform {
-                        try await model.changeProvider(title: "添加图库", [
-                            "action": text("add"),
-                            "expectedProviderId": text(addProviderId.trimmingCharacters(in: .whitespacesAndNewlines)),
-                            "manifestUrl": text(addManifestUrl.trimmingCharacters(in: .whitespacesAndNewlines)),
-                            "publicKeyBase64": text(addPublicKey.trimmingCharacters(in: .whitespacesAndNewlines)),
-                            "includeInDefaultSearch": .bool(addDefaultSearch),
-                        ])
-                    }
-                }.disabled(model.busy || addProviderId.isEmpty || addManifestUrl.isEmpty || addPublicKey.isEmpty)
-            } header: {
-                Text("添加图库")
-            } footer: {
-                Text("向作者索取三份信息：图库 ID、HTTPS 清单地址、独立公钥。公钥不要从清单文件里抄。提交后先预览计划，确认才会写入。")
-            }
-            SwiftUI.Section {
-                TextField("例如 io.example.figures", text: $addProviderId)
-                Text("必须与签名清单中的 providerId 完全一致。").font(.caption).foregroundStyle(.secondary)
-                TextField("https://example.com/current/source-manifest.json", text: $addManifestUrl)
-                Text("公开的 source-manifest.json 地址，必须是 https://。").font(.caption).foregroundStyle(.secondary)
-                TextField("作者单独提供的 32 字节公钥", text: $addPublicKey)
-                Text("标准 base64。用于校验清单签名，不要用网页或清单里的其他密钥。").font(.caption).foregroundStyle(.secondary)
-                Toggle("加入默认搜索", isOn: $addDefaultSearch)
-                Text("建议先添加并确认能用，再打开。未打开时只能在来源筛选里显式选择。").font(.caption).foregroundStyle(.secondary)
-            }
         }.formStyle(.grouped)
         .confirmationDialog("清除已下载的在线预览图？之后需要重新对某个图库执行「缓存图片」，或再次查看当前页。已确认图片需要重新预览后再保存模板。", isPresented: $confirmClearCache) {
             Button("清除缓存", role: .destructive) { model.perform { try await model.clearPreviewCache() } }
@@ -471,14 +492,6 @@ func galleryCacheLabel(_ gallery: JSON) -> String {
                 model.perform { try await model.prefetchPreviewCache(providerId) }
             }
             Button("取消", role: .cancel) { prefetchingProviderId = "" }
-        }
-        .confirmationDialog("移除这个图库？签名图库会取消注册；内置图库只退出搜索，可随时恢复。已物化项目不会删除。", isPresented: Binding(get: { !removingProviderId.isEmpty }, set: { if !$0 { removingProviderId = "" } })) {
-            Button("删除", role: .destructive) {
-                let providerId = removingProviderId
-                removingProviderId = ""
-                model.perform { try await model.changeProvider(title: "移除图库", ["action": text("remove"), "providerId": text(providerId)]) }
-            }
-            Button("取消", role: .cancel) { removingProviderId = "" }
         }
         .onChange(of: model.networkAccess) { value in
             useSystemProxy = value["useSystemProxy"].bool
@@ -582,6 +595,7 @@ func copyText(_ value: String) { NSPasteboard.general.clearContents(); NSPastebo
                 Text("把图库连接到你使用的 CLI 或桌面工具，获取候选图片与代码。").foregroundStyle(.secondary)
                 if guide == .null { ProgressView("正在读取本机连接配置…") }
                 else {
+                    Button("复制 MCP 配置") { copyText(model.connectionConfiguration); model.message = "已复制 MCP 配置。" }.disabled(model.connectionConfiguration.isEmpty)
                     Text("1. 选择外部工具").font(.title2)
                     Picker("目标客户端", selection: $selectedHost) {
                         ForEach(guide["hosts"].array.indices, id: \.self) { index in Text(guide["hosts"].array[index]["title"].string).tag(guide["hosts"].array[index]["id"].string) }

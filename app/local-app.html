@@ -4,28 +4,28 @@
 <body class="local-client">
   <aside class="local-sidebar" aria-label="主导航">
     <div class="local-brand"><img id="local-logo" alt=""><div>Scientific Figure Library<small>本地图片 · 代码知识库</small></div></div>
-    <nav><button data-page="discover" class="active">发现模板</button><button data-page="library">我的知识库</button><button data-page="import">导入图片与代码</button><button data-page="integrations">连接外部工具</button><button data-page="settings">设置与连接</button></nav>
+    <nav><button data-page="discover" class="active">图库</button><button data-page="library">我的图库</button><button data-page="galleries">外部图库</button><button data-page="import">创建参考图</button><button data-page="integrations">连接外部工具</button><button data-page="settings">设置</button></nav>
     <div class="sidebar-bottom"><span class="connection-dot"></span><span id="connection-state">正在连接本地服务</span><p>图片和代码留在你指定的图库中。</p></div>
   </aside>
   <main class="local-main">
-    <header class="local-header"><div><p class="eyebrow">YOUR VISUAL KNOWLEDGE, CONNECTED.</p><h1 id="page-title">发现可复用的科学图</h1></div><button id="refresh" class="quiet">刷新</button></header>
+    <header class="local-header"><div><p class="eyebrow">YOUR VISUAL KNOWLEDGE, CONNECTED.</p><h1 id="page-title">图库</h1></div><button id="refresh" class="quiet">刷新</button></header>
     <p id="notice" role="status" aria-live="polite" hidden></p>
     <section id="setup-banner" class="setup-banner" hidden><strong>欢迎建立你的本地知识库</strong><p>先选择全局图库与工作区，之后可跨项目复用。</p><button data-page="settings">设置本机目录</button></section>
     <section id="discover-page" class="local-page">
       <form id="search-form" class="search-form"><label class="sr-only" for="search-query">搜索模板</label><input id="search-query" placeholder="描述你想找的图，例如：单细胞分组比例、火山图…"><button type="submit">搜索图库</button></form>
       <div class="search-filters"><label>图片来源<select id="search-provider"><option value="">全部默认来源</option></select></label><label>数据特征<input id="search-data" placeholder="可选：gene、log2FC、padj"></label></div>
-      <p>在线图库图片不会在安装时下载。请到设置中对某个图库执行「缓存图片」，或浏览/搜索该图库后查看当前页。已缓存的图片可离线查看。</p>
+      <p>在线图库图片不会在安装时下载。请到「外部图库」或设置的「图片缓存」中对某个图库执行「缓存图片」，或浏览/搜索后查看当前页。已缓存的图片可离线查看。</p>
       <div id="suggestions" class="suggestions"><span>从常见图形开始</span><button type="button" id="browse-gallery">浏览图库</button><button data-query="volcano differential expression">火山图</button><button data-query="heatmap expression matrix">热图</button><button data-query="UMAP single cell">UMAP</button><button data-query="barplot proportion cell type">细胞比例</button><button data-query="GO enrichment pathway">富集分析</button></div>
       <div class="results-heading"><h2 id="results-title">找到适合你数据的表达方式</h2><span id="results-count"></span></div>
-      <div id="empty" class="local-empty"><h3>让图片成为下一次研究的起点</h3><p>可浏览全部图库图片，或搜索后再选用。也可以导入自己的资产。</p></div>
+      <div id="empty" class="local-empty"><h3>让图片成为下一次研究的起点</h3><p>可浏览全部图库图片，或搜索后再选用。自己的资产在「我的图库」，也可以「创建参考图」。</p></div>
       <section id="cards" class="cards" aria-label="候选图片"></section>
       <div id="selection-bar" class="local-selection" hidden><span id="selection-count"></span><button id="copy-selection">复制所选模板信息</button></div>
       <nav id="local-pagination" class="pagination" hidden><button id="previous">上一页</button><span id="page-label"></span><button id="next">下一页</button></nav>
     </section>
-    <section id="library-page" class="local-page" hidden><div class="section-heading"><p>草稿与已发布版本分别管理，保留每次修订的来源和代码。</p><button data-page="import">导入资产</button></div><div id="library-items" class="library-items"></div></section>
+    <section id="library-page" class="local-page" hidden><div class="section-heading"><p>这里是你自己的图片与代码。草稿与已发布版本分别管理，与外部图库分开。</p><button data-page="import">创建参考图</button></div><div id="library-items" class="library-items"></div></section>
     <section id="import-page" class="local-page" hidden>
       <form id="import-form" class="local-form">
-        <p>将一张参考图及相关代码收入知识库。文件只会保存和校验，不会执行。</p>
+        <p>将一张参考图及相关代码收入「我的图库」。文件只会保存和校验，不会执行。</p>
         <label>名称<input name="title" required maxlength="500" placeholder="例如：单细胞分组比例图"></label>
         <label>图片<input name="image" type="file" accept=".png,.jpg,.jpeg,.webp" required></label>
         <label>对应代码（可选）<input name="code" type="file" accept=".R,.r,.py,.txt"></label>
@@ -38,9 +38,24 @@
         <button type="submit">预览导入计划</button>
       </form>
     </section>
+    <section id="galleries-page" class="local-page" hidden>
+      <section class="settings-card"><h2>外部图库</h2>
+        <p>这里管理 FigureYa、Open Figure、社区图库和你添加的已签名图库。它们与「我的图库」分开；本机已发布的资产请到「我的图库」查看。</p>
+        <div id="provider-list"></div>
+        <form id="add-provider-form" class="local-form">
+          <h3>添加图库</h3>
+          <p>向图库作者索取下面三份信息。公钥必须单独拿到，不要从清单文件里抄。提交后先预览计划，确认才会写入。</p>
+          <label>图库 ID（providerId）<input id="add-provider-id" required placeholder="例如 io.example.figures" maxlength="128"><small>必须与签名清单中的身份完全一致，通常是小写字母、数字和点。</small></label>
+          <label>签名清单地址<input id="add-provider-manifest" required placeholder="https://example.com/current/source-manifest.json"><small>公开的 HTTPS 地址，文件名一般是 source-manifest.json。</small></label>
+          <label>Ed25519 公钥（base64）<input id="add-provider-key" required autocomplete="off" placeholder="作者单独提供的 32 字节公钥"><small>用于校验清单签名。不要使用清单或网页里附带的其他密钥。</small></label>
+          <label class="checkbox"><input id="add-provider-default-search" type="checkbox">加入默认搜索<small>建议先添加并确认能用，再打开。未勾选时只能在来源筛选里显式选择。</small></label>
+          <button type="submit">检查信息并预览添加计划</button>
+        </form>
+      </section>
+    </section>
     <section id="integrations-page" class="local-page" hidden>
       <p>把图库连接到你使用的 CLI 或桌面工具，获取候选图片与代码。</p>
-      <section class="settings-card"><h2>1. 选择外部工具</h2><label>目标客户端 <select id="integration-host"></select></label><div id="integration-instructions"></div><div id="integration-snippets"></div></section>
+      <section class="settings-card"><h2>1. 选择外部工具</h2><label>目标客户端 <select id="integration-host"></select></label><div id="integration-instructions"></div><div id="integration-snippets"></div><p><button id="copy-mcp" class="quiet">复制 MCP 配置</button></p></section>
       <section class="settings-card"><h2>2. 加载核心 Skill</h2><p id="integration-skill-help"></p><div id="integration-skill"></div></section>
       <section class="settings-card"><h2>3. 验证连接</h2><p>在外部工具中发送下面的指令。工具连接成功和图片成功显示需要分别确认。</p><div id="integration-verify"></div><div id="integration-notes"></div></section>
     </section>
@@ -53,27 +68,14 @@
         <p id="network-access-summary"></p>
         <button id="save-proxy" class="quiet">保存代理</button>
       </section></div>
-      <section class="settings-card"><h2>外部调用接口</h2><p>其他 CLI 或桌面工具可以通过 MCP 和核心 Skill 使用这个知识库。本地客户端独立完成图片与代码的浏览和管理。</p><button data-page="integrations" class="quiet">查看安装与连接指令</button><button id="copy-mcp" class="quiet">复制 MCP 配置</button><h3>图片与代码</h3><p>客户端保存图片、代码、关联和版本，只做文件管理，不执行绘图代码。</p><button id="shutdown" class="quiet" hidden>退出本地客户端</button></section>
       <section class="settings-card"><h2>图片缓存</h2>
-        <p>安装不会下载在线图库图片。请选择下面的某个图库并缓存；搜索该图库的当前页或打开精确预览也会写入同一目录。本机知识库不需要这一步。清除后需重新缓存或再次查看；已确认图片需重新预览再保存模板。</p>
+        <p>安装不会下载在线图库图片。请选择下面的某个图库并缓存；搜索该图库的当前页或打开精确预览也会写入同一目录。「我的图库」不需要这一步。清除后需重新缓存或再次查看；已确认图片需重新预览再保存模板。</p>
         <p>缓存目录 <code id="preview-cache-directory"></code></p>
         <p id="preview-cache-summary"></p>
         <div id="preview-cache-galleries"></div>
         <button id="copy-cache-path" class="quiet">复制缓存路径</button><button id="clear-cache" class="quiet">清除缓存</button>
       </section>
-      <section class="settings-card"><h2>图片来源</h2>
-        <p>本机已发布是你的知识库，不能移除。其他图库可从搜索中移除，安装文件仍保留，可随时恢复。添加外部图库需要作者单独提供的 ID、清单地址和公钥。</p>
-        <div id="provider-list"></div>
-        <form id="add-provider-form" class="local-form">
-          <h3>添加图库</h3>
-          <p>向图库作者索取下面三份信息。公钥必须单独拿到，不要从清单文件里抄。提交后先预览计划，确认才会写入。</p>
-          <label>图库 ID（providerId）<input id="add-provider-id" required placeholder="例如 io.example.figures" maxlength="128"><small>必须与签名清单中的身份完全一致，通常是小写字母、数字和点。</small></label>
-          <label>签名清单地址<input id="add-provider-manifest" required placeholder="https://example.com/current/source-manifest.json"><small>公开的 HTTPS 地址，文件名一般是 source-manifest.json。</small></label>
-          <label>Ed25519 公钥（base64）<input id="add-provider-key" required autocomplete="off" placeholder="作者单独提供的 32 字节公钥"><small>用于校验清单签名。不要使用清单或网页里附带的其他密钥。</small></label>
-          <label class="checkbox"><input id="add-provider-default-search" type="checkbox">加入默认搜索<small>建议先添加并确认能用，再打开。未勾选时只能在来源筛选里显式选择。</small></label>
-          <button type="submit">检查信息并预览添加计划</button>
-        </form>
-      </section>
+      <button id="shutdown" class="quiet" hidden>退出本地客户端</button>
     </section>
   </main>
   <dialog id="plan-dialog" class="local-dialog"><form method="dialog"><button class="dialog-close" aria-label="关闭计划">×</button></form><h2 id="plan-title">确认操作</h2><div id="plan-summary"></div><details><summary>查看完整计划与校验信息</summary><pre id="plan-json"></pre></details><div class="dialog-actions"><button id="plan-cancel" class="quiet">取消</button><button id="plan-apply">确认执行</button></div></dialog>

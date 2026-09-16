@@ -95,7 +95,7 @@ try {
   if (guide.hosts.length < 4 || !guide.verificationPrompt.includes('figure_library_get_skill')) throw new Error('Host installation instructions are missing');
   if (path.resolve(connection.mcpServers['figure-library'].command) !== path.resolve(binary)) throw new Error('App is not using its bundled Node runtime');
   const html = await (await fetch(launch.origin)).text();
-  if (!html.includes('本地图片') || !html.includes('copy-mcp') || !html.includes('图片来源') || !html.includes('preview-cache')) throw new Error('Standalone page is absent');
+  if (!html.includes('本地图片') || !html.includes('copy-mcp') || !html.includes('外部图库') || !html.includes('preview-cache')) throw new Error('Standalone page is absent');
   let binding = (await call('figure_library_plan_bind_global', { libraryDirectory: env.FIGURE_LIBRARY_DIR, migrationMode: 'none' })).plan;
   await call('figure_library_apply_bind_global', { planDigest: binding.planDigest, operationId: 'windows-smoke-bind' }, true);
   binding = (await call('figure_library_plan_bind_workspace', { workspaceDirectory: path.join(root, 'workspace') })).plan;

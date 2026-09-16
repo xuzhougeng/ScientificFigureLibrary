@@ -2,9 +2,18 @@ import SwiftUI
 import AppKit
 
 enum Section: String, CaseIterable, Identifiable, Hashable {
-    case discover = "发现模板", library = "我的知识库", add = "导入图片与代码", settings = "设置", integrations = "连接外部工具"
+    case discover = "图库", library = "我的图库", galleries = "外部图库", add = "创建参考图", integrations = "连接外部工具", settings = "设置"
     var id: String { rawValue }
-    var icon: String { switch self { case .discover: return "square.grid.2x2"; case .library: return "books.vertical"; case .add: return "square.and.arrow.down"; case .settings: return "gearshape"; case .integrations: return "link" } }
+    var icon: String {
+        switch self {
+        case .discover: return "square.grid.2x2"
+        case .library: return "books.vertical"
+        case .galleries: return "photo.on.rectangle"
+        case .add: return "plus.square.on.square"
+        case .integrations: return "link"
+        case .settings: return "gearshape"
+        }
+    }
 }
 struct PendingPlan: Identifiable {
     let id = UUID()
@@ -216,7 +225,7 @@ enum Sheet: Identifiable {
         }
         let value = try await backend.call("figure_library_plan_working_revision", arguments)
         let plan = value["plan"]
-        sheet = .plan(PendingPlan(title: "导入图片与代码", value: value, operation: "figure_library_apply_working_revision", arguments: ["planDigest": plan["planDigest"], "operationId": text(UUID().uuidString), "expectedAction": plan["action"], "expectedTemplateId": plan["templateId"], "expectedSeriesDigest": plan["expectedSeriesDigest"]], after: { [weak self] in self?.section = .library; try await self?.loadLibrary(); self?.message = "已保存为草稿，审阅后可发布。" }))
+        sheet = .plan(PendingPlan(title: "创建参考图", value: value, operation: "figure_library_apply_working_revision", arguments: ["planDigest": plan["planDigest"], "operationId": text(UUID().uuidString), "expectedAction": plan["action"], "expectedTemplateId": plan["templateId"], "expectedSeriesDigest": plan["expectedSeriesDigest"]], after: { [weak self] in self?.section = .library; try await self?.loadLibrary(); self?.message = "已保存为草稿，审阅后可发布。" }))
     }
 }
 

@@ -11,7 +11,7 @@ const input = (id: string) => el<HTMLInputElement>(id);
 const button = (id: string) => el<HTMLButtonElement>(id);
 const form = (id: string) => el<HTMLFormElement>(id);
 const dialog = (id: string) => el<HTMLDialogElement>(id);
-const titles: Record<string, string> = { discover: "发现可复用的科学图", library: "我的图片与代码", import: "导入知识库", settings: "设置与连接", integrations: "连接外部工具" };
+const titles: Record<string, string> = { discover: "图库", library: "我的图库", galleries: "外部图库", import: "创建参考图", integrations: "连接外部工具", settings: "设置" };
 let page = "discover";
 let result: SearchResult | undefined;
 let selected = new Map<string, Candidate>();
@@ -57,7 +57,7 @@ async function showPage(next: string) {
   el("page-title").textContent = titles[page]!;
   document.querySelectorAll<HTMLButtonElement>(".local-sidebar button[data-page]").forEach((item) => item.classList.toggle("active", item.dataset.page === page));
   if (page === "library") await loadLibrary();
-  if (page === "settings") await loadStatus();
+  if (page === "settings" || page === "galleries" || page === "discover") await loadStatus();
   if (page === "integrations") await loadIntegrations();
 }
 function refreshSelection() {
@@ -296,24 +296,22 @@ function renderSearchProviders(sources: Array<Record<string, unknown>>) {
 function renderProviderSources(sources: Array<Record<string, unknown>>) {
   const target = el("provider-list");
   target.replaceChildren();
-  if (!sources.length) {
-    target.append(node("p", "尚未列出图库来源。绑定本机目录后可查看内置来源，也可添加已签名图库。"));
+  const external = sources.filter((source) => source.providerId !== "org.scientificfigurelibrary.local" && source.sourceKind !== "local-published");
+  if (!external.length) {
+    target.append(node("p", "尚未列出外部图库。绑定本机目录后可查看内置图库，也可添加已签名图库。"));
     return;
   }
-  for (const source of sources) {
+  for (const source of external) {
     const providerId = String(source.providerId ?? "");
     const personal = source.sourceKind === "signed-personal";
     const official = source.sourceKind === "official-signed-overlay";
-    const local = providerId === "org.scientificfigurelibrary.local";
-    const removable = !local;
     const card = node("article", undefined, "provider-source");
     card.append(node("h3", String(source.sourceLabel ?? providerId)));
     card.append(node("p", `${sourceKindLabel(source)} · ${sourceHealth(source)}${source.templateCount === undefined ? "" : ` · ${String(source.templateCount)} 个模板`}`));
     card.append(node("p", `图库 ID：${providerId}`));
     const address = sourceAddress(source);
-    card.append(node("p", address ? `清单地址：${address}` : local ? "这是你绑定的本机知识库" : official || personal ? "清单地址未返回" : "安装包内置目录"));
-    if (local) card.append(node("p", "本机知识库不能移除。"));
-    else if (source.enabled === false) card.append(node("p", "已从普通搜索中移除，可恢复。"));
+    card.append(node("p", address ? `清单地址：${address}` : official || personal ? "清单地址未返回" : "安装包内置目录"));
+    if (source.enabled === false) card.append(node("p", "已从普通搜索中移除，可恢复。"));
     else if (source.includeInDefaultSearch === true) card.append(node("p", "已加入默认搜索"));
     else card.append(node("p", "不参与默认搜索"));
     const autoRefresh = source.autoRefreshEnabled === true || record(source.details).autoRefreshEnabled === true;
@@ -340,18 +338,16 @@ function renderProviderSources(sources: Array<Record<string, unknown>>) {
     if (gallery && Number(gallery.missing ?? 0) > 0) {
       actions.append(action("缓存图片", () => prefetchGallery(providerId, String(source.sourceLabel ?? providerId), Number(gallery.declared ?? 0), Number(gallery.bytesDeclared ?? 0)), true));
     }
-    if (removable) {
-      if (source.enabled === false && !personal) {
-        actions.append(action("恢复", () => changeProvider("恢复图库", { action: "configure", providerId, enabled: true }), true));
-      } else {
-        actions.append(action("删除", async () => {
-          const message = personal
-            ? `删除 ${String(source.sourceLabel ?? providerId)}？这会取消注册，不会删除已下载快照或已物化项目。`
-            : `移除 ${String(source.sourceLabel ?? providerId)}？普通搜索将不再包含它。安装文件仍保留，可随时恢复。已物化模板不受影响。`;
-          if (!window.confirm(message)) return;
-          await changeProvider(personal ? "删除图库" : "移除图库", { action: "remove", providerId });
-        }, true));
-      }
+    if (source.enabled === false && !personal) {
+      actions.append(action("恢复", () => changeProvider("恢复图库", { action: "configure", providerId, enabled: true }), true));
+    } else {
+      actions.append(action("删除", async () => {
+        const message = personal
+          ? `删除 ${String(source.sourceLabel ?? providerId)}？这会取消注册，不会删除已下载快照或已物化项目。`
+          : `移除 ${String(source.sourceLabel ?? providerId)}？普通搜索将不再包含它。安装文件仍保留，可随时恢复。已物化模板不受影响。`;
+        if (!window.confirm(message)) return;
+        await changeProvider(personal ? "删除图库" : "移除图库", { action: "remove", providerId });
+      }, true));
     }
     if (actions.childNodes.length) card.append(actions);
     target.append(card);
@@ -399,7 +395,7 @@ async function loadLibrary() {
   const items = records(details(requireResult(await api("library"))).items);
   const target = el("library-items");
   target.replaceChildren();
-  if (!items.length) { target.append(node("div", "知识库还没有资产。导入图片和代码，开始积累你的可复用参考。", "local-empty")); return; }
+  if (!items.length) { target.append(node("div", "我的图库还没有资产。用「创建参考图」收入图片和代码。", "local-empty")); return; }
   for (const item of items) {
     const row = node("article", undefined, "library-row");
     const info = node("div");
@@ -492,7 +488,7 @@ async function importAsset() {
     confirmations: { createOrUpdate: true, figureUnitBoundary: true, multiImageGrouping: true, primaryPreview: true, assetKind: true, canonicalImplementation: true, codeRelationships: true, codeOrigin: true, executionClaim: true, duplicateDecision: editingTemplateId ? "update_exact" : "create_new" },
   });
   const plan = record(details(planned).plan);
-  reviewPlan(editingTemplateId ? "更新知识库资产" : "导入图片与代码", planned, async () => {
+  reviewPlan(editingTemplateId ? "更新参考图" : "创建参考图", planned, async () => {
     await call("figure_library_apply_working_revision", { planDigest: plan.planDigest, operationId: crypto.randomUUID(), expectedAction: plan.action, expectedTemplateId: plan.templateId, expectedSeriesDigest: plan.expectedSeriesDigest }, true);
     editingTemplateId = undefined;
     form("import-form").reset();

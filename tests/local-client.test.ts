@@ -63,6 +63,13 @@ async function isolated(t: { after: (fn: () => Promise<void>) => void }) {
 test("local app HTML exposes browse-gallery", async () => {
   const html = await fs.readFile(path.resolve(import.meta.dirname, "../app/local-app.html"), "utf8");
   assert.match(html, /id="browse-gallery"/u);
+  assert.match(html, /data-page="discover"[^>]*>图库</u);
+  assert.match(html, /data-page="library"[^>]*>我的图库</u);
+  assert.match(html, /data-page="galleries"[^>]*>外部图库</u);
+  assert.match(html, /data-page="import"[^>]*>创建参考图</u);
+  assert.match(html, /id="galleries-page"/u);
+  assert.match(html, /id="copy-mcp"/u);
+  assert.doesNotMatch(html, /发现模板|我的知识库|导入图片与代码|设置与连接/u);
 });
 
 test("bundled runtime lock pins official Linux Node archives", async () => {
