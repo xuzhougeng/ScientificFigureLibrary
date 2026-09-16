@@ -76,20 +76,24 @@ func nativeSmokeLog(_ stage: String) {
         try await model.status()
         await Task.yield()
         guard let window = NSApplication.shared.windows.first(where: { $0.isVisible }), let view = window.contentView else { throw LocalError(message: "SwiftUI window was not created") }
-        view.layoutSubtreeIfNeeded()
-        if let image = view.bitmapImageRepForCachingDisplay(in: view.bounds) {
-            view.cacheDisplay(in: view.bounds, to: image)
-            try image.representation(using: .png, properties: [:])?.write(to: root.appendingPathComponent("native-window.png"))
+        func capture(_ name: String) throws {
+            view.layoutSubtreeIfNeeded()
+            guard let image = view.bitmapImageRepForCachingDisplay(in: view.bounds),
+                  let png = image.representation(using: .png, properties: [:]) else {
+                throw LocalError(message: "Native window capture failed: \(name)")
+            }
+            try png.write(to: root.appendingPathComponent(name))
         }
+        try capture("native-window.png")
+        nativeSmokeLog("capture settings page")
+        model.section = .settings
+        try await Task.sleep(nanoseconds: 200_000_000)
+        try capture("settings-window.png")
         nativeSmokeLog("capture integration page")
         model.section = .integrations
         try await Task.sleep(nanoseconds: 200_000_000)
-        view.layoutSubtreeIfNeeded()
-        if let image = view.bitmapImageRepForCachingDisplay(in: view.bounds) {
-            view.cacheDisplay(in: view.bounds, to: image)
-            try image.representation(using: .png, properties: [:])?.write(to: root.appendingPathComponent("integrations-window.png"))
-        }
-        let report = object(["status": text("passed"), "nativeWindow": .bool(true), "privateRuntime": .bool(environment["SFL_RUNTIME_MODE"] != "system"), "runtimeMode": text(environment["SFL_RUNTIME_MODE"] ?? "bundled"), "syntheticUserActions": .bool(true), "flows": .array(["integrationGuide", "onDemandPreviewManifests", "binding", "upload", "import", "publish", "search", "imageDecode", "localConfirmation", "materialize", "replay"].map(text))])
+        try capture("integrations-window.png")
+        let report = object(["status": text("passed"), "nativeWindow": .bool(true), "privateRuntime": .bool(environment["SFL_RUNTIME_MODE"] != "system"), "runtimeMode": text(environment["SFL_RUNTIME_MODE"] ?? "bundled"), "syntheticUserActions": .bool(true), "flows": .array(["integrationGuide", "onDemandPreviewManifests", "binding", "upload", "import", "publish", "search", "imageDecode", "localConfirmation", "materialize", "replay", "settings"].map(text))])
         try Data(report.pretty.utf8).write(to: root.appendingPathComponent("native-smoke.json"))
         nativeSmokeLog("shutdown")
         _ = await backend.shutdown()
