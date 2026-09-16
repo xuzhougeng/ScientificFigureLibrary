@@ -590,6 +590,10 @@ html.dialog-open body {
   box-shadow: 0 24px 80px rgb(14 32 23 / 28%);
 }
 
+.candidate-dialog.has-technical {
+  width: min(1180px, calc(100vw - 28px));
+}
+
 .candidate-dialog::backdrop {
   background: rgb(10 25 17 / 58%);
   backdrop-filter: blur(2px);
@@ -601,6 +605,62 @@ html.dialog-open body {
   min-width: 0;
   gap: 16px;
   padding: 22px;
+}
+
+.detail-shell {
+  display: grid;
+  min-width: 0;
+  gap: 18px;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.detail-shell.is-technical-open {
+  grid-template-columns: minmax(0, 1fr) minmax(240px, 320px);
+  align-items: start;
+}
+
+.detail-main {
+  display: grid;
+  min-width: 0;
+  gap: 16px;
+}
+
+.detail-technical-toggle {
+  justify-self: start;
+  background: #fff;
+  border-color: #d2ddd2;
+  color: #405b46;
+}
+
+.detail-technical-panel {
+  min-width: 0;
+  border: 1px solid var(--color-border-primary, #d9ddd8);
+  border-radius: 12px;
+  padding: 16px;
+  background: var(--color-background-tertiary, #f6f8f5);
+}
+
+.detail-technical-panel[hidden] {
+  display: none !important;
+}
+
+.detail-technical-heading {
+  margin: 0 0 12px;
+  font-size: 0.92rem;
+}
+
+.detail-technical {
+  display: grid;
+  gap: 14px;
+}
+
+.detail-technical .detail-section-title {
+  color: #4d5e53;
+}
+
+.detail-technical .detail-list {
+  padding-left: 1.1rem;
+  font-size: 0.78rem;
 }
 
 .dialog-close {
@@ -783,6 +843,14 @@ html.dialog-open body {
 
   .detail-controls {
     grid-template-columns: 1fr;
+  }
+
+  .candidate-dialog.has-technical {
+    width: calc(100vw - 24px);
+  }
+
+  .detail-shell.is-technical-open {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 

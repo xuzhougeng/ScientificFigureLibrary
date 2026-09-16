@@ -269,7 +269,7 @@ test("personal module cards keep publisher state, Local state, and thumbnail sta
   assert.match(detail.dialog.textContent ?? "", /发布者执行状态：passed（synthetic_data）/u);
   assert.match(detail.dialog.textContent ?? "", /SFL Local review：not_reviewed/u);
   assert.match(detail.dialog.textContent ?? "", /SFL code execution：false/u);
-  assert.equal(detail.dialog.querySelector<HTMLDetailsElement>(".detail-technical")?.open, false);
+  assert.equal(detail.dialog.querySelector<HTMLElement>(".detail-technical-panel")?.hidden, true);
   assert.equal(detail.exactPreviewButton.disabled, false);
   assert.ok(detail.exactPreviewButton.querySelector("svg.sfl-icon"));
   assert.ok(detail.confirmButton.querySelector("svg.sfl-icon"));
@@ -840,8 +840,8 @@ test("all Providers render the same Markdown detail while technical metadata sta
     assert.ok(detail.dialog.querySelector(".markdown-body h3"));
     assert.ok(detail.dialog.querySelector(".markdown-body li"));
     assert.ok(detail.dialog.querySelector(".markdown-table-scroll table"));
-    const technical = detail.dialog.querySelector<HTMLDetailsElement>("details")!;
-    assert.equal(technical.open, false);
+    const technical = detail.dialog.querySelector<HTMLElement>(".detail-technical-panel")!;
+    assert.equal(technical.hidden, true);
     assert.match(technical.textContent ?? "", /验证状态/u);
     for (const label of ["输入文件", "代码文件", "依赖包", "数据特征"]) {
       const heading = Array.from(detail.dialog.querySelectorAll("h3")).find((h) => h.textContent === label)!;
@@ -1080,4 +1080,73 @@ test("merged shell keeps accessible count, toast, plotting tips and hidden empty
   assert.match(main, /announceSelectionChange\(/u);
   assert.match(styles, /\.empty\[hidden\]\s*\{\s*display: none;/u);
   assert.match(styles, /#app\[data-display-mode="pip"\] \.plotting-tips/u);
+});
+
+test("technical metadata opens beside the main detail instead of expanding inline", () => {
+  const document = createTestWindow().document as unknown as Document;
+  const opener = document.createElement("button");
+  document.body.append(opener);
+  const detail = openCandidateDetail({
+    document,
+    candidate: candidate("io.github.jarxunlai.personal-figures", "aside-tech", "ready", "data:image/png;base64,iVBORw0KGgo="),
+    opener,
+    serverToolsAvailable: true,
+    updateModelContextAvailable: false,
+    onRequestExactPreview() {},
+    onRequestAgentReview() {},
+  });
+  const panel = detail.dialog.querySelector<HTMLElement>(".detail-technical-panel")!;
+  const toggle = detail.dialog.querySelector<HTMLButtonElement>(".detail-technical-toggle")!;
+  const shell = detail.dialog.querySelector(".detail-shell")!;
+  assert.equal(panel.hidden, true);
+  assert.equal(toggle.getAttribute("aria-expanded"), "false");
+  toggle.click();
+  assert.equal(panel.hidden, false);
+  assert.equal(shell.classList.contains("is-technical-open"), true);
+  assert.equal(detail.dialog.classList.contains("has-technical"), true);
+  assert.match(panel.textContent ?? "", /来源与执行边界/u);
+  toggle.click();
+  assert.equal(panel.hidden, true);
+  detail.closeButton.click();
+});
+
+test("FigureYa collapsed catalog prose is split before rendering", () => {
+  const document = createTestWindow().document as unknown as Document;
+  const opener = document.createElement("button");
+  document.body.append(opener);
+  const selected = candidate("org.figureya.module", "FigureYa101PCA", "ready", "data:image/png;base64,iVBORw0KGgo=");
+  selected.description = "中文需求。 English requirement. From http://example.com/paper 3";
+  selected.application = "s 场景一：批次效应。 Scenario 1: Batch effect. 4";
+  selected.dataProfile = "矩阵，行表示特征 # batch: 批次信息 # batchvar: 批次变量 # fig.dir: 输出目录";
+  const detail = openCandidateDetail({
+    document, candidate: selected, opener, serverToolsAvailable: true, updateModelContextAvailable: false,
+    onRequestExactPreview() {}, onRequestAgentReview() {},
+  });
+  const text = detail.dialog.textContent ?? "";
+  assert.match(detail.dialog.querySelector(".detail-description")?.innerHTML ?? "", /English requirement/u);
+  assert.match(text, /场景一/u);
+  assert.match(text, /batch/u);
+  assert.doesNotMatch(detail.dialog.querySelector(".detail-description")?.textContent ?? "", /paper 3$/u);
+  detail.closeButton.click();
+});
+
+test("local save purpose starts from a single save action instead of a hidden exact-preview step", () => {
+  const document = createTestWindow().document as unknown as Document;
+  const opener = document.createElement("button");
+  document.body.append(opener);
+  const detail = openCandidateDetail({
+    document,
+    candidate: candidate("org.figureya.module", "save-flow", "ready", "data:image/png;base64,iVBORw0KGgo="),
+    opener,
+    serverToolsAvailable: true,
+    updateModelContextAvailable: false,
+    purpose: "save",
+    onRequestExactPreview() {},
+    onRequestAgentReview() {},
+  });
+  assert.match(detail.exactPreviewButton.textContent ?? "", /仅查看精确图片/u);
+  assert.match(detail.confirmButton.textContent ?? "", /加载精确图片并保存/u);
+  assert.equal(detail.confirmButton.disabled, false);
+  assert.match(detail.status.textContent ?? "", /保存到项目前会先加载精确图片/u);
+  detail.closeButton.click();
 });

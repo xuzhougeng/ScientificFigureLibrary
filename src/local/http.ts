@@ -8,6 +8,7 @@ import { integrationGuide, localConnection } from "./integrations.ts";
 import { VERSION } from "../version.ts";
 import { createLibraryService, type LibraryService } from "../library-service.ts";
 import { inspectNetworkAccess, loadNetworkAccess, saveNetworkAccess } from "../network-access.ts";
+import { pickLocalDirectory } from "./pick-directory.ts";
 
 const BODY_LIMIT = 1024 * 1024;
 const UPLOAD_LIMIT = 32 * 1024 * 1024;
@@ -168,6 +169,10 @@ export async function startLocalHttp(options: {
         const { uri } = z.object({ uri: z.string().max(2_000) }).strict().parse(input);
         if (!uri.startsWith("figure-library://candidate-images/") && !uri.startsWith("figure-library://guidance/")) throw new Error("Unsupported resource");
         return json(response, 200, await service.readResource(uri));
+      }
+      if (url.pathname === "/api/pick-directory") {
+        request.socket?.setTimeout(0);
+        return json(response, 200, await pickLocalDirectory());
       }
       if (url.pathname === "/api/shutdown" && options.allowShutdown !== false) {
         json(response, 200, { closed: true });

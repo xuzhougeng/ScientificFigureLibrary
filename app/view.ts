@@ -1,3 +1,4 @@
+import { formatCatalogProse } from "../src/catalog-prose.ts";
 import { markdownPlainText, resolveFigureDescription } from "../src/figure-description.ts";
 import { renderMarkdown } from "./markdown.ts";
 import type {
@@ -187,12 +188,16 @@ function cardStatus(candidate: Candidate) {
   return undefined;
 }
 
+function firstProseParagraph(value: string) {
+  return markdownPlainText(formatCatalogProse(value).split(/\n\s*\n/u)[0] ?? "");
+}
+
 function cardContext(candidate: Candidate) {
-  const scientificQuestion = markdownPlainText(candidate.scientificQuestion ?? "");
+  const scientificQuestion = firstProseParagraph(candidate.scientificQuestion ?? "");
   if (scientificQuestion) return { label: "科学问题", text: scientificQuestion };
-  const application = markdownPlainText(candidate.application ?? "");
+  const application = firstProseParagraph(candidate.application ?? "");
   if (application) return { label: "应用场景", text: application };
-  const description = markdownPlainText(candidate.description || candidate.excerpt || "");
+  const description = firstProseParagraph(candidate.description || candidate.excerpt || "");
   return {
     label: "模板说明",
     text: description || "查看模板详情以确认输入要求。",
@@ -570,12 +575,14 @@ export function openCandidateDetail(options: {
   opener: HTMLButtonElement;
   serverToolsAvailable: boolean;
   updateModelContextAvailable: boolean;
+  purpose?: "handoff" | "save";
   onClosed?: () => void;
   onOpenLink?: (url: string) => Promise<void>;
   onRequestExactPreview: (elements: DetailViewElements) => void;
   onRequestAgentReview: (elements: DetailViewElements) => void;
 }): DetailViewElements {
   const { document, candidate, opener } = options;
+  const saveFlow = options.purpose === "save";
   const dialog = element(document, "dialog", "candidate-dialog");
   dialog.setAttribute("aria-labelledby", `detail-title-${candidate.candidateId}`);
   const panel = element(document, "div", "detail-panel");
@@ -602,7 +609,7 @@ export function openCandidateDetail(options: {
   const descriptionSection = element(document, "section", "detail-section");
   const description = renderMarkdown(
     document,
-    projection.description || (projection.application ? "" : candidate.excerpt || "没有可用描述。"),
+    formatCatalogProse(projection.description || (projection.application ? "" : candidate.excerpt || "没有可用描述。")),
     options.onOpenLink,
   );
   description.classList.add("detail-description");
@@ -614,17 +621,24 @@ export function openCandidateDetail(options: {
   metadata.append(chips(document, [candidate.assetKind, candidate.language, candidate.plotFamily].filter(Boolean), 3));
   const scenario = element(document, "section", "detail-section");
   scenario.append(element(document, "h3", "detail-section-title", "应用场景"));
-  scenario.append(renderMarkdown(document, projection.application || "未单独记录。", options.onOpenLink));
+  scenario.append(renderMarkdown(document, formatCatalogProse(projection.application || "未单独记录。"), options.onOpenLink));
   metadata.append(scenario);
   if (candidate.dataProfile) {
     const data = element(document, "section", "detail-section");
     data.append(element(document, "h3", "detail-section-title", "数据特征"));
-    data.append(renderMarkdown(document, candidate.dataProfile, options.onOpenLink));
+    data.append(renderMarkdown(document, formatCatalogProse(candidate.dataProfile), options.onOpenLink));
     metadata.append(data);
   }
-  // Keep audit information available without putting it in the main prose.
-  const technical = element(document, "details", "detail-technical");
-  technical.append(element(document, "summary", "detail-technical-summary", "查看技术与验证信息"));
+  appendDetailSection(document, metadata, "输入文件", candidate.inputFiles);
+  appendDetailSection(document, metadata, "代码文件", candidate.codeFiles ?? []);
+  appendDetailSection(document, metadata, "依赖包", candidate.packages);
+
+  const shell = element(document, "div", "detail-shell");
+  const main = element(document, "div", "detail-main");
+  const aside = element(document, "aside", "detail-technical-panel");
+  aside.hidden = true;
+  aside.setAttribute("aria-label", "技术与验证信息");
+  const technical = element(document, "div", "detail-technical");
   appendDetailSection(document, technical, "来源与执行边界", providerStateLines(candidate));
   appendDetailSection(document, technical, "固定模块身份", moduleIdentityLines(candidate));
   appendDetailSection(document, technical, "验证状态", validationSummaryLines(candidate));
@@ -635,10 +649,18 @@ export function openCandidateDetail(options: {
       `${candidate.canonicalPreviewDecision.reason}：${candidate.canonicalPreviewDecision.assetPath}${candidate.canonicalPreviewDecision.reason === "user_override_rendered" ? `（${candidate.canonicalPreviewDecision.note}）` : ""}`,
     ]);
   }
-  appendDetailSection(document, metadata, "输入文件", candidate.inputFiles);
-  appendDetailSection(document, metadata, "代码文件", candidate.codeFiles ?? []);
-  appendDetailSection(document, metadata, "依赖包", candidate.packages);
-  metadata.append(technical);
+  aside.append(element(document, "h3", "detail-technical-heading", "技术与验证信息"), technical);
+  const technicalToggle = button(document, "detail-technical-toggle", "技术与验证信息");
+  technicalToggle.type = "button";
+  technicalToggle.setAttribute("aria-expanded", "false");
+  technicalToggle.addEventListener("click", () => {
+    const open = aside.hidden;
+    aside.hidden = !open;
+    shell.classList.toggle("is-technical-open", open);
+    dialog.classList.toggle("has-technical", open);
+    technicalToggle.setAttribute("aria-expanded", open ? "true" : "false");
+    technicalToggle.textContent = open ? "收起技术信息" : "技术与验证信息";
+  });
 
   const status = element(document, "p", "detail-status");
   status.setAttribute("aria-live", "polite");
@@ -646,10 +668,15 @@ export function openCandidateDetail(options: {
   const exactPreviewButton = button(
     document,
     "exact-preview-action",
-    "查看精确预览",
+    saveFlow ? "仅查看精确图片" : "查看精确预览",
     "scan",
   );
-  const confirmButton = button(document, "confirm-action", "确认并交给 Agent", "send");
+  const confirmButton = button(
+    document,
+    "confirm-action",
+    saveFlow ? "加载精确图片并保存" : "确认并交给 Agent",
+    "send",
+  );
   confirmButton.disabled = true;
   if (
     !candidate.previewAvailable ||
@@ -669,6 +696,9 @@ export function openCandidateDetail(options: {
       status.textContent =
         "当前 Host 既未提供 App→Server Tool，也未提供 updateModelContext；只能查看基础详情，不能加载精确预览或交接选择。";
     }
+  } else if (saveFlow) {
+    confirmButton.disabled = false;
+    status.textContent = "保存到项目前会先加载精确图片。请核对你看到的就是将要保存的文件，再确认保存。";
   } else {
     status.textContent = "基础详情来自搜索结果。需要时可仅为此候选加载一次精确预览。";
   }
@@ -700,7 +730,9 @@ export function openCandidateDetail(options: {
     dialog.remove();
   });
   controls.append(exactPreviewButton, confirmButton);
-  panel.append(closeButton, title, ...(titleEn ? [titleEn] : []), identity, preview, descriptionSection, metadata, status, controls);
+  main.append(title, ...(titleEn ? [titleEn] : []), identity, preview, descriptionSection, metadata, technicalToggle, status, controls);
+  shell.append(main, aside);
+  panel.append(closeButton, shell);
   dialog.append(panel);
   document.body.append(dialog);
   if (typeof dialog.showModal === "function") dialog.showModal();

@@ -88,6 +88,13 @@ html.dialog-open .local-main { overflow: hidden; }
 .plan-line strong { color: #6d7d70; font-weight: 500; }
 .local-client .detail-panel { color: #23382d; background: #fff; }
 .local-client .candidate-dialog { background: #fff; color: #23382d; }
+.local-client .detail-technical-panel { background: #f4f7f3; border-color: #dfe6db; }
+.local-client .detail-technical-toggle { width: auto; }
+.path-picker { display: flex; gap: 8px; align-items: center; }
+.path-picker input { flex: 1; min-width: 0; }
+.local-selection { align-items: flex-start; gap: 16px; }
+.selection-copy { display: grid; gap: 6px; justify-items: end; }
+.selection-hint { margin: 0; max-width: 360px; color: #5b6b60; font-size: 12px; line-height: 1.6; text-align: right; }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
 @media(max-width: 960px) { .local-sidebar { width: 200px; padding: 25px 15px; } .local-main { margin-left: 200px; padding: 28px 24px; } .settings-grid { grid-template-columns: 1fr; } }
 @media(max-width: 660px) { .local-sidebar { position: relative; width: auto; padding: 18px; } .local-sidebar nav { display: flex; flex-wrap: wrap; margin-top: 20px; gap: 5px; } .local-sidebar nav button { padding: 9px; font-size: 12px; } .sidebar-bottom { display: none; } .local-main { margin-left: 0; padding: 24px 18px; } .local-header h1 { font-size: 24px; } .search-filters { flex-direction: column; } .local-selection { gap: 10px; } .form-row { grid-template-columns: 1fr; } }

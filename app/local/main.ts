@@ -4,6 +4,7 @@ import { bindModalScrollLock, mountExactPreviewImage, openCandidateDetail, parse
 import { renderMarkdown } from "../markdown.ts";
 import { api, call, details, imageData, imageHash, record, records, requireResult, upload } from "./api.ts";
 import { formatUserNetworkError } from "../../src/process-log.ts";
+import { PAGE_STORAGE_KEY, PAGE_TITLES, galleryMissingCount, isPageId, pageHash, prefetchButtonLabel, readSavedPage, type PageId } from "./ui-state.ts";
 import "../styles.css";
 import "./styles.css";
 
@@ -16,8 +17,9 @@ function openLockedModal(target: HTMLDialogElement) {
   target.showModal();
   bindModalScrollLock(document, target);
 }
-const titles: Record<string, string> = { discover: "图库", library: "我的图库", galleries: "外部图库", import: "创建参考图", integrations: "连接外部工具", settings: "设置" };
-let page = "discover";
+const titles = PAGE_TITLES;
+let page: PageId = "discover";
+const failedPrefetchIds = new Set<string>();
 let result: SearchResult | undefined;
 let selected = new Map<string, Candidate>();
 const pages = new Map<number, SearchResult>();
@@ -48,6 +50,7 @@ function node<K extends keyof HTMLElementTagNameMap>(tag: K, text?: string, clas
 }
 function action(text: string, handler: () => Promise<void>, quiet = false) {
   const control = node("button", text, quiet ? "quiet" : undefined);
+  control.type = "button";
   control.addEventListener("click", () => void run(handler, control));
   return control;
 }
@@ -55,11 +58,19 @@ function safeLink(url: string) {
   if (!/^https?:\/\//iu.test(url)) throw new Error("只允许打开 HTTP(S) 链接");
   window.open(url, "_blank", "noopener,noreferrer");
 }
-async function showPage(next: string) {
-  if (!(next in titles)) return;
+function persistPage(next: PageId) {
   page = next;
+  try { sessionStorage.setItem(PAGE_STORAGE_KEY, next); } catch { /* Embedded or private mode may deny storage. */ }
+  history.replaceState(null, "", `${location.pathname}${pageHash(location.hash, next)}`);
+}
+function storedPage() {
+  try { return sessionStorage.getItem(PAGE_STORAGE_KEY); } catch { return null; }
+}
+async function showPage(next: string) {
+  if (!isPageId(next)) return;
+  persistPage(next);
   for (const key of Object.keys(titles)) el(`${key}-page`).hidden = key !== page;
-  el("page-title").textContent = titles[page]!;
+  el("page-title").textContent = titles[page];
   document.querySelectorAll<HTMLButtonElement>(".local-sidebar button[data-page]").forEach((item) => item.classList.toggle("active", item.dataset.page === page));
   if (page === "library") await loadLibrary();
   if (page === "settings" || page === "galleries" || page === "discover") await loadStatus();
@@ -89,12 +100,12 @@ function display(parsed: SearchResult) {
       refreshSelection();
     },
     onDetail: (candidate, _elements, opener) => {
-      const elements = openCandidateDetail({ document, candidate, opener, serverToolsAvailable: true, updateModelContextAvailable: false,
+      const elements = openCandidateDetail({ document, candidate, opener, serverToolsAvailable: true, updateModelContextAvailable: false, purpose: "save",
         onOpenLink: async (url) => safeLink(url),
         onRequestExactPreview: (view) => void run(() => exactPreview(candidate, view), view.exactPreviewButton),
         onRequestAgentReview: () => {},
       });
-      elements.confirmButton.textContent = "确认图片并保存模板";
+      elements.confirmButton.onclick = () => void run(() => exactPreview(candidate, elements), elements.confirmButton);
     },
   });
   el("results-title").textContent = parsed.query ? `“${parsed.query}”的候选图片` : "图库";
@@ -150,11 +161,15 @@ async function exactPreview(candidate: Candidate, view: DetailViewElements) {
   if (sha256 !== details(preview).transportSha256) throw new Error("精确图片传输校验失败");
   let loaded = false;
   mountExactPreviewImage({ document, elements: view, dataUrl: image.url, alt: candidate.title,
-    onLoaded: () => { loaded = true; view.status.textContent = "精确图片已加载。确认后可生成保存到项目的计划。"; },
+    onLoaded: () => {
+      loaded = true;
+      view.confirmButton.textContent = "确认并保存到项目";
+      view.status.textContent = "请核对上方精确图片。确认就是要保存的文件后，再点「确认并保存到项目」。";
+    },
     onError: () => { loaded = false; view.confirmButton.disabled = true; view.status.textContent = "图片加载失败，无法确认。"; },
   });
   view.confirmButton.onclick = () => void run(async () => {
-    if (!loaded) throw new Error("先查看成功加载的精确图片");
+    if (!loaded) throw new Error("请先等待精确图片加载完成");
     const confirmed = requireResult(await api("confirm", { previewChallenge: details(preview).previewChallenge, displayedImageSha256: sha256, imageLoaded: true, confirmedBy: "user" }));
     pendingMaterialize = { candidate, receipt: String(details(confirmed).previewReceipt), resultSetId };
     view.dialog.close();
@@ -236,17 +251,30 @@ function cacheGallery(providerId: string) {
 function galleryCacheLabel(gallery: Record<string, unknown>) {
   const declared = Number(gallery.declared ?? 0);
   const cached = Number(gallery.cached ?? 0);
-  const missing = Number(gallery.missing ?? declared - cached);
+  const missing = galleryMissingCount(gallery);
   if (declared === 0) return "没有可下载的预览图";
   if (missing <= 0) return `已缓存 ${cached} / ${declared} 张 · ${formatBytes(Number(gallery.bytesCached ?? 0))}`;
   return `可下载 ${declared} 张 · 已缓存 ${cached} 张 · 约 ${formatBytes(Number(gallery.bytesDeclared ?? 0))}`;
 }
-async function prefetchGallery(providerId: string, sourceLabel: string, declared: number, bytesDeclared: number) {
-  if (!window.confirm(`缓存「${sourceLabel}」的 ${declared} 张预览图（约 ${formatBytes(bytesDeclared)}）？只下载该图库的固定图片，不会执行代码。`)) return;
+function prefetchConfirmMessage(sourceLabel: string, gallery: Record<string, unknown> | undefined) {
+  const declared = Number(gallery?.declared ?? 0);
+  const cached = Number(gallery?.cached ?? 0);
+  const missing = galleryMissingCount(gallery);
+  const bytes = Number(gallery?.bytesDeclared ?? 0);
+  if (cached > 0 && missing > 0) {
+    return `继续缓存「${sourceLabel}」剩余的 ${missing} 张预览图？已缓存的 ${cached} 张会跳过，不会执行代码。`;
+  }
+  return `缓存「${sourceLabel}」的 ${declared} 张预览图（约 ${formatBytes(bytes)}）？只下载该图库的固定图片，不会执行代码。`;
+}
+async function prefetchGallery(providerId: string, sourceLabel: string, gallery: Record<string, unknown> | undefined) {
+  if (!window.confirm(prefetchConfirmMessage(sourceLabel, gallery))) return;
   const result = await api<Record<string, unknown>>("preview-cache", { action: "prefetch", providerId });
-  await loadStatus();
   const prefetch = record(result.prefetch);
   const failed = Number(prefetch.failed ?? 0);
+  if (failed > 0) failedPrefetchIds.add(providerId);
+  else failedPrefetchIds.delete(providerId);
+  if (Array.isArray(result.galleries)) cacheGalleries = records(result.galleries);
+  await loadStatus();
   const downloaded = Number(prefetch.downloaded ?? 0);
   const already = Number(prefetch.alreadyCached ?? 0);
   notify(failed > 0
@@ -254,6 +282,12 @@ async function prefetchGallery(providerId: string, sourceLabel: string, declared
     : downloaded > 0
       ? `「${sourceLabel}」已缓存 ${downloaded + already} 张预览图。`
       : `「${sourceLabel}」的预览图已在缓存中。`);
+}
+function appendPrefetchAction(target: HTMLElement, providerId: string, sourceLabel: string, gallery: Record<string, unknown> | undefined, quiet = false) {
+  const label = prefetchButtonLabel(gallery, failedPrefetchIds.has(providerId));
+  if (!label) return false;
+  target.append(action(label, () => prefetchGallery(providerId, sourceLabel, gallery ?? cacheGallery(providerId)), quiet));
+  return true;
 }
 function renderPreviewCacheGalleries(galleries: Array<Record<string, unknown>>) {
   const target = el("preview-cache-galleries");
@@ -265,16 +299,11 @@ function renderPreviewCacheGalleries(galleries: Array<Record<string, unknown>>) 
   for (const gallery of galleries) {
     const providerId = String(gallery.providerId ?? "");
     const label = String(gallery.sourceLabel ?? providerId);
-    const missing = Number(gallery.missing ?? 0);
     const row = node("article", undefined, "cache-gallery");
     const info = node("div");
     info.append(node("h3", label), node("p", galleryCacheLabel(gallery)));
     row.append(info);
-    if (missing > 0) {
-      row.append(action("缓存图片", () => prefetchGallery(providerId, label, Number(gallery.declared ?? 0), Number(gallery.bytesDeclared ?? 0)), true));
-    } else {
-      row.append(node("p", "已缓存"));
-    }
+    if (!appendPrefetchAction(row, providerId, label, gallery, true)) row.append(node("p", "已缓存"));
     target.append(row);
   }
 }
@@ -342,7 +371,10 @@ function renderProviderSources(sources: Array<Record<string, unknown>>) {
     else card.append(node("p", "不参与默认搜索"));
     const autoRefresh = source.autoRefreshEnabled === true || record(source.details).autoRefreshEnabled === true;
     if (official && autoRefresh && source.enabled !== false) card.append(node("p", "官方频道自动刷新已开启"));
+    const gallery = cacheGallery(providerId);
+    if (gallery) card.append(node("p", galleryCacheLabel(gallery)));
     const actions = node("div", undefined, "provider-actions");
+    appendPrefetchAction(actions, providerId, String(source.sourceLabel ?? providerId), gallery);
     if (personal) {
       actions.append(action("检查更新", () => changeProvider("检查图库更新", { action: "update", providerId }), true));
       actions.append(action(source.includeInDefaultSearch === true ? "移出默认搜索" : "加入默认搜索", () => changeProvider("更改默认搜索", { action: "configure", providerId, includeInDefaultSearch: source.includeInDefaultSearch !== true }), true));
@@ -359,10 +391,6 @@ function renderProviderSources(sources: Array<Record<string, unknown>>) {
     } else if (official && source.enabled !== false) {
       actions.append(action("检查更新", () => changeProvider("检查官方 Open Figure Modules", { action: "update", providerId }), true));
       actions.append(action(autoRefresh ? "关闭自动刷新" : "开启自动刷新", () => changeProvider("更改官方自动刷新", { action: "configure", providerId, autoRefresh: !autoRefresh }), true));
-    }
-    const gallery = cacheGallery(providerId);
-    if (gallery && Number(gallery.missing ?? 0) > 0) {
-      actions.append(action("缓存图片", () => prefetchGallery(providerId, String(source.sourceLabel ?? providerId), Number(gallery.declared ?? 0), Number(gallery.bytesDeclared ?? 0)), true));
     }
     if (source.enabled === false && !personal) {
       actions.append(action("恢复", () => changeProvider("恢复图库", { action: "configure", providerId, enabled: true }), true));
@@ -563,20 +591,28 @@ form("add-provider-form").addEventListener("submit", (event) => {
 });
 form("import-form").addEventListener("submit", (event) => { event.preventDefault(); void run(importAsset, form("import-form").querySelector<HTMLButtonElement>("button[type=submit]")!); });
 button("refresh").onclick = () => void run(async () => {
-  if (page === "library") await loadLibrary();
-  else if (page === "discover") {
-    await loadStatus();
+  const current = page;
+  await showPage(current);
+  if (current === "discover") {
     if (input("search-query").value.trim()) await search();
     else await loadGallery();
-  } else await loadStatus();
+  }
 });
 button("copy-selection").onclick = () => void run(async () => {
   await navigator.clipboard.writeText(JSON.stringify([...selected.values()].map(({ title, providerId, exactSelector }) => ({ title, providerId, exactSelector })), null, 2));
-  notify("已复制所选模板的名称与精确引用。");
+  notify(`已复制 ${selected.size} 个模板的名称和精确引用。粘贴到 Cursor、Claude、Codex 等外部工具即可指定这些图。`);
 }, button("copy-selection"));
 button("plan-apply").onclick = () => void run(async () => { await planAction?.(); }, button("plan-apply"));
 button("plan-cancel").onclick = () => { planAction = undefined; dialog("plan-dialog").close(); };
 button("materialize-cancel").onclick = () => dialog("materialize-dialog").close();
+button("pick-materialize-directory").onclick = () => void run(async () => {
+  const picked = await api<Record<string, unknown>>("pick-directory", {});
+  if (picked.cancelled === true) return;
+  if (picked.error) throw new Error(String(picked.error));
+  const directory = String(picked.directory ?? "").trim();
+  if (!directory) throw new Error("没有选到目录");
+  input("materialize-directory").value = directory;
+}, button("pick-materialize-directory"));
 form("materialize-form").addEventListener("submit", (event) => { event.preventDefault(); void run(async () => {
   if (!pendingMaterialize) return;
   const { candidate, receipt } = pendingMaterialize;
@@ -628,10 +664,15 @@ button("shutdown").onclick = () => void run(async () => {
 });
 
 async function connect() {
-  const ticket = new URLSearchParams(location.hash.slice(1)).get("connect");
-  if (ticket) { await api("connect", { ticket }); history.replaceState(null, "", location.pathname); }
+  const params = new URLSearchParams(location.hash.slice(1));
+  const ticket = params.get("connect");
+  const initial = readSavedPage(location.hash, storedPage());
+  if (ticket) {
+    await api("connect", { ticket });
+    persistPage(initial);
+  }
   await loadStatus();
-  await loadGallery();
+  await showPage(initial);
 }
 void run(connect);
 

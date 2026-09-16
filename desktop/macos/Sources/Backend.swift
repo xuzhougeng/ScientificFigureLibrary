@@ -33,7 +33,13 @@ indirect enum JSON: Codable, Equatable {
         switch self { case .string(let value): return value; case .integer(let value): return String(value); case .number(let value): return String(value); default: return "" }
     }
     var bool: Bool { if case .bool(let value) = self { return value }; return false }
-    var int: Int { if case .integer(let value) = self { return Int(value) }; return 0 }
+    var int: Int {
+        switch self {
+        case .integer(let value): return Int(value)
+        case .number(let value): return Int(value.rounded())
+        default: return 0
+        }
+    }
     var pretty: String { let encoder = JSONEncoder(); encoder.outputFormatting = [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]; return String(data: (try? encoder.encode(self)) ?? Data(), encoding: .utf8) ?? "" }
 }
 

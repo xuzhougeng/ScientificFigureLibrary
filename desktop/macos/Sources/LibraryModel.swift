@@ -38,7 +38,9 @@ enum Sheet: Identifiable {
 
 @MainActor final class LibraryModel: ObservableObject {
     let backend = Backend()
-    @Published var section: Section? = .discover
+    @Published var section: Section? = Section(rawValue: UserDefaults.standard.string(forKey: "SFLSelectedSection") ?? "") ?? .discover {
+        didSet { if let section { UserDefaults.standard.set(section.rawValue, forKey: "SFLSelectedSection") } }
+    }
     @Published var ready = false
     @Published var busy = false
     @Published var message = ""
@@ -59,6 +61,7 @@ enum Sheet: Identifiable {
     @Published var networkAccess: JSON = .null
     @Published var providers: [JSON] = []
     @Published var syncingGallery = false
+    @Published var failedPrefetchIds: Set<String> = []
     private var pages: [Int: (JSON, JSON)] = [:]
     private var starting = false
 
@@ -76,10 +79,14 @@ enum Sheet: Identifiable {
         defer { starting = false }
         do {
             try await backend.start()
-            syncingGallery = true
+            syncingGallery = section == .discover
             ready = true
             try await status()
-            do { try await gallery() } catch { self.error = friendlyNetworkError(error) }
+            if section == .discover {
+                do { try await gallery() } catch { self.error = friendlyNetworkError(error) }
+            } else if section == .library {
+                do { try await loadLibrary() } catch { self.error = friendlyNetworkError(error) }
+            }
             syncingGallery = false
         } catch { self.error = friendlyNetworkError(error); syncingGallery = false }
     }
@@ -119,10 +126,13 @@ enum Sheet: Identifiable {
         let prefetch = previewCache["prefetch"]
         let label = previewCache["galleries"].array.first { $0["providerId"].string == providerId }?["sourceLabel"].string ?? providerId
         if prefetch["failed"].int > 0 {
+            failedPrefetchIds.insert(providerId)
             message = "「\(label)」已下载 \(prefetch["downloaded"].int) 张，已有 \(prefetch["alreadyCached"].int) 张，失败 \(prefetch["failed"].int) 张。可检查系统代理后重试。"
         } else if prefetch["downloaded"].int > 0 {
+            failedPrefetchIds.remove(providerId)
             message = "「\(label)」已缓存 \(prefetch["downloaded"].int + prefetch["alreadyCached"].int) 张预览图。"
         } else {
+            failedPrefetchIds.remove(providerId)
             message = "「\(label)」的预览图已在缓存中。"
         }
     }

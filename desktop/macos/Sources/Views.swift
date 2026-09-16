@@ -5,6 +5,9 @@ let libraryGreen = Color(red: 0.14, green: 0.42, blue: 0.30)
 
 @MainActor struct RootView: View {
     @ObservedObject var model: LibraryModel
+    var currentSection: Section {
+        model.section ?? Section(rawValue: UserDefaults.standard.string(forKey: "SFLSelectedSection") ?? "") ?? .discover
+    }
     var body: some View {
         NavigationSplitView {
             List(Section.allCases, selection: $model.section) { section in Label(section.rawValue, systemImage: section.icon).tag(section) }
@@ -15,11 +18,11 @@ let libraryGreen = Color(red: 0.14, green: 0.42, blue: 0.30)
                 if !model.ready {
                     VStack(spacing: 18) { ProgressView(); Text(model.error ?? "正在启动本地知识库…"); Button("重试") { Task { await model.start() } }; if model.backend.usesSystemNode { Button("选择本机 Node…") { let panel = NSOpenPanel(); panel.canChooseDirectories = false; panel.allowsMultipleSelection = false; if panel.runModal() == .OK, let url = panel.url { UserDefaults.standard.set(url.path, forKey: "SFLNodeBinary"); Task { await model.start() } } } } }.frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
-                    if model.setupRequired && model.section != .settings {
+                    if model.setupRequired && currentSection != .settings {
                         HStack { Label("先选择全局图库和本地工作区", systemImage: "folder.badge.gearshape"); Spacer(); Button("设置目录") { model.section = .settings } }.padding().background(libraryGreen.opacity(0.10))
                     }
                     if !model.message.isEmpty { Text(model.message).font(.callout).foregroundStyle(.secondary).padding(.horizontal).padding(.top, 8) }
-                    switch model.section ?? .discover {
+                    switch currentSection {
                     case .discover: DiscoverView(model: model)
                     case .library: KnowledgeView(model: model)
                     case .galleries: GalleriesView(model: model)
@@ -30,12 +33,19 @@ let libraryGreen = Color(red: 0.14, green: 0.42, blue: 0.30)
                 }
             }
             .background(Color(NSColor.windowBackgroundColor))
-            .navigationTitle((model.section ?? .discover).rawValue)
-            .toolbar { if model.busy { ProgressView().controlSize(.small) }; Button { model.perform { try await model.status(); if model.section == .library { try await model.loadLibrary() } } } label: { Image(systemName: "arrow.clockwise") }.help("刷新").disabled(!model.ready || model.busy) }
+            .navigationTitle(currentSection.rawValue)
+            .toolbar { if model.busy { ProgressView().controlSize(.small) }; Button { model.perform { try await model.status(); if currentSection == .library { try await model.loadLibrary() } else if currentSection == .discover { try await model.gallery() } } } label: { Image(systemName: "arrow.clockwise") }.help("刷新").disabled(!model.ready || model.busy) }
         }
         .tint(libraryGreen)
         .frame(minWidth: 850, minHeight: 620)
-        .onChange(of: model.section) { section in if section == .library && model.ready { model.perform { try await model.loadLibrary() } } }
+        .onChange(of: model.section) { section in
+            if let section {
+                UserDefaults.standard.set(section.rawValue, forKey: "SFLSelectedSection")
+                if section == .library && model.ready { model.perform { try await model.loadLibrary() } }
+            } else {
+                model.section = Section(rawValue: UserDefaults.standard.string(forKey: "SFLSelectedSection") ?? "") ?? .discover
+            }
+        }
         .sheet(item: $model.sheet) { sheet in
             switch sheet {
             case .candidate(let value): CandidateView(model: model, candidate: value)
@@ -187,52 +197,75 @@ func candidateValidationLines(_ candidate: JSON) -> [String] {
     @State private var displayed = false
     @State private var destination = ""
     @State private var allowNetwork = false
+    @State private var showTechnical = false
     var chips: [String] {
         [candidate["sourceLabel"].string, candidate["assetKind"].string, candidate["language"].string, candidate["plotFamily"].string].filter { !$0.isEmpty }
     }
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            HStack { Text(candidate["title"].string).font(.title2).bold(); Spacer(); Button("关闭") { model.sheet = nil } }
-            ScrollView {
-                VStack(alignment: .leading, spacing: 18) {
-                    if let image = exactImage { Image(nsImage: image).resizable().scaledToFit().frame(maxWidth: .infinity, maxHeight: 360).onAppear { displayed = true } }
-                    else if let image = model.thumbnail(candidate) { Image(nsImage: image).resizable().scaledToFit().frame(maxWidth: .infinity, maxHeight: 300) }
-                    if !candidate["titleEn"].string.isEmpty { Text(candidate["titleEn"].string).foregroundStyle(.secondary).textSelection(.enabled) }
-                    if !chips.isEmpty {
-                        HStack(spacing: 8) {
-                            ForEach(chips, id: \.self) { chip in Text(chip).font(.caption).padding(.horizontal, 8).padding(.vertical, 4).background(Color(NSColor.controlBackgroundColor)).clipShape(Capsule()) }
+            HStack {
+                Text(candidate["title"].string).font(.title2).bold()
+                Spacer()
+                Button(showTechnical ? "收起技术信息" : "技术与验证信息") { showTechnical.toggle() }
+                Button("关闭") { model.sheet = nil }
+            }
+            HStack(alignment: .top, spacing: 18) {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 18) {
+                        if let image = exactImage { Image(nsImage: image).resizable().scaledToFit().frame(maxWidth: .infinity, maxHeight: 360).onAppear { displayed = true } }
+                        else if let image = model.thumbnail(candidate) { Image(nsImage: image).resizable().scaledToFit().frame(maxWidth: .infinity, maxHeight: 300) }
+                        if !candidate["titleEn"].string.isEmpty { Text(candidate["titleEn"].string).foregroundStyle(.secondary).textSelection(.enabled) }
+                        if !chips.isEmpty {
+                            HStack(spacing: 8) {
+                                ForEach(chips, id: \.self) { chip in Text(chip).font(.caption).padding(.horizontal, 8).padding(.vertical, 4).background(Color(NSColor.controlBackgroundColor)).clipShape(Capsule()) }
+                            }
                         }
-                    }
-                    Text(candidate["description"].string).textSelection(.enabled)
-                    if !candidate["application"].string.isEmpty { Text("适用场景").font(.headline); Text(candidate["application"].string).textSelection(.enabled) }
-                    if !candidate["dataProfile"].string.isEmpty { Text("数据要求").font(.headline); Text(candidate["dataProfile"].string).textSelection(.enabled) }
-                    CandidateMetaSection(title: "代码文件", lines: jsonStrings(candidate["codeFiles"]), monospaced: true)
-                    CandidateMetaSection(title: "输入文件", lines: jsonStrings(candidate["inputFiles"]), monospaced: true)
-                    CandidateMetaSection(title: "依赖包", lines: jsonStrings(candidate["packages"]), monospaced: true)
-                    CandidateMetaSection(title: "来源与版本", lines: candidateIdentityLines(candidate), monospaced: true)
-                    DisclosureGroup("技术与验证信息") {
+                        Text(formatCatalogProse(candidate["description"].string)).textSelection(.enabled)
+                        if !candidate["application"].string.isEmpty { Text("适用场景").font(.headline); Text(formatCatalogProse(candidate["application"].string)).textSelection(.enabled) }
+                        if !candidate["dataProfile"].string.isEmpty { Text("数据特征").font(.headline); Text(formatCatalogProse(candidate["dataProfile"].string)).textSelection(.enabled) }
+                        CandidateMetaSection(title: "代码文件", lines: jsonStrings(candidate["codeFiles"]), monospaced: true)
+                        CandidateMetaSection(title: "输入文件", lines: jsonStrings(candidate["inputFiles"]), monospaced: true)
+                        CandidateMetaSection(title: "依赖包", lines: jsonStrings(candidate["packages"]), monospaced: true)
+                    }.frame(maxWidth: .infinity, alignment: .leading)
+                }
+                if showTechnical {
+                    ScrollView {
                         VStack(alignment: .leading, spacing: 14) {
+                            Text("技术与验证信息").font(.headline)
+                            CandidateMetaSection(title: "来源与版本", lines: candidateIdentityLines(candidate), monospaced: true)
                             CandidateMetaSection(title: "来源与执行边界", lines: candidateProviderLines(candidate))
                             CandidateMetaSection(title: "验证状态", lines: candidateValidationLines(candidate))
                             CandidateMetaSection(title: "检索原因", lines: jsonStrings(candidate["reasons"]))
                             CandidateMetaSection(title: "警告", lines: jsonStrings(candidate["warnings"]))
-                        }.frame(maxWidth: .infinity, alignment: .leading).padding(.top, 8)
-                    }
-                }.frame(maxWidth: .infinity, alignment: .leading)
+                        }.frame(maxWidth: .infinity, alignment: .leading).padding(12)
+                    }.frame(width: 280).background(Color(NSColor.controlBackgroundColor)).clipShape(RoundedRectangle(cornerRadius: 10))
+                }
             }
+            Text(displayed ? "请核对上方精确图片，确认后保存到项目。" : "保存到项目前会先加载精确图片。请核对你看到的就是将要保存的文件。").font(.callout).foregroundStyle(.secondary)
             Divider()
             HStack { TextField("保存到项目的目标父目录", text: $destination).textFieldStyle(.roundedBorder); Button("选择目录") { if let path = model.chooseDirectory() { destination = path } } }
             Toggle("允许下载所选模板的固定版本归档", isOn: $allowNetwork).font(.callout)
             HStack {
-                Button("查看精确预览") { model.perform {
+                Button("仅查看精确图片") { model.perform {
                     displayed = false
                     let result = try await model.backend.exactPreview(["resultSetId": model.result["resultSetId"], "providerId": candidate["providerId"], "exactSelector": candidate["exactSelector"]])
                     preview = result.0; bytes = result.1; exactImage = result.2
                 } }.disabled(model.busy || !candidate["previewAvailable"].bool)
                 Spacer()
-                Button("确认图片并生成保存计划") { guard let preview = preview, let bytes = bytes else { return }; model.perform { try await model.materialize(candidate, preview: preview, image: bytes, destination: destination, network: allowNetwork) } }.buttonStyle(.borderedProminent).disabled(model.busy || !displayed || destination.isEmpty)
+                Button(displayed ? "确认并保存到项目" : "加载精确图片并保存") {
+                    if displayed {
+                        guard let preview = preview, let bytes = bytes else { return }
+                        model.perform { try await model.materialize(candidate, preview: preview, image: bytes, destination: destination, network: allowNetwork) }
+                    } else {
+                        model.perform {
+                            displayed = false
+                            let result = try await model.backend.exactPreview(["resultSetId": model.result["resultSetId"], "providerId": candidate["providerId"], "exactSelector": candidate["exactSelector"]])
+                            preview = result.0; bytes = result.1; exactImage = result.2
+                        }
+                    }
+                }.buttonStyle(.borderedProminent).disabled(model.busy || !candidate["previewAvailable"].bool || (displayed && destination.isEmpty))
             }
-        }.padding(26).frame(width: 780, height: 730)
+        }.padding(26).frame(width: showTechnical ? 1080 : 780, height: 730)
     }
 }
 
@@ -368,13 +401,36 @@ func formatBytes(_ value: Int) -> String {
     return String(format: "%.1f MB", Double(value) / 1_048_576)
 }
 
+func galleryMissing(_ gallery: JSON) -> Int {
+    let declared = gallery["declared"].int
+    let cached = gallery["cached"].int
+    if gallery["missing"] != .null { return max(0, gallery["missing"].int) }
+    return max(0, declared - cached)
+}
+
+func prefetchButtonLabel(_ gallery: JSON, failed: Bool = false) -> String? {
+    let missing = galleryMissing(gallery)
+    if missing > 0 { return gallery["cached"].int > 0 ? "继续缓存" : "缓存图片" }
+    if failed { return "继续缓存" }
+    return nil
+}
+
 func galleryCacheLabel(_ gallery: JSON) -> String {
     let declared = gallery["declared"].int
     let cached = gallery["cached"].int
-    let missing = gallery["missing"].int
+    let missing = galleryMissing(gallery)
     if declared == 0 { return "没有可下载的预览图" }
     if missing <= 0 { return "已缓存 \(cached) / \(declared) 张 · \(formatBytes(gallery["bytesCached"].int))" }
     return "可下载 \(declared) 张 · 已缓存 \(cached) 张 · 约 \(formatBytes(gallery["bytesDeclared"].int))"
+}
+
+func prefetchConfirmText(label: String, gallery: JSON) -> String {
+    let cached = gallery["cached"].int
+    let missing = galleryMissing(gallery)
+    if cached > 0 && missing > 0 {
+        return "继续缓存「\(label)」剩余的 \(missing) 张预览图？已缓存的 \(cached) 张会跳过，不会执行代码。"
+    }
+    return "缓存「\(label)」的 \(gallery["declared"].int) 张预览图（约 \(formatBytes(gallery["bytesDeclared"].int))）？只下载该图库的固定图片，不会执行代码。"
 }
 
 @MainActor struct GalleriesView: View {
@@ -460,7 +516,7 @@ func galleryCacheLabel(_ gallery: JSON) -> String {
     var prefetchConfirmMessage: String {
         let gallery = model.previewCache["galleries"].array.first { $0["providerId"].string == prefetchingProviderId } ?? .null
         let label = gallery["sourceLabel"].string.isEmpty ? prefetchingProviderId : gallery["sourceLabel"].string
-        return "缓存「\(label)」的 \(gallery["declared"].int) 张预览图（约 \(formatBytes(gallery["bytesDeclared"].int))）？只下载该图库的固定图片，不会执行代码。"
+        return prefetchConfirmText(label: label, gallery: gallery)
     }
     var body: some View {
         Form {
@@ -489,8 +545,8 @@ func galleryCacheLabel(_ gallery: JSON) -> String {
                     VStack(alignment: .leading, spacing: 6) {
                         Text(gallery["sourceLabel"].string.isEmpty ? gallery["providerId"].string : gallery["sourceLabel"].string).font(.headline)
                         Text(galleryCacheLabel(gallery)).foregroundStyle(.secondary)
-                        if gallery["missing"].int > 0 {
-                            Button("缓存图片") { prefetchingProviderId = gallery["providerId"].string }.disabled(model.busy)
+                        if let label = prefetchButtonLabel(gallery, failed: model.failedPrefetchIds.contains(gallery["providerId"].string)) {
+                            Button(label) { prefetchingProviderId = gallery["providerId"].string }.disabled(model.busy)
                         } else {
                             Text("已缓存").foregroundStyle(.secondary)
                         }
@@ -506,7 +562,7 @@ func galleryCacheLabel(_ gallery: JSON) -> String {
             Button("取消", role: .cancel) {}
         }
         .confirmationDialog(prefetchConfirmMessage, isPresented: Binding(get: { !prefetchingProviderId.isEmpty }, set: { if !$0 { prefetchingProviderId = "" } })) {
-            Button("缓存图片") {
+            Button(prefetchButtonLabel(model.previewCache["galleries"].array.first { $0["providerId"].string == prefetchingProviderId } ?? .null, failed: model.failedPrefetchIds.contains(prefetchingProviderId)) ?? "缓存图片") {
                 let providerId = prefetchingProviderId
                 prefetchingProviderId = ""
                 model.perform { try await model.prefetchPreviewCache(providerId) }
@@ -555,8 +611,11 @@ func galleryCacheLabel(_ gallery: JSON) -> String {
             if official && !removed && (source["autoRefreshEnabled"].bool || source["details"]["autoRefreshEnabled"].bool) {
                 Text("官方频道自动刷新已开启").font(.caption).foregroundStyle(.secondary)
             }
-            if let gallery = cacheGallery, gallery["missing"].int > 0 {
-                Button("缓存图片") { confirmPrefetch = true }.disabled(model.busy)
+            if let gallery = cacheGallery {
+                Text(galleryCacheLabel(gallery)).font(.caption).foregroundStyle(.secondary)
+            }
+            if let label = prefetchButtonLabel(cacheGallery ?? .null, failed: model.failedPrefetchIds.contains(providerId)) {
+                Button(label) { confirmPrefetch = true }.disabled(model.busy)
             }
             if personal && !removed {
                 HStack {
@@ -590,14 +649,14 @@ func galleryCacheLabel(_ gallery: JSON) -> String {
             }
         }.padding(.vertical, 6)
         .confirmationDialog(prefetchMessage, isPresented: $confirmPrefetch) {
-            Button("缓存图片") { model.perform { try await model.prefetchPreviewCache(providerId) } }
+            Button(prefetchButtonLabel(cacheGallery ?? .null, failed: model.failedPrefetchIds.contains(providerId)) ?? "缓存图片") { model.perform { try await model.prefetchPreviewCache(providerId) } }
             Button("取消", role: .cancel) {}
         }
     }
     var prefetchMessage: String {
         let gallery = cacheGallery ?? .null
         let label = source["sourceLabel"].string.isEmpty ? providerId : source["sourceLabel"].string
-        return "缓存「\(label)」的 \(gallery["declared"].int) 张预览图（约 \(formatBytes(gallery["bytesDeclared"].int))）？只下载该图库的固定图片，不会执行代码。"
+        return prefetchConfirmText(label: label, gallery: gallery)
     }
 }
 
