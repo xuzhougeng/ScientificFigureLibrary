@@ -13,6 +13,7 @@ const form = (id: string) => el<HTMLFormElement>(id);
 const dialog = (id: string) => el<HTMLDialogElement>(id);
 const titles: Record<string, string> = { discover: "发现可复用的科学图", library: "我的图片与代码", import: "导入知识库", settings: "设置与连接", integrations: "连接外部工具" };
 let page = "discover";
+let browsing = true;
 let result: SearchResult | undefined;
 let selected = new Map<string, Candidate>();
 const pages = new Map<number, SearchResult>();
@@ -59,6 +60,7 @@ async function showPage(next: string) {
   if (page === "library") await loadLibrary();
   if (page === "settings") await loadStatus();
   if (page === "integrations") await loadIntegrations();
+  if (page === "discover" && browsing && !result) await loadGallery();
 }
 function refreshSelection() {
   el("selection-bar").hidden = selected.size === 0;
@@ -85,7 +87,7 @@ function display(parsed: SearchResult) {
       elements.confirmButton.textContent = "确认图片并保存模板";
     },
   });
-  el("results-title").textContent = parsed.query ? `“${parsed.query}”的候选图片` : "候选图片";
+  el("results-title").textContent = parsed.query ? `“${parsed.query}”的候选图片` : "图库";
   el("results-count").textContent = `${parsed.pagination.total} 个结果`;
   el("local-pagination").hidden = parsed.pagination.total === 0;
   el("page-label").textContent = `第 ${parsed.pagination.pageIndex} / ${Math.max(1, Math.ceil(parsed.pagination.total / parsed.pagination.pageSize))} 页`;
@@ -99,9 +101,19 @@ function displayResult(value: CallToolResult) {
   if (!parsed) throw new Error("无法读取候选图片列表");
   display(parsed);
 }
+function galleryArgs() {
+  const provider = el<HTMLSelectElement>("search-provider").value;
+  return { limit: 12, ...(provider ? { providerIds: [provider] } : {}) };
+}
+async function loadGallery() {
+  browsing = true;
+  input("search-query").value = "";
+  displayResult(await api("gallery", galleryArgs()));
+}
 async function search() {
   const query = input("search-query").value.trim();
-  if (!query) return;
+  if (!query) return loadGallery();
+  browsing = false;
   const provider = el<HTMLSelectElement>("search-provider").value;
   displayResult(await call("figure_library_search", { query, limit: 6, ...(provider ? { providerIds: [provider] } : {}), ...(input("search-data").value.trim() ? { dataProfile: input("search-data").value.trim() } : {}) }));
 }
@@ -470,12 +482,20 @@ async function importAsset() {
 for (const control of document.querySelectorAll<HTMLButtonElement>("button[data-page]")) control.addEventListener("click", () => void run(() => showPage(control.dataset.page!)));
 for (const control of document.querySelectorAll<HTMLButtonElement>("button[data-query]")) control.addEventListener("click", () => { input("search-query").value = control.dataset.query!; void run(search, control); });
 form("search-form").addEventListener("submit", (event) => { event.preventDefault(); void run(search, form("search-form").querySelector("button")!); });
+button("browse-gallery").onclick = () => void run(loadGallery, button("browse-gallery"));
+el<HTMLSelectElement>("search-provider").addEventListener("change", () => void run(async () => { if (browsing) await loadGallery(); else if (input("search-query").value.trim()) await search(); }));
 form("binding-form").addEventListener("submit", (event) => { event.preventDefault(); void run(bindDirectories); });
 form("proxy-form").addEventListener("submit", (event) => { event.preventDefault(); void run(saveHttpsProxySetting, form("proxy-form").querySelector("button")!); });
 form("add-source-form").addEventListener("submit", (event) => { event.preventDefault(); void run(addProviderSource, form("add-source-form").querySelector("button")!); });
 button("cache-previews").onclick = () => void run(() => cachePreviews(), button("cache-previews"));
 form("import-form").addEventListener("submit", (event) => { event.preventDefault(); void run(importAsset, form("import-form").querySelector<HTMLButtonElement>("button[type=submit]")!); });
-button("refresh").onclick = () => void run(async () => { if (page === "library") await loadLibrary(); else await loadStatus(); });
+button("refresh").onclick = () => void run(async () => {
+  if (page === "library") await loadLibrary();
+  else {
+    await loadStatus();
+    if (page === "discover") { if (browsing) await loadGallery(); else if (input("search-query").value.trim()) await search(); }
+  }
+});
 button("next").onclick = () => void run(async () => { if (result?.pagination.nextCursor) displayResult(await call("figure_library_search_page", { resultSetId: result.resultSetId, cursor: result.pagination.nextCursor })); }, button("next"));
 button("previous").onclick = () => { const previous = result && pages.get(result.pagination.pageIndex - 1); if (previous) display(previous); };
 button("copy-selection").onclick = () => void run(async () => {
@@ -526,7 +546,7 @@ async function connect() {
   const ticket = new URLSearchParams(location.hash.slice(1)).get("connect");
   if (ticket) { await api("connect", { ticket }); history.replaceState(null, "", location.pathname); }
   await loadStatus();
-
+  await loadGallery();
 }
 void run(connect);
 

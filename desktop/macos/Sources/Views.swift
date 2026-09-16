@@ -61,12 +61,12 @@ let libraryGreen = Color(red: 0.14, green: 0.42, blue: 0.30)
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
-                HStack { TextField("搜索图片、图形类型或应用场景", text: $model.query).textFieldStyle(.roundedBorder).onSubmit { model.perform { try await model.search() } }; Button("搜索") { model.perform { try await model.search() } }.buttonStyle(.borderedProminent).disabled(model.busy || model.query.isEmpty) }
+                HStack { TextField("搜索图片、图形类型或应用场景", text: $model.query).textFieldStyle(.roundedBorder).onSubmit { model.perform { try await model.search() } }; Button("搜索") { model.perform { try await model.search() } }.buttonStyle(.borderedProminent).disabled(model.busy) }
                 HStack { Picker("来源", selection: $model.provider) { Text("全部默认来源").tag(""); ForEach(model.searchProviders.indices, id: \.self) { index in Text(model.searchProviders[index]["sourceLabel"].string.isEmpty ? model.searchProviders[index]["providerId"].string : model.searchProviders[index]["sourceLabel"].string).tag(model.searchProviders[index]["providerId"].string) } }.frame(maxWidth: 360); TextField("数据特征（可选）", text: $model.dataProfile).textFieldStyle(.roundedBorder) }
-                HStack { ForEach(["火山图", "热图", "UMAP", "细胞比例", "富集分析"], id: \.self) { label in Button(label) { model.query = ["火山图": "volcano differential expression", "热图": "heatmap expression", "UMAP": "UMAP single cell", "细胞比例": "cell proportion barplot", "富集分析": "GO enrichment"][label]!; model.perform { try await model.search() } }.disabled(model.busy) } }
+                HStack { Button("浏览图库") { model.perform { try await model.gallery() } }.disabled(model.busy); ForEach(["火山图", "热图", "UMAP", "细胞比例", "富集分析"], id: \.self) { label in Button(label) { model.query = ["火山图": "volcano differential expression", "热图": "heatmap expression", "UMAP": "UMAP single cell", "细胞比例": "cell proportion barplot", "富集分析": "GO enrichment"][label]!; model.perform { try await model.search() } }.disabled(model.busy) } }
                 Text(model.previewCacheHint).font(.callout).foregroundStyle(.secondary)
-                HStack { Text("候选图片").font(.headline); Spacer(); if model.result != .null { Text("\(model.result["total"].int) 个结果").foregroundStyle(.secondary) } }
-                if candidates.isEmpty { VStack(spacing: 12) { Image(systemName: "photo.on.rectangle.angled").font(.system(size: 40)).foregroundStyle(.secondary); Text("图片与代码，成为下一次研究的起点").font(.headline); Text("搜索可复用的模板，或导入自己的图片与代码。").foregroundStyle(.secondary) }.frame(maxWidth: .infinity).padding(.vertical, 80) }
+                HStack { Text(model.query.isEmpty ? "图库" : "候选图片").font(.headline); Spacer(); if model.result != .null { Text("\(model.result["total"].int) 个结果").foregroundStyle(.secondary) } }
+                if candidates.isEmpty { VStack(spacing: 12) { Image(systemName: "photo.on.rectangle.angled").font(.system(size: 40)).foregroundStyle(.secondary); Text("图片与代码，成为下一次研究的起点").font(.headline); Text("图库会列出全部可浏览图片。也可以搜索或导入自己的图片与代码。").foregroundStyle(.secondary) }.frame(maxWidth: .infinity).padding(.vertical, 80) }
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 230, maximum: 360))], spacing: 20) {
                     ForEach(candidates.indices, id: \.self) { index in
                         let candidate = candidates[index]
@@ -82,6 +82,10 @@ let libraryGreen = Color(red: 0.14, green: 0.42, blue: 0.30)
                 }
                 if model.result != .null { HStack { Button("上一页") { model.previousPage() }.disabled(model.result["pageIndex"].int <= 1); Spacer(); Text("第 \(model.result["pageIndex"].int) 页"); Spacer(); Button("下一页") { model.perform { try await model.nextPage() } }.disabled(model.result["pagination"]["nextCursor"].string.isEmpty || model.busy) } }
             }.padding(28)
+        }
+        .onAppear {
+            if ProcessInfo.processInfo.environment["SFL_NATIVE_SMOKE"] == "1" { return }
+            if model.ready && model.result == .null { model.perform { try await model.gallery() } }
         }
     }
 }

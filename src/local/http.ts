@@ -164,6 +164,7 @@ export async function startLocalHttp(options: {
       if (url.pathname === "/api/preview") return json(response, 200, await service.local.preview(input));
       if (url.pathname === "/api/confirm") return json(response, 200, await service.local.confirm(input));
       if (url.pathname === "/api/asset") return json(response, 200, await service.local.asset(input));
+      if (url.pathname === "/api/gallery") return json(response, 200, await service.local.gallery(input));
       if (url.pathname === "/api/https-proxy") {
         const body = z.object({ proxyUrl: z.string().max(200) }).strict().parse(input);
         return json(response, 200, await saveHttpsProxy(body.proxyUrl));

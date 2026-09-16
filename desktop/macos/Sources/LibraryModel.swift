@@ -205,8 +205,14 @@ enum Sheet: Identifiable {
         thumbnails = response["_meta"]["candidatePreviews"]
         pages[next["pageIndex"].int] = (next, thumbnails)
     }
+    func gallery() async throws {
+        query = ""
+        var arguments: [String: JSON] = ["limit": .integer(12)]
+        if !provider.isEmpty { arguments["providerIds"] = .array([text(provider)]) }
+        try display(await backend.request("gallery", object(arguments)))
+    }
     func search() async throws {
-        guard !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+        if query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { try await gallery(); return }
         var arguments: [String: JSON] = ["query": text(query), "limit": .integer(12)]
         if !provider.isEmpty { arguments["providerIds"] = .array([text(provider)]) }
         if !dataProfile.isEmpty { arguments["dataProfile"] = text(dataProfile) }

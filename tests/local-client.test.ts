@@ -63,7 +63,7 @@ test("Windows local app HTML exposes setup, preview cache and provider source co
   for (const id of [
     "setup-banner", "cache-banner", "cache-previews", "preview-cache-hint",
     "provider-list", "add-source-form", "source-provider-id", "source-manifest-url", "source-public-key", "source-default-search",
-    "proxy-form", "https-proxy",
+    "proxy-form", "https-proxy", "browse-gallery",
   ]) {
     assert.match(html, new RegExp(`id="${id}"`, "u"));
   }
@@ -127,6 +127,13 @@ test("local browser/native session enforces origin, authentication, one-use laun
   assert.ok(Array.isArray(cache.sources));
   const filled = await api("/api/preview-cache", { limit: 1 });
   assert.equal(filled.schema, "figure-library.local-preview-cache.v1");
+  const gallery = await api("/api/gallery", { limit: 2, providerIds: ["org.figureya.module"] });
+  const listed = record(gallery.structuredContent);
+  assert.equal(record(listed.envelope).outcome, "ok");
+  assert.ok(Number(record(listed.pagination).total) > 2);
+  assert.ok(Array.isArray(listed.candidates));
+  assert.equal((listed.candidates as unknown[]).length, 2);
+  assert.equal(listed.query, "");
   const proxy = await api("/api/https-proxy");
   assert.equal(proxy.schema, "figure-library.https-proxy.v1");
   assert.equal(proxy.proxyUrl, null);

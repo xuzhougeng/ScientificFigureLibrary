@@ -122,6 +122,15 @@ test("Chinese and English bar-chart searches return the complete stable ranked s
   }
 });
 
+test("gallery browse lists the complete FigureYa catalog in identifier order", async () => {
+  const index = await CatalogIndex.load();
+  const browsed = await index.searchAll({ query: "", browse: true });
+  assert.equal(browsed.length, index.catalog.modules.length);
+  const ids = browsed.map((item) => item.templateId);
+  assert.deepEqual(ids, [...ids].sort((left, right) => left.localeCompare(right)));
+  assert.ok(browsed.every((item) => item.reasons.includes("图库浏览")));
+});
+
 test("real Wisp volcano requests rank the standard template first", async () => {
   const index = await CatalogIndex.load();
   const requests = [

@@ -284,6 +284,7 @@ function candidateText(candidates: Array<TemplateCandidate & { candidateId: stri
 
 type ParsedSearchInput = Omit<z.infer<typeof SearchInput>, "providerIds" | "resultSetId"> & {
   providerIds: string[];
+  browse?: boolean;
 };
 
 function searchQueryDigest(input: ParsedSearchInput) {
@@ -300,6 +301,7 @@ function searchQueryDigest(input: ParsedSearchInput) {
       codeStatus: input.codeStatus ?? null,
       providerIds: [...input.providerIds].sort(),
       limit: input.limit,
+      browse: input.browse === true,
     }),
   );
 }
@@ -853,10 +855,45 @@ export async function createLibraryService(options: LibraryServiceOptions = {}) 
           ...input,
           providerIds: input.providerIds ?? registry.defaultProviderIds(),
         };
-        if (input.resultSetId) {
-          const state = searchSessions.get(input.resultSetId);
+        return await executeUnifiedSearch({
+          parsedInput,
+          explicitlySelected,
+          correlationId,
+          invocationSource: "agent",
+          toolName: "figure_library_search",
+          operationStartedAt,
+          resultSetId: input.resultSetId,
+        });
+      } catch (error) {
+        await diagnostics.record({
+          level: "error",
+          event: "tool.failed",
+          correlationId,
+          toolName: "figure_library_search",
+          invocationSource: "agent",
+          durationMs: performance.now() - operationStartedAt,
+          errorCode: error instanceof PreviewProtocolError ? error.code : "search_failed",
+          safeMessage: error instanceof Error ? error.message : String(error),
+        });
+        return previewFailure("Unified search failed", error);
+      }
+    },
+  );
+
+  async function executeUnifiedSearch(options: {
+    parsedInput: ParsedSearchInput;
+    explicitlySelected: boolean;
+    correlationId: string;
+    invocationSource: "agent" | "app";
+    toolName: "figure_library_search" | "figure_library_search_page";
+    operationStartedAt: number;
+    resultSetId?: string;
+  }) {
+        const { parsedInput, explicitlySelected, correlationId, invocationSource, toolName, operationStartedAt } = options;
+        if (options.resultSetId) {
+          const state = searchSessions.get(options.resultSetId);
           if (!state || state.queryDigest !== searchQueryDigest(parsedInput)) throw new Error("The cached publication search is missing or its query/filters changed; create a new Plan.");
-          return await buildSearchPage({ resultSetId: input.resultSetId, state, offset: 0, limit: parsedInput.limit, correlationId, invocationSource: "agent", toolName: "figure_library_search", operationStartedAt });
+          return await buildSearchPage({ resultSetId: options.resultSetId, state, offset: 0, limit: parsedInput.limit, correlationId, invocationSource, toolName, operationStartedAt });
         }
         const request: SearchRequest = {
           query: parsedInput.query,
@@ -867,6 +904,7 @@ export async function createLibraryService(options: LibraryServiceOptions = {}) 
           plotFamily: parsedInput.plotFamily,
           reviewStatus: parsedInput.reviewStatus,
           codeStatus: parsedInput.codeStatus,
+          ...(parsedInput.browse ? { browse: true } : {}),
         };
         const context = await currentLibraries();
         providerController?.officialOpenFigure?.maybeRefresh();
@@ -885,8 +923,8 @@ export async function createLibraryService(options: LibraryServiceOptions = {}) 
         await diagnostics.record({
           event: "search.catalog_loaded",
           correlationId,
-          toolName: "figure_library_search",
-          invocationSource: "agent",
+          toolName,
+          invocationSource,
           catalogRevision,
           libraryRevision: bindingDigest,
         });
@@ -976,8 +1014,8 @@ export async function createLibraryService(options: LibraryServiceOptions = {}) 
           event: "search.matched",
           correlationId,
           resultSetId,
-          toolName: "figure_library_search",
-          invocationSource: "agent",
+          toolName,
+          invocationSource,
           catalogRevision,
           libraryRevision: bindingDigest,
           safeMessage: `Matched ${normalized.length} candidates.`,
@@ -988,25 +1026,11 @@ export async function createLibraryService(options: LibraryServiceOptions = {}) 
           offset: 0,
           limit: parsedInput.limit,
           correlationId,
-          invocationSource: "agent",
-          toolName: "figure_library_search",
+          invocationSource,
+          toolName,
           operationStartedAt,
         });
-      } catch (error) {
-        await diagnostics.record({
-          level: "error",
-          event: "tool.failed",
-          correlationId,
-          toolName: "figure_library_search",
-          invocationSource: "agent",
-          durationMs: performance.now() - operationStartedAt,
-          errorCode: error instanceof PreviewProtocolError ? error.code : "search_failed",
-          safeMessage: error instanceof Error ? error.message : String(error),
-        });
-        return previewFailure("Unified search failed", error);
-      }
-    },
-  );
+  }
 
   operations.define(
     "figure_library_search_page",
@@ -1478,6 +1502,33 @@ export async function createLibraryService(options: LibraryServiceOptions = {}) 
       });
     },
     previewCache: () => collectPreviewCache(),
+    gallery: async (raw) => {
+      const input = z.object({
+        providerIds: z.array(z.string().min(1).max(200)).min(1).max(16).optional(),
+        limit: z.number().int().min(1).max(12).optional(),
+      }).strict().parse(raw ?? {});
+      const operationStartedAt = performance.now();
+      const correlationId = diagnostics.createCorrelationId("gallery");
+      const explicitlySelected = input.providerIds !== undefined;
+      const parsedInput: ParsedSearchInput = {
+        query: "",
+        browse: true,
+        providerIds: input.providerIds ?? registry.defaultProviderIds(),
+        limit: input.limit ?? 12,
+      };
+      try {
+        return await executeUnifiedSearch({
+          parsedInput,
+          explicitlySelected,
+          correlationId,
+          invocationSource: "app",
+          toolName: "figure_library_search",
+          operationStartedAt,
+        });
+      } catch (error) {
+        return previewFailure("Gallery listing failed", error);
+      }
+    },
     cachePreviews: async (raw) => {
       const input = z.object({
         providerId: z.string().min(1).max(200).optional(),
@@ -2325,6 +2376,7 @@ export async function createLibraryService(options: LibraryServiceOptions = {}) 
       asset: (input: unknown) => operations.run(() => localOperations.asset(input)),
       previewCache: () => operations.run(() => localOperations.previewCache()),
       cachePreviews: (input: unknown) => operations.run(() => localOperations.cachePreviews(input)),
+      gallery: (input: unknown) => operations.run(() => localOperations.gallery(input)),
     },
     execute: (name: string, input: unknown = {}) => operations.execute(name, input),
     readResource: (uri: string) => operations.readResource(uri),

@@ -13,12 +13,12 @@
     <section id="setup-banner" class="setup-banner" hidden><strong>欢迎建立你的本地知识库</strong><p>安装包为减小体积未包含图库图片。请先选择全局图库与工作区，然后缓存图片。</p><button data-page="settings">设置本机目录</button></section>
     <section id="cache-banner" class="setup-banner" hidden><strong>缓存图库图片</strong><p>本机目录已就绪。安装包不含 FigureYa 与 Open Figure Modules 的预览图，缓存后可离线浏览当前图库。</p><p id="cache-progress" class="cache-progress"></p><button type="button" id="cache-previews">缓存图片</button><button data-page="settings" class="quiet">管理图片来源</button></section>
     <section id="discover-page" class="local-page">
-      <form id="search-form" class="search-form"><label class="sr-only" for="search-query">搜索模板</label><input id="search-query" placeholder="描述你想找的图，例如：单细胞分组比例、火山图…" required><button type="submit">搜索图库</button></form>
+      <form id="search-form" class="search-form"><label class="sr-only" for="search-query">搜索模板</label><input id="search-query" placeholder="描述你想找的图，例如：单细胞分组比例、火山图…"><button type="submit">搜索图库</button></form>
       <div class="search-filters"><label>图片来源<select id="search-provider"><option value="">全部默认来源</option><option value="org.scientificfigurelibrary.local">我的已发布图片</option><option value="org.figureya.module">FigureYa</option><option value="io.github.jarxunlai.personal-figures">Open Figure Modules</option></select></label><label>数据特征<input id="search-data" placeholder="可选：gene、log2FC、padj"></label></div>
       <p id="preview-cache-hint">安装包默认不包含图库图片。请先设置本机目录，再缓存图片；未缓存时，当前页仍会在首次查看时下载。</p>
-      <div id="suggestions" class="suggestions"><span>从常见图形开始</span><button data-query="volcano differential expression">火山图</button><button data-query="heatmap expression matrix">热图</button><button data-query="UMAP single cell">UMAP</button><button data-query="barplot proportion cell type">细胞比例</button><button data-query="GO enrichment pathway">富集分析</button></div>
-      <div class="results-heading"><h2 id="results-title">找到适合你数据的表达方式</h2><span id="results-count"></span></div>
-      <div id="empty" class="local-empty"><h3>让图片成为下一次研究的起点</h3><p>搜索图库中的图片与代码，查看细节后再选用。也可以导入自己的资产。</p></div>
+      <div id="suggestions" class="suggestions"><span>从常见图形开始</span><button type="button" id="browse-gallery">浏览图库</button><button data-query="volcano differential expression">火山图</button><button data-query="heatmap expression matrix">热图</button><button data-query="UMAP single cell">UMAP</button><button data-query="barplot proportion cell type">细胞比例</button><button data-query="GO enrichment pathway">富集分析</button></div>
+      <div class="results-heading"><h2 id="results-title">图库</h2><span id="results-count"></span></div>
+      <div id="empty" class="local-empty"><h3>让图片成为下一次研究的起点</h3><p>图库会列出全部可浏览图片。也可以搜索或导入自己的资产。</p></div>
       <section id="cards" class="cards" aria-label="候选图片"></section>
       <div id="selection-bar" class="local-selection" hidden><span id="selection-count"></span><button id="copy-selection">复制所选模板信息</button></div>
       <nav id="local-pagination" class="pagination" hidden><button id="previous">上一页</button><span id="page-label"></span><button id="next">下一页</button></nav>

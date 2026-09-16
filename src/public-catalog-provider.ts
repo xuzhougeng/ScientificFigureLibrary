@@ -5,6 +5,8 @@ import { unzipSync } from "fflate";
 import { PNG } from "pngjs";
 import {
   buildSearchIntent,
+  compareSearchHits,
+  keepSearchHit,
   normalizeSearchText,
   scoreSearchableTemplate,
 } from "./catalog.ts";
@@ -2138,12 +2140,14 @@ export class PublicCatalogProviderAdapter implements ProviderAdapter {
           intent,
         ),
       }))
-      .filter(({ evidence }) => evidence.score > 0)
+      .filter(({ evidence }) => keepSearchHit(evidence.score, request))
       .sort(
         (left, right) =>
-          right.evidence.score - left.evidence.score ||
-          left.entry.templateId.localeCompare(right.entry.templateId, "en") ||
-          left.entry.releaseVersion.localeCompare(right.entry.releaseVersion, "en"),
+          request.browse
+            ? left.entry.templateId.localeCompare(right.entry.templateId, "en") ||
+              left.entry.releaseVersion.localeCompare(right.entry.releaseVersion, "en")
+            : compareSearchHits(left.entry.templateId, left.evidence.score, right.entry.templateId, right.evidence.score, request) ||
+              left.entry.releaseVersion.localeCompare(right.entry.releaseVersion, "en"),
       );
     return scored.map(({ entry, evidence }): TemplateCandidate => {
       const selector = publicTemplateSelector(entry, this.snapshot.catalogSha256);
@@ -2153,9 +2157,9 @@ export class PublicCatalogProviderAdapter implements ProviderAdapter {
         exactSelector: selector,
         sourceLabel: this.descriptor.sourceLabel,
         title: entry.title,
-        retrievalScore: evidence.score,
-        matchedTerms: evidence.matchedTerms.slice(0, 12),
-        reasons: evidence.reasons,
+        retrievalScore: request.browse ? 1 : evidence.score,
+        matchedTerms: request.browse ? [] : evidence.matchedTerms.slice(0, 12),
+        reasons: request.browse ? ["图库浏览"] : evidence.reasons,
         warnings: [
           `publisherVerified=${entry.status.publisherVerified}`,
           `curationStatus=${entry.status.curationStatus}`,

@@ -9,4 +9,5 @@ export interface LocalOperations {
   asset(input: unknown): Promise<CallToolResult>;
   previewCache(): Promise<PreviewCacheSnapshot>;
   cachePreviews(input: unknown): Promise<PreviewCacheSnapshot>;
+  gallery(input: unknown): Promise<CallToolResult>;
 }

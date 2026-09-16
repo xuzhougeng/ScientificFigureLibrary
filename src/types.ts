@@ -304,6 +304,8 @@ export interface SearchRequest {
   reviewStatus?: ReviewStatus;
   codeStatus?: CodeStatus;
   limit?: number;
+  /** Local gallery listing: keep every catalog entry, ignore retrieval score. */
+  browse?: boolean;
 }
 
 export type AssetKind = "plot_template" | "visual_reference";

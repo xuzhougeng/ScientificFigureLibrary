@@ -387,6 +387,15 @@ function includesTerm(field: string, term: string, allowEmbedded = false) {
   return allowEmbedded ? field.includes(term) : containsPhrase(field, term);
 }
 
+export function keepSearchHit(score: number, request: SearchRequest) {
+  return request.browse === true || score > 0;
+}
+
+export function compareSearchHits(leftId: string, leftScore: number, rightId: string, rightScore: number, request: SearchRequest) {
+  if (request.browse) return leftId.localeCompare(rightId);
+  return rightScore - leftScore || leftId.localeCompare(rightId);
+}
+
 export function scoreSearchableTemplate(
   template: SearchableTemplate,
   intent: SearchIntent,
@@ -845,11 +854,10 @@ export class CatalogIndex {
         );
         return { module, evidence };
       })
-      .filter(({ evidence }) => evidence.score > 0)
+      .filter(({ evidence }) => keepSearchHit(evidence.score, request))
       .sort(
         (left, right) =>
-          right.evidence.score - left.evidence.score ||
-          left.module.moduleId.localeCompare(right.module.moduleId),
+          compareSearchHits(left.module.moduleId, left.evidence.score, right.module.moduleId, right.evidence.score, request),
       );
     return Promise.all(
       matches.map(async ({ module, evidence }) => {
@@ -871,9 +879,9 @@ export class CatalogIndex {
           exactSelector,
           sourceLabel: "FigureYa",
           title: module.title,
-          retrievalScore: evidence.score,
-          matchedTerms: evidence.matchedTerms.slice(0, 12),
-          reasons: evidence.reasons,
+          retrievalScore: request.browse ? 1 : evidence.score,
+          matchedTerms: request.browse ? [] : evidence.matchedTerms.slice(0, 12),
+          reasons: request.browse ? ["图库浏览"] : evidence.reasons,
           warnings,
           excerpt: excerpt(module, evidence.matchedTerms),
           description: module.requirement,
