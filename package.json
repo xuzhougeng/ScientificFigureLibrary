@@ -69,7 +69,8 @@
     "package:windows:no-node": "npm run build && node scripts/package-local-client.mjs windows-x64 --system-node",
     "package:linux:no-node": "npm run build && node scripts/package-local-client.mjs linux-x64 --system-node",
     "package:linux:arm64:no-node": "npm run build && node scripts/package-local-client.mjs linux-arm64 --system-node",
-    "package:macos:no-node": "npm run build && node scripts/package-local-client.mjs macos-native --system-node"
+    "package:macos:no-node": "npm run build && node scripts/package-local-client.mjs macos-native --system-node",
+    "dev": "node scripts/dev.mjs"
   },
   "devDependencies": {
     "@modelcontextprotocol/ext-apps": "^1.7.0",

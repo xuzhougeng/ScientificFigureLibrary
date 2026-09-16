@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN">
+<html lang="zh-CN" data-theme="light">
 <head><meta charset="UTF-8"><link rel="icon" href="data:,"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Scientific Figure Library · 本地知识库</title></head>
 <body class="local-client">
   <aside class="local-sidebar" aria-label="主导航">
@@ -18,10 +18,13 @@
     </div>
     <section id="setup-banner" class="setup-banner" hidden><strong>欢迎建立你的本地知识库</strong><p>先选择全局图库与工作区，之后可跨项目复用。</p><button data-page="settings">设置本机目录</button></section>
     <section id="discover-page" class="local-page">
+      <div class="search-panel">
       <form id="search-form" class="search-form"><label class="sr-only" for="search-query">搜索模板</label><input id="search-query" placeholder="描述你想找的图，例如：单细胞分组比例、火山图…"><button type="submit">搜索图库</button></form>
       <div class="search-filters"><label>图片来源<select id="search-provider"><option value="">全部默认来源</option></select></label><label>数据特征<input id="search-data" placeholder="可选：gene、log2FC、padj"></label></div>
-      <p>在线图库图片不会在安装时下载。请到「外部图库」或设置的「图片缓存」中对某个图库执行「缓存图片」，或浏览/搜索后查看当前页。已缓存的图片可离线查看。</p>
+
       <div id="suggestions" class="suggestions"><span>从常见图形开始</span><button data-query="volcano differential expression">火山图</button><button data-query="heatmap expression matrix">热图</button><button data-query="UMAP single cell">UMAP</button><button data-query="barplot proportion cell type">细胞比例</button><button data-query="GO enrichment pathway">富集分析</button></div>
+      </div>
+      <p class="gallery-help">在线图库图片不会在安装时下载。请到「外部图库」或设置的「图片缓存」中对某个图库执行「缓存图片」，或浏览/搜索后查看当前页。已缓存的图片可离线查看。</p>
       <div class="results-heading" id="results-heading"><h2 id="results-title">图库</h2><span id="results-count"></span></div>
       <nav class="pagination gallery-pagination" id="local-pagination-top" hidden aria-label="图库分页"><button type="button" class="page-previous" disabled>上一页</button><span class="page-label"></span><button type="button" class="page-next" disabled>下一页</button></nav>
       <div id="gallery-loading" class="gallery-sync" role="status" aria-live="polite"><div class="gallery-sync-spinner" aria-hidden="true"></div><p>正在同步图库…</p></div>
