@@ -60,9 +60,13 @@ async function isolated(t: { after: (fn: () => Promise<void>) => void }) {
   return { root, local, service, request, api, call, overrides };
 }
 
-test("local app HTML exposes browse-gallery", async () => {
+test("local app HTML exposes dual gallery pagination without a browse-gallery button", async () => {
   const html = await fs.readFile(path.resolve(import.meta.dirname, "../app/local-app.html"), "utf8");
-  assert.match(html, /id="browse-gallery"/u);
+  assert.match(html, /id="local-pagination-top"/u);
+  assert.match(html, /id="local-pagination"/u);
+  assert.equal((html.match(/class="page-previous"/gu) ?? []).length, 2);
+  assert.equal((html.match(/class="page-next"/gu) ?? []).length, 2);
+  assert.doesNotMatch(html, /id="browse-gallery"/u);
   assert.match(html, /data-page="discover"[^>]*>图库</u);
   assert.match(html, /data-page="library"[^>]*>我的图库</u);
   assert.match(html, /data-page="galleries"[^>]*>外部图库</u);

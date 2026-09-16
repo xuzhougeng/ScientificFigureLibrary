@@ -22,6 +22,7 @@ import {
   BundledProviderPreferenceStore,
   isRemovableBundledProviderId,
 } from "./bundled-provider-preferences.ts";
+import { processLogError } from "./process-log.ts";
 
 const HASH = /^[a-f0-9]{64}$/u;
 const OPERATION_ID = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/u;
@@ -95,6 +96,7 @@ function response(
 
 function failure(prefix: string, error: unknown): CallToolResult {
   const message = error instanceof Error ? error.message : String(error);
+  processLogError(`${prefix}: ${message}`, error);
   const lower = message.toLocaleLowerCase("en-US");
   if (lower.includes("plan is not available") || lower.includes("another server process")) {
     return response(

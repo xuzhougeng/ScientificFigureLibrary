@@ -852,6 +852,26 @@ test("all Providers render the same Markdown detail while technical metadata sta
   }
 });
 
+test("candidate detail dialog locks background scroll while open", () => {
+  const document = createTestWindow().document as unknown as Document;
+  const opener = document.createElement("button");
+  document.body.append(opener);
+  const detail = openCandidateDetail({
+    document,
+    candidate: candidate("org.figureya.module", "scroll-lock", "missing"),
+    opener,
+    serverToolsAvailable: false,
+    updateModelContextAvailable: false,
+    onRequestExactPreview() {},
+    onRequestAgentReview() {},
+  });
+  assert.equal(document.documentElement.classList.contains("dialog-open"), true);
+  assert.equal(document.body.style.position, "fixed");
+  detail.dialog.close();
+  assert.equal(document.documentElement.classList.contains("dialog-open"), false);
+  assert.equal(document.body.style.position, "");
+});
+
 test("legacy scenarios render once and absent scenarios never use visualProfile", () => {
   const document = createTestWindow().document as unknown as Document;
   const selected = candidate("org.scientificfigurelibrary.local", "old", "missing");

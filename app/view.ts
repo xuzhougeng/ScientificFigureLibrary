@@ -510,6 +510,60 @@ function appendDetailSection(
   container.append(section);
 }
 
+const modalScrollLocks = new WeakMap<Document, { count: number; y: number }>();
+
+function elementCanScroll(document: Document, element: Element, deltaY: number) {
+  const style = document.defaultView?.getComputedStyle(element);
+  const overflowY = style?.overflowY ?? "";
+  if (overflowY !== "auto" && overflowY !== "scroll" && overflowY !== "overlay") return false;
+  const target = element as HTMLElement;
+  if (target.scrollHeight <= target.clientHeight + 1) return false;
+  if (deltaY < 0) return target.scrollTop > 0;
+  return target.scrollTop + target.clientHeight < target.scrollHeight - 1;
+}
+
+export function bindModalScrollLock(document: Document, dialog: HTMLDialogElement) {
+  const root = document.documentElement;
+  const body = document.body;
+  const view = document.defaultView;
+  const current = modalScrollLocks.get(document) ?? { count: 0, y: 0 };
+  if (current.count === 0) {
+    current.y = view?.scrollY ?? 0;
+    root.classList.add("dialog-open");
+    body.style.position = "fixed";
+    body.style.top = `-${current.y}px`;
+    body.style.left = "0";
+    body.style.right = "0";
+  }
+  current.count += 1;
+  modalScrollLocks.set(document, current);
+  const onWheel = (event: WheelEvent) => {
+    if (!dialog.open) return;
+    let node: Node | null = event.target as Node | null;
+    while (node && node !== document) {
+      if (node instanceof Element && elementCanScroll(document, node, event.deltaY)) return;
+      if (node === dialog) break;
+      node = node.parentNode;
+    }
+    event.preventDefault();
+  };
+  document.addEventListener("wheel", onWheel, { capture: true, passive: false });
+  dialog.addEventListener("close", () => {
+    document.removeEventListener("wheel", onWheel, true);
+    const lock = modalScrollLocks.get(document);
+    if (!lock) return;
+    lock.count = Math.max(0, lock.count - 1);
+    if (lock.count > 0) return;
+    body.style.position = "";
+    body.style.top = "";
+    body.style.left = "";
+    body.style.right = "";
+    root.classList.remove("dialog-open");
+    try { view?.scrollTo(0, lock.y); } catch { /* jsdom does not implement scrollTo */ }
+    modalScrollLocks.delete(document);
+  }, { once: true });
+}
+
 export function openCandidateDetail(options: {
   document: Document;
   candidate: Candidate;
@@ -651,6 +705,7 @@ export function openCandidateDetail(options: {
   document.body.append(dialog);
   if (typeof dialog.showModal === "function") dialog.showModal();
   else dialog.setAttribute("open", "");
+  bindModalScrollLock(document, dialog);
   queueMicrotask(() => closeButton.focus());
   return elements;
 }

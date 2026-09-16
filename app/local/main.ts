@@ -1,6 +1,6 @@
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { SFL_BRAND_ICON_DATA_URI } from "../brand.ts";
-import { mountExactPreviewImage, openCandidateDetail, parseSearchResult, renderCandidateCards, type Candidate, type DetailViewElements, type SearchResult } from "../view.ts";
+import { bindModalScrollLock, mountExactPreviewImage, openCandidateDetail, parseSearchResult, renderCandidateCards, type Candidate, type DetailViewElements, type SearchResult } from "../view.ts";
 import { renderMarkdown } from "../markdown.ts";
 import { api, call, details, imageData, imageHash, record, records, requireResult, upload } from "./api.ts";
 import "../styles.css";
@@ -11,6 +11,10 @@ const input = (id: string) => el<HTMLInputElement>(id);
 const button = (id: string) => el<HTMLButtonElement>(id);
 const form = (id: string) => el<HTMLFormElement>(id);
 const dialog = (id: string) => el<HTMLDialogElement>(id);
+function openLockedModal(target: HTMLDialogElement) {
+  target.showModal();
+  bindModalScrollLock(document, target);
+}
 const titles: Record<string, string> = { discover: "图库", library: "我的图库", galleries: "外部图库", import: "创建参考图", integrations: "连接外部工具", settings: "设置" };
 let page = "discover";
 let result: SearchResult | undefined;
@@ -58,6 +62,7 @@ async function showPage(next: string) {
   document.querySelectorAll<HTMLButtonElement>(".local-sidebar button[data-page]").forEach((item) => item.classList.toggle("active", item.dataset.page === page));
   if (page === "library") await loadLibrary();
   if (page === "settings" || page === "galleries" || page === "discover") await loadStatus();
+  if (page === "discover" && !result) await (input("search-query").value.trim() ? search() : loadGallery());
   if (page === "integrations") await loadIntegrations();
 }
 function refreshSelection() {
@@ -87,10 +92,18 @@ function display(parsed: SearchResult) {
   });
   el("results-title").textContent = parsed.query ? `“${parsed.query}”的候选图片` : "图库";
   el("results-count").textContent = `${parsed.pagination.total} 个结果`;
-  el("local-pagination").hidden = parsed.pagination.total === 0;
-  el("page-label").textContent = `第 ${parsed.pagination.pageIndex} / ${Math.max(1, Math.ceil(parsed.pagination.total / parsed.pagination.pageSize))} 页`;
-  button("previous").disabled = !pages.has(parsed.pagination.pageIndex - 1);
-  button("next").disabled = !parsed.pagination.nextCursor;
+  const label = `第 ${parsed.pagination.pageIndex} / ${Math.max(1, Math.ceil(parsed.pagination.total / parsed.pagination.pageSize))} 页`;
+  const prevDisabled = !pages.has(parsed.pagination.pageIndex - 1);
+  const nextDisabled = !parsed.pagination.nextCursor;
+  document.querySelectorAll<HTMLElement>(".gallery-pagination").forEach((nav) => {
+    nav.hidden = parsed.pagination.total === 0;
+    const pageLabel = nav.querySelector(".page-label");
+    const previous = nav.querySelector<HTMLButtonElement>(".page-previous");
+    const next = nav.querySelector<HTMLButtonElement>(".page-next");
+    if (pageLabel) pageLabel.textContent = label;
+    if (previous) previous.disabled = prevDisabled;
+    if (next) next.disabled = nextDisabled;
+  });
   refreshSelection();
 }
 function displayResult(value: CallToolResult) {
@@ -132,7 +145,7 @@ async function exactPreview(candidate: Candidate, view: DetailViewElements) {
     const confirmed = requireResult(await api("confirm", { previewChallenge: details(preview).previewChallenge, displayedImageSha256: sha256, imageLoaded: true, confirmedBy: "user" }));
     pendingMaterialize = { candidate, receipt: String(details(confirmed).previewReceipt), resultSetId };
     view.dialog.close();
-    dialog("materialize-dialog").showModal();
+    openLockedModal(dialog("materialize-dialog"));
   }, view.confirmButton);
 }
 function planLine(label: string, value: unknown) {
@@ -158,7 +171,7 @@ function reviewPlan(title: string, response: CallToolResult, apply: () => Promis
   for (const warning of records(review.warnings)) planLine("注意事项", warning.message);
   el("plan-json").textContent = JSON.stringify(data, null, 2);
   planAction = async () => { await apply(); dialog("plan-dialog").close(); planAction = undefined; await loadStatus(); };
-  dialog("plan-dialog").showModal();
+  openLockedModal(dialog("plan-dialog"));
 }
 async function loadStatus() {
   const response = await call("figure_library_source_status");
@@ -467,7 +480,7 @@ async function showLibraryDetail(templateId: string) {
   modal.append(history, actions);
   modal.addEventListener("close", () => modal.remove());
   document.body.append(modal);
-  modal.showModal();
+  openLockedModal(modal);
 }
 async function importAsset() {
   const fields = new FormData(form("import-form"));
@@ -500,9 +513,27 @@ async function importAsset() {
 for (const control of document.querySelectorAll<HTMLButtonElement>("button[data-page]")) control.addEventListener("click", () => void run(() => showPage(control.dataset.page!)));
 for (const control of document.querySelectorAll<HTMLButtonElement>("button[data-query]")) control.addEventListener("click", () => { input("search-query").value = control.dataset.query!; void run(search, control); });
 form("search-form").addEventListener("submit", (event) => { event.preventDefault(); void run(search, form("search-form").querySelector("button")!); });
-button("browse-gallery").onclick = () => void run(loadGallery, button("browse-gallery"));
+el("discover-page").addEventListener("click", (event) => {
+  const target = event.target instanceof Element ? event.target.closest("button") : null;
+  if (!(target instanceof HTMLButtonElement)) return;
+  if (target.classList.contains("page-next")) {
+    void run(async () => {
+      if (!result?.pagination.nextCursor) return;
+      displayResult(await call("figure_library_search_page", { resultSetId: result.resultSetId, cursor: result.pagination.nextCursor }));
+      el("results-heading").scrollIntoView({ block: "start" });
+    }, target);
+  }
+  if (target.classList.contains("page-previous")) {
+    const previous = result && pages.get(result.pagination.pageIndex - 1);
+    if (previous) {
+      display(previous);
+      el("results-heading").scrollIntoView({ block: "start" });
+    }
+  }
+});
 el<HTMLSelectElement>("search-provider").addEventListener("change", () => void run(async () => {
   if (input("search-query").value.trim()) await search();
+  else await loadGallery();
 }));
 form("binding-form").addEventListener("submit", (event) => { event.preventDefault(); void run(bindDirectories); });
 form("add-provider-form").addEventListener("submit", (event) => {
@@ -518,9 +549,14 @@ form("add-provider-form").addEventListener("submit", (event) => {
   });
 });
 form("import-form").addEventListener("submit", (event) => { event.preventDefault(); void run(importAsset, form("import-form").querySelector<HTMLButtonElement>("button[type=submit]")!); });
-button("refresh").onclick = () => void run(async () => { if (page === "library") await loadLibrary(); else await loadStatus(); });
-button("next").onclick = () => void run(async () => { if (result?.pagination.nextCursor) displayResult(await call("figure_library_search_page", { resultSetId: result.resultSetId, cursor: result.pagination.nextCursor })); }, button("next"));
-button("previous").onclick = () => { const previous = result && pages.get(result.pagination.pageIndex - 1); if (previous) display(previous); };
+button("refresh").onclick = () => void run(async () => {
+  if (page === "library") await loadLibrary();
+  else if (page === "discover") {
+    await loadStatus();
+    if (input("search-query").value.trim()) await search();
+    else await loadGallery();
+  } else await loadStatus();
+});
 button("copy-selection").onclick = () => void run(async () => {
   await navigator.clipboard.writeText(JSON.stringify([...selected.values()].map(({ title, providerId, exactSelector }) => ({ title, providerId, exactSelector })), null, 2));
   notify("已复制所选模板的名称与精确引用。");
@@ -579,7 +615,7 @@ async function connect() {
   const ticket = new URLSearchParams(location.hash.slice(1)).get("connect");
   if (ticket) { await api("connect", { ticket }); history.replaceState(null, "", location.pathname); }
   await loadStatus();
-
+  await loadGallery();
 }
 void run(connect);
 

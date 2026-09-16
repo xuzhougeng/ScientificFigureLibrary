@@ -68,7 +68,10 @@ body.local-client { min-width: 360px; background: #f7f8f5; color: #23382d; color
 #add-provider-form { margin-top: 22px; padding-top: 18px; border-top: 1px solid #e0e6de; }
 #add-provider-form small { display: block; color: #718074; font-size: 12px; line-height: 1.6; }
 #add-provider-form .checkbox small { margin-left: 8px; }
-.local-dialog { width: min(700px, 94vw); max-height: 88vh; overflow: auto; border: 1px solid #d9e2d7; border-radius: 15px; padding: 30px; color: #23382d; background: #fff; }
+html.dialog-open .local-main { overflow: hidden; }
+.local-dialog { width: min(700px, 94vw); max-height: 88vh; overflow: auto; overscroll-behavior: contain; border: 1px solid #d9e2d7; border-radius: 15px; padding: 30px; color: #23382d; background: #fff; }
+.gallery-pagination { margin: 12px 0 8px; }
+#local-pagination { margin-top: 22px; }
 .local-dialog::backdrop, .candidate-dialog::backdrop { background: #172b2155; backdrop-filter: blur(3px); }
 .local-dialog h2 { font-size: 21px; margin: 0 0 20px; }
 .local-dialog pre { font-size: 11px; overflow: auto; max-height: 280px; background: #f4f6f2; padding: 15px; white-space: pre-wrap; overflow-wrap: anywhere; }

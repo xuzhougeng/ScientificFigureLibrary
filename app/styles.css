@@ -571,10 +571,17 @@ footer {
   text-align: center;
 }
 
+html.dialog-open,
+html.dialog-open body {
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
 .candidate-dialog {
   width: min(920px, calc(100vw - 28px));
   max-height: calc(100vh - 28px);
   overflow: auto;
+  overscroll-behavior: contain;
   border: 1px solid var(--color-border-primary, #d9ddd8);
   border-radius: 16px;
   padding: 0;

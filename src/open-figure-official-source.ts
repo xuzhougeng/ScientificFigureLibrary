@@ -26,6 +26,7 @@ import {
   officialOpenFigureBootstrapKey,
   officialOpenFigurePaths,
 } from "./open-figure-official-channel.ts";
+import { processLogError } from "./process-log.ts";
 import {
   diffOfficialCatalogs,
   fetchVerifiedOfficialOpenFigureSnapshot,
@@ -552,6 +553,7 @@ export class OfficialOpenFigureSourceManager implements OfficialOpenFigureRuntim
       this.#networkFailures = 0;
     } catch (error) {
       const message = safeError(error);
+      processLogError("Open Figure auto-update failed", error);
       const integrity = /signature|rollback|equivocation|schema|tombstone|identity|ZIP|catalog/i.test(message);
       if (integrity) this.#networkFailures = 0;
       else this.#networkFailures += 1;

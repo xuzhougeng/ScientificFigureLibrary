@@ -69,6 +69,7 @@ enum Sheet: Identifiable {
             try await backend.start()
             ready = true
             try await status()
+            do { try await gallery() } catch { self.error = error.localizedDescription }
         } catch { self.error = error.localizedDescription }
     }
     func status() async throws {

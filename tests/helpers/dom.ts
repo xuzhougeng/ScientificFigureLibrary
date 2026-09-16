@@ -10,5 +10,6 @@ export function createTestWindow() {
     this.removeAttribute("open");
     this.dispatchEvent(new window.Event("close"));
   };
+  window.scrollTo = () => {};
   return window;
 }

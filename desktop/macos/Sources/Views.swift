@@ -62,10 +62,11 @@ let libraryGreen = Color(red: 0.14, green: 0.42, blue: 0.30)
                         if source["enabled"] != .bool(false) { Text(source["sourceLabel"].string.isEmpty ? source["providerId"].string : source["sourceLabel"].string).tag(source["providerId"].string) }
                     }
                 }.frame(maxWidth: 330); TextField("数据特征（可选）", text: $model.dataProfile).textFieldStyle(.roundedBorder) }
-                HStack { Button("浏览图库") { model.perform { try await model.gallery() } }.disabled(model.busy); ForEach(["火山图", "热图", "UMAP", "细胞比例", "富集分析"], id: \.self) { label in Button(label) { model.query = ["火山图": "volcano differential expression", "热图": "heatmap expression", "UMAP": "UMAP single cell", "细胞比例": "cell proportion barplot", "富集分析": "GO enrichment"][label]!; model.perform { try await model.search() } }.disabled(model.busy) } }
-                Text("在线图库图片不会在安装时下载。请到「外部图库」或设置的「图片缓存」中对某个图库执行「缓存图片」，或浏览/搜索后查看当前页。已缓存的图片可离线查看。").font(.callout).foregroundStyle(.secondary)
+                HStack { ForEach(["火山图", "热图", "UMAP", "细胞比例", "富集分析"], id: \.self) { label in Button(label) { model.query = ["火山图": "volcano differential expression", "热图": "heatmap expression", "UMAP": "UMAP single cell", "细胞比例": "cell proportion barplot", "富集分析": "GO enrichment"][label]!; model.perform { try await model.search() } }.disabled(model.busy) } }
+                Text("打开图库即浏览图片。在线图库不会在安装时下载；请到「外部图库」或设置的「图片缓存」中对某个图库执行「缓存图片」。已缓存的图片可离线查看。").font(.callout).foregroundStyle(.secondary)
                 HStack { Text(model.query.isEmpty && model.result != .null ? "图库" : "候选图片").font(.headline); Spacer(); if model.result != .null { Text("\(model.result["total"].int) 个结果").foregroundStyle(.secondary) } }
-                if candidates.isEmpty { VStack(spacing: 12) { Image(systemName: "photo.on.rectangle.angled").font(.system(size: 40)).foregroundStyle(.secondary); Text("图片与代码，成为下一次研究的起点").font(.headline); Text("可浏览全部图库图片，或搜索后再选用。自己的资产在「我的图库」，也可以「创建参考图」。").foregroundStyle(.secondary) }.frame(maxWidth: .infinity).padding(.vertical, 80) }
+                galleryPager
+                if candidates.isEmpty { VStack(spacing: 12) { Image(systemName: "photo.on.rectangle.angled").font(.system(size: 40)).foregroundStyle(.secondary); Text("图片与代码，成为下一次研究的起点").font(.headline); Text("打开图库即浏览全部图片。可用搜索或常见图形筛选。自己的资产在「我的图库」，也可以「创建参考图」。").foregroundStyle(.secondary) }.frame(maxWidth: .infinity).padding(.vertical, 80) }
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 230, maximum: 360))], spacing: 20) {
                     ForEach(candidates.indices, id: \.self) { index in
                         let candidate = candidates[index]
@@ -79,8 +80,25 @@ let libraryGreen = Color(red: 0.14, green: 0.42, blue: 0.30)
                         }.buttonStyle(.plain).contextMenu { Button("复制精确引用") { copyText(object(["title": candidate["title"], "providerId": candidate["providerId"], "exactSelector": candidate["exactSelector"]]).pretty) } }
                     }
                 }
-                if model.result != .null { HStack { Button("上一页") { model.previousPage() }.disabled(model.result["pageIndex"].int <= 1); Spacer(); Text("第 \(model.result["pageIndex"].int) 页"); Spacer(); Button("下一页") { model.perform { try await model.nextPage() } }.disabled(model.result["pagination"]["nextCursor"].string.isEmpty || model.busy) } }
+                galleryPager
             }.padding(28)
+        }
+        .onChange(of: model.provider) { _ in model.perform { try await model.search() } }
+    }
+    var galleryPager: some View {
+        let total = model.result["total"].int
+        let size = max(1, model.result["pagination"]["pageSize"].int)
+        let pages = max(1, Int(ceil(Double(total) / Double(size))))
+        return Group {
+            if model.result != .null && total > 0 {
+                HStack {
+                    Button("上一页") { model.previousPage() }.disabled(model.result["pageIndex"].int <= 1)
+                    Spacer()
+                    Text("第 \(model.result["pageIndex"].int) / \(pages) 页")
+                    Spacer()
+                    Button("下一页") { model.perform { try await model.nextPage() } }.disabled(model.result["pagination"]["nextCursor"].string.isEmpty || model.busy)
+                }
+            }
         }
     }
 }

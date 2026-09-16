@@ -2,6 +2,7 @@ import { spawn } from "node:child_process";
 import { startLocalHttp } from "./http.ts";
 import { createServer } from "../server.ts";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { enableProcessLog } from "../process-log.ts";
 import { VERSION } from "../version.ts";
 
 export function browserLaunchSpec(url: string, platform = process.platform): {
@@ -37,11 +38,12 @@ export async function openBrowser(url: string) {
 }
 
 function writeFallbackUrl(url: string) {
-  process.stdout.write(`If the browser did not open, paste this address into a modern browser:\n${url}\nKeep this window open while using the app.\n`);
+  process.stdout.write(`If the browser did not open, paste this address into a modern browser:\n${url}\nKeep this window open while using the app.\nGallery source and network errors will appear in this window.\n`);
 }
 
 export async function launchLocalClient(args: string[]) {
   const stdio = args.includes("--stdio");
+  if (!stdio) enableProcessLog();
   const local = await startLocalHttp({ allowShutdown: !stdio });
   process.once("SIGINT", () => { void local.close(); });
   process.once("SIGTERM", () => { void local.close(); });
