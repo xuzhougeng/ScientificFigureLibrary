@@ -3,6 +3,7 @@ import { SFL_BRAND_ICON_DATA_URI } from "../brand.ts";
 import { bindModalScrollLock, mountExactPreviewImage, openCandidateDetail, parseSearchResult, renderCandidateCards, type Candidate, type DetailViewElements, type SearchResult } from "../view.ts";
 import { renderMarkdown } from "../markdown.ts";
 import { api, call, details, imageData, imageHash, record, records, requireResult, upload } from "./api.ts";
+import { formatUserNetworkError } from "../../src/process-log.ts";
 import "../styles.css";
 import "./styles.css";
 
@@ -36,7 +37,7 @@ function notify(message: string, error = false) {
 }
 async function run(action: () => Promise<void>, control?: HTMLButtonElement) {
   if (control) control.disabled = true;
-  try { await action(); } catch (error) { if (!stopped) notify(error instanceof Error ? error.message : String(error), true); }
+  try { await action(); } catch (error) { if (!stopped) notify(formatUserNetworkError(error), true); }
   finally { if (control) control.disabled = false; }
 }
 function node<K extends keyof HTMLElementTagNameMap>(tag: K, text?: string, className?: string) {
@@ -64,6 +65,12 @@ async function showPage(next: string) {
   if (page === "settings" || page === "galleries" || page === "discover") await loadStatus();
   if (page === "discover" && !result) await (input("search-query").value.trim() ? search() : loadGallery());
   if (page === "integrations") await loadIntegrations();
+}
+function setGallerySyncing(syncing: boolean) {
+  const hasCards = el("cards").childElementCount > 0;
+  el("gallery-loading").hidden = !syncing || hasCards;
+  if (syncing) el("empty").hidden = true;
+  else if (!result || result.candidates.length === 0) el("empty").hidden = false;
 }
 function refreshSelection() {
   el("selection-bar").hidden = selected.size === 0;
@@ -104,6 +111,7 @@ function display(parsed: SearchResult) {
     if (previous) previous.disabled = prevDisabled;
     if (next) next.disabled = nextDisabled;
   });
+  el("gallery-loading").hidden = true;
   refreshSelection();
 }
 function displayResult(value: CallToolResult) {
@@ -118,13 +126,18 @@ function galleryArgs() {
 }
 async function loadGallery() {
   input("search-query").value = "";
-  displayResult(await api("gallery", galleryArgs()));
+  setGallerySyncing(true);
+  try { displayResult(await api("gallery", galleryArgs())); }
+  finally { if (!result) setGallerySyncing(false); }
 }
 async function search() {
   const query = input("search-query").value.trim();
   if (!query) return loadGallery();
   const provider = el<HTMLSelectElement>("search-provider").value;
-  displayResult(await call("figure_library_search", { query, limit: 6, ...(provider ? { providerIds: [provider] } : {}), ...(input("search-data").value.trim() ? { dataProfile: input("search-data").value.trim() } : {}) }));
+  setGallerySyncing(true);
+  try {
+    displayResult(await call("figure_library_search", { query, limit: 6, ...(provider ? { providerIds: [provider] } : {}), ...(input("search-data").value.trim() ? { dataProfile: input("search-data").value.trim() } : {}) }));
+  } finally { if (!result) setGallerySyncing(false); }
 }
 async function exactPreview(candidate: Candidate, view: DetailViewElements) {
   if (!result) return;
@@ -580,7 +593,7 @@ button("copy-mcp").onclick = () => void run(async () => {
   await navigator.clipboard.writeText(JSON.stringify(await api("connection"), null, 2));
   notify("已复制使用当前运行时的 MCP 配置。");
 }, button("copy-mcp"));
-button("save-proxy").onclick = () => void run(async () => {
+async function saveProxy() {
   const network = await api<Record<string, unknown>>("network-access", {
     useSystemProxy: input("use-system-proxy").checked,
     httpsProxy: input("https-proxy").value.trim(),
@@ -589,7 +602,10 @@ button("save-proxy").onclick = () => void run(async () => {
   notify(network.useSystemProxy === true
     ? `已启用系统代理${network.activeProxy ? `：${String(network.activeProxy)}` : "，但未检测到本机回环代理"}。`
     : "已关闭系统代理，将直连 GitHub。");
-}, button("save-proxy"));
+}
+button("save-proxy").onclick = () => void run(saveProxy, button("save-proxy"));
+input("use-system-proxy").addEventListener("change", () => void run(saveProxy, button("save-proxy")));
+el("notice").addEventListener("click", () => { el("notice").hidden = true; });
 button("copy-cache-path").onclick = () => void run(async () => {
   const directory = el("preview-cache-directory").textContent?.trim();
   if (!directory) throw new Error("还没有缓存目录");

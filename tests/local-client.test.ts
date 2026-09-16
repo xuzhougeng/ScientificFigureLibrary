@@ -73,6 +73,8 @@ test("local app HTML exposes dual gallery pagination without a browse-gallery bu
   assert.match(html, /data-page="import"[^>]*>创建参考图</u);
   assert.match(html, /id="galleries-page"/u);
   assert.match(html, /id="copy-mcp"/u);
+  assert.match(html, /id="gallery-loading"/u);
+  assert.match(html, /正在同步图库/u);
   assert.doesNotMatch(html, /发现模板|我的知识库|导入图片与代码|设置与连接/u);
 });
 

@@ -47,6 +47,7 @@ import {
   SEARCH_MAX_PAGE_DATA_URL_BYTES,
   SEARCH_MAX_DATA_URL_BYTES,
   mapPool,
+  searchPreviewPageRemainingMs,
   prepareTransportImage,
   searchPerImageBudget,
   singlePreviewBudget,
@@ -319,6 +320,18 @@ function searchPageInlineBytes(candidates: TemplateCandidate[]) {
   );
 }
 
+function searchPreviewUnavailable(
+  candidate: TemplateCandidate,
+  status: NonNullable<TemplateCandidate["previewStatus"]> = "missing",
+): TemplateCandidate {
+  return {
+    ...candidate,
+    searchPreviewAvailable: false,
+    searchPreviewStatus: status,
+    ...(candidate.searchPreviewAvailable === undefined ? { previewStatus: status } : {}),
+  };
+}
+
 async function hydrateCandidatePreviews(options: {
   candidates: TemplateCandidate[];
   context: CurrentLibraryContext;
@@ -331,8 +344,9 @@ async function hydrateCandidatePreviews(options: {
     (candidate) => candidate.searchPreviewAvailable ?? candidate.previewAvailable,
   ).length;
   let perImageBudget = options.perImageBudget ?? searchPerImageBudget(needed);
-  const hydrateOnce = (budget: number): Promise<TemplateCandidate[]> =>
-    mapPool(options.candidates, SEARCH_CONCURRENCY, async (candidate): Promise<TemplateCandidate> => {
+  const hydrateOnce = (budget: number): Promise<TemplateCandidate[]> => {
+    const startedAt = Date.now();
+    return mapPool(options.candidates, SEARCH_CONCURRENCY, async (candidate): Promise<TemplateCandidate> => {
       if (!candidate.previewAvailable) {
         if (!(candidate.searchPreviewAvailable ?? false)) {
           return {
@@ -346,7 +360,10 @@ async function hydrateCandidatePreviews(options: {
       if (candidate.searchPreviewAvailable === false) {
         return { ...candidate, searchPreviewStatus: "missing" as const };
       }
+      const remaining = searchPreviewPageRemainingMs(startedAt);
+      if (remaining <= 0) return searchPreviewUnavailable(candidate);
       try {
+        const hydrate = (async (): Promise<TemplateCandidate> => {
         const preview = await loadProviderPreview({
           context: options.context,
           index: options.index,
@@ -365,14 +382,7 @@ async function hydrateCandidatePreviews(options: {
           libraryRoot: options.context.snapshot.root,
         });
         if (!transport.ok) {
-          return {
-            ...candidate,
-            searchPreviewAvailable: false,
-            searchPreviewStatus: transportPreviewStatus(transport.reason),
-            ...(candidate.searchPreviewAvailable === undefined
-              ? { previewStatus: transportPreviewStatus(transport.reason) }
-              : {}),
-          };
+          return searchPreviewUnavailable(candidate, transportPreviewStatus(transport.reason));
         }
         return {
           ...candidate,
@@ -385,6 +395,15 @@ async function hydrateCandidatePreviews(options: {
           previewByteLength: preview.byteLength,
           previewSha256: preview.sha256,
         };
+        })();
+        void hydrate.catch(() => undefined);
+        return await Promise.race([
+          hydrate,
+          new Promise<TemplateCandidate>((resolve) => {
+            const timer = setTimeout(() => resolve(searchPreviewUnavailable(candidate)), remaining);
+            timer.unref?.();
+          }),
+        ]);
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         const previewStatus: NonNullable<TemplateCandidate["previewStatus"]> = message.includes(
@@ -394,14 +413,10 @@ async function hydrateCandidatePreviews(options: {
           : message.includes("no preview")
             ? "missing"
             : "unreadable";
-        return {
-          ...candidate,
-          searchPreviewAvailable: false,
-          searchPreviewStatus: previewStatus,
-          ...(candidate.searchPreviewAvailable === undefined ? { previewStatus } : {}),
-        };
+        return searchPreviewUnavailable(candidate, previewStatus);
       }
     });
+  };
 
   let output = await hydrateOnce(perImageBudget);
   while (

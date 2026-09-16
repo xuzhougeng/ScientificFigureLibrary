@@ -34,7 +34,13 @@ body.local-client { min-width: 360px; background: #f7f8f5; color: #23382d; color
 .local-client .card button { color: inherit; background: transparent; border-color: transparent; }
 .local-client .card .preview { border-radius: 12px 12px 0 0; background: #fff; }
 .local-client .candidate-title { font-size: 15px; }
+.gallery-sync { min-height: 250px; display: grid; place-content: center; justify-items: center; gap: 16px; text-align: center; color: #5b6b60; }
+.gallery-sync[hidden] { display: none; }
+.gallery-sync p { margin: 0; font-size: 14px; }
+.gallery-sync-spinner { width: 28px; height: 28px; border: 3px solid #d5e0d6; border-top-color: #18583e; border-radius: 50%; animation: gallery-spin 0.8s linear infinite; }
+@keyframes gallery-spin { to { transform: rotate(360deg); } }
 .local-empty { min-height: 250px; display: grid; place-content: center; text-align: center; color: #77857b; }
+.local-empty[hidden] { display: none; }
 .local-empty h3 { color: #485e4e; font-weight: 500; }
 .local-empty p { max-width: 400px; line-height: 1.8; font-size: 14px; }
 .local-client [hidden] { display: none !important; }
@@ -49,7 +55,7 @@ body.local-client { min-width: 360px; background: #f7f8f5; color: #23382d; color
 .settings-card h2 { font-size: 17px; margin-top: 0; }
 .settings-card h3 { font-size: 14px; }
 .settings-card p, .section-heading p { color: #718074; font-size: 13px; line-height: 1.8; }
-#notice, .setup-banner { border-radius: 9px; background: #e7efe3; padding: 15px 18px; margin-bottom: 22px; font-size: 13px; line-height: 1.7; }
+#notice, .setup-banner { border-radius: 9px; background: #e7efe3; padding: 15px 18px; margin-bottom: 22px; font-size: 13px; line-height: 1.7; white-space: pre-line; }
 #notice.error { background: #fff0e8; color: #824125; }
 .library-items { display: grid; gap: 13px; }
 .library-row { display: flex; justify-content: space-between; align-items: center; gap: 18px; padding: 19px 22px; border: 1px solid #dfe6db; border-radius: 10px; background: #fff; }

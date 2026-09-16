@@ -18,7 +18,8 @@
       <div id="suggestions" class="suggestions"><span>从常见图形开始</span><button data-query="volcano differential expression">火山图</button><button data-query="heatmap expression matrix">热图</button><button data-query="UMAP single cell">UMAP</button><button data-query="barplot proportion cell type">细胞比例</button><button data-query="GO enrichment pathway">富集分析</button></div>
       <div class="results-heading" id="results-heading"><h2 id="results-title">图库</h2><span id="results-count"></span></div>
       <nav class="pagination gallery-pagination" id="local-pagination-top" hidden aria-label="图库分页"><button type="button" class="page-previous" disabled>上一页</button><span class="page-label"></span><button type="button" class="page-next" disabled>下一页</button></nav>
-      <div id="empty" class="local-empty"><h3>让图片成为下一次研究的起点</h3><p>打开图库即浏览全部图片。可用搜索或常见图形筛选。自己的资产在「我的图库」，也可以「创建参考图」。</p></div>
+      <div id="gallery-loading" class="gallery-sync" role="status" aria-live="polite"><div class="gallery-sync-spinner" aria-hidden="true"></div><p>正在同步图库…</p></div>
+      <div id="empty" class="local-empty" hidden><h3>让图片成为下一次研究的起点</h3><p>打开图库即浏览全部图片。可用搜索或常见图形筛选。自己的资产在「我的图库」，也可以「创建参考图」。</p></div>
       <section id="cards" class="cards" aria-label="候选图片"></section>
       <div id="selection-bar" class="local-selection" hidden><span id="selection-count"></span><button id="copy-selection">复制所选模板信息</button></div>
       <nav class="pagination gallery-pagination" id="local-pagination" hidden aria-label="图库分页"><button type="button" class="page-previous" disabled>上一页</button><span class="page-label"></span><button type="button" class="page-next" disabled>下一页</button></nav>

@@ -22,6 +22,11 @@ export const JPEG_QUALITIES = [88, 82, 76] as const;
 export const MAX_ENCODE_ATTEMPTS = 24;
 export const DEFAULT_ENCODE_TIMEOUT_MS = 8_000;
 export const SEARCH_CONCURRENCY = 3;
+export const SEARCH_PREVIEW_PAGE_BUDGET_MS = 4_000;
+
+export function searchPreviewPageRemainingMs(startedAt: number, now = Date.now()) {
+  return SEARCH_PREVIEW_PAGE_BUDGET_MS - (now - startedAt);
+}
 
 export type TransportImagePurpose =
   | "SearchCard"

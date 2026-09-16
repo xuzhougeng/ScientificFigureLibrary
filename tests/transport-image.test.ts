@@ -11,7 +11,9 @@ import {
   budgetBucket,
   estimateDataUrlLength,
   prepareTransportImage,
+  SEARCH_PREVIEW_PAGE_BUDGET_MS,
   searchPerImageBudget,
+  searchPreviewPageRemainingMs,
   singlePreviewBudget,
 } from "../src/transport-image.ts";
 
@@ -44,6 +46,9 @@ test("budget helpers keep search smaller than exact preview", () => {
   assert.ok(searchPerImageBudget(1) <= 256 * 1024);
   assert.ok(singlePreviewBudget() > 847_000);
   assert.equal(ENCODER_POLICY_VERSION, "transport-image-v1");
+  assert.equal(SEARCH_PREVIEW_PAGE_BUDGET_MS, 4_000);
+  assert.ok(searchPreviewPageRemainingMs(Date.now()) > 0);
+  assert.ok(searchPreviewPageRemainingMs(Date.now() - 5_000) <= 0);
 });
 
 test("inspectImageHeader reads PNG dimensions without treating a huge header as safe to decode", () => {

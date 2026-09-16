@@ -15,6 +15,14 @@ enum Section: String, CaseIterable, Identifiable, Hashable {
         }
     }
 }
+func friendlyNetworkError(_ error: Error) -> String {
+    let raw = error.localizedDescription
+    if raw.contains("timed out") { return "访问 GitHub 超时。请在设置打开系统代理并保存，或在外部图库关闭自动刷新。" }
+    if raw.contains("ECONNRESET") { return "与 GitHub 的连接被重置。请检查网络或系统代理。" }
+    if raw.contains("Provider source change plan failed") { return "图库来源更新失败。请检查网络或系统代理后，在外部图库重试。" }
+    return raw
+}
+
 struct PendingPlan: Identifiable {
     let id = UUID()
     let title: String
@@ -50,6 +58,7 @@ enum Sheet: Identifiable {
     @Published var previewCache: JSON = .null
     @Published var networkAccess: JSON = .null
     @Published var providers: [JSON] = []
+    @Published var syncingGallery = false
     private var pages: [Int: (JSON, JSON)] = [:]
     private var starting = false
 
@@ -58,7 +67,7 @@ enum Sheet: Identifiable {
         busy = true
         Task {
             defer { busy = false }
-            do { try await task() } catch { self.error = error.localizedDescription }
+            do { try await task() } catch { self.error = friendlyNetworkError(error) }
         }
     }
     func start() async {
@@ -67,10 +76,12 @@ enum Sheet: Identifiable {
         defer { starting = false }
         do {
             try await backend.start()
+            syncingGallery = true
             ready = true
             try await status()
-            do { try await gallery() } catch { self.error = error.localizedDescription }
-        } catch { self.error = error.localizedDescription }
+            do { try await gallery() } catch { self.error = friendlyNetworkError(error) }
+            syncingGallery = false
+        } catch { self.error = friendlyNetworkError(error); syncingGallery = false }
     }
     func status() async throws {
         let value = try await backend.call("figure_library_source_status")
@@ -143,12 +154,18 @@ enum Sheet: Identifiable {
     }
     func gallery() async throws {
         query = ""
+        let showSync = result == .null || result["candidates"].array.isEmpty
+        if showSync { syncingGallery = true }
+        defer { if showSync { syncingGallery = false } }
         var arguments: [String: JSON] = ["limit": .integer(12)]
         if !provider.isEmpty { arguments["providerIds"] = .array([text(provider)]) }
         try display(await backend.request("gallery", object(arguments)))
     }
     func search() async throws {
         if query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { try await gallery(); return }
+        let showSync = result == .null || result["candidates"].array.isEmpty
+        if showSync { syncingGallery = true }
+        defer { if showSync { syncingGallery = false } }
         var arguments: [String: JSON] = ["query": text(query), "limit": .integer(12)]
         if !provider.isEmpty { arguments["providerIds"] = .array([text(provider)]) }
         if !dataProfile.isEmpty { arguments["dataProfile"] = text(dataProfile) }

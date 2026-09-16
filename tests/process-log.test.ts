@@ -3,6 +3,7 @@ import test from "node:test";
 import {
   describeNetworkFailure,
   enableProcessLog,
+  formatUserNetworkError,
   processLogEnabled,
   processLogError,
   resetProcessLogForTests,
@@ -16,6 +17,14 @@ test("network failure hints cover timeout and connection reset", () => {
   assert.match(reset.hint ?? "", /reset/iu);
   const other = describeNetworkFailure(new Error("signature mismatch"));
   assert.equal(other.hint, undefined);
+});
+
+test("user-facing network errors explain timeout and connection reset in Chinese", () => {
+  assert.match(
+    formatUserNetworkError(new Error("Provider source change plan failed: provider source request timed out after 60000ms")),
+    /访问 GitHub 超时/u,
+  );
+  assert.match(formatUserNetworkError(new Error("read ECONNRESET")), /连接被重置/u);
 });
 
 test("process log is silent until enabled and then writes stderr", () => {
