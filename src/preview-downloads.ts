@@ -24,6 +24,8 @@ export interface PreviewDownloadOptions { cacheDirectory?: string; fetcher?: Pic
 const sha256 = (bytes: Uint8Array) => createHash("sha256").update(bytes).digest("hex");
 
 const CACHE_FILE = /^[a-f0-9]{64}\.(png|jpe?g|webp|gif)$/u;
+const PREFETCH_CONCURRENCY = 4;
+const cacheExtension = (relative: string) => path.posix.extname(relative).toLowerCase();
 
 export function previewCacheDirectory() {
   const override = process.env.SFL_PREVIEW_CACHE_DIR;
@@ -33,12 +35,53 @@ export function previewCacheDirectory() {
   return path.join(process.env.XDG_CACHE_HOME ?? path.join(os.homedir(), ".cache"), "scientific-figure-library/previews/v1");
 }
 
+export interface PreviewCacheGalleryStatus {
+  providerId: string;
+  sourceLabel: string;
+  declared: number;
+  cached: number;
+  missing: number;
+  bytesDeclared: number;
+  bytesCached: number;
+}
+
+export interface PreviewCacheGallery {
+  providerId: string;
+  sourceLabel: string;
+  store: PreviewDownloadStore;
+}
+
 export interface PreviewCacheStatus {
   schema: "figure-library.preview-cache.v1";
   directory: string;
   exists: boolean;
   fileCount: number;
   bytes: number;
+  galleries: PreviewCacheGalleryStatus[];
+}
+
+export interface PreviewCachePrefetchResult extends PreviewCacheStatus {
+  prefetch: {
+    providerId: string;
+    declared: number;
+    alreadyCached: number;
+    downloaded: number;
+    failed: number;
+    failures: Array<{ path: string; message: string }>;
+  };
+}
+
+async function mapPool<T, R>(items: readonly T[], limit: number, mapper: (item: T) => Promise<R>) {
+  const output = new Array<R>(items.length);
+  let next = 0;
+  await Promise.all(Array.from({ length: Math.max(1, Math.min(limit, items.length || 1)) }, async () => {
+    while (next < items.length) {
+      const index = next;
+      next += 1;
+      output[index] = await mapper(items[index]!);
+    }
+  }));
+  return output;
 }
 
 async function previewCacheEntries(directory: string) {
@@ -58,13 +101,21 @@ async function assertPreviewCacheDirectory(directory: string) {
   if (stat.isSymbolicLink() || !stat.isDirectory()) throw new Error("Preview cache must be a regular directory");
 }
 
-export async function inspectPreviewCache(): Promise<PreviewCacheStatus> {
+async function galleryStatuses(galleries: PreviewCacheGallery[] = []) {
+  return Promise.all(galleries.map(async ({ providerId, sourceLabel, store }) => {
+    const current = await store.inspect();
+    return { providerId, sourceLabel, ...current };
+  }));
+}
+
+export async function inspectPreviewCache(options: { galleries?: PreviewCacheGallery[] } = {}): Promise<PreviewCacheStatus> {
+  const galleries = await galleryStatuses(options.galleries);
   const directory = previewCacheDirectory();
   try {
     await assertPreviewCacheDirectory(directory);
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === "ENOENT") {
-      return { schema: "figure-library.preview-cache.v1", directory, exists: false, fileCount: 0, bytes: 0 };
+      return { schema: "figure-library.preview-cache.v1", directory, exists: false, fileCount: 0, bytes: 0, galleries };
     }
     throw error;
   }
@@ -75,6 +126,7 @@ export async function inspectPreviewCache(): Promise<PreviewCacheStatus> {
     exists: true,
     fileCount: entries.length,
     bytes: entries.reduce((sum, entry) => sum + entry.bytes, 0),
+    galleries,
   };
 }
 
@@ -95,9 +147,17 @@ export async function clearPreviewCache() {
     exists: true,
     fileCount: 0,
     bytes: 0,
+    galleries: current.galleries,
     removed: entries.length,
     bytesFreed: entries.reduce((sum, entry) => sum + entry.bytes, 0),
   };
+}
+
+export async function prefetchPreviewCache(providerId: string, galleries: PreviewCacheGallery[]): Promise<PreviewCachePrefetchResult> {
+  const gallery = galleries.find((entry) => entry.providerId === providerId);
+  if (!gallery) throw new Error("这个图库没有可按需下载的预览图。请选择 FigureYa 或 Open Figure 等在线图库后再缓存。");
+  const prefetch = await gallery.store.prefetch();
+  return { ...await inspectPreviewCache({ galleries }), prefetch: { providerId, ...prefetch } };
 }
 
 /** Explicit lightweight-package manifest. Catalog identities remain authoritative. */
@@ -132,6 +192,59 @@ export class PreviewDownloadStore {
     return new PreviewDownloadStore(manifest, options);
   }
   has(relative: string) { return this.files.has(relative); }
+  private cacheFile(identity: PreviewDownloadFile) {
+    return path.join(this.cache, identity.sha256 + cacheExtension(identity.path));
+  }
+  private async cachedBytes(identity: PreviewDownloadFile) {
+    try {
+      const stat = await fs.lstat(this.cacheFile(identity));
+      if (stat.isFile() && !stat.isSymbolicLink() && stat.size === identity.bytes) return stat.size;
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+    }
+    return 0;
+  }
+  async inspect() {
+    let cached = 0;
+    let bytesCached = 0;
+    let bytesDeclared = 0;
+    for (const identity of this.files.values()) {
+      bytesDeclared += identity.bytes;
+      const size = await this.cachedBytes(identity);
+      if (size > 0) {
+        cached += 1;
+        bytesCached += size;
+      }
+    }
+    return {
+      declared: this.files.size,
+      cached,
+      missing: this.files.size - cached,
+      bytesDeclared,
+      bytesCached,
+    };
+  }
+  async prefetch(concurrency = PREFETCH_CONCURRENCY) {
+    const results = await mapPool([...this.files.keys()], concurrency, async (relative) => {
+      const identity = this.files.get(relative)!;
+      if (await this.cachedBytes(identity) > 0) return { status: "cached" as const };
+      try {
+        await this.read(relative, true);
+        return { status: "downloaded" as const };
+      } catch (error) {
+        const message = (error instanceof Error ? error.message : String(error)).replace(/[\r\n\t]+/gu, " ").slice(0, 200);
+        return { status: "failed" as const, path: relative, message };
+      }
+    });
+    const failures = results.flatMap((result) => result.status === "failed" ? [{ path: result.path, message: result.message }] : []);
+    return {
+      declared: this.files.size,
+      alreadyCached: results.filter((result) => result.status === "cached").length,
+      downloaded: results.filter((result) => result.status === "downloaded").length,
+      failed: failures.length,
+      failures: failures.slice(0, 12),
+    };
+  }
   private verify(bytes: Uint8Array, identity: PreviewDownloadFile) {
     if (bytes.byteLength !== identity.bytes || sha256(bytes) !== identity.sha256) throw new Error("Downloaded preview differs from its pinned size or SHA-256");
     assertMcpImageBytes({ bytes, mimeType: identity.mediaType, extension: path.posix.extname(identity.path).toLowerCase() });
@@ -143,7 +256,7 @@ export class PreviewDownloadStore {
     await fs.mkdir(this.cache, { recursive: true });
     const directory = await fs.lstat(this.cache);
     if (!directory.isDirectory() || directory.isSymbolicLink()) throw new Error("Preview cache must be a regular directory");
-    const cacheFile = path.join(this.cache, identity.sha256 + path.posix.extname(identity.path).toLowerCase());
+    const cacheFile = this.cacheFile(identity);
     try {
       const stat = await fs.lstat(cacheFile);
       if (!stat.isFile() || stat.isSymbolicLink()) throw new Error("Preview cache entry is not a regular file");

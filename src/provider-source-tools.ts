@@ -18,6 +18,10 @@ import {
   OFFICIAL_OPEN_FIGURE_PROVIDER_ID,
   isOfficialOpenFigureProviderId,
 } from "./open-figure-official-channel.ts";
+import {
+  BundledProviderPreferenceStore,
+  isRemovableBundledProviderId,
+} from "./bundled-provider-preferences.ts";
 
 const HASH = /^[a-f0-9]{64}$/u;
 const OPERATION_ID = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/u;
@@ -278,6 +282,7 @@ export function defineProviderSourceOperations(options: {
   operations: OperationRegistry;
   manager?: ProviderSourceManager;
   officialOpenFigure?: OfficialOpenFigureSourceManager;
+  bundledPreferences?: BundledProviderPreferenceStore;
   builtInSources?: () => Promise<Array<Record<string, unknown>>>;
   personalSourceStatuses?: () => Promise<PersonalProviderRuntimeStatus[]>;
   onApplied?: () => Promise<void>;
@@ -398,6 +403,49 @@ export function defineProviderSourceOperations(options: {
         if (rawInput.autoRefresh !== undefined && !isOfficialOpenFigureProviderId(officialProviderId(input))) {
           throw new Error("autoRefresh is only valid for the official Open Figure Modules channel");
         }
+        const targetId = officialProviderId(input) ?? "";
+        if (
+          isRemovableBundledProviderId(targetId) &&
+          (input.action === "remove" || (input.action === "configure" && input.enabled !== undefined && rawInput.autoRefresh === undefined))
+        ) {
+          if (!options.bundledPreferences) throw new Error("bundled provider preferences are unavailable");
+          const plan = await options.bundledPreferences.planChange({
+            action: input.action === "remove" ? "remove" : "configure",
+            providerId: targetId,
+            ...(input.action === "configure" ? { enabled: input.enabled } : {}),
+          });
+          if ("status" in plan) {
+            const outcome = envelope(
+              "ok",
+              "provider_source_already_current",
+              `Provider ${plan.providerId} is already ${plan.enabled ? "enabled" : "removed"} for ordinary search. No Apply is available or required.`,
+              "none",
+            );
+            return response(outcome, { result: plan }, [
+              `ACTION: ${plan.action}`,
+              `PROVIDER_ID: ${plan.providerId}`,
+              `ENABLED: ${plan.enabled}`,
+              "PLAN_WRITES: none",
+              "APPLY_REQUIRED: false",
+            ]);
+          }
+          const outcome = envelope(
+            "needs_user_confirmation",
+            "provider_source_plan_ready",
+            plan.enabled
+              ? "No files were written. Restoring this bundled catalog returns it to ordinary search."
+              : "No files were written. Removing this bundled catalog stops ordinary search; install files remain and can be restored.",
+            "apply_confirmed_plan",
+          );
+          return response(outcome, { plan }, [
+            `ACTION: ${plan.action}`,
+            `PROVIDER_ID: ${plan.providerId}`,
+            `ENABLED: ${plan.enabled}`,
+            ...plan.warnings.map((warning: string, index: number) => `WARNING_${index + 1}: ${warning}`),
+            `PLAN_DIGEST: ${plan.planDigest}`,
+            "PLAN_WRITES: none",
+          ]);
+        }
         if (isOfficialOpenFigureProviderId(officialProviderId(input))) {
           if (!options.officialOpenFigure) throw new Error("official Open Figure Modules manager is unavailable");
           if (input.action === "add" || input.action === "remove" || input.action === "trust_reset") {
@@ -514,6 +562,60 @@ export function defineProviderSourceOperations(options: {
     },
     async (input): Promise<CallToolResult> => {
       try {
+        if (
+          options.bundledPreferences?.hasPlan(input.planDigest) &&
+          (input.expectedAction === "remove" || input.expectedAction === "configure")
+        ) {
+          const expectedAction = input.expectedAction;
+          const result = await options.bundledPreferences.applyChange({
+            planDigest: input.planDigest,
+            operationId: input.operationId,
+            expectedAction,
+            expectedProviderId: input.expectedProviderId,
+          });
+          await options.onApplied?.();
+          const outcome = envelope(
+            "applied",
+            "provider_source_change_applied",
+            `Applied ${result.action} for provider ${result.providerId}.`,
+            "none",
+          );
+          return response(outcome, { result }, [
+            `ACTION: ${result.action}`,
+            `PROVIDER_ID: ${result.providerId}`,
+            `ENABLED: ${result.enabled}`,
+            `PLAN_DIGEST: ${result.planDigest}`,
+            `OPERATION_ID: ${result.operationId}`,
+            `IDEMPOTENT_REPLAY: false`,
+          ]);
+        }
+        if (isOfficialOpenFigureProviderId(input.expectedProviderId)) {
+          if (!options.officialOpenFigure) throw new Error("official Open Figure Modules manager is unavailable");
+          if (input.expectedAction !== "update" && input.expectedAction !== "configure") {
+            throw new Error(`official Open Figure Modules does not support ${input.expectedAction}; it is a compiled channel`);
+          }
+          const result = await options.officialOpenFigure.applyChange({
+            planDigest: input.planDigest,
+            operationId: input.operationId,
+            expectedAction: input.expectedAction,
+          });
+          await options.onApplied?.();
+          const outcome = envelope(
+            "applied",
+            "provider_source_change_applied",
+            `Applied ${result.action} for provider ${result.providerId}.`,
+            "none",
+          );
+          return response(outcome, { result }, [
+            `ACTION: ${result.action}`,
+            `PROVIDER_ID: ${result.providerId}`,
+            `CONFIG_REVISION: none`,
+            `MANIFEST_SHA256: ${"manifestSha256" in result && result.manifestSha256 ? result.manifestSha256 : "none"}`,
+            `PLAN_DIGEST: ${result.planDigest}`,
+            `OPERATION_ID: ${result.operationId}`,
+            `IDEMPOTENT_REPLAY: false`,
+          ]);
+        }
         const result = await manager.applyChange(input);
         await options.onApplied?.();
         const replayed = result.idempotentReplay === true;

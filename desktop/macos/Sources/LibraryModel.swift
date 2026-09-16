@@ -39,6 +39,7 @@ enum Sheet: Identifiable {
     @Published var connectionConfiguration = ""
     @Published var integrations: JSON = .null
     @Published var previewCache: JSON = .null
+    @Published var networkAccess: JSON = .null
     @Published var providers: [JSON] = []
     private var pages: [Int: (JSON, JSON)] = [:]
     private var starting = false
@@ -67,12 +68,52 @@ enum Sheet: Identifiable {
         if value["library"]["directorySource"].string != "legacy-default" { libraryDirectory = value["library"]["root"].string }
         workspaceDirectory = value["workspace"]["root"].string
         if let connection = try? await backend.request("connection") { connectionConfiguration = connection.pretty }
-        previewCache = try await backend.request("preview-cache")
-        providers = (try await backend.call("figure_library_list_provider_sources"))["sources"].array
+        if let cache = try? await backend.request("preview-cache") { previewCache = cache }
+        if let network = try? await backend.request("network-access") { networkAccess = network }
+        let listed = try await backend.call("figure_library_list_provider_sources")
+        let sources = listed["result"]["sources"].array
+        providers = sources.isEmpty ? listed["sources"].array : sources
+    }
+    func changeProvider(title: String, _ arguments: [String: JSON]) async throws {
+        let value = try await backend.call("figure_library_plan_provider_source_change", arguments)
+        if value["envelope"]["outcome"].string == "ok" {
+            message = value["envelope"]["summary"].string.isEmpty ? "来源已是最新，无需确认。" : value["envelope"]["summary"].string
+            try await status()
+            return
+        }
+        let plan = value["plan"]
+        sheet = .plan(PendingPlan(title: title, value: value, operation: "figure_library_apply_provider_source_change", arguments: [
+            "planDigest": plan["planDigest"],
+            "operationId": text(UUID().uuidString),
+            "expectedAction": arguments["action"] ?? plan["action"],
+            "expectedProviderId": arguments["expectedProviderId"] ?? arguments["providerId"] ?? plan["providerId"],
+        ], after: { [weak self] in try await self?.status(); self?.message = "来源配置已更新。" }))
     }
     func clearPreviewCache() async throws {
         previewCache = try await backend.request("preview-cache", object(["action": text("clear")]))
         message = "已清除 \(previewCache["removed"].int) 张缓存图片。"
+    }
+    func prefetchPreviewCache(_ providerId: String) async throws {
+        previewCache = try await backend.request("preview-cache", object(["action": text("prefetch"), "providerId": text(providerId)]))
+        let prefetch = previewCache["prefetch"]
+        let label = previewCache["galleries"].array.first { $0["providerId"].string == providerId }?["sourceLabel"].string ?? providerId
+        if prefetch["failed"].int > 0 {
+            message = "「\(label)」已下载 \(prefetch["downloaded"].int) 张，已有 \(prefetch["alreadyCached"].int) 张，失败 \(prefetch["failed"].int) 张。可检查系统代理后重试。"
+        } else if prefetch["downloaded"].int > 0 {
+            message = "「\(label)」已缓存 \(prefetch["downloaded"].int + prefetch["alreadyCached"].int) 张预览图。"
+        } else {
+            message = "「\(label)」的预览图已在缓存中。"
+        }
+    }
+    func cacheGallery(_ providerId: String) -> JSON? {
+        previewCache["galleries"].array.first { $0["providerId"].string == providerId }
+    }
+    func saveNetworkAccess(useSystemProxy: Bool, httpsProxy: String) async throws {
+        networkAccess = try await backend.request("network-access", object(["useSystemProxy": .bool(useSystemProxy), "httpsProxy": text(httpsProxy)]))
+        let active = networkAccess["activeProxy"].string
+        message = useSystemProxy
+            ? (active.isEmpty ? "已启用系统代理，但未检测到本机回环代理。" : "已启用系统代理：\(active)")
+            : "已关闭系统代理，将直连 GitHub。"
     }
     func revealPreviewCache() {
         let directory = previewCache["directory"].string
@@ -80,7 +121,7 @@ enum Sheet: Identifiable {
         if FileManager.default.fileExists(atPath: directory) {
             NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: directory)])
         } else {
-            message = "缓存目录尚未创建；首次查看在线图片后会出现。"
+            message = "缓存目录尚未创建；请先对某个图库执行「缓存图片」。"
         }
     }
     func display(_ response: JSON) throws {

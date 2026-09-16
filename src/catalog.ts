@@ -735,6 +735,7 @@ export class CatalogIndex {
     this.assetsDir = assetsDir;
     this.downloads = downloads;
   }
+  get previewDownloads() { return this.downloads; }
 
   static async load(assetsDir = process.env.FIGUREYA_ASSETS_DIR ?? DEFAULT_ASSETS_DIR, downloadOptions: PreviewDownloadOptions = {}) {
     const raw = await fs.readFile(path.join(assetsDir, "catalog.json"), "utf8");

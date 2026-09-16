@@ -21,6 +21,7 @@ let planAction: (() => Promise<void>) | undefined;
 let pendingMaterialize: { candidate: Candidate; receipt: string; resultSetId: string } | undefined;
 let canShutdown = false;
 let stopped = false;
+let cacheGalleries: Array<Record<string, unknown>> = [];
 (el<HTMLImageElement>("local-logo")).src = SFL_BRAND_ICON_DATA_URI;
 
 function notify(message: string, error = false) {
@@ -140,6 +141,8 @@ function reviewPlan(title: string, response: CallToolResult, apply: () => Promis
   el("plan-summary").replaceChildren();
   planLine("操作", title);
   planLine("资产名称", record(plan.content).title ?? plan.templateId);
+  planLine("图库来源", plan.providerId);
+  planLine("清单地址", plan.manifestUrl);
   planLine("目标目录", plan.target ?? plan.libraryDirectory ?? plan.workspaceDirectory ?? plan.directory);
   planLine("网络下载", plan.allowNetwork === undefined ? undefined : plan.allowNetwork ? "允许下载所选固定版本" : "仅使用本地内容");
   planLine("说明", record(data.envelope).summary);
@@ -163,30 +166,209 @@ async function loadStatus() {
   canShutdown = state.canShutdown === true;
   button("shutdown").hidden = !canShutdown;
   el("connection-state").textContent = `本地服务 · ${String(state.version)}`;
-  const providers = await call("figure_library_list_provider_sources");
-  const providerData = details(providers);
-  el("provider-list").replaceChildren();
-  const sourceRows = records(providerData.sources ?? providerData.providers);
-  for (const source of sourceRows) {
-    const line = node("p", `${String(source.sourceLabel ?? source.name ?? source.providerId)} · ${String(source.health ?? (source.enabled === false ? "未启用" : "可用"))}`);
-    el("provider-list").append(line);
-  }
-  if (!sourceRows.length) el("provider-list").append(node("p", "默认检索本地已发布、FigureYa、Open Figure Modules 与已启用的个人来源。"));
+  const sourceRows = listedSources(details(await call("figure_library_list_provider_sources")));
+  renderSearchProviders(sourceRows);
+  const network = await api<Record<string, unknown>>("network-access");
+  input("use-system-proxy").checked = network.useSystemProxy === true;
+  input("https-proxy").value = String(network.httpsProxy || network.detectedProxy || "");
+  const source = String(network.source ?? "off");
+  el("network-access-summary").textContent = source === "off"
+    ? "当前未使用系统代理。"
+    : source === "saved"
+      ? `当前使用已保存的本机代理 ${String(network.activeProxy ?? "")}。`
+      : `当前来自系统设置或环境变量 ${String(network.activeProxy ?? "")}。`;
   const cache = await api<Record<string, unknown>>("preview-cache");
   el("preview-cache-directory").textContent = String(cache.directory ?? "");
   const cacheBytes = Number(cache.bytes ?? 0);
   const cacheCount = Number(cache.fileCount ?? 0);
+  cacheGalleries = records(cache.galleries);
   el("preview-cache-summary").textContent = cache.exists === true && cacheCount > 0
     ? `已缓存 ${cacheCount} 张图片 · ${formatBytes(cacheBytes)}`
     : cache.exists === true
       ? "缓存目录已创建，当前没有图片。"
-      : "尚未下载过在线预览图。";
+      : "尚未缓存任何在线预览图。请先选择下面的某个图库。";
+  renderPreviewCacheGalleries(cacheGalleries);
+  renderProviderSources(sourceRows);
   refreshSelection();
 }
 function formatBytes(bytes: number) {
   if (!Number.isFinite(bytes) || bytes < 1024) return `${Math.max(0, bytes | 0)} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+function cacheGallery(providerId: string) {
+  return cacheGalleries.find((gallery) => String(gallery.providerId) === providerId);
+}
+function galleryCacheLabel(gallery: Record<string, unknown>) {
+  const declared = Number(gallery.declared ?? 0);
+  const cached = Number(gallery.cached ?? 0);
+  const missing = Number(gallery.missing ?? declared - cached);
+  if (declared === 0) return "没有可下载的预览图";
+  if (missing <= 0) return `已缓存 ${cached} / ${declared} 张 · ${formatBytes(Number(gallery.bytesCached ?? 0))}`;
+  return `可下载 ${declared} 张 · 已缓存 ${cached} 张 · 约 ${formatBytes(Number(gallery.bytesDeclared ?? 0))}`;
+}
+async function prefetchGallery(providerId: string, sourceLabel: string, declared: number, bytesDeclared: number) {
+  if (!window.confirm(`缓存「${sourceLabel}」的 ${declared} 张预览图（约 ${formatBytes(bytesDeclared)}）？只下载该图库的固定图片，不会执行代码。`)) return;
+  const result = await api<Record<string, unknown>>("preview-cache", { action: "prefetch", providerId });
+  await loadStatus();
+  const prefetch = record(result.prefetch);
+  const failed = Number(prefetch.failed ?? 0);
+  const downloaded = Number(prefetch.downloaded ?? 0);
+  const already = Number(prefetch.alreadyCached ?? 0);
+  notify(failed > 0
+    ? `「${sourceLabel}」已下载 ${downloaded} 张，已有 ${already} 张，失败 ${failed} 张。可检查系统代理后重试。`
+    : downloaded > 0
+      ? `「${sourceLabel}」已缓存 ${downloaded + already} 张预览图。`
+      : `「${sourceLabel}」的预览图已在缓存中。`);
+}
+function renderPreviewCacheGalleries(galleries: Array<Record<string, unknown>>) {
+  const target = el("preview-cache-galleries");
+  target.replaceChildren();
+  if (!galleries.length) {
+    target.append(node("p", "当前安装已包含图库图片，或尚未出现可下载清单。轻量安装包里的 FigureYa 与 Open Figure 需要在这里按图库下载。"));
+    return;
+  }
+  for (const gallery of galleries) {
+    const providerId = String(gallery.providerId ?? "");
+    const label = String(gallery.sourceLabel ?? providerId);
+    const missing = Number(gallery.missing ?? 0);
+    const row = node("article", undefined, "cache-gallery");
+    const info = node("div");
+    info.append(node("h3", label), node("p", galleryCacheLabel(gallery)));
+    row.append(info);
+    if (missing > 0) {
+      row.append(action("缓存图片", () => prefetchGallery(providerId, label, Number(gallery.declared ?? 0), Number(gallery.bytesDeclared ?? 0)), true));
+    } else {
+      row.append(node("p", "已缓存"));
+    }
+    target.append(row);
+  }
+}
+function listedSources(providerData: Record<string, unknown>) {
+  const result = record(providerData.result);
+  return records(result.sources ?? providerData.sources ?? providerData.providers);
+}
+function sourceKindLabel(source: Record<string, unknown>) {
+  const kind = String(source.sourceKind ?? "");
+  if (kind === "local-published") return "本机已发布";
+  if (kind === "figureya") return "内置 FigureYa";
+  if (kind === "official-signed-overlay") return "官方频道";
+  if (kind === "signed-personal") return "个人来源";
+  if (source.frozen === true) return "冻结兼容";
+  if (source.bundled === true) return "内置";
+  return kind || "来源";
+}
+function sourceAddress(source: Record<string, unknown>) {
+  const details = record(source.details);
+  return String(source.manifestUrl ?? details.manifestUrl ?? "");
+}
+function sourceHealth(source: Record<string, unknown>) {
+  if (source.enabled === false) return "未启用";
+  const health = String(source.health ?? "ready");
+  if (health === "ready") return "可用";
+  if (health === "degraded") return "降级";
+  if (health === "corrupt") return "损坏";
+  return health;
+}
+function renderSearchProviders(sources: Array<Record<string, unknown>>) {
+  const picker = el<HTMLSelectElement>("search-provider");
+  const current = picker.value;
+  picker.replaceChildren();
+  const all = node("option", "全部默认来源") as HTMLOptionElement;
+  all.value = "";
+  picker.append(all);
+  for (const source of sources) {
+    if (source.enabled === false) continue;
+    const option = node("option", String(source.sourceLabel ?? source.providerId)) as HTMLOptionElement;
+    option.value = String(source.providerId);
+    picker.append(option);
+  }
+  if ([...picker.options].some((option) => option.value === current)) picker.value = current;
+}
+function renderProviderSources(sources: Array<Record<string, unknown>>) {
+  const target = el("provider-list");
+  target.replaceChildren();
+  if (!sources.length) {
+    target.append(node("p", "尚未列出图库来源。绑定本机目录后可查看内置来源，也可添加已签名图库。"));
+    return;
+  }
+  for (const source of sources) {
+    const providerId = String(source.providerId ?? "");
+    const personal = source.sourceKind === "signed-personal";
+    const official = source.sourceKind === "official-signed-overlay";
+    const local = providerId === "org.scientificfigurelibrary.local";
+    const removable = !local;
+    const card = node("article", undefined, "provider-source");
+    card.append(node("h3", String(source.sourceLabel ?? providerId)));
+    card.append(node("p", `${sourceKindLabel(source)} · ${sourceHealth(source)}${source.templateCount === undefined ? "" : ` · ${String(source.templateCount)} 个模板`}`));
+    card.append(node("p", `图库 ID：${providerId}`));
+    const address = sourceAddress(source);
+    card.append(node("p", address ? `清单地址：${address}` : local ? "这是你绑定的本机知识库" : official || personal ? "清单地址未返回" : "安装包内置目录"));
+    if (local) card.append(node("p", "本机知识库不能移除。"));
+    else if (source.enabled === false) card.append(node("p", "已从普通搜索中移除，可恢复。"));
+    else if (source.includeInDefaultSearch === true) card.append(node("p", "已加入默认搜索"));
+    else card.append(node("p", "不参与默认搜索"));
+    const autoRefresh = source.autoRefreshEnabled === true || record(source.details).autoRefreshEnabled === true;
+    if (official && autoRefresh && source.enabled !== false) card.append(node("p", "官方频道自动刷新已开启"));
+    const actions = node("div", undefined, "provider-actions");
+    if (personal) {
+      actions.append(action("检查更新", () => changeProvider("检查图库更新", { action: "update", providerId }), true));
+      actions.append(action(source.includeInDefaultSearch === true ? "移出默认搜索" : "加入默认搜索", () => changeProvider("更改默认搜索", { action: "configure", providerId, includeInDefaultSearch: source.includeInDefaultSearch !== true }), true));
+      const replace = node("div", undefined, "provider-replace");
+      const url = node("input") as HTMLInputElement;
+      url.placeholder = "新的签名清单 HTTPS 地址";
+      url.value = address;
+      replace.append(url, action("更换地址", async () => {
+        const manifestUrl = url.value.trim();
+        if (!manifestUrl) throw new Error("请填写新的清单地址");
+        await changeProvider("更换图库地址", { action: "configure", providerId, manifestUrl });
+      }, true));
+      card.append(replace);
+    } else if (official && source.enabled !== false) {
+      actions.append(action("检查更新", () => changeProvider("检查官方 Open Figure Modules", { action: "update", providerId }), true));
+      actions.append(action(autoRefresh ? "关闭自动刷新" : "开启自动刷新", () => changeProvider("更改官方自动刷新", { action: "configure", providerId, autoRefresh: !autoRefresh }), true));
+    }
+    const gallery = cacheGallery(providerId);
+    if (gallery && Number(gallery.missing ?? 0) > 0) {
+      actions.append(action("缓存图片", () => prefetchGallery(providerId, String(source.sourceLabel ?? providerId), Number(gallery.declared ?? 0), Number(gallery.bytesDeclared ?? 0)), true));
+    }
+    if (removable) {
+      if (source.enabled === false && !personal) {
+        actions.append(action("恢复", () => changeProvider("恢复图库", { action: "configure", providerId, enabled: true }), true));
+      } else {
+        actions.append(action("删除", async () => {
+          const message = personal
+            ? `删除 ${String(source.sourceLabel ?? providerId)}？这会取消注册，不会删除已下载快照或已物化项目。`
+            : `移除 ${String(source.sourceLabel ?? providerId)}？普通搜索将不再包含它。安装文件仍保留，可随时恢复。已物化模板不受影响。`;
+          if (!window.confirm(message)) return;
+          await changeProvider(personal ? "删除图库" : "移除图库", { action: "remove", providerId });
+        }, true));
+      }
+    }
+    if (actions.childNodes.length) card.append(actions);
+    target.append(card);
+  }
+}
+async function changeProvider(title: string, args: Record<string, unknown>) {
+  const planned = await call("figure_library_plan_provider_source_change", args);
+  const data = details(planned);
+  const envelope = record(data.envelope);
+  if (envelope.outcome === "ok") {
+    notify(String(envelope.summary ?? "来源已是最新，无需 Apply。"));
+    await loadStatus();
+    return;
+  }
+  const plan = record(data.plan);
+  reviewPlan(title, planned, async () => {
+    await call("figure_library_apply_provider_source_change", {
+      planDigest: plan.planDigest,
+      operationId: crypto.randomUUID(),
+      expectedAction: args.action,
+      expectedProviderId: args.expectedProviderId ?? args.providerId,
+    }, true);
+    notify("来源配置已更新。");
+    await loadStatus();
+  });
 }
 async function bindDirectories() {
   const libraryDirectory = input("library-directory").value.trim();
@@ -315,6 +497,18 @@ for (const control of document.querySelectorAll<HTMLButtonElement>("button[data-
 for (const control of document.querySelectorAll<HTMLButtonElement>("button[data-query]")) control.addEventListener("click", () => { input("search-query").value = control.dataset.query!; void run(search, control); });
 form("search-form").addEventListener("submit", (event) => { event.preventDefault(); void run(search, form("search-form").querySelector("button")!); });
 form("binding-form").addEventListener("submit", (event) => { event.preventDefault(); void run(bindDirectories); });
+form("add-provider-form").addEventListener("submit", (event) => {
+  event.preventDefault();
+  void run(async () => {
+    await changeProvider("添加图库", {
+      action: "add",
+      expectedProviderId: input("add-provider-id").value.trim(),
+      manifestUrl: input("add-provider-manifest").value.trim(),
+      publicKeyBase64: input("add-provider-key").value.trim(),
+      includeInDefaultSearch: input("add-provider-default-search").checked,
+    });
+  });
+});
 form("import-form").addEventListener("submit", (event) => { event.preventDefault(); void run(importAsset, form("import-form").querySelector<HTMLButtonElement>("button[type=submit]")!); });
 button("refresh").onclick = () => void run(async () => { if (page === "library") await loadLibrary(); else await loadStatus(); });
 button("next").onclick = () => void run(async () => { if (result?.pagination.nextCursor) displayResult(await call("figure_library_search_page", { resultSetId: result.resultSetId, cursor: result.pagination.nextCursor })); }, button("next"));
@@ -342,6 +536,16 @@ button("copy-mcp").onclick = () => void run(async () => {
   await navigator.clipboard.writeText(JSON.stringify(await api("connection"), null, 2));
   notify("已复制使用当前运行时的 MCP 配置。");
 }, button("copy-mcp"));
+button("save-proxy").onclick = () => void run(async () => {
+  const network = await api<Record<string, unknown>>("network-access", {
+    useSystemProxy: input("use-system-proxy").checked,
+    httpsProxy: input("https-proxy").value.trim(),
+  });
+  await loadStatus();
+  notify(network.useSystemProxy === true
+    ? `已启用系统代理${network.activeProxy ? `：${String(network.activeProxy)}` : "，但未检测到本机回环代理"}。`
+    : "已关闭系统代理，将直连 GitHub。");
+}, button("save-proxy"));
 button("copy-cache-path").onclick = () => void run(async () => {
   const directory = el("preview-cache-directory").textContent?.trim();
   if (!directory) throw new Error("还没有缓存目录");
@@ -349,7 +553,7 @@ button("copy-cache-path").onclick = () => void run(async () => {
   notify("已复制缓存路径。");
 }, button("copy-cache-path"));
 button("clear-cache").onclick = () => void run(async () => {
-  if (!window.confirm("清除已下载的在线预览图？下次查看会重新下载。已确认图片需要重新预览后再保存模板。")) return;
+  if (!window.confirm("清除已下载的在线预览图？之后需要重新对某个图库执行「缓存图片」，或再次查看当前页。已确认图片需要重新预览后再保存模板。")) return;
   const cleared = await api<Record<string, unknown>>("preview-cache", { action: "clear" });
   await loadStatus();
   notify(`已清除 ${Number(cleared.removed ?? 0)} 张缓存图片。`);

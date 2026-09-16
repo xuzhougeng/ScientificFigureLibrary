@@ -55,6 +55,19 @@ body.local-client { min-width: 360px; background: #f7f8f5; color: #23382d; color
 .library-row { display: flex; justify-content: space-between; align-items: center; gap: 18px; padding: 19px 22px; border: 1px solid #dfe6db; border-radius: 10px; background: #fff; }
 .library-row h3 { margin: 0 0 8px; font-size: 15px; }
 .library-row p { margin: 0; color: #778478; font-size: 12px; }
+.provider-source { padding: 16px 0; border-bottom: 1px solid #e0e6de; }
+.provider-source:last-of-type { border-bottom: 0; }
+.provider-source h3 { margin: 0 0 6px; font-size: 15px; }
+.provider-source p { margin: 4px 0; font-size: 12px; color: #718074; overflow-wrap: anywhere; }
+.provider-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.cache-gallery { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 12px 0; border-bottom: 1px solid #e0e6de; }
+.cache-gallery:last-child { border-bottom: 0; }
+.cache-gallery p { margin: 0; }
+.provider-replace { display: flex; gap: 8px; margin-top: 10px; }
+.provider-replace input { flex: 1; min-width: 0; }
+#add-provider-form { margin-top: 22px; padding-top: 18px; border-top: 1px solid #e0e6de; }
+#add-provider-form small { display: block; color: #718074; font-size: 12px; line-height: 1.6; }
+#add-provider-form .checkbox small { margin-left: 8px; }
 .local-dialog { width: min(700px, 94vw); max-height: 88vh; overflow: auto; border: 1px solid #d9e2d7; border-radius: 15px; padding: 30px; color: #23382d; background: #fff; }
 .local-dialog::backdrop, .candidate-dialog::backdrop { background: #172b2155; backdrop-filter: blur(3px); }
 .local-dialog h2 { font-size: 21px; margin: 0 0 20px; }

@@ -26,6 +26,7 @@ import {
 } from "./module-catalog.ts";
 import { PERSONAL_MODULE_PROVIDER_ID } from "./providers.ts";
 import { OfficialOpenFigureSourceManager } from "./open-figure-official-source.ts";
+import { BundledProviderPreferenceStore } from "./bundled-provider-preferences.ts";
 
 function safeProviderError(error: unknown) {
   const raw = error instanceof Error ? error.message : String(error);
@@ -88,6 +89,7 @@ export interface RuntimeProviderController {
   registry: MutableProviderRegistry;
   manager: ProviderSourceManager;
   officialOpenFigure?: OfficialOpenFigureSourceManager;
+  bundledPreferences: BundledProviderPreferenceStore;
   getModuleCatalogs(): ReadonlyMap<string, ModuleCatalogIndex>;
   moduleCatalogs: ReadonlyMap<string, ModuleCatalogIndex>;
   refreshPersonalProviders(): Promise<void>;
@@ -141,6 +143,8 @@ export async function createRuntimeProviderController(options: {
     new FigureYaProviderAdapter(),
     personalModuleAdapter,
   ]);
+  const bundledPreferences = new BundledProviderPreferenceStore({ registry });
+  await bundledPreferences.load();
   let personalProviderIds = new Set<string>();
 
   const refreshPersonalProviders = async () => {
@@ -171,6 +175,7 @@ export async function createRuntimeProviderController(options: {
     registry,
     manager,
     officialOpenFigure,
+    bundledPreferences,
     getModuleCatalogs,
     get moduleCatalogs() {
       return getModuleCatalogs();

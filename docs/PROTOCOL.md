@@ -42,8 +42,9 @@ materialize an exact result.
 > **Open Figure Modules overlay:** bundled Catalog is bootstrap, not the
 > latest directory. Ordinary search uses stale-while-revalidate and never
 > blocks on GitHub. Provider source tools list this channel as
-> `official-signed-overlay`. `configure` may only set `autoRefresh`; `update`
-> immediately checks the signed feed; add/remove/trust-reset are rejected.
+> `official-signed-overlay`. `configure` may set `autoRefresh`; `update`
+> immediately checks the signed feed. `remove` only disables ordinary search
+> via a local preference and can be restored; add/trust-reset remain rejected.
 > Withdrawn moduleIds are cumulative tombstones: they cannot be searched,
 > described, previewed, or newly materialized, but already materialized
 > projects are not deleted.
@@ -751,6 +752,13 @@ writes configuration or snapshots. Show every URL, sequence/digest/key change,
 template delta, target path, default-search choice, and warning; Apply only
 after explicit confirmation.
 
+Bundled FigureYa, Community, and Open Figure Modules may be removed from
+ordinary search in the local client. That writes a local preference, leaves
+install files in place, and can be restored with `configure` `enabled: true`.
+It does not unregister the compiled channel or delete materialized projects.
+Local Published cannot be removed. Personal `remove` still only unregisters
+the signed source.
+
 Apply fetches the exact planned manifest again, rejects stale/rollback/
 equivocation/signature/DNS/path changes, verifies all payloads in staging, then
 atomically activates an immutable snapshot. A failed update preserves the
@@ -1156,4 +1164,4 @@ license. See
 
 候选可返回 `previewDelivery: "download"`。此模式下 `previewAvailable` 表示存在可获取的固定身份，并不承诺网络可达或已经缓存；当前页图片传输结果由 `searchPreviewAvailable` / `searchPreviewStatus` 表达。搜索不会下载非当前页候选的图片。精确预览只有取得、校验和传输真实图片后才可确认。缩略图下载失败不改变精确图片身份，可重新请求预览。
 
-图片缓存位于用户缓存目录，按 SHA-256 寻址并校验大小和格式。确认后的材料化重验证仅允许读取缓存，不隐式重新下载已确认图片；缓存缺失或损坏需重新预览确认。`allowNetwork` 仍控制模板归档材料化，不能当作此前浏览图片的网络开关。既有 Provider 签名快照更新策略保持独立。
+图片缓存位于用户缓存目录，按 SHA-256 寻址并校验大小和格式。本地客户端可对用户明确选择的一个图库预取该图库清单中的固定预览图；这不会改变搜索只下载当前页、精确预览只下载选中图片的契约。确认后的材料化重验证仅允许读取缓存，不隐式重新下载已确认图片；缓存缺失或损坏需重新预览确认。`allowNetwork` 仍控制模板归档材料化，不能当作此前浏览图片的网络开关。既有 Provider 签名快照更新策略保持独立。

@@ -20,6 +20,7 @@ import {
   type ProviderSourceLookup,
   type RawHttpsResponse,
 } from "../src/provider-source-fetch.ts";
+import { resetNetworkAccessForTests, setNetworkAccessForTests } from "../src/network-access.ts";
 
 interface TestKey {
   privateKey: KeyObject;
@@ -360,6 +361,28 @@ test("provider source address policy rejects local, private, documentation, and 
   assert.equal(isGloballyRoutableAddress("1.1.1.1"), true);
   assert.equal(isGloballyRoutableAddress("8.8.8.8"), true);
   assert.equal(isGloballyRoutableAddress("2606:4700:4700::1111"), true);
+});
+
+test("secure fetch skips target DNS when a loopback CONNECT proxy is enabled", async (t) => {
+  t.after(() => resetNetworkAccessForTests());
+  setNetworkAccessForTests({ useSystemProxy: true, httpsProxy: "http://127.0.0.1:7897" });
+  let lookedUp = 0;
+  const fetcher = mockFetcher(new Map(), {
+    lookup: async () => {
+      lookedUp += 1;
+      return [{ address: "198.18.0.174", family: 4 }];
+    },
+    request: async (_url, options) => {
+      assert.equal(options.proxy, "http://127.0.0.1:7897");
+      return response(Buffer.from("{}"), "application/json");
+    },
+  });
+  const result = await fetcher.fetch("https://provider.example/data", {
+    maxBytes: 20,
+    mediaTypes: ["application/json"],
+  });
+  assert.equal(lookedUp, 0);
+  assert.equal(result.bytes.byteLength, 2);
 });
 
 test("secure fetch rejects unsafe URLs, mixed DNS answers, and redirect rebinding", async () => {
