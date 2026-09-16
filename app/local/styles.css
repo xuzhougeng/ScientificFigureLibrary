@@ -56,6 +56,11 @@ body.local-client { min-width: 360px; background: #f7f8f5; color: #23382d; color
 .settings-card h3 { font-size: 14px; }
 .settings-card p, .section-heading p { color: #718074; font-size: 13px; line-height: 1.8; }
 #notice, .setup-banner { border-radius: 9px; background: #e7efe3; padding: 15px 18px; margin-bottom: 22px; font-size: 13px; line-height: 1.7; white-space: pre-line; }
+#notice { display: flex; align-items: flex-start; gap: 12px; }
+#notice[hidden] { display: none !important; }
+#notice-message { flex: 1; margin: 0; min-width: 0; overflow-wrap: anywhere; user-select: text; cursor: text; }
+.notice-actions { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+#notice-close { min-width: 32px; padding: 6px 10px; font-size: 18px; line-height: 1; }
 #notice.error { background: #fff0e8; color: #824125; }
 .library-items { display: grid; gap: 13px; }
 .library-row { display: flex; justify-content: space-between; align-items: center; gap: 18px; padding: 19px 22px; border: 1px solid #dfe6db; border-radius: 10px; background: #fff; }

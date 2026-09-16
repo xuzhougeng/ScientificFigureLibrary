@@ -34,8 +34,10 @@ let cacheGalleries: Array<Record<string, unknown>> = [];
 
 function notify(message: string, error = false) {
   const target = el("notice");
-  target.textContent = message;
+  el("notice-message").textContent = message;
   target.classList.toggle("error", error);
+  button("notice-copy").hidden = !error;
+  button("notice-copy").textContent = "复制";
   target.hidden = false;
 }
 async function run(action: () => Promise<void>, control?: HTMLButtonElement) {
@@ -643,7 +645,24 @@ async function saveProxy() {
 }
 button("save-proxy").onclick = () => void run(saveProxy, button("save-proxy"));
 input("use-system-proxy").addEventListener("change", () => void run(saveProxy, button("save-proxy")));
-el("notice").addEventListener("click", () => { el("notice").hidden = true; });
+button("notice-close").onclick = (event) => {
+  event.preventDefault();
+  event.stopPropagation();
+  el("notice").hidden = true;
+};
+button("notice-copy").onclick = (event) => {
+  event.preventDefault();
+  event.stopPropagation();
+  const text = el("notice-message").textContent ?? "";
+  const control = button("notice-copy");
+  void navigator.clipboard.writeText(text).then(() => {
+    control.textContent = "已复制";
+    window.setTimeout(() => { if (control.textContent === "已复制") control.textContent = "复制"; }, 1500);
+  }).catch(() => {
+    control.textContent = "复制失败";
+    window.setTimeout(() => { if (control.textContent === "复制失败") control.textContent = "复制"; }, 1500);
+  });
+};
 button("copy-cache-path").onclick = () => void run(async () => {
   const directory = el("preview-cache-directory").textContent?.trim();
   if (!directory) throw new Error("还没有缓存目录");

@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import fs from "node:fs/promises";
+import http from "node:http";
+import type { AddressInfo } from "node:net";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
@@ -16,6 +18,7 @@ import {
   moduleArchiveExactSelector,
   PERSONAL_MODULE_PROVIDER_ID,
 } from "../src/providers.ts";
+import { resetNetworkAccessForTests, setNetworkAccessForTests } from "../src/network-access.ts";
 import type { ModuleCatalog, ModuleCatalogEntry } from "../src/types.ts";
 
 const ONE_PIXEL_PNG = Buffer.from(
@@ -450,4 +453,50 @@ test("Open Modules falls back from a mismatched Gitee archive to the canonical G
   assert.equal(observed.length, 2);
   assert.match(observed[0]!, /gitee\.com/u);
   assert.match(observed[1]!, /raw\.githubusercontent\.com/u);
+});
+
+test("Open Modules archive download uses the saved loopback proxy instead of direct fetch", async (t) => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "sfl-module-proxy-"));
+  t.after(() => fs.rm(root, { recursive: true, force: true }));
+  const assets = path.join(root, "assets");
+  const fixture = await writeIndex(assets);
+  const index = await ModuleCatalogIndex.load(assets, { expectedProviderId: PERSONAL_MODULE_PROVIDER_ID });
+  const seen: string[] = [];
+  const server = http.createServer();
+  server.on("connect", (request, socket) => {
+    seen.push(request.url ?? "");
+    socket.write("HTTP/1.1 502 Bad Gateway\r\nConnection: close\r\n\r\n");
+    socket.end();
+  });
+  await new Promise<void>((resolve) => {
+    server.listen(0, "127.0.0.1", () => resolve());
+  });
+  t.after(() => new Promise<void>((resolve) => {
+    server.close(() => resolve());
+  }));
+  const port = (server.address() as AddressInfo).port;
+  setNetworkAccessForTests({ useSystemProxy: true, httpsProxy: `http://127.0.0.1:${port}` });
+  t.after(() => resetNetworkAccessForTests());
+  const previousFetch = globalThis.fetch;
+  let directFetch = 0;
+  globalThis.fetch = (async () => {
+    directFetch += 1;
+    throw new Error("direct fetch should not run when a proxy is configured");
+  }) as typeof fetch;
+  t.after(() => {
+    globalThis.fetch = previousFetch;
+  });
+  await assert.rejects(
+    materializeModuleTemplate({
+      providerId: PERSONAL_MODULE_PROVIDER_ID,
+      index,
+      module: fixture.module,
+      destination: path.join(root, "output"),
+      mode: "template",
+      allowNetwork: true,
+    }),
+    /proxy CONNECT failed with status 502/u,
+  );
+  assert.equal(directFetch, 0);
+  assert.ok(seen.some((value) => value.includes("raw.githubusercontent.com:443")));
 });

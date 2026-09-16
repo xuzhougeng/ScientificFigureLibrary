@@ -25,18 +25,16 @@ test("user-facing network errors explain timeout and connection reset in Chinese
     /访问 GitHub 超时/u,
   );
   assert.match(formatUserNetworkError(new Error("read ECONNRESET")), /连接被重置/u);
-  assert.match(
-    formatUserNetworkError(new Error("Materialization was not completed: archive unavailable. source pack: ENOENT: no such file or directory, open 'D:\\\\SFL\\\\Library\\\\source-packs\\\\figureya\\\\figureya-source-pack.manifest.json'. Provide sourcePackDir containing a validated figureya-source-pack.manifest.json and its archives; do not download the complete FigureYa repository.")),
-    /无法下载该模板的固定版本代码包/u,
-  );
+  const figureYa = formatUserNetworkError(new Error("Materialization was not completed: archive unavailable. source pack: ENOENT: no such file or directory, open 'D:\\\\SFL\\\\Library\\\\source-packs\\\\figureya\\\\figureya-source-pack.manifest.json'. Provide sourcePackDir containing a validated figureya-source-pack.manifest.json and its archives; do not download the complete FigureYa repository."));
+  assert.match(figureYa, /无法下载该模板的固定版本代码包/u);
+  assert.match(figureYa, /archive unavailable/u);
   assert.match(
     formatUserNetworkError(new Error("Materialization was not completed: archive unavailable. network access is disabled.")),
     /请勾选「从 GitHub 下载该模板的固定版本」/u,
   );
-  assert.match(
-    formatUserNetworkError(new Error("Open Figure Modules archive unavailable. source pack: ENOENT: no such file or directory, lstat 'D:\\\\SFL\\\\Library\\\\source-packs\\\\open-modules'.")),
-    /无法下载该模板的固定版本代码包/u,
-  );
+  const openModules = formatUserNetworkError(new Error("Materialization was not completed: Open Figure Modules archive unavailable. source pack: ENOENT: no such file or directory, lstat 'D:\\\\SFL\\\\Library\\\\source-packs\\\\open-modules' | https://raw.githubusercontent.com/example/repo/commit/archives/batch-boxplot-signif.zip: network request failed: fetch failed."));
+  assert.match(openModules, /请在「设置」打开系统代理/u);
+  assert.match(openModules, /fetch failed/u);
 });
 
 test("process log is silent until enabled and then writes stderr", () => {

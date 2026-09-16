@@ -28,6 +28,7 @@ import type {
   ModuleSourcePackManifest,
   StoredFile,
 } from "./types.ts";
+import { fetchWithOptionalProxy } from "./proxy-fetch.ts";
 import { VERSION } from "./version.ts";
 
 export type ModuleMaterializationMode = "template" | "full";
@@ -731,17 +732,22 @@ async function download(source: ArchiveTransportSource, module: ModuleCatalogEnt
   const redirectPolicy = source.kind === "gitee-mirror" ? "manual" : "error";
   let response: Response;
   try {
-    response = await fetch(url, {
+    response = await fetchWithOptionalProxy(url, {
       // GitHub must serve the fixed raw URL directly. Gitee's raw endpoint
       // intentionally redirects once to its signed raw.giteeusercontent.com
       // CDN URL; that redirect is handled below with an explicit host/path
-      // allow-list rather than delegated to fetch.
+      // allow-list rather than delegated to fetch. When a loopback proxy is
+      // saved in Settings, this path uses HTTP CONNECT instead of direct fetch.
       redirect: redirectPolicy,
       signal: AbortSignal.timeout(60_000),
       headers: { "user-agent": `Scientific-Figure-Library/${VERSION}` },
     });
   } catch (error) {
-    throw new Error(`network request failed: ${error instanceof Error ? error.message : String(error)}`);
+    const cause =
+      error instanceof Error && error.cause instanceof Error ? `: ${error.cause.message}` : "";
+    throw new Error(
+      `network request failed: ${error instanceof Error ? error.message : String(error)}${cause}`,
+    );
   }
 
   let finalUrl = new URL(response.url || url);
@@ -766,13 +772,17 @@ async function download(source: ArchiveTransportSource, module: ModuleCatalogEnt
     }
     if (response.body) await response.body.cancel().catch(() => undefined);
     try {
-      response = await fetch(redirectUrl.href, {
+      response = await fetchWithOptionalProxy(redirectUrl.href, {
         redirect: "error",
         signal: AbortSignal.timeout(60_000),
         headers: { "user-agent": `Scientific-Figure-Library/${VERSION}` },
       });
     } catch (error) {
-      throw new Error(`network request failed after Gitee redirect: ${error instanceof Error ? error.message : String(error)}`);
+      const cause =
+        error instanceof Error && error.cause instanceof Error ? `: ${error.cause.message}` : "";
+      throw new Error(
+        `network request failed after Gitee redirect: ${error instanceof Error ? error.message : String(error)}${cause}`,
+      );
     }
     finalUrl = new URL(response.url || redirectUrl.href);
     if (finalUrl.href !== redirectUrl.href) {

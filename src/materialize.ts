@@ -10,6 +10,7 @@ import {
   figureYaArchiveIdentity,
   figureYaExactSelector,
 } from "./providers.ts";
+import { fetchWithOptionalProxy } from "./proxy-fetch.ts";
 import type {
   FigureYaCatalog,
   FigureYaExactSelector,
@@ -113,7 +114,7 @@ export function shouldIncludeTemplateFile(value: string): boolean {
 async function download(url: string): Promise<Uint8Array> {
   let response: Response;
   try {
-    response = await fetch(url, {
+    response = await fetchWithOptionalProxy(url, {
       redirect: "follow",
       signal: AbortSignal.timeout(60_000),
       headers: { "user-agent": "Scientific-Figure-Library/0.5" },

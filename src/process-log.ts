@@ -47,8 +47,34 @@ export function describeNetworkFailure(error: unknown) {
   return { message, hint: undefined };
 }
 
-export function formatUserNetworkError(error: unknown) {
-  const raw = error instanceof Error ? error.message : String(error);
+function flattenError(error: unknown) {
+  if (!(error instanceof Error)) return String(error);
+  const parts = [error.message];
+  let current: unknown = error.cause;
+  for (let depth = 0; depth < 3 && current; depth += 1) {
+    const text = current instanceof Error ? current.message : String(current);
+    if (text && !parts.some((part) => part.includes(text))) parts.push(text);
+    current = current instanceof Error ? current.cause : undefined;
+  }
+  return parts.join(": ");
+}
+
+function userFacingNetworkSummary(raw: string) {
+  if (/archive unavailable|Open Figure Modules archive unavailable/iu.test(raw)) {
+    if (/network access is disabled/iu.test(raw)) {
+      return "这个模板的代码包还没下载到本机。请勾选「从 GitHub 下载该模板的固定版本」后再保存。";
+    }
+    if (/timed out after \d+ms/iu.test(raw)) {
+      return "下载模板代码包时访问 GitHub 超时。请在「设置」打开系统代理并保存后重试。";
+    }
+    if (/ECONNRESET/u.test(raw)) {
+      return "下载模板代码包时连接被重置。请检查网络，或在「设置」保存本机回环代理。";
+    }
+    if (/fetch failed|network request failed/iu.test(raw)) {
+      return "无法下载该模板的固定版本代码包。请在「设置」打开系统代理并保存后重试。不会下载整个图库。";
+    }
+    return "无法下载该模板的固定版本代码包。请检查网络，或在「设置」打开系统代理后重试。不会下载整个图库。";
+  }
   if (/timed out after \d+ms/iu.test(raw)) {
     return "访问 GitHub 超时。请在「设置」打开系统代理并点击保存，或在「外部图库」关闭自动刷新。";
   }
@@ -67,19 +93,14 @@ export function formatUserNetworkError(error: unknown) {
   if (/Provider source change plan failed/u.test(raw)) {
     return "图库来源更新失败。请检查网络或系统代理后，在「外部图库」重试。";
   }
-  if (/archive unavailable|Open Figure Modules archive unavailable/iu.test(raw)) {
-    if (/network access is disabled/iu.test(raw)) {
-      return "这个模板的代码包还没下载到本机。请勾选「从 GitHub 下载该模板的固定版本」后再保存。";
-    }
-    if (/timed out after \d+ms/iu.test(raw)) {
-      return "下载模板代码包时访问 GitHub 超时。请在「设置」打开系统代理并保存后重试。";
-    }
-    if (/ECONNRESET/u.test(raw)) {
-      return "下载模板代码包时连接被重置。请检查网络，或在「设置」保存本机回环代理。";
-    }
-    return "无法下载该模板的固定版本代码包。请检查网络，或在「设置」打开系统代理后重试。不会下载整个图库。";
-  }
-  return raw;
+  return undefined;
+}
+
+export function formatUserNetworkError(error: unknown) {
+  const raw = flattenError(error);
+  const summary = userFacingNetworkSummary(raw);
+  if (!summary) return raw;
+  return `${summary}\n\n${raw}`;
 }
 
 export function processLogError(prefix: string, error?: unknown) {

@@ -80,7 +80,14 @@ test("local app HTML exposes dual gallery pagination without a browse-gallery bu
   assert.match(html, /复制给外部工具/u);
   assert.match(html, /不需要安装 MCP 或 Skill/u);
   assert.match(html, /id="allow-network"[^>]*checked/u);
+  assert.match(html, /id="notice-message"/u);
+  assert.match(html, /id="notice-copy"/u);
+  assert.match(html, /id="notice-close"/u);
   assert.doesNotMatch(html, /发现模板|我的知识库|导入图片与代码|设置与连接/u);
+  const main = await fs.readFile(path.resolve(import.meta.dirname, "../app/local/main.ts"), "utf8");
+  assert.match(main, /notice-close/u);
+  assert.match(main, /notice-copy/u);
+  assert.doesNotMatch(main, /el\("notice"\)\.addEventListener\("click"/u);
 });
 
 test("bundled runtime lock pins official Linux Node archives", async () => {

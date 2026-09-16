@@ -9,7 +9,13 @@
   </aside>
   <main class="local-main">
     <header class="local-header"><div><p class="eyebrow">YOUR VISUAL KNOWLEDGE, CONNECTED.</p><h1 id="page-title">图库</h1></div><button id="refresh" type="button" class="quiet">刷新</button></header>
-    <p id="notice" role="status" aria-live="polite" hidden></p>
+    <div id="notice" role="status" aria-live="polite" hidden>
+      <p id="notice-message"></p>
+      <div class="notice-actions">
+        <button type="button" id="notice-copy" class="quiet" hidden>复制</button>
+        <button type="button" id="notice-close" class="quiet" aria-label="关闭">×</button>
+      </div>
+    </div>
     <section id="setup-banner" class="setup-banner" hidden><strong>欢迎建立你的本地知识库</strong><p>先选择全局图库与工作区，之后可跨项目复用。</p><button data-page="settings">设置本机目录</button></section>
     <section id="discover-page" class="local-page">
       <form id="search-form" class="search-form"><label class="sr-only" for="search-query">搜索模板</label><input id="search-query" placeholder="描述你想找的图，例如：单细胞分组比例、火山图…"><button type="submit">搜索图库</button></form>
