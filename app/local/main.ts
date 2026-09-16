@@ -85,7 +85,7 @@ function display(parsed: SearchResult) {
       elements.confirmButton.textContent = "确认图片并保存模板";
     },
   });
-  el("results-title").textContent = parsed.query ? `“${parsed.query}”的候选图片` : "候选图片";
+  el("results-title").textContent = parsed.query ? `“${parsed.query}”的候选图片` : "图库";
   el("results-count").textContent = `${parsed.pagination.total} 个结果`;
   el("local-pagination").hidden = parsed.pagination.total === 0;
   el("page-label").textContent = `第 ${parsed.pagination.pageIndex} / ${Math.max(1, Math.ceil(parsed.pagination.total / parsed.pagination.pageSize))} 页`;
@@ -99,9 +99,17 @@ function displayResult(value: CallToolResult) {
   if (!parsed) throw new Error("无法读取候选图片列表");
   display(parsed);
 }
+function galleryArgs() {
+  const provider = el<HTMLSelectElement>("search-provider").value;
+  return { limit: 12, ...(provider ? { providerIds: [provider] } : {}) };
+}
+async function loadGallery() {
+  input("search-query").value = "";
+  displayResult(await api("gallery", galleryArgs()));
+}
 async function search() {
   const query = input("search-query").value.trim();
-  if (!query) return;
+  if (!query) return loadGallery();
   const provider = el<HTMLSelectElement>("search-provider").value;
   displayResult(await call("figure_library_search", { query, limit: 6, ...(provider ? { providerIds: [provider] } : {}), ...(input("search-data").value.trim() ? { dataProfile: input("search-data").value.trim() } : {}) }));
 }
@@ -496,6 +504,10 @@ async function importAsset() {
 for (const control of document.querySelectorAll<HTMLButtonElement>("button[data-page]")) control.addEventListener("click", () => void run(() => showPage(control.dataset.page!)));
 for (const control of document.querySelectorAll<HTMLButtonElement>("button[data-query]")) control.addEventListener("click", () => { input("search-query").value = control.dataset.query!; void run(search, control); });
 form("search-form").addEventListener("submit", (event) => { event.preventDefault(); void run(search, form("search-form").querySelector("button")!); });
+button("browse-gallery").onclick = () => void run(loadGallery, button("browse-gallery"));
+el<HTMLSelectElement>("search-provider").addEventListener("change", () => void run(async () => {
+  if (input("search-query").value.trim()) await search();
+}));
 form("binding-form").addEventListener("submit", (event) => { event.preventDefault(); void run(bindDirectories); });
 form("add-provider-form").addEventListener("submit", (event) => {
   event.preventDefault();

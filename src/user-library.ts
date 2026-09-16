@@ -3,7 +3,7 @@ import { createHash, randomUUID } from "node:crypto";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { buildSearchIntent, scoreSearchableTemplate } from "./catalog.ts";
+import { buildSearchIntent, compareSearchHits, keepSearchHit, scoreSearchableTemplate } from "./catalog.ts";
 import { LOCAL_LIBRARY_PROVIDER_ID } from "./providers.ts";
 import {
   assetFingerprints,
@@ -2049,15 +2049,16 @@ export class UserTemplateLibrary {
         return { template, directory, evidence };
       });
     const ranked = scored
-      .filter((item) => item.evidence.score > 0)
+      .filter((item) => keepSearchHit(item.evidence.score, request))
       .sort(
         (left, right) =>
-          right.evidence.score - left.evidence.score ||
-          left.template.templateId.localeCompare(right.template.templateId),
-      )
-      .slice(0, limit);
-
-    return ranked.map(({ template, evidence }) => userCandidate(template, evidence));
+          compareSearchHits(left.template.templateId, left.evidence.score, right.template.templateId, right.evidence.score, request),
+      );
+    const picked = request.browse ? ranked : ranked.slice(0, limit);
+    return picked.map(({ template, evidence }) => userCandidate(
+      template,
+      request.browse ? { ...evidence, score: 1, matchedTerms: [], reasons: ["图库浏览"] } : evidence,
+    ));
   }
 
   async preview(templateId: string) {

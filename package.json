@@ -1,7 +1,7 @@
 {
   "name": "scientific-figure-library",
   "version": "0.8.0",
-  "description": "Local image-code knowledge library with native macOS and local Web clients, plus MCP and Skill interfaces for external tools.",
+  "description": "Local image-code knowledge library with native macOS and local Web clients for Windows and Linux, plus MCP and Skill interfaces for external tools.",
   "keywords": [
     "scientific-figures",
     "figure-library",
@@ -61,10 +61,14 @@
     "modules:feed": "node scripts/publish-open-figure-feed.mjs",
     "start:local": "node dist/index.js --local",
     "package:windows": "npm run build && node scripts/package-local-client.mjs windows-x64",
+    "package:linux": "npm run build && node scripts/package-local-client.mjs linux-x64",
+    "package:linux:arm64": "npm run build && node scripts/package-local-client.mjs linux-arm64",
     "package:macos": "npm run build && node scripts/package-local-client.mjs macos-native",
     "package:macos:arm64": "npm run build && node scripts/package-local-client.mjs macos-arm64",
     "package:macos:x64": "npm run build && node scripts/package-local-client.mjs macos-x64",
     "package:windows:no-node": "npm run build && node scripts/package-local-client.mjs windows-x64 --system-node",
+    "package:linux:no-node": "npm run build && node scripts/package-local-client.mjs linux-x64 --system-node",
+    "package:linux:arm64:no-node": "npm run build && node scripts/package-local-client.mjs linux-arm64 --system-node",
     "package:macos:no-node": "npm run build && node scripts/package-local-client.mjs macos-native --system-node"
   },
   "devDependencies": {

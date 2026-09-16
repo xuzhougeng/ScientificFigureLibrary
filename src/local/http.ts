@@ -163,6 +163,7 @@ export async function startLocalHttp(options: {
       if (url.pathname === "/api/preview") return json(response, 200, await service.local.preview(input));
       if (url.pathname === "/api/confirm") return json(response, 200, await service.local.confirm(input));
       if (url.pathname === "/api/asset") return json(response, 200, await service.local.asset(input));
+      if (url.pathname === "/api/gallery") return json(response, 200, await service.local.gallery(input));
       if (url.pathname === "/api/resource") {
         const { uri } = z.object({ uri: z.string().max(2_000) }).strict().parse(input);
         if (!uri.startsWith("figure-library://candidate-images/") && !uri.startsWith("figure-library://guidance/")) throw new Error("Unsupported resource");

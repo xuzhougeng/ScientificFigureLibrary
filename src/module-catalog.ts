@@ -4,7 +4,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { canonicalJson, compareCanonicalStrings } from "./canonical-json.ts";
 import { assertMcpImageBytes } from "./image-validation.ts";
-import { buildSearchIntent, normalizeSearchText, scoreSearchableTemplate } from "./catalog.ts";
+import { buildSearchIntent, compareSearchHits, keepSearchHit, normalizeSearchText, scoreSearchableTemplate } from "./catalog.ts";
 import {
   assertProviderId,
   moduleArchiveExactSelector,
@@ -948,11 +948,12 @@ export class ModuleCatalogIndex {
           intent,
         ),
       }))
-      .filter(({ evidence }) => evidence.score > 0)
+      .filter(({ evidence }) => keepSearchHit(evidence.score, request))
       .sort(
         (left, right) =>
-          right.evidence.score - left.evidence.score ||
-          compareCanonicalStrings(left.module.moduleId, right.module.moduleId),
+          request.browse
+            ? compareCanonicalStrings(left.module.moduleId, right.module.moduleId)
+            : compareSearchHits(left.module.moduleId, left.evidence.score, right.module.moduleId, right.evidence.score, request),
       );
     return Promise.all(
       scored.map(async ({ module, evidence }) => {
@@ -982,9 +983,9 @@ export class ModuleCatalogIndex {
           sourceLabel: this.catalog.provider.displayName,
           title: module.title,
           titleEn: module.titleEn,
-          retrievalScore: evidence.score,
-          matchedTerms: evidence.matchedTerms.slice(0, 12),
-          reasons: evidence.reasons,
+          retrievalScore: request.browse ? 1 : evidence.score,
+          matchedTerms: request.browse ? [] : evidence.matchedTerms.slice(0, 12),
+          reasons: request.browse ? ["图库浏览"] : evidence.reasons,
           warnings,
           excerpt: module.description.slice(0, 420),
           description: module.description,

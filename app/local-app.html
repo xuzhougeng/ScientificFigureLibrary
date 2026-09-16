@@ -12,12 +12,12 @@
     <p id="notice" role="status" aria-live="polite" hidden></p>
     <section id="setup-banner" class="setup-banner" hidden><strong>欢迎建立你的本地知识库</strong><p>先选择全局图库与工作区，之后可跨项目复用。</p><button data-page="settings">设置本机目录</button></section>
     <section id="discover-page" class="local-page">
-      <form id="search-form" class="search-form"><label class="sr-only" for="search-query">搜索模板</label><input id="search-query" placeholder="描述你想找的图，例如：单细胞分组比例、火山图…" required><button type="submit">搜索图库</button></form>
+      <form id="search-form" class="search-form"><label class="sr-only" for="search-query">搜索模板</label><input id="search-query" placeholder="描述你想找的图，例如：单细胞分组比例、火山图…"><button type="submit">搜索图库</button></form>
       <div class="search-filters"><label>图片来源<select id="search-provider"><option value="">全部默认来源</option></select></label><label>数据特征<input id="search-data" placeholder="可选：gene、log2FC、padj"></label></div>
-      <p>在线图库图片不会在安装时下载。请到设置中对某个图库执行「缓存图片」，或搜索该图库后查看当前页。已缓存的图片可离线查看。</p>
-      <div id="suggestions" class="suggestions"><span>从常见图形开始</span><button data-query="volcano differential expression">火山图</button><button data-query="heatmap expression matrix">热图</button><button data-query="UMAP single cell">UMAP</button><button data-query="barplot proportion cell type">细胞比例</button><button data-query="GO enrichment pathway">富集分析</button></div>
+      <p>在线图库图片不会在安装时下载。请到设置中对某个图库执行「缓存图片」，或浏览/搜索该图库后查看当前页。已缓存的图片可离线查看。</p>
+      <div id="suggestions" class="suggestions"><span>从常见图形开始</span><button type="button" id="browse-gallery">浏览图库</button><button data-query="volcano differential expression">火山图</button><button data-query="heatmap expression matrix">热图</button><button data-query="UMAP single cell">UMAP</button><button data-query="barplot proportion cell type">细胞比例</button><button data-query="GO enrichment pathway">富集分析</button></div>
       <div class="results-heading"><h2 id="results-title">找到适合你数据的表达方式</h2><span id="results-count"></span></div>
-      <div id="empty" class="local-empty"><h3>让图片成为下一次研究的起点</h3><p>搜索图库中的图片与代码，查看细节后再选用。也可以导入自己的资产。</p></div>
+      <div id="empty" class="local-empty"><h3>让图片成为下一次研究的起点</h3><p>可浏览全部图库图片，或搜索后再选用。也可以导入自己的资产。</p></div>
       <section id="cards" class="cards" aria-label="候选图片"></section>
       <div id="selection-bar" class="local-selection" hidden><span id="selection-count"></span><button id="copy-selection">复制所选模板信息</button></div>
       <nav id="local-pagination" class="pagination" hidden><button id="previous">上一页</button><span id="page-label"></span><button id="next">下一页</button></nav>

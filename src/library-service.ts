@@ -284,6 +284,7 @@ function candidateText(candidates: Array<TemplateCandidate & { candidateId: stri
 
 type ParsedSearchInput = Omit<z.infer<typeof SearchInput>, "providerIds" | "resultSetId"> & {
   providerIds: string[];
+  browse?: boolean;
 };
 
 function searchQueryDigest(input: ParsedSearchInput) {
@@ -300,6 +301,7 @@ function searchQueryDigest(input: ParsedSearchInput) {
       codeStatus: input.codeStatus ?? null,
       providerIds: [...input.providerIds].sort(),
       limit: input.limit,
+      browse: input.browse === true,
     }),
   );
 }
@@ -842,6 +844,162 @@ export async function createLibraryService(options: LibraryServiceOptions = {}) 
     return result;
   };
 
+  async function executeUnifiedSearch(options: {
+    parsedInput: ParsedSearchInput;
+    explicitlySelected: boolean;
+    correlationId: string;
+    invocationSource: "agent" | "app";
+    toolName: "figure_library_search" | "figure_library_search_page";
+    operationStartedAt: number;
+    resultSetId?: string;
+  }) {
+    const { parsedInput, explicitlySelected, correlationId, invocationSource, toolName, operationStartedAt } = options;
+    if (options.resultSetId) {
+      const state = searchSessions.get(options.resultSetId);
+      if (!state || state.queryDigest !== searchQueryDigest(parsedInput)) throw new Error("The cached publication search is missing or its query/filters changed; create a new Plan.");
+      return await buildSearchPage({ resultSetId: options.resultSetId, state, offset: 0, limit: parsedInput.limit, correlationId, invocationSource, toolName, operationStartedAt });
+    }
+    const request: SearchRequest = {
+      query: parsedInput.query,
+      dataProfile: parsedInput.dataProfile,
+      visualProfile: parsedInput.visualProfile,
+      assetKind: parsedInput.assetKind,
+      language: parsedInput.language,
+      plotFamily: parsedInput.plotFamily,
+      reviewStatus: parsedInput.reviewStatus,
+      codeStatus: parsedInput.codeStatus,
+      ...(parsedInput.browse ? { browse: true } : {}),
+    };
+    const context = await currentLibraries();
+    providerController?.officialOpenFigure?.maybeRefresh();
+    const providerContext = createProviderContext(context, index, {
+      ...(liveModuleCatalogs() ? { moduleCatalogs: liveModuleCatalogs() } : {}),
+      ...(providerController?.officialOpenFigure
+        ? { officialOpenFigure: providerController.officialOpenFigure }
+        : {}),
+    });
+    const queryDigest = searchQueryDigest(parsedInput);
+    const catalogRevision = await registry.catalogRevision(parsedInput.providerIds, providerContext);
+    const bindingDigest = libraryBindingDigest(context);
+    await diagnostics.record({
+      event: "search.catalog_loaded",
+      correlationId,
+      toolName,
+      invocationSource,
+      catalogRevision,
+      libraryRevision: bindingDigest,
+    });
+    const searched: Array<{ providerId: string; candidates: TemplateCandidate[] }> = [];
+    const providerFailures: SearchSessionState["providerFailures"] = {};
+    await Promise.all(
+      parsedInput.providerIds.map(async (providerId) => {
+        try {
+          searched.push({
+            providerId,
+            candidates: await registry.get(providerId).search(providerContext, request),
+          });
+        } catch (error) {
+          const raw = error instanceof Error ? error.message : String(error);
+          const [possibleCode] = raw.split(":", 1);
+          providerFailures[providerId] = {
+            health: raw.includes("corrupt") ? "corrupt" : "degraded",
+            errorCode: /^[a-z0-9_]+$/u.test(possibleCode ?? "")
+              ? possibleCode!
+              : "provider_search_failed",
+            safeMessage: raw.replace(/[\r\n\t]+/gu, " ").slice(0, 500),
+          };
+        }
+      }),
+    );
+    if (
+      explicitlySelected &&
+      parsedInput.providerIds.length === 1 &&
+      providerFailures[parsedInput.providerIds[0]!]
+    ) {
+      const failure = providerFailures[parsedInput.providerIds[0]!]!;
+      throw new Error(`${failure.errorCode}: ${failure.safeMessage}`);
+    }
+    const providerMatches = Object.fromEntries(
+      searched.map(({ providerId, candidates }) => [providerId, candidates.length]),
+    );
+    const order = new Map(
+      registry.list().map(({ providerId }, index) => [providerId, index]),
+    );
+    const ranked = searched.flatMap(({ candidates }) => candidates).sort((left, right) => {
+      if (parsedInput.browse) {
+        if (left.providerId !== right.providerId) {
+          return (order.get(left.providerId) ?? Number.MAX_SAFE_INTEGER) -
+            (order.get(right.providerId) ?? Number.MAX_SAFE_INTEGER);
+        }
+        return left.templateId.localeCompare(right.templateId);
+      }
+      const score = right.retrievalScore - left.retrievalScore;
+      if (score) return score;
+      if (left.providerId !== right.providerId) {
+        return (order.get(left.providerId) ?? Number.MAX_SAFE_INTEGER) -
+          (order.get(right.providerId) ?? Number.MAX_SAFE_INTEGER);
+      }
+      return left.templateId.localeCompare(right.templateId);
+    });
+    const top = Math.max(ranked[0]?.retrievalScore ?? 1, 0.0001);
+    const normalized = ranked.map((candidate) => ({
+      ...candidate,
+      retrievalScore: parsedInput.browse ? 1 : Math.round((candidate.retrievalScore / top) * 100),
+    }));
+    const resultSetId = previewConfirmations.registerResultSet({
+      queryDigest,
+      catalogRevision,
+      libraryBindingDigest: bindingDigest,
+      providerIds: parsedInput.providerIds,
+      candidates: normalized.map((candidate) => ({
+        providerId: candidate.providerId,
+        exactSelector: candidate.exactSelector,
+        alternateSelectors: Object.values(candidate.materializationSelectors ?? {}).filter(
+          (selector): selector is ExactTemplateSelector =>
+            selector !== undefined &&
+            exactSelectorDigest(selector) !== exactSelectorDigest(candidate.exactSelector),
+        ),
+      })),
+    });
+    const state: SearchSessionState = {
+      input: parsedInput,
+      request,
+      candidates: normalized,
+      queryDigest,
+      catalogRevision,
+      libraryBindingDigest: bindingDigest,
+      providerMatches,
+      providerFailures,
+      candidateIds: new Set(normalized.map((candidate) => scopedCandidateId(resultSetId, candidate))),
+    };
+    searchSessions.set(resultSetId, state);
+    while (searchSessions.size > 128) {
+      const oldest = searchSessions.keys().next().value as string | undefined;
+      if (!oldest) break;
+      searchSessions.delete(oldest);
+    }
+    await diagnostics.record({
+      event: "search.matched",
+      correlationId,
+      resultSetId,
+      toolName,
+      invocationSource,
+      catalogRevision,
+      libraryRevision: bindingDigest,
+      safeMessage: `Matched ${normalized.length} candidates.`,
+    });
+    return await buildSearchPage({
+      resultSetId,
+      state,
+      offset: 0,
+      limit: parsedInput.limit,
+      correlationId,
+      invocationSource,
+      toolName,
+      operationStartedAt,
+    });
+  }
+
   operations.define(
     "figure_library_search",
     {
@@ -870,149 +1028,17 @@ export async function createLibraryService(options: LibraryServiceOptions = {}) 
         invocationSource: "agent",
       });
       try {
-        const explicitlySelected = input.providerIds !== undefined;
-        const parsedInput: ParsedSearchInput = {
-          ...input,
-          providerIds: input.providerIds ?? registry.defaultProviderIds(),
-        };
-        if (input.resultSetId) {
-          const state = searchSessions.get(input.resultSetId);
-          if (!state || state.queryDigest !== searchQueryDigest(parsedInput)) throw new Error("The cached publication search is missing or its query/filters changed; create a new Plan.");
-          return await buildSearchPage({ resultSetId: input.resultSetId, state, offset: 0, limit: parsedInput.limit, correlationId, invocationSource: "agent", toolName: "figure_library_search", operationStartedAt });
-        }
-        const request: SearchRequest = {
-          query: parsedInput.query,
-          dataProfile: parsedInput.dataProfile,
-          visualProfile: parsedInput.visualProfile,
-          assetKind: parsedInput.assetKind,
-          language: parsedInput.language,
-          plotFamily: parsedInput.plotFamily,
-          reviewStatus: parsedInput.reviewStatus,
-          codeStatus: parsedInput.codeStatus,
-        };
-        const context = await currentLibraries();
-        providerController?.officialOpenFigure?.maybeRefresh();
-        const providerContext = createProviderContext(context, index, {
-          ...(liveModuleCatalogs() ? { moduleCatalogs: liveModuleCatalogs() } : {}),
-          ...(providerController?.officialOpenFigure
-            ? { officialOpenFigure: providerController.officialOpenFigure }
-            : {}),
-        });
-        const queryDigest = searchQueryDigest(parsedInput);
-        const catalogRevision = await registry.catalogRevision(
-          parsedInput.providerIds,
-          providerContext,
-        );
-        const bindingDigest = libraryBindingDigest(context);
-        await diagnostics.record({
-          event: "search.catalog_loaded",
-          correlationId,
-          toolName: "figure_library_search",
-          invocationSource: "agent",
-          catalogRevision,
-          libraryRevision: bindingDigest,
-        });
-        const searched: Array<{ providerId: string; candidates: TemplateCandidate[] }> = [];
-        const providerFailures: SearchSessionState["providerFailures"] = {};
-        await Promise.all(
-          parsedInput.providerIds.map(async (providerId) => {
-            try {
-              searched.push({
-                providerId,
-                candidates: await registry.get(providerId).search(providerContext, request),
-              });
-            } catch (error) {
-              const raw = error instanceof Error ? error.message : String(error);
-              const [possibleCode] = raw.split(":", 1);
-              providerFailures[providerId] = {
-                health: raw.includes("corrupt") ? "corrupt" : "degraded",
-                errorCode: /^[a-z0-9_]+$/u.test(possibleCode ?? "")
-                  ? possibleCode!
-                  : "provider_search_failed",
-                safeMessage: raw.replace(/[\r\n\t]+/gu, " ").slice(0, 500),
-              };
-            }
-          }),
-        );
-        if (
-          explicitlySelected &&
-          parsedInput.providerIds.length === 1 &&
-          providerFailures[parsedInput.providerIds[0]!]
-        ) {
-          const failure = providerFailures[parsedInput.providerIds[0]!]!;
-          throw new Error(`${failure.errorCode}: ${failure.safeMessage}`);
-        }
-        const providerMatches = Object.fromEntries(
-          searched.map(({ providerId, candidates }) => [providerId, candidates.length]),
-        );
-        const order = new Map(
-          registry.list().map(({ providerId }, index) => [providerId, index]),
-        );
-        const ranked = searched.flatMap(({ candidates }) => candidates).sort((left, right) => {
-          const score = right.retrievalScore - left.retrievalScore;
-          if (score) return score;
-          if (left.providerId !== right.providerId) {
-            return (order.get(left.providerId) ?? Number.MAX_SAFE_INTEGER) -
-              (order.get(right.providerId) ?? Number.MAX_SAFE_INTEGER);
-          }
-          return left.templateId.localeCompare(right.templateId);
-        });
-        const top = Math.max(ranked[0]?.retrievalScore ?? 1, 0.0001);
-        const normalized = ranked.map((candidate) => ({
-          ...candidate,
-          retrievalScore: Math.round((candidate.retrievalScore / top) * 100),
-        }));
-        const resultSetId = previewConfirmations.registerResultSet({
-          queryDigest,
-          catalogRevision,
-          libraryBindingDigest: bindingDigest,
-          providerIds: parsedInput.providerIds,
-          candidates: normalized.map((candidate) => ({
-            providerId: candidate.providerId,
-            exactSelector: candidate.exactSelector,
-            alternateSelectors: Object.values(candidate.materializationSelectors ?? {}).filter(
-              (selector): selector is ExactTemplateSelector =>
-                selector !== undefined &&
-                exactSelectorDigest(selector) !== exactSelectorDigest(candidate.exactSelector),
-            ),
-          })),
-        });
-        const state: SearchSessionState = {
-          input: parsedInput,
-          request,
-          candidates: normalized,
-          queryDigest,
-          catalogRevision,
-          libraryBindingDigest: bindingDigest,
-          providerMatches,
-          providerFailures,
-          candidateIds: new Set(normalized.map((candidate) => scopedCandidateId(resultSetId, candidate))),
-        };
-        searchSessions.set(resultSetId, state);
-        while (searchSessions.size > 128) {
-          const oldest = searchSessions.keys().next().value as string | undefined;
-          if (!oldest) break;
-          searchSessions.delete(oldest);
-        }
-        await diagnostics.record({
-          event: "search.matched",
-          correlationId,
-          resultSetId,
-          toolName: "figure_library_search",
-          invocationSource: "agent",
-          catalogRevision,
-          libraryRevision: bindingDigest,
-          safeMessage: `Matched ${normalized.length} candidates.`,
-        });
-        return await buildSearchPage({
-          resultSetId,
-          state,
-          offset: 0,
-          limit: parsedInput.limit,
+        return await executeUnifiedSearch({
+          parsedInput: {
+            ...input,
+            providerIds: input.providerIds ?? registry.defaultProviderIds(),
+          },
+          explicitlySelected: input.providerIds !== undefined,
           correlationId,
           invocationSource: "agent",
           toolName: "figure_library_search",
           operationStartedAt,
+          resultSetId: input.resultSetId,
         });
       } catch (error) {
         await diagnostics.record({
@@ -1485,6 +1511,31 @@ export async function createLibraryService(options: LibraryServiceOptions = {}) 
         items.push({ ...series, title: content.title, description: content.description, assetKind: content.assetKind });
       }
       return terminal(outcome("ok", "local_library_listed", "Local knowledge library entries."), { items });
+    },
+    gallery: async (raw) => {
+      const input = z.object({
+        providerIds: z.array(z.string().min(1).max(200)).min(1).max(16).optional(),
+        limit: z.number().int().min(1).max(12).optional(),
+      }).strict().parse(raw ?? {});
+      const operationStartedAt = performance.now();
+      const correlationId = diagnostics.createCorrelationId("gallery");
+      try {
+        return await executeUnifiedSearch({
+          parsedInput: {
+            query: "",
+            browse: true,
+            providerIds: input.providerIds ?? registry.defaultProviderIds(),
+            limit: input.limit ?? 12,
+          },
+          explicitlySelected: input.providerIds !== undefined,
+          correlationId,
+          invocationSource: "app",
+          toolName: "figure_library_search",
+          operationStartedAt,
+        });
+      } catch (error) {
+        return previewFailure("Gallery listing failed", error);
+      }
     },
     asset: async (raw) => {
       const input = z.object({ templateId: z.string().min(1), revisionId: z.string().min(1),
@@ -2293,6 +2344,7 @@ export async function createLibraryService(options: LibraryServiceOptions = {}) 
       library: () => operations.run(() => localOperations.library()),
       asset: (input: unknown) => operations.run(() => localOperations.asset(input)),
       previewCache: () => operations.run(() => inspectPreviewCache({ galleries: downloadableGalleries() })),
+      gallery: (input: unknown) => operations.run(() => localOperations.gallery(input)),
       prefetchPreviewCache: (providerId: string) => operations.run(() => prefetchPreviewCache(providerId, downloadableGalleries())),
       clearPreviewCache: () => operations.run(async () => {
         const cleared = await clearPreviewCache();

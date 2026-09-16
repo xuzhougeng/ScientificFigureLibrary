@@ -6,4 +6,5 @@ export interface LocalOperations {
   confirm(input: unknown): Promise<CallToolResult>;
   library(): Promise<CallToolResult>;
   asset(input: unknown): Promise<CallToolResult>;
+  gallery(input: unknown): Promise<CallToolResult>;
 }
