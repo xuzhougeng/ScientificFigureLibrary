@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from "node:crypto";
 import fs from "node:fs/promises";
-import os from "node:os";
+import { resolveLibraryRuntimeSnapshotSync } from "./library-runtime.ts";
 import path from "node:path";
 import { z } from "zod";
 import { assertMcpImageBytes } from "./image-validation.ts";
@@ -28,11 +28,14 @@ const PREFETCH_CONCURRENCY = 4;
 const cacheExtension = (relative: string) => path.posix.extname(relative).toLowerCase();
 
 export function previewCacheDirectory() {
+  const root = resolveLibraryRuntimeSnapshotSync().root;
   const override = process.env.SFL_PREVIEW_CACHE_DIR;
-  if (override) { if (!path.isAbsolute(override)) throw new Error("Preview cache directory must be absolute"); return override; }
-  if (process.platform === "win32") return path.join(process.env.LOCALAPPDATA ?? path.join(os.homedir(), "AppData/Local"), "ScientificFigureLibrary/preview-cache/v1");
-  if (process.platform === "darwin") return path.join(os.homedir(), "Library/Caches/ScientificFigureLibrary/previews/v1");
-  return path.join(process.env.XDG_CACHE_HOME ?? path.join(os.homedir(), ".cache"), "scientific-figure-library/previews/v1");
+  if (override) {
+    const relative = path.relative(root, override);
+    if (!path.isAbsolute(override) || !relative || relative === ".." || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) throw new Error("Preview cache directory must be inside the selected Library storage location");
+    return path.resolve(override);
+  }
+  return path.join(root, "indexes", "preview-cache", "v1");
 }
 
 export interface PreviewCacheGalleryStatus {
@@ -165,13 +168,14 @@ export class PreviewDownloadStore {
   private readonly pending = new Map<string, Promise<Uint8Array>>();
   private readonly files: Map<string, PreviewDownloadFile>;
   private readonly fetcher: Pick<SecureProviderSourceFetcher, "fetch">;
-  private readonly cache: string;
+  private readonly configuredCache?: string;
+  private get cache() { return this.configuredCache ?? previewCacheDirectory(); }
   private readonly manifest: z.infer<typeof ManifestSchema>;
   private constructor(manifest: z.infer<typeof ManifestSchema>, options: PreviewDownloadOptions) {
     this.manifest = manifest;
     this.files = new Map(manifest.files.map(file => [file.path, file]));
     this.fetcher = options.fetcher ?? new SecureProviderSourceFetcher({ timeoutMs: 15000, maxRedirects: 2 });
-    this.cache = path.resolve(options.cacheDirectory ?? previewCacheDirectory());
+    this.configuredCache = options.cacheDirectory ? path.resolve(options.cacheDirectory) : undefined;
   }
   static async load(root: string, providerId: string, expected: PreviewDownloadFile[], options: PreviewDownloadOptions = {}) {
     let source: string;
@@ -253,10 +257,11 @@ export class PreviewDownloadStore {
   async read(relative: string, allowDownload = true): Promise<Uint8Array> {
     const identity = this.files.get(relative);
     if (!identity) throw new Error("Preview download identity is not declared");
-    await fs.mkdir(this.cache, { recursive: true });
-    const directory = await fs.lstat(this.cache);
+    const cache = this.cache;
+    await fs.mkdir(cache, { recursive: true });
+    const directory = await fs.lstat(cache);
     if (!directory.isDirectory() || directory.isSymbolicLink()) throw new Error("Preview cache must be a regular directory");
-    const cacheFile = this.cacheFile(identity);
+    const cacheFile = path.join(cache, identity.sha256 + cacheExtension(identity.path));
     try {
       const stat = await fs.lstat(cacheFile);
       if (!stat.isFile() || stat.isSymbolicLink()) throw new Error("Preview cache entry is not a regular file");
@@ -267,7 +272,7 @@ export class PreviewDownloadStore {
       catch (error) { if (!allowDownload) throw error; await fs.unlink(cacheFile); }
     } catch (error) { if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error; }
     if (!allowDownload) throw new Error("preview_unavailable: confirmed preview is no longer cached; view it again");
-    const running = this.pending.get(identity.sha256);
+    const running = this.pending.get(cacheFile);
     if (running) return running;
     const operation = (async () => {
       const relativeUrl = `${this.manifest.prefix}/${identity.path}`.split("/").map(encodeURIComponent).join("/");
@@ -281,7 +286,7 @@ export class PreviewDownloadStore {
       } finally { await fs.rm(temporary, { force: true }); }
       return bytes;
     })();
-    this.pending.set(identity.sha256, operation);
-    try { return await operation; } finally { this.pending.delete(identity.sha256); }
+    this.pending.set(cacheFile, operation);
+    try { return await operation; } finally { this.pending.delete(cacheFile); }
   }
 }

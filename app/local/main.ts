@@ -518,7 +518,7 @@ async function bindDirectories() {
   const localWorkspaceDirectory = input("workspace-directory").value.trim();
   const planned = await call("figure_library_plan_bind_global", { libraryDirectory, migrationMode: "none" });
   const plan = record(details(planned).plan);
-  reviewPlan("绑定全局图库", planned, async () => {
+  reviewPlan("设置图库存储位置", planned, async () => {
     await call("figure_library_apply_bind_global", { planDigest: plan.planDigest, operationId: crypto.randomUUID() }, true);
     // The workspace has its own independent plan and approval.
     dialog("plan-dialog").close();

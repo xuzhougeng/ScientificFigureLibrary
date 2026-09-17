@@ -114,6 +114,7 @@ export function createReferenceCache(options: {
       const value = checked(await options.operations.execute("figure_library_plan_materialize", {
         providerId: candidate.providerId, exactSelector: candidate.exactSelector,
         previewReceipt: input.previewReceipt, allowNetwork: input.allowNetwork, destination,
+        sourcePackDir: path.join(context.library.snapshot.root, "source-packs", "references", exactSelectorDigest(candidate.exactSelector)),
       }));
       const plan = value.plan as { planDigest: string; target: string };
       plans.set(plan.planDigest, { candidate, root: context.library.snapshot.root, keyDirectory: directory, generation, operationId: randomUUID(), target: plan.target });

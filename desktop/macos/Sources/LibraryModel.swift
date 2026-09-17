@@ -216,7 +216,7 @@ enum Sheet: Identifiable {
         let workspace = workspaceDirectory
         let value = try await backend.call("figure_library_plan_bind_global", ["libraryDirectory": text(libraryDirectory), "migrationMode": text("none")])
         let plan = value["plan"]
-        sheet = .plan(PendingPlan(title: "绑定全局图库", value: value, operation: "figure_library_apply_bind_global", arguments: ["planDigest": plan["planDigest"], "operationId": text(UUID().uuidString)], after: { [weak self] in
+        sheet = .plan(PendingPlan(title: "设置图库存储位置", value: value, operation: "figure_library_apply_bind_global", arguments: ["planDigest": plan["planDigest"], "operationId": text(UUID().uuidString)], after: { [weak self] in
             guard let self = self else { return }
             let value = try await self.backend.call("figure_library_plan_bind_workspace", ["workspaceDirectory": text(workspace)])
             self.sheet = .plan(PendingPlan(title: "绑定本地工作区", value: value, operation: "figure_library_apply_bind_workspace", arguments: ["planDigest": value["plan"]["planDigest"], "operationId": text(UUID().uuidString)], after: { [weak self] in

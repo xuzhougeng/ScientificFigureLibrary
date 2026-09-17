@@ -27,7 +27,7 @@ async function isolated(t: { after: (fn: () => Promise<void>) => void }) {
     XDG_CONFIG_HOME: path.join(root, "config"), XDG_DATA_HOME: path.join(root, "data"),
     APPDATA: path.join(root, "config"), LOCALAPPDATA: path.join(root, "data"),
     SFL_DIAGNOSTICS_DIR: path.join(root, "diagnostics"), SFL_WORKSPACE_LOCATOR_PATH: path.join(root, "config/workspace.json"),
-    SFL_PREVIEW_CACHE_DIR: path.join(root, "preview-cache"),
+    SFL_PREVIEW_CACHE_DIR: path.join(root, "library", "indexes", "preview-cache", "v1"),
     FIGURE_LIBRARY_DIR: path.join(root, "library"), FIGURE_WORKSPACE_DIR: path.join(root, "workspace"),
   };
   const previous = Object.fromEntries(Object.keys(overrides).map((key) => [key, process.env[key]]));

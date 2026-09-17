@@ -37,7 +37,7 @@ if (!systemNode) await fs.chmod(binary, 0o755);
 for (const script of ['start-sfl.sh', 'mcp.sh', 'Launch-SFL.sh']) {
   try { await fs.chmod(path.join(packageRoot, script), 0o755); } catch (error) { if (error.code !== 'ENOENT') throw error; }
 }
-const env = { ...process.env, PATH: windows ? path.join(process.env.SystemRoot ?? 'C:\\Windows', 'System32') : '/usr/bin:/bin', FIGURE_LIBRARY_DIR: path.join(root, 'library'), SFL_WORKSPACE_LOCATOR_PATH: path.join(root, 'config/workspace.json'), SFL_DIAGNOSTICS_DIR: path.join(root, 'diagnostics'), SFL_PREVIEW_CACHE_DIR: path.join(root, 'preview-cache'), APPDATA: path.join(root, 'config'), LOCALAPPDATA: path.join(root, 'data'), XDG_CONFIG_HOME: path.join(root, 'config'), XDG_DATA_HOME: path.join(root, 'data'), XDG_CACHE_HOME: path.join(root, 'cache'), SFL_OPEN_FIGURE_AUTO_REFRESH: '0', SFL_NO_BROWSER: '1' };
+const env = { ...process.env, PATH: windows ? path.join(process.env.SystemRoot ?? 'C:\\Windows', 'System32') : '/usr/bin:/bin', FIGURE_LIBRARY_DIR: path.join(root, 'library'), SFL_WORKSPACE_LOCATOR_PATH: path.join(root, 'config/workspace.json'), SFL_DIAGNOSTICS_DIR: path.join(root, 'diagnostics'), SFL_PREVIEW_CACHE_DIR: path.join(root, 'library', 'indexes', 'preview-cache', 'v1'), APPDATA: path.join(root, 'config'), LOCALAPPDATA: path.join(root, 'data'), XDG_CONFIG_HOME: path.join(root, 'config'), XDG_DATA_HOME: path.join(root, 'data'), XDG_CACHE_HOME: path.join(root, 'cache'), SFL_OPEN_FIGURE_AUTO_REFRESH: '0', SFL_NO_BROWSER: '1' };
 delete env.FIGURE_WORKSPACE_DIR;
 delete env.NODE_OPTIONS;
 delete env.NODE_PATH;

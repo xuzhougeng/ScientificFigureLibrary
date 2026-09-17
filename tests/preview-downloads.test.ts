@@ -5,7 +5,7 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 import { pathToFileURL } from "node:url";
-import { PreviewDownloadStore, PREVIEW_DOWNLOAD_MANIFEST, clearPreviewCache, inspectPreviewCache, prefetchPreviewCache, type PreviewDownloadFile } from "../src/preview-downloads.ts";
+import { PreviewDownloadStore, PREVIEW_DOWNLOAD_MANIFEST, clearPreviewCache, inspectPreviewCache, prefetchPreviewCache, previewCacheDirectory, type PreviewDownloadFile } from "../src/preview-downloads.ts";
 import { CatalogIndex } from "../src/catalog.ts";
 import { ModuleCatalogIndex } from "../src/module-catalog.ts";
 
@@ -90,6 +90,9 @@ test("matching digest alone cannot turn malformed bytes into a preview", async t
 
 test("preview cache status lists only hashed image files and clear leaves unrelated files", async t => {
   const cacheDirectory = await fs.mkdtemp(path.join(os.tmpdir(), "sfl-preview-cache-status-"));
+  const previousRoot = process.env.FIGURE_LIBRARY_DIR;
+  process.env.FIGURE_LIBRARY_DIR = os.tmpdir();
+  t.after(() => { if (previousRoot === undefined) delete process.env.FIGURE_LIBRARY_DIR; else process.env.FIGURE_LIBRARY_DIR = previousRoot; });
   const previous = process.env.SFL_PREVIEW_CACHE_DIR;
   process.env.SFL_PREVIEW_CACHE_DIR = cacheDirectory;
   t.after(async () => {
@@ -119,6 +122,9 @@ test("preview cache status lists only hashed image files and clear leaves unrela
 
 test("missing preview cache reports empty status without creating the directory", async t => {
   const missing = path.join(os.tmpdir(), `sfl-preview-cache-missing-${Date.now()}`);
+  const previousRoot = process.env.FIGURE_LIBRARY_DIR;
+  process.env.FIGURE_LIBRARY_DIR = os.tmpdir();
+  t.after(() => { if (previousRoot === undefined) delete process.env.FIGURE_LIBRARY_DIR; else process.env.FIGURE_LIBRARY_DIR = previousRoot; });
   const previous = process.env.SFL_PREVIEW_CACHE_DIR;
   process.env.SFL_PREVIEW_CACHE_DIR = missing;
   t.after(() => {
@@ -215,4 +221,27 @@ test("lightweight FigureYa and module catalogs search without image I/O and fetc
   const offline = await CatalogIndex.load(path.join(dir, "assets"), { cacheDirectory, fetcher: { fetch: async () => { throw new Error("offline"); } } });
   assert.ok(await offline.preview(figures[0]!.exactSelector, false));
   assert.equal(requests.length, 3);
+});
+
+test("default preview cache follows the selected Library when an existing store is reused", async t => {
+  const { dir } = await fixture(t);
+  const savedRoot = process.env.FIGURE_LIBRARY_DIR;
+  const savedCache = process.env.SFL_PREVIEW_CACHE_DIR;
+  t.after(() => { if (savedRoot === undefined) delete process.env.FIGURE_LIBRARY_DIR; else process.env.FIGURE_LIBRARY_DIR = savedRoot; if (savedCache === undefined) delete process.env.SFL_PREVIEW_CACHE_DIR; else process.env.SFL_PREVIEW_CACHE_DIR = savedCache; });
+  delete process.env.SFL_PREVIEW_CACHE_DIR;
+  process.env.FIGURE_LIBRARY_DIR = path.join(dir, "library-one");
+  let requests = 0;
+  const store = (await PreviewDownloadStore.load(dir, "test", [file], { fetcher: { fetch: async url => { requests++; return reply(url, png); } } }))!;
+  const first = previewCacheDirectory();
+  assert.equal(first, path.join(dir, "library-one", "indexes", "preview-cache", "v1"));
+  await store.read(file.path);
+  assert.equal((await inspectPreviewCache()).fileCount, 1);
+  process.env.FIGURE_LIBRARY_DIR = path.join(dir, "library-two");
+  assert.equal((await store.inspect()).cached, 0);
+  await store.read(file.path);
+  assert.equal(requests, 2);
+  assert.equal((await inspectPreviewCache()).fileCount, 1);
+  assert.equal((await fs.readdir(first)).length, 1);
+  process.env.SFL_PREVIEW_CACHE_DIR = path.join(dir, "outside");
+  assert.throws(() => previewCacheDirectory(), /inside the selected Library/u);
 });

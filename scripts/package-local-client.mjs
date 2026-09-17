@@ -200,7 +200,7 @@ async function macos(architecture) {
   await run('codesign', ['--force', '--sign', '-', app]);
   await run('codesign', ['--verify', '--deep', '--strict', app]);
   const smokeRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'sfl-native-smoke-'));
-  const env = { ...process.env, PATH: '/usr/bin:/bin:/usr/sbin:/sbin', SFL_NATIVE_SMOKE: '1', SFL_NODE_BINARY: process.execPath, SFL_RUNTIME_MODE: runtimeMode, SFL_SMOKE_ROOT: smokeRoot, SFL_PREVIEW_CACHE_DIR: path.join(smokeRoot, 'preview-cache'), SFL_OPEN_FIGURE_AUTO_REFRESH: '0', FIGURE_LIBRARY_DIR: path.join(smokeRoot, 'library'), XDG_CONFIG_HOME: path.join(smokeRoot, 'config'), XDG_DATA_HOME: path.join(smokeRoot, 'data'), SFL_DIAGNOSTICS_DIR: path.join(smokeRoot, 'diagnostics'), SFL_WORKSPACE_LOCATOR_PATH: path.join(smokeRoot, 'config/workspace.json') };
+  const env = { ...process.env, PATH: '/usr/bin:/bin:/usr/sbin:/sbin', SFL_NATIVE_SMOKE: '1', SFL_NODE_BINARY: process.execPath, SFL_RUNTIME_MODE: runtimeMode, SFL_SMOKE_ROOT: smokeRoot, SFL_PREVIEW_CACHE_DIR: path.join(smokeRoot, 'library', 'indexes', 'preview-cache', 'v1'), SFL_OPEN_FIGURE_AUTO_REFRESH: '0', FIGURE_LIBRARY_DIR: path.join(smokeRoot, 'library'), XDG_CONFIG_HOME: path.join(smokeRoot, 'config'), XDG_DATA_HOME: path.join(smokeRoot, 'data'), SFL_DIAGNOSTICS_DIR: path.join(smokeRoot, 'diagnostics'), SFL_WORKSPACE_LOCATOR_PATH: path.join(smokeRoot, 'config/workspace.json') };
   delete env.FIGURE_WORKSPACE_DIR;
   if (runtimeMode === 'system') {
     let missingRejected = false;
