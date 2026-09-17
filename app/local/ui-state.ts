@@ -1,7 +1,7 @@
 export const PAGE_TITLES = {
   discover: "图库",
   library: "我的图库",
-  galleries: "外部图库",
+  galleries: "连接外部图库",
   import: "创建参考图",
   integrations: "连接外部工具",
   settings: "设置",

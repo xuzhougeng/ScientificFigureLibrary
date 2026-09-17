@@ -4,7 +4,8 @@ import { bindModalScrollLock, mountExactPreviewImage, openCandidateDetail, parse
 import { renderMarkdown } from "../markdown.ts";
 import { api, call, details, imageData, imageHash, record, records, requireResult, upload } from "./api.ts";
 import { formatUserNetworkError } from "../../src/process-log.ts";
-import { buildExternalPlotPrompt } from "../external-prompt.ts";
+import { cacheReferences, copyReferencePrompt, referenceStatuses, referenceStatusIcons } from "./reference-cache.ts";
+import { setButtonContent } from "../icons.ts";
 import { PAGE_STORAGE_KEY, PAGE_TITLES, galleryMissingCount, isPageId, pageHash, prefetchButtonLabel, readSavedPage, type PageId } from "./ui-state.ts";
 import "../styles.css";
 import "./styles.css";
@@ -91,11 +92,37 @@ function refreshSelection() {
   el("selection-count").textContent = `已选择 ${selected.size} 个模板`;
 
 }
+async function refreshReferenceCards(current: SearchResult) {
+  const states = await referenceStatuses(current.resultSetId, current.candidates);
+  if (result !== current) return;
+  for (const candidate of current.candidates) {
+    const card = [...el("cards").children].find((item) => (item as HTMLElement).dataset.candidateId === candidate.candidateId);
+    const state = states.find((item) => item.candidateId === candidate.candidateId);
+    if (!card || !state) continue;
+    card.querySelector(".reference-card-state")?.remove();
+    const area = node("div", undefined, "reference-card-state");
+    area.append(referenceStatusIcons(state, candidate));
+    const control = action(state.reference === "ready" ? "复制绘图提示词" : "缓存此参考", async () => {
+      if (state.reference === "ready") {
+        await copyReferencePrompt(current.resultSetId, candidate);
+        notify("已复制参考文件路径与绘图提示词。AI 无法访问本机路径时，请上传列出的材料。");
+      } else await openReferenceCache([candidate], current.resultSetId);
+    });
+    setButtonContent(control, state.reference === "ready" ? "copy" : "download", state.reference === "ready" ? "复制绘图提示词" : "缓存此参考", { iconOnly: true });
+    control.classList.add("reference-icon-action");
+    control.disabled = state.reference === "unavailable";
+    area.append(control); card.querySelector(".content")?.append(area);
+  }
+}
+async function openReferenceCache(candidates: Candidate[], resultSetId = result?.resultSetId, onChanged?: () => void) {
+  if (!resultSetId) throw new Error("请先检索参考");
+  await cacheReferences({ resultSetId, candidates, onChanged: () => { if (result) void run(() => refreshReferenceCards(result!)); onChanged?.(); } });
+}
 function display(parsed: SearchResult) {
   if (parsed.resultSetId !== result?.resultSetId) { selected = new Map(); pages.clear(); }
   result = parsed;
   pages.set(parsed.pagination.pageIndex, parsed);
-  renderCandidateCards({ document, cards: el("cards"), empty: el("empty"), result: parsed, selectionPurpose: "保存或复制信息", selectedIds: new Set(selected.keys()),
+  renderCandidateCards({ document, cards: el("cards"), empty: el("empty"), result: parsed, selectionPurpose: "批量缓存参考", showDetailAction: false, showSelectionControl: false, selectedIds: new Set(selected.keys()),
     onToggleSelect: (candidate, checked) => {
       if (checked && selected.size < 12) selected.set(candidate.candidateId, candidate);
       else selected.delete(candidate.candidateId);
@@ -103,11 +130,64 @@ function display(parsed: SearchResult) {
       refreshSelection();
     },
     onDetail: (candidate, _elements, opener) => {
-      openCandidateDetail({ document, candidate, opener, serverToolsAvailable: true, updateModelContextAvailable: false, purpose: "save",
+      const view = openCandidateDetail({ document, candidate, opener, serverToolsAvailable: true, updateModelContextAvailable: false, purpose: "save",
         onOpenLink: async (url) => safeLink(url),
-        onRequestExactPreview: (view) => void run(() => exactPreview(candidate, view), view.confirmButton),
+        onRequestExactPreview: (view) => void run(() => exactPreview(candidate, view, refreshDetailState), view.confirmButton),
         onRequestAgentReview: () => {},
       });
+      const actions = view.dialog.querySelector(".detail-toolbar-actions")!;
+      const cache = action("下载代码", async () => { await openReferenceCache([candidate], parsed.resultSetId, refreshDetailState); }, true);
+      setButtonContent(cache, "download", "下载代码", { iconOnly: true });
+      cache.disabled = !candidate.materializable;
+      const copy = action("复制提示词", async () => {
+        try {
+            await copyReferencePrompt(parsed.resultSetId, candidate);
+            view.status.textContent = "已复制提示词。AI 无法读取本机文件时，请上传提示词列出的材料。";
+        } catch (error) {
+          view.status.textContent = error instanceof Error ? error.message : String(error);
+          cache.focus();
+        }
+      }, true);
+      setButtonContent(copy, "copy", "复制提示词", { iconOnly: true });
+      const copyImage = action("复制图片", async () => {
+        try {
+          const image = view.preview.querySelector("img");
+          if (!image?.complete || !image.naturalWidth || !image.src.startsWith("data:")) throw new Error("请等待精确图片加载完成后再复制。");
+          const canvas = document.createElement("canvas");
+          canvas.width = image.naturalWidth; canvas.height = image.naturalHeight;
+          const context = canvas.getContext("2d");
+          if (!context) throw new Error("当前浏览器不支持复制图片。");
+          context.drawImage(image, 0, 0);
+          const blob = await new Promise<Blob>((resolve, reject) => canvas.toBlob((value) => value ? resolve(value) : reject(new Error("图片转换失败")), "image/png"));
+          await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
+          view.status.textContent = "已复制图片，可直接粘贴到其他应用。";
+        } catch (error) { view.status.textContent = error instanceof Error ? error.message : String(error); }
+      }, true);
+      setButtonContent(copyImage, "image", "复制图片", { iconOnly: true });
+      const light = node("span", undefined, "reference-detail-status");
+      light.setAttribute("aria-live", "polite");
+      light.textContent = "…";
+      actions.prepend(light, cache, copy);
+      actions.insertBefore(copyImage, view.closeButton);
+      for (const control of actions.querySelectorAll<HTMLButtonElement>("button")) {
+        control.classList.add("reference-icon-action");
+        control.dataset.tooltip = control.getAttribute("aria-label") ?? control.title;
+        control.removeAttribute("title");
+      }
+      function refreshDetailState() {
+        void (async () => {
+          try {
+            const state = (await referenceStatuses(parsed.resultSetId, [candidate]))[0];
+            if (state && view.dialog.isConnected) {
+              light.replaceChildren(referenceStatusIcons(state, candidate));
+              if (state.reference === "ready" && state.cached?.hasCode && view.status.textContent === "图片可复制或保存到项目。使用绘图提示词前，请先下载代码。") {
+                view.status.textContent = "图片与代码已缓存，可复制提示词交给 AI，或将参考保存到项目。";
+              }
+            }
+          } catch { if (view.dialog.isConnected) { light.textContent = "?"; light.title = "本地状态暂时无法读取"; } }
+        })();
+      }
+      refreshDetailState();
     },
   });
   el("results-title").textContent = parsed.query ? `“${parsed.query}”的候选图片` : "图库";
@@ -126,6 +206,7 @@ function display(parsed: SearchResult) {
   });
   el("gallery-loading").hidden = true;
   refreshSelection();
+  void run(() => refreshReferenceCards(parsed));
 }
 function displayResult(value: CallToolResult) {
   requireResult(value);
@@ -152,7 +233,7 @@ async function search() {
     displayResult(await call("figure_library_search", { query, limit: 6, ...(provider ? { providerIds: [provider] } : {}), ...(input("search-data").value.trim() ? { dataProfile: input("search-data").value.trim() } : {}) }));
   } finally { if (!result) setGallerySyncing(false); }
 }
-async function exactPreview(candidate: Candidate, view: DetailViewElements) {
+async function exactPreview(candidate: Candidate, view: DetailViewElements, onLoaded?: () => void) {
   if (!result) return;
   const resultSetId = result.resultSetId;
   view.confirmButton.disabled = true;
@@ -165,8 +246,10 @@ async function exactPreview(candidate: Candidate, view: DetailViewElements) {
   mountExactPreviewImage({ document, elements: view, dataUrl: image.url, alt: candidate.title,
     onLoaded: () => {
       loaded = true;
-      view.confirmButton.textContent = "保存到项目";
-      view.status.textContent = "上方是将要保存的精确图片。确认无误后点右上角「保存到项目」。";
+      setButtonContent(view.confirmButton, "save", "保存到项目", { iconOnly: true });
+      view.confirmButton.removeAttribute("title");
+      view.status.textContent = "图片可复制或保存到项目。使用绘图提示词前，请先下载代码。";
+      onLoaded?.();
     },
     onError: () => { loaded = false; view.confirmButton.disabled = true; view.status.textContent = "图片加载失败，无法确认。"; },
   });
@@ -447,17 +530,66 @@ async function bindDirectories() {
     }), 0);
   });
 }
+let libraryLayout = "gallery";
+try { libraryLayout = localStorage.getItem("sfl-library-layout") === "list" ? "list" : "gallery"; } catch { /* Storage may be unavailable. */ }
+const libraryImages = new Map<string, string>();
+let libraryObserver: IntersectionObserver | undefined;
+function applyLibraryLayout() {
+  el("library-items").dataset.layout = libraryLayout;
+  button("library-gallery").setAttribute("aria-pressed", String(libraryLayout === "gallery"));
+  button("library-list").setAttribute("aria-pressed", String(libraryLayout === "list"));
+  if (libraryLayout === "gallery") el("library-items").querySelectorAll<HTMLElement>(".library-preview[data-pending]").forEach((preview) => libraryObserver?.observe(preview));
+}
+for (const layout of ["gallery", "list"]) button(`library-${layout}`).onclick = () => {
+  libraryLayout = layout;
+  try { localStorage.setItem("sfl-library-layout", layout); } catch { /* Keep the current session usable. */ }
+  applyLibraryLayout();
+};
 async function loadLibrary() {
   const items = records(details(requireResult(await api("library"))).items);
   const target = el("library-items");
+  libraryObserver?.disconnect();
+  libraryObserver = new IntersectionObserver((entries) => {
+    for (const entry of entries) if (entry.isIntersecting && libraryLayout === "gallery") {
+      libraryObserver?.unobserve(entry.target);
+      const preview = entry.target as HTMLButtonElement;
+      delete preview.dataset.pending;
+      const item = items.find((item) => item.templateId === preview.dataset.templateId)!;
+      void (async () => {
+        try {
+          const key = JSON.stringify([item.templateId, item.workingHead ?? item.publishedHead]);
+          let url = libraryImages.get(key);
+          if (!url) {
+            const detail = details(await call("figure_library_review_open", { templateId: item.templateId }));
+            const content = record(detail.workingContent ?? detail.publishedContent);
+            if (!content.primaryPreview) { preview.textContent = "暂无预览图片"; return; }
+            const asset = details(requireResult(await api("asset", { templateId: item.templateId, revisionId: content.revisionId, contentDigest: content.contentDigest, logicalPath: content.primaryPreview })));
+            url = `data:${String(asset.mimeType)};base64,${String(asset.data)}`;
+            libraryImages.set(key, url);
+            if (libraryImages.size > 100) libraryImages.delete(libraryImages.keys().next().value!);
+          }
+          const image = node("img"); image.src = url; image.alt = String(item.title);
+          image.onerror = () => { preview.textContent = "图片无法显示，点击查看与管理"; };
+          preview.replaceChildren(image);
+        } catch { preview.textContent = "预览加载失败，点击查看与管理"; }
+      })();
+    }
+  }, { rootMargin: "200px" });
   target.replaceChildren();
+  applyLibraryLayout();
   if (!items.length) { target.append(node("div", "我的图库还没有资产。用「创建参考图」收入图片和代码。", "local-empty")); return; }
   for (const item of items) {
     const row = node("article", undefined, "library-row");
     const info = node("div");
+    info.className = "library-info";
     info.append(node("h3", String(item.title)), node("p", `${item.workingHead ? "有待审阅草稿" : "已发布"} · ${String(item.templateId)}`));
-    row.append(info, action("查看与管理", () => showLibraryDetail(String(item.templateId))));
+    const preview = action("加载预览…", () => showLibraryDetail(String(item.templateId)), true);
+    preview.classList.add("library-preview");
+    preview.setAttribute("aria-label", `查看 ${String(item.title)}`);
+    preview.dataset.templateId = String(item.templateId); preview.dataset.pending = "true";
+    row.append(preview, info, action("查看与管理", () => showLibraryDetail(String(item.templateId))));
     target.append(row);
+    if (libraryLayout === "gallery") libraryObserver.observe(preview);
   }
 }
 async function showLibraryDetail(templateId: string) {
@@ -600,12 +732,7 @@ button("refresh").onclick = () => void run(async () => {
     else await loadGallery();
   }
 });
-button("copy-selection").onclick = () => void run(async () => {
-  const prompt = buildExternalPlotPrompt([...selected.values()]);
-  if (!prompt) throw new Error("还没有选择模板");
-  await navigator.clipboard.writeText(prompt);
-  notify(`已复制 ${selected.size} 个模板的绘图提示词。粘贴到 ChatGPT、Claude、Cursor 等即可按这些图写代码，不需要安装 MCP。`);
-}, button("copy-selection"));
+button("cache-selection").onclick = () => void run(() => openReferenceCache([...selected.values()]), button("cache-selection"));
 button("plan-apply").onclick = () => void run(async () => { await planAction?.(); }, button("plan-apply"));
 button("plan-cancel").onclick = () => { planAction = undefined; dialog("plan-dialog").close(); };
 button("materialize-cancel").onclick = () => dialog("materialize-dialog").close();

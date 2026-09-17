@@ -374,6 +374,8 @@ export function renderCandidateCards(options: {
   result: SearchResult;
   selectedIds?: Set<string>;
   selectionPurpose?: string;
+  showDetailAction?: boolean;
+  showSelectionControl?: boolean;
   onToggleSelect?: (candidate: Candidate, selected: boolean) => void;
   onDetail: (
     candidate: Candidate,
@@ -417,7 +419,7 @@ export function renderCandidateCards(options: {
     const headingNode = element(document, "h2", "module");
     const titleButton = button(document, "candidate-title", candidate.title);
     titleButton.setAttribute("aria-label", `选择 ${candidate.title} ${options.selectionPurpose ?? "交给 Agent 绘制"}`);
-    titleButton.title = "点击选择或取消选择；查看详情请用「查看详情」按钮";
+    titleButton.title = options.showDetailAction === false ? "点击选择或取消选择；点击图片查看详情" : "点击选择或取消选择；查看详情请用「查看详情」按钮";
     headingNode.append(titleButton);
     heading.append(
       headingNode,
@@ -493,9 +495,10 @@ export function renderCandidateCards(options: {
     const open = (opener: HTMLButtonElement) => options.onDetail(candidate, elements, opener);
     previewButton.addEventListener("click", () => open(previewButton));
     detailButton.addEventListener("click", () => open(detailButton));
-    content.append(detailButton);
+    if (options.showDetailAction !== false) content.append(detailButton);
     applySelected(Boolean(options.selectedIds?.has(candidate.candidateId)));
-    card.append(selectLabel, selectBadge, previewButton, content);
+    if (options.showSelectionControl !== false) card.append(selectLabel);
+    card.append(selectBadge, previewButton, content);
     cards.append(card);
   }
 }
@@ -642,7 +645,9 @@ export function openCandidateDetail(options: {
   const shell = element(document, "div", "detail-shell");
   const main = element(document, "div", "detail-main");
   const aside = element(document, "aside", "detail-technical-panel");
-  aside.hidden = true;
+  aside.hidden = !saveFlow;
+  shell.classList.toggle("is-technical-open", saveFlow);
+  dialog.classList.toggle("has-technical", saveFlow);
   aside.setAttribute("aria-label", "技术与验证信息");
   const technical = element(document, "div", "detail-technical");
   appendDetailSection(document, technical, "来源与执行边界", providerStateLines(candidate));
@@ -741,7 +746,8 @@ export function openCandidateDetail(options: {
   const actions = element(document, "div", "detail-toolbar-actions");
   if (saveFlow) {
     dialog.classList.add("detail-save-flow");
-    actions.append(confirmButton, technicalToggle);
+    setButtonContent(confirmButton, "save", "保存到项目", { iconOnly: true });
+    actions.append(confirmButton);
   }
   actions.append(closeButton);
   toolbar.append(titleBlock, actions);

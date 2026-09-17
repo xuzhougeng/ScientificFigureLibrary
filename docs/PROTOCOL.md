@@ -109,6 +109,17 @@ no second model and does not execute plotting code.
 
 ## Safety and truthfulness contract
 
+The private local client reference-cache API (`reference-cache/status`, `reference-cache/plan`,
+`reference-cache/apply`) reuses materialization protocol v2. A selected candidate must belong to a
+live result set; every new cache write needs its own local exact-preview receipt and reviewed plan.
+Batch selection creates independent plans, not a plotting task or an atomic batch transaction.
+Derived copies live under the explicitly bound Library's `indexes/reference-cache/`; a locator
+there is never authoritative. Before reporting a reference ready or producing a file-based prompt,
+SFL verifies its authoritative materialization receipt, provider-qualified identity, lock and entire
+file inventory. Status reads do not download code or missing previews. Reacquisition writes a new
+directory; existing copies are not overwritten. Cache operations do not publish or execute code.
+These authenticated private HTTP operations do not change the public MCP tool schema.
+
 SFL treats every supplied or downloaded asset as untrusted reference material.
 It copies and hashes files but never runs plotting code, notebooks, shell
 scripts, or dependency installers.

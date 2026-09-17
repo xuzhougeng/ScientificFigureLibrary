@@ -1150,6 +1150,9 @@ test("local save purpose loads the exact image and puts save in the top toolbar"
   assert.equal(detail.dialog.classList.contains("detail-save-flow"), true);
   assert.match(detail.confirmButton.textContent ?? "", /保存到项目/u);
   assert.equal(detail.confirmButton.closest(".detail-toolbar-actions") !== null, true);
+  assert.equal(detail.dialog.querySelector<HTMLElement>(".detail-technical-panel")?.hidden, false);
+  assert.equal(detail.dialog.querySelector(".detail-technical-toggle"), null);
+  assert.equal(detail.confirmButton.getAttribute("aria-label"), "保存到项目");
   assert.match(detail.status.textContent ?? "", /正在加载精确图片/u);
   assert.match(detail.preview.textContent ?? "", /正在加载精确图片/u);
   detail.closeButton.click();

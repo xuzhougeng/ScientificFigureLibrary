@@ -2,7 +2,7 @@ import SwiftUI
 import AppKit
 
 enum Section: String, CaseIterable, Identifiable, Hashable {
-    case discover = "图库", library = "我的图库", galleries = "外部图库", add = "创建参考图", integrations = "连接外部工具", settings = "设置"
+    case discover = "图库", library = "我的图库", add = "创建参考图", galleries = "连接外部图库", integrations = "连接外部工具", settings = "设置"
     var id: String { rawValue }
     var icon: String {
         switch self {
@@ -17,9 +17,9 @@ enum Section: String, CaseIterable, Identifiable, Hashable {
 }
 func friendlyNetworkError(_ error: Error) -> String {
     let raw = error.localizedDescription
-    if raw.contains("timed out") { return "访问 GitHub 超时。请在设置打开系统代理并保存，或在外部图库关闭自动刷新。" }
+    if raw.contains("timed out") { return "访问 GitHub 超时。请在设置打开系统代理并保存，或在连接外部图库关闭自动刷新。" }
     if raw.contains("ECONNRESET") { return "与 GitHub 的连接被重置。请检查网络或系统代理。" }
-    if raw.contains("Provider source change plan failed") { return "图库来源更新失败。请检查网络或系统代理后，在外部图库重试。" }
+    if raw.contains("Provider source change plan failed") { return "图库来源更新失败。请检查网络或系统代理后，在连接外部图库重试。" }
     if raw.contains("archive unavailable") || raw.contains("Open Figure Modules archive unavailable") {
         if raw.contains("network access is disabled") { return "这个模板的代码包还没下载到本机。请打开「从 GitHub 下载该模板的固定版本」后再保存。" }
         if raw.contains("timed out") { return "下载模板代码包时访问 GitHub 超时。请在设置打开系统代理并保存后重试。" }
@@ -38,8 +38,8 @@ struct PendingPlan: Identifiable {
     var after: (() async throws -> Void)? = nil
 }
 enum Sheet: Identifiable {
-    case candidate(JSON), library(JSON), plan(PendingPlan), code(String, String)
-    var id: String { switch self { case .candidate(let v): return "candidate-" + v["candidateId"].string; case .library(let v): return "library-" + v["templateId"].string; case .plan(let p): return p.id.uuidString; case .code(let name, _): return "code-" + name } }
+    case candidate(JSON), library(JSON), plan(PendingPlan), code(String, String), references([JSON], String)
+    var id: String { switch self { case .candidate(let v): return "candidate-" + v["candidateId"].string; case .library(let v): return "library-" + v["templateId"].string; case .plan(let p): return p.id.uuidString; case .code(let name, _): return "code-" + name; case .references(_, let resultSetId): return "references-" + resultSetId } }
 }
 
 @MainActor final class LibraryModel: ObservableObject {
@@ -57,6 +57,8 @@ enum Sheet: Identifiable {
     @Published var provider = ""
     @Published var result: JSON = .null
     @Published var thumbnails: JSON = .null
+    @Published var selectedReferences: [String: JSON] = [:]
+    @Published var referenceStates: [String: JSON] = [:]
     @Published var library: [JSON] = []
     @Published var libraryDirectory = ""
     @Published var workspaceDirectory = ""
@@ -163,7 +165,7 @@ enum Sheet: Identifiable {
     }
     func display(_ response: JSON) throws {
         let next = try backend.check(response)
-        if result["resultSetId"] != next["resultSetId"] { pages.removeAll() }
+        if result["resultSetId"] != next["resultSetId"] { pages.removeAll(); selectedReferences.removeAll(); referenceStates.removeAll() }
         result = next
         thumbnails = response["_meta"]["candidatePreviews"]
         pages[next["pageIndex"].int] = (next, thumbnails)

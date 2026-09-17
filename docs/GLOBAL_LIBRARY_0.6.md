@@ -110,6 +110,7 @@ writing a conflicting locator.
 | `store/exports/` | authoritative export receipts when present | include |
 | `store/quarantine/` | retained exceptional records | include |
 | `indexes/` | derived, rebuildable | exclude from canonical full backup |
+| `indexes/reference-cache/` | verified reference copies and non-authoritative locators for the local client | derived; reacquire if absent or invalid, preserve source identity and original materialization receipts |
 | `locks/` | runtime coordination only | exclude; never transfer as content |
 
 The root marker schema is `figure-library.root.v1`. Storage format 1.0 uses

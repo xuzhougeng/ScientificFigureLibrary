@@ -93,8 +93,8 @@ html.dialog-open .local-main { overflow: hidden; }
 .plan-line strong { color: #6d7d70; font-weight: 500; }
 .local-client .detail-panel { color: #23382d; background: #fff; }
 .local-client .candidate-dialog { background: #fff; color: #23382d; }
-.local-client .detail-toolbar-actions .dialog-close { float: none; }
-.local-client .detail-toolbar-actions .confirm-action { min-width: 8.5rem; }
+.local-client .detail-toolbar-actions .dialog-close { float: none; position: relative; }
+.local-client .detail-toolbar-actions .confirm-action { min-width: 36px; }
 .local-client .detail-technical-panel { background: #f4f7f3; border-color: #dfe6db; }
 .local-client .detail-technical-toggle { width: auto; }
 .path-picker { display: flex; gap: 8px; align-items: center; }
@@ -182,3 +182,43 @@ html.dialog-open .local-main { overflow: hidden; }
 }
 
 .local-client .card[data-selected="true"] { border-color: #246c4e; background: #eef7f1; }
+.reference-card-state { display: flex; align-items: center; justify-content: space-between; margin-top: 12px; padding-top: 12px; border-top: 1px solid #edf0ec; }
+/* A single light summarizes verified local availability, with accessible text. */
+.reference-status-light { position: relative; display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 36px; flex: 0 0 32px; outline-offset: 2px; }
+.reference-status-light::before { content: ""; width: 9px; height: 9px; border-radius: 50%; background: #98a19d; box-shadow: 0 0 0 4px #98a19d15; }
+.reference-status-light.is-image::before { background: #b77c20; box-shadow: 0 0 0 4px #b77c2015; }
+.reference-status-light.is-ready::before { background: #2b875e; box-shadow: 0 0 0 4px #2b875e15; }
+.reference-status-light::after, .reference-icon-action[data-tooltip]::after { content: attr(data-tooltip); pointer-events: none; position: absolute; bottom: calc(100% + 9px); left: 0; z-index: 5; width: max-content; max-width: 210px; white-space: normal; padding: 8px 10px; border-radius: 7px; background: #263f32; color: white; font: 12px/1.5 var(--font-sans, sans-serif); box-shadow: 0 4px 14px #17362624; opacity: 0; transform: translateY(3px); transition: opacity .12s, transform .12s; }
+.reference-status-light:hover::after, .reference-status-light:focus-visible::after, .reference-icon-action:hover::after, .reference-icon-action:focus-visible::after { opacity: 1; transform: translateY(0); }
+.reference-icon-action { position: relative; }
+/* Keep tooltip positioning identical before and during hover. A filter creates a containing block. */
+.local-client .reference-icon-action:hover { filter: none; }
+.reference-detail-status { display: inline-flex; align-items: center; }
+.local-client .detail-toolbar-actions { align-items: center; flex-shrink: 0; }
+.detail-toolbar-actions [data-tooltip]::after { bottom: auto; top: calc(100% + 9px); left: auto; right: 0; }
+@media (max-width: 600px) {
+  .local-client .detail-toolbar { flex-wrap: wrap; }
+  .local-client .detail-toolbar-title { flex-basis: 100%; }
+  .local-client .detail-toolbar-actions { width: 100%; justify-content: flex-end; gap: 6px; }
+  .detail-toolbar-actions .reference-status-light::after { left: 0; right: auto; }
+}
+.local-client button.reference-icon-action { width: 36px; height: 36px; min-width: 36px; padding: 8px; border: 1px solid #dfe7e1; border-radius: 10px; background: #fff; color: #315d45; }
+.local-client button.reference-icon-action:hover { background: #eaf3ed; border-color: #a8c2af; }
+.reference-cache-dialog { width: min(850px, calc(100vw - 32px)); }
+.reference-review-list { display: grid; gap: 18px; margin: 20px 0; }
+.reference-review-item { padding: 16px; border: 1px solid #dce6df; border-radius: 12px; background: #f7faf8; min-width: 0; }
+.reference-review-item h3 { margin: 0 0 12px; }
+.reference-review-item img { display: block; max-width: 100%; max-height: 320px; margin: 0 auto; object-fit: contain; background: white; }
+.reference-review-item p, .reference-path { overflow-wrap: anywhere; }
+.reference-path { display: block; margin: 10px 0; font-size: 12px; }
+.reference-review-item pre { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 12px; }
+.library-toolbar, .library-view-switch { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.library-view-switch { padding: 3px; border: 1px solid #dfe6db; border-radius: 9px; background: #edf1eb; gap: 2px; }
+.local-client .library-view-switch button { padding: 6px 12px; border: 0; background: transparent; color: #5c6d61; }
+.local-client .library-view-switch button[aria-pressed="true"] { background: white; color: #246c4e; box-shadow: 0 1px 4px #20392815; }
+.library-items[data-layout="gallery"] { grid-template-columns: repeat(auto-fill, minmax(min(260px, 100%), 1fr)); gap: 20px; }
+.library-items[data-layout="gallery"] .library-row { display: flex; flex-direction: column; align-items: stretch; padding: 14px; gap: 14px; }
+.local-client .library-preview { display: flex; align-items: center; justify-content: center; width: 100%; aspect-ratio: 4 / 3; padding: 12px; background: #f8faf7; border: 0; color: #708072; overflow: hidden; }
+.library-preview img { width: 100%; height: 100%; object-fit: contain; }
+.library-items[data-layout="list"] .library-preview { display: none; }
+.library-info { flex: 1; overflow-wrap: anywhere; }

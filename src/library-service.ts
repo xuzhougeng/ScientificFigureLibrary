@@ -85,6 +85,7 @@ import { VERSION } from "./version.ts";
 import { outcome, terminal } from "./tool-outcome.ts";
 import { defineGuidanceOperations } from "./guidance.ts";
 import type { LocalOperations } from "./local/contracts.ts";
+import { createReferenceCache } from "./local/reference-cache.ts";
 import { OperationRegistry, resourceTemplate } from "./service/operations.ts";
 import {
   candidateImageUri,
@@ -642,6 +643,15 @@ export async function createLibraryService(options: LibraryServiceOptions = {}) 
     previewConfirmations.requireResultSet({ resultSetId, queryDigest: state.queryDigest, catalogRevision, libraryBindingDigest: libraryBindingDigest(context) });
     return { state, context };
   };
+  const referenceCache = createReferenceCache({
+    operations, registry, context: currentProviderContext,
+    candidate: async (resultSetId, candidateId) => {
+      const { state } = await requireSearchState(resultSetId);
+      const candidate = state.candidates.find((item) => scopedCandidateId(resultSetId, item) === candidateId);
+      if (!candidate) throw new PreviewProtocolError("preview_selection_mismatch", "A candidate ID does not belong to this result set.");
+      return candidate;
+    },
+  });
   defineCandidateImages(operations, {
     failure: previewFailure,
     load: async (resultSetId, candidateIds) => {
@@ -2354,6 +2364,9 @@ export async function createLibraryService(options: LibraryServiceOptions = {}) 
   return {
     operations,
     local: {
+      referenceStatus: (input: unknown) => operations.run(() => referenceCache.status(input)),
+      planReference: (input: unknown) => operations.run(() => referenceCache.plan(input)),
+      applyReference: (input: unknown) => operations.run(() => referenceCache.apply(input)),
       preview: (input: unknown) => operations.run(() => localOperations.preview(input)),
       confirm: (input: unknown) => operations.run(() => localOperations.confirm(input)),
       library: () => operations.run(() => localOperations.library()),

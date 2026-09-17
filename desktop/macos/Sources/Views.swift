@@ -51,6 +51,7 @@ let libraryGreen = Color(red: 0.14, green: 0.42, blue: 0.30)
             case .candidate(let value): CandidateView(model: model, candidate: value)
             case .library(let value): LibraryDetailView(model: model, detail: value)
             case .plan(let value): PlanView(model: model, plan: value)
+            case .references(let values, let resultSetId): ReferenceCacheView(model: model, candidates: values, resultSetId: resultSetId)
             case .code(let title, let source): VStack { HStack { Text(title).font(.headline); Spacer(); Button("关闭") { model.sheet = nil } }; ScrollView([.horizontal, .vertical]) { Text(source).font(.system(.body, design: .monospaced)).textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading) } }.padding(24).frame(width: 800, height: 600)
             }
         }
@@ -73,15 +74,24 @@ let libraryGreen = Color(red: 0.14, green: 0.42, blue: 0.30)
                     }
                 }.frame(maxWidth: 330); TextField("数据特征（可选）", text: $model.dataProfile).textFieldStyle(.roundedBorder) }
                 HStack { ForEach(["火山图", "热图", "UMAP", "细胞比例", "富集分析"], id: \.self) { label in Button(label) { model.query = ["火山图": "volcano differential expression", "热图": "heatmap expression", "UMAP": "UMAP single cell", "细胞比例": "cell proportion barplot", "富集分析": "GO enrichment"][label]!; model.perform { try await model.search() } }.disabled(model.busy) } }
-                Text("打开图库即浏览图片。在线图库不会在安装时下载；请到「外部图库」或设置的「图片缓存」中对某个图库执行「缓存图片」。已缓存的图片可离线查看。").font(.callout).foregroundStyle(.secondary)
+                Text("打开图库即浏览图片。在线图库不会在安装时下载；请到「连接外部图库」或设置的「图片缓存」中对某个图库执行「缓存图片」。已缓存的图片可离线查看。").font(.callout).foregroundStyle(.secondary)
                 HStack { Text(model.query.isEmpty && model.result != .null ? "图库" : "候选图片").font(.headline); Spacer(); if model.result != .null { Text("\(model.result["total"].int) 个结果").foregroundStyle(.secondary) } }
                 galleryPager
+                if !model.selectedReferences.isEmpty {
+                    HStack {
+                        Text("已选择 \(model.selectedReferences.count) 个参考")
+                        Spacer()
+                        Button("缓存所选参考") { model.sheet = .references(Array(model.selectedReferences.values).sorted { $0["title"].string < $1["title"].string }, model.result["resultSetId"].string) }.buttonStyle(.borderedProminent)
+                    }
+                    Text("批量选择用于缓存图片与代码；缓存后可复制每张参考的文件路径与绘图提示词。").font(.callout).foregroundStyle(.secondary)
+                }
                 if model.syncingGallery && candidates.isEmpty {
                     VStack(spacing: 16) { ProgressView(); Text("正在同步图库…").foregroundStyle(.secondary) }.frame(maxWidth: .infinity).padding(.vertical, 80)
                 } else if candidates.isEmpty { VStack(spacing: 12) { Image(systemName: "photo.on.rectangle.angled").font(.system(size: 40)).foregroundStyle(.secondary); Text("图片与代码，成为下一次研究的起点").font(.headline); Text("打开图库即浏览全部图片。可用搜索或常见图形筛选。自己的资产在「我的图库」，也可以「创建参考图」。").foregroundStyle(.secondary) }.frame(maxWidth: .infinity).padding(.vertical, 80) }
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 230, maximum: 360))], spacing: 20) {
                     ForEach(candidates.indices, id: \.self) { index in
                         let candidate = candidates[index]
+                        VStack(alignment: .leading, spacing: 10) {
                         Button { model.sheet = .candidate(candidate) } label: {
                             VStack(alignment: .leading, spacing: 10) {
                                 Group { if let image = model.thumbnail(candidate) { Image(nsImage: image).resizable().scaledToFit() } else { Image(systemName: "photo").font(.largeTitle).foregroundStyle(.secondary) } }.frame(maxWidth: .infinity).frame(height: 170).background(Color.white)
@@ -90,12 +100,30 @@ let libraryGreen = Color(red: 0.14, green: 0.42, blue: 0.30)
                                 Text(candidate["application"].string).font(.caption).foregroundStyle(.secondary).lineLimit(3)
                             }.padding(14).frame(maxWidth: .infinity, alignment: .leading).background(Color(NSColor.controlBackgroundColor)).clipShape(RoundedRectangle(cornerRadius: 12))
                         }.buttonStyle(.plain).contextMenu { Button("复制精确引用") { copyText(object(["title": candidate["title"], "providerId": candidate["providerId"], "exactSelector": candidate["exactSelector"]]).pretty) } }
+                        HStack {
+                            Toggle("选择", isOn: Binding(get: { model.selectedReferences[candidate["candidateId"].string] != nil }, set: { checked in
+                                if !checked { model.selectedReferences.removeValue(forKey: candidate["candidateId"].string) }
+                                else if model.selectedReferences.count < 12 { model.selectedReferences[candidate["candidateId"].string] = candidate }
+                                else { model.error = "一次最多选择 12 个参考。" }
+                            })).toggleStyle(.checkbox)
+                            Spacer()
+                            ReferenceStateIcons(status: model.referenceStates[candidate["candidateId"].string] ?? .null, candidate: candidate)
+                            if model.referenceStates[candidate["candidateId"].string]?["reference"].string == "ready" {
+                                Button { model.perform { try await model.copyReference(candidate, resultSetId: model.result["resultSetId"].string) } } label: { Label("复制绘图提示词", systemImage: "doc.on.doc").labelStyle(.iconOnly) }.help("复制绘图提示词")
+                            } else {
+                                Button { model.sheet = .references([candidate], model.result["resultSetId"].string) } label: { Label("缓存此参考", systemImage: "arrow.down.to.line").labelStyle(.iconOnly) }.help("缓存此参考：按需获取图片与代码").disabled(!candidate["materializable"].bool)
+                            }
+                        }
+                        }
                     }
                 }
                 galleryPager
             }.padding(28)
         }
         .onChange(of: model.provider) { _ in model.perform { try await model.search() } }
+        .task(id: model.result["resultSetId"].string + String(model.result["pageIndex"].int)) {
+            do { try await model.refreshReferenceStates() } catch { model.error = friendlyNetworkError(error) }
+        }
     }
     var galleryPager: some View {
         let total = model.result["total"].int
@@ -197,7 +225,7 @@ func candidateValidationLines(_ candidate: JSON) -> [String] {
     @State private var displayed = false
     @State private var destination = ""
     @State private var allowNetwork = true
-    @State private var showTechnical = false
+    private let showTechnical = true
     @State private var loadingExact = false
     var chips: [String] {
         [candidate["sourceLabel"].string, candidate["assetKind"].string, candidate["language"].string, candidate["plotFamily"].string].filter { !$0.isEmpty }
@@ -207,12 +235,20 @@ func candidateValidationLines(_ candidate: JSON) -> [String] {
             HStack {
                 Text(candidate["title"].string).font(.title2).bold()
                 Spacer()
-                Button("保存到项目") {
+                ReferenceStateIcons(status: model.referenceStates[candidate["candidateId"].string] ?? .null, candidate: candidate)
+                Button { model.sheet = .references([candidate], model.result["resultSetId"].string) } label: { Image(systemName: "arrow.down.to.line") }.help("下载代码").accessibilityLabel("下载代码").disabled(model.busy || !candidate["materializable"].bool)
+                Button { model.perform { try await model.copyReference(candidate, resultSetId: model.result["resultSetId"].string) } } label: { Image(systemName: "doc.on.doc") }.help("复制提示词").accessibilityLabel("复制提示词")
+                Button {
                     guard let preview = preview, let bytes = bytes, displayed else { return }
                     model.perform { try await model.materialize(candidate, preview: preview, image: bytes, destination: destination, network: allowNetwork) }
-                }.buttonStyle(.borderedProminent).disabled(model.busy || !displayed || destination.isEmpty)
-                Button(showTechnical ? "收起技术信息" : "技术与验证信息") { showTechnical.toggle() }
-                Button("关闭") { model.sheet = nil }
+                } label: { Image(systemName: "folder") }.help("保存到项目").accessibilityLabel("保存到项目").disabled(model.busy || !displayed || destination.isEmpty)
+                Button {
+                    guard let image = exactImage, displayed else { return }
+                    NSPasteboard.general.clearContents()
+                    NSPasteboard.general.writeObjects([image])
+                    model.message = "已复制图片，可直接粘贴到其他应用。"
+                } label: { Image(systemName: "photo") }.help("复制图片").accessibilityLabel("复制图片").disabled(!displayed)
+                Button { model.sheet = nil } label: { Image(systemName: "xmark") }.help("关闭").accessibilityLabel("关闭")
             }
             HStack { TextField("保存到项目的目标父目录", text: $destination).textFieldStyle(.roundedBorder); Button("选择目录") { if let path = model.chooseDirectory() { destination = path } } }
             Toggle("从 GitHub 下载该模板的固定版本（不会下载整个图库）", isOn: $allowNetwork).font(.callout)
@@ -260,6 +296,7 @@ func candidateValidationLines(_ candidate: JSON) -> [String] {
                 preview = result.0
                 bytes = result.1
                 exactImage = result.2
+                try await model.refreshReferenceStates()
             } catch { model.error = friendlyNetworkError(error) }
             loadingExact = false
         }
@@ -285,11 +322,53 @@ func candidateValidationLines(_ candidate: JSON) -> [String] {
 
 @MainActor struct KnowledgeView: View {
     @ObservedObject var model: LibraryModel
+    @AppStorage("sfl-library-layout") private var layout = "gallery"
     var body: some View {
         VStack {
+            HStack {
+                Picker("显示方式", selection: $layout) { Text("Gallery").tag("gallery"); Text("List").tag("list") }.pickerStyle(.segmented).frame(width: 180)
+                Spacer()
+                Button("创建参考图") { model.section = .add }
+            }
             if model.library.isEmpty { VStack(spacing: 16) { Image(systemName: "books.vertical").font(.system(size: 40)).foregroundStyle(.secondary); Text("我的图库还没有资产").font(.title3); Button("创建参考图") { model.section = .add } }.frame(maxWidth: .infinity, maxHeight: .infinity) }
+            else if layout == "gallery" {
+                ScrollView { LazyVGrid(columns: [GridItem(.adaptive(minimum: 240))], spacing: 18) {
+                    ForEach(model.library.indices, id: \.self) { index in KnowledgeGalleryCard(model: model, value: model.library[index]) }
+                }.padding(.vertical, 12) }
+            }
             else { List(model.library.indices, id: \.self) { index in let value = model.library[index]; HStack { VStack(alignment: .leading, spacing: 7) { Text(value["title"].string).font(.headline); Text(value["workingHead"] == .null ? "已发布" : "有待审阅草稿").font(.caption).foregroundStyle(.secondary) }; Spacer(); Button("查看与管理") { model.perform { try await model.inspect(value["templateId"].string) } }.disabled(model.busy) }.padding(.vertical, 8) } }
         }.padding(16)
+    }
+}
+
+@MainActor struct KnowledgeGalleryCard: View {
+    @ObservedObject var model: LibraryModel
+    let value: JSON
+    @State private var image: NSImage?
+    @State private var previewMessage = "加载预览…"
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Button { model.perform { try await model.inspect(value["templateId"].string) } } label: {
+                Group {
+                    if let image = image { Image(nsImage: image).resizable().scaledToFit() }
+                    else { Text(previewMessage).foregroundStyle(.secondary) }
+                }.frame(maxWidth: .infinity).frame(height: 180)
+            }.buttonStyle(.plain).accessibilityLabel("查看 " + value["title"].string)
+            Text(value["title"].string).font(.headline)
+            Text(value["workingHead"] == .null ? "已发布" : "有待审阅草稿").font(.caption).foregroundStyle(.secondary)
+            Button("查看与管理") { model.perform { try await model.inspect(value["templateId"].string) } }.disabled(model.busy)
+        }.padding(14).frame(maxWidth: .infinity, alignment: .leading).background(Color(NSColor.controlBackgroundColor)).clipShape(RoundedRectangle(cornerRadius: 12))
+        .task(id: value.pretty) {
+            image = nil
+            do {
+                let detail = try await model.backend.call("figure_library_review_open", ["templateId": value["templateId"]])
+                let content = detail["workingContent"] == .null ? detail["publishedContent"] : detail["workingContent"]
+                guard !content["primaryPreview"].string.isEmpty else { previewMessage = "暂无预览图片"; return }
+                let asset = try model.backend.check(await model.backend.request("asset", object(["templateId": value["templateId"], "revisionId": content["revisionId"], "contentDigest": content["contentDigest"], "logicalPath": content["primaryPreview"]])))
+                if let data = Data(base64Encoded: asset["data"].string), let decoded = NSImage(data: data) { image = decoded }
+                else { previewMessage = "图片无法显示" }
+            } catch { previewMessage = "预览加载失败，可查看与管理" }
+        }
     }
 }
 

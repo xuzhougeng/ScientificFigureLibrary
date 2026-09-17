@@ -1,5 +1,9 @@
 export type SflIconName =
   | "check"
+  | "code"
+  | "download"
+  | "copy"
+  | "save"
   | "chevron-left"
   | "chevron-right"
   | "close"
@@ -22,6 +26,13 @@ type IconPart = readonly [
 
 const ICON_PARTS: Readonly<Record<SflIconName, readonly IconPart[]>> = {
   check: [["path", { d: "m5 12 4 4L19 6" }]],
+  code: [["path", { d: "m8 7-5 5 5 5m8-10 5 5-5 5m-3-13-2 16" }]],
+  download: [["path", { d: "M12 3v12m-4-4 4 4 4-4M4 16v4h16v-4" }]],
+  copy: [
+    ["rect", { x: "8", y: "8", width: "12", height: "13", rx: "2" }],
+    ["path", { d: "M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3" }],
+  ],
+  save: [["path", { d: "M3 7V5a2 2 0 0 1 2-2h5l2 3h7a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z" }], ["path", { d: "M12 10v7m-3-3 3 3 3-3" }]],
   "chevron-left": [["path", { d: "m15 18-6-6 6-6" }]],
   "chevron-right": [["path", { d: "m9 18 6-6-6-6" }]],
   close: [

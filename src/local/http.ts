@@ -162,6 +162,12 @@ export async function startLocalHttp(options: {
         return json(response, 200, await saveNetworkAccess(body));
       }
       if (url.pathname === "/api/preview") return json(response, 200, await service.local.preview(input));
+      if (url.pathname === "/api/reference-cache/status") return json(response, 200, await service.local.referenceStatus(input));
+      if (url.pathname === "/api/reference-cache/plan") return json(response, 200, await service.local.planReference(input));
+      if (url.pathname === "/api/reference-cache/apply") {
+        request.socket?.setTimeout(0);
+        return json(response, 200, await service.local.applyReference(input));
+      }
       if (url.pathname === "/api/confirm") return json(response, 200, await service.local.confirm(input));
       if (url.pathname === "/api/asset") return json(response, 200, await service.local.asset(input));
       if (url.pathname === "/api/gallery") return json(response, 200, await service.local.gallery(input));
