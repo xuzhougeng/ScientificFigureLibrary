@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="440" viewBox="0 0 1400 440" role="img" aria-labelledby="title desc">
+  <title id="title">SFL 使用流程</title>
+  <desc id="desc">下载安装，绑定本机目录，选择参考图，复制提示词并在 AI 或本地环境中绘图。</desc>
+  <rect width="1400" height="440" rx="28" fill="#f5f4ef"/>
+  <text x="70" y="70" fill="#267253" font-family="Arial, sans-serif" font-size="24" font-weight="700" letter-spacing="4">SCIENTIFIC FIGURE LIBRARY</text>
+  <text x="70" y="116" fill="#17211c" font-family="Arial, sans-serif" font-size="34" font-weight="700">从参考图到自己的科研图</text>
+  <g font-family="Arial, sans-serif">
+    <g transform="translate(70 170)">
+      <rect width="270" height="180" rx="20" fill="#ffffff" stroke="#d9ddd8"/>
+      <circle cx="44" cy="46" r="25" fill="#267253"/><text x="44" y="55" text-anchor="middle" fill="#ffffff" font-size="24" font-weight="700">1</text>
+      <text x="30" y="100" fill="#17211c" font-size="24" font-weight="700">下载安装</text>
+      <text x="30" y="136" fill="#5b675f" font-size="18">选择对应系统安装包</text>
+      <text x="30" y="162" fill="#5b675f" font-size="18">启动本地客户端</text>
+    </g>
+    <path d="M355 260h25" stroke="#c45c26" stroke-width="7" stroke-linecap="round"/><path d="m365 240 22 20-22 20" fill="none" stroke="#c45c26" stroke-width="7"/>
+    <g transform="translate(400 170)">
+      <rect width="270" height="180" rx="20" fill="#ffffff" stroke="#d9ddd8"/>
+      <circle cx="44" cy="46" r="25" fill="#267253"/><text x="44" y="55" text-anchor="middle" fill="#ffffff" font-size="24" font-weight="700">2</text>
+      <text x="30" y="100" fill="#17211c" font-size="24" font-weight="700">绑定目录</text>
+      <text x="30" y="136" fill="#5b675f" font-size="18">设置图库存储位置</text>
+      <text x="30" y="162" fill="#5b675f" font-size="18">设置本地工作区</text>
+    </g>
+    <path d="M685 260h25" stroke="#c45c26" stroke-width="7" stroke-linecap="round"/><path d="m695 240 22 20-22 20" fill="none" stroke="#c45c26" stroke-width="7"/>
+    <g transform="translate(730 170)">
+      <rect width="270" height="180" rx="20" fill="#ffffff" stroke="#d9ddd8"/>
+      <circle cx="44" cy="46" r="25" fill="#267253"/><text x="44" y="55" text-anchor="middle" fill="#ffffff" font-size="24" font-weight="700">3</text>
+      <text x="30" y="100" fill="#17211c" font-size="24" font-weight="700">选择参考</text>
+      <text x="30" y="136" fill="#5b675f" font-size="18">浏览、搜索和预览图库</text>
+      <text x="30" y="162" fill="#5b675f" font-size="18">复制绘图提示词</text>
+    </g>
+    <path d="M1015 260h25" stroke="#c45c26" stroke-width="7" stroke-linecap="round"/><path d="m1025 240 22 20-22 20" fill="none" stroke="#c45c26" stroke-width="7"/>
+    <g transform="translate(1060 170)">
+      <rect width="270" height="180" rx="20" fill="#1b4d35"/>
+      <circle cx="44" cy="46" r="25" fill="#ffffff"/><text x="44" y="55" text-anchor="middle" fill="#1b4d35" font-size="24" font-weight="700">4</text>
+      <text x="30" y="100" fill="#ffffff" font-size="22" font-weight="700">开始绘图</text>
+      <text x="30" y="136" fill="#d9eee0" font-size="17">AI 或 R/Python</text>
+      <text x="30" y="162" fill="#d9eee0" font-size="17">运行并检查结果</text>
+    </g>
+  </g>
+</svg>

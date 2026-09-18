@@ -1,5 +1,6 @@
 const I18N = {
   "zh": {
+    "nav.illustrated": "图文上手教程",
     "skip": "跳至主要内容",
     "nav.features": "功能",
     "nav.workflow": "使用流程",
@@ -161,6 +162,7 @@ const I18N = {
     "qs.more.docs": "快速开始文档（Markdown）"
   },
   "en": {
+    "nav.illustrated": "Illustrated guide (中文)",
     "skip": "Skip to content",
     "nav.features": "Features",
     "nav.workflow": "Workflow",

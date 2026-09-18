@@ -1,0 +1,37 @@
+.reading-layout { display: grid; grid-template-columns: minmax(0, 760px) 240px; gap: 0 64px; max-width: 1120px; margin: 0 auto; padding: 64px 28px 88px; }
+.article-header { grid-column: 1 / -1; max-width: 850px; margin-bottom: 48px; }
+.article-header h1 { font: 600 clamp(28px, 4vw, 44px)/1.45 var(--serif); margin: 0 0 20px; text-wrap: balance; }
+.article-meta { font-size: 14px; color: var(--faint); }
+.article-toc { grid-column: 2; grid-row: 2; position: sticky; top: 96px; align-self: start; border-left: 1px solid var(--line); padding-left: 24px; font-size: 13px; color: var(--muted); }
+.article-toc strong { color: var(--accent); }
+.article-toc ol { padding-left: 20px; line-height: 1.8; }
+.article-toc li { margin: 12px 0; }
+.article-toc a:hover { color: var(--accent); text-decoration: underline; }
+.source-link { display: block; margin-top: 24px; font-size: 12px; }
+.article-body { grid-column: 1; grid-row: 2; min-width: 0; font-size: 17px; line-height: 1.95; overflow-wrap: anywhere; }
+.article-body p { margin: 0 0 24px; }
+.article-body h2 { margin: 56px 0 24px; padding-top: 24px; border-top: 1px solid var(--line); font: 600 clamp(22px, 3vw, 28px)/1.55 var(--serif); scroll-margin-top: 110px; }
+.article-body a { color: var(--accent); text-decoration: underline; text-underline-offset: 4px; }
+.article-body li { margin-bottom: 12px; }
+.article-body ul, .article-body ol { padding-left: 24px; margin-bottom: 28px; }
+.article-body code { font-family: var(--mono); font-size: .85em; background: var(--bg-muted); padding: 2px 5px; border-radius: 4px; overflow-wrap: anywhere; }
+.article-body pre { padding: 20px 24px; border: 1px solid var(--line); border-radius: 12px; background: var(--bg-muted); white-space: pre-wrap; overflow-wrap: anywhere; }
+.article-body pre code { padding: 0; color: var(--text); }
+.article-body blockquote { margin: 24px 0 32px; padding: 24px; border-left: 3px solid var(--accent); border-radius: 0 12px 12px 0; background: var(--accent-soft); font-size: 15px; }
+.article-body blockquote p:last-child { margin-bottom: 0; }
+.article-body figure { margin: 32px 0; }
+.article-body figure img { width: 100%; border: 1px solid var(--line); border-radius: 12px; background: white; }
+.article-body figcaption { color: var(--faint); font-size: 13px; line-height: 1.8; margin-top: 12px; }
+@media (max-width: 900px) {
+  .reading-layout { display: flex; flex-direction: column; padding-top: 40px; max-width: 800px; }
+  .article-header { margin-bottom: 24px; }
+  .article-toc { position: static; width: 100%; padding: 20px 24px; margin-bottom: 36px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); }
+}
+@media (max-width: 480px) {
+  .reading-layout { padding: 32px 20px 56px; }
+  .article-body { font-size: 16px; }
+  .article-body blockquote { padding: 18px; }
+  .article-body h2 { scroll-margin-top: 130px; }
+  .article-body pre { padding: 16px; }
+  .nav-links a { padding-inline: 10px; }
+}
