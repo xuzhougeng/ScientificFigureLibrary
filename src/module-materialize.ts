@@ -24,6 +24,7 @@ import {
 } from "./open-modules.ts";
 import type {
   ModuleArchiveExactSelector,
+  ModuleCatalog,
   ModuleCatalogEntry,
   ModuleSourcePackManifest,
   StoredFile,
@@ -659,16 +660,31 @@ async function sourcePackInventory(root: string) {
   return files;
 }
 
+function isPersistTempFile(file: string) {
+  return /\.tmp-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu.test(file);
+}
+
+function catalogArchiveFiles(catalog: ModuleCatalog) {
+  return new Set(catalog.modules.map((module) => module.archive.path));
+}
+
 async function assertSourcePackInventory(
   root: string,
   manifest: ModuleSourcePackManifest,
+  catalog: ModuleCatalog,
 ) {
   const expected = new Set([
     "module-source-pack.manifest.json",
     ...manifest.entries.map((entry) => entry.file),
   ]);
+  const catalogArchives = catalogArchiveFiles(catalog);
   const actual = await sourcePackInventory(root);
-  const unexpected = actual.filter((file) => !expected.has(file));
+  const unexpected = actual.filter((file) => {
+    if (expected.has(file) || isPersistTempFile(file)) return false;
+    // A ZIP written before the manifest update is a partial persist, not an
+    // unsafe extra file. Unknown paths remain fail-closed.
+    return !catalogArchives.has(file);
+  });
   const missing = [...expected].filter((file) => !actual.includes(file));
   if (unexpected.length || missing.length) {
     throw new Error(
@@ -693,23 +709,30 @@ export async function readModuleSourcePackArchive(
     JSON.parse(Buffer.from(raw).toString("utf8")) as unknown,
     index.catalog,
   );
-  await assertSourcePackInventory(root, manifest);
+  await assertSourcePackInventory(root, manifest, index.catalog);
   const entry = manifest.entries.find((item) => item.moduleId === module.moduleId);
-  if (!entry) throw new Error(`Source Pack does not list ${module.moduleId}`);
-  const bytes = await readRegularContainedFile(
-    root,
-    entry.file,
-    "Source Pack archive",
-    MAX_ARCHIVE_BYTES,
-  );
-  const identity = verifyArchive(module, bytes, entry);
-  return {
-    bytes,
-    location: path.join(root, ...entry.file.split("/")),
-    source: "source-pack" as const,
-    transportSource: "source-pack" as const,
-    identity,
-  };
+  const file = entry?.file ?? module.archive.path;
+  try {
+    const bytes = await readRegularContainedFile(
+      root,
+      file,
+      "Source Pack archive",
+      MAX_ARCHIVE_BYTES,
+    );
+    const identity = verifyArchive(module, bytes, entry);
+    return {
+      bytes,
+      location: path.join(root, ...file.split("/")),
+      source: "source-pack" as const,
+      transportSource: "source-pack" as const,
+      identity,
+    };
+  } catch (error) {
+    if (!entry && (error as NodeJS.ErrnoException).code === "ENOENT") {
+      throw new Error(`Source Pack does not list ${module.moduleId}`);
+    }
+    throw error;
+  }
 }
 
 export function moduleArchiveUrl(module: ModuleCatalogEntry) {
@@ -855,7 +878,8 @@ export async function cacheModuleSourceArchive(
   persistPack = false,
 ) {
   const acquired = await acquireArchive({ index, module, sourcePackDir, allowNetwork });
-  if (acquired.source === "network" || persistPack) {
+  const listed = await sourcePackListsModule(sourcePackDir, index.catalog, module.moduleId);
+  if (acquired.source === "network" || persistPack || !listed) {
     await persistOpenModulesCache(sourcePackDir, index, module, acquired.bytes);
   }
   return acquired.source === "source-pack" ? "cached" : "downloaded";
@@ -894,7 +918,7 @@ export async function inspectModuleSourcePack(
       JSON.parse(Buffer.from(raw).toString("utf8")) as unknown,
       index.catalog,
     );
-    if (verifyArchives) await assertSourcePackInventory(root, manifest);
+    if (verifyArchives) await assertSourcePackInventory(root, manifest, index.catalog);
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === "ENOENT") {
       return {
@@ -1163,6 +1187,16 @@ async function extractModuleArchive(
   return written.sort();
 }
 
+async function sourcePackListsModule(directory: string, catalog: ModuleCatalog, moduleId: string) {
+  try {
+    const raw = await fs.readFile(path.join(path.resolve(directory), "module-source-pack.manifest.json"), "utf8");
+    const manifest = parseModuleSourcePackManifest(JSON.parse(raw) as unknown, catalog);
+    return manifest.entries.some((entry) => entry.moduleId === moduleId);
+  } catch {
+    return false;
+  }
+}
+
 function sourcePackEntry(module: ModuleCatalogEntry): ModuleSourcePackManifest["entries"][number] {
   return {
     moduleId: module.moduleId,
@@ -1245,7 +1279,7 @@ async function persistOpenModulesCacheUnlocked(
   try {
     const raw = await fs.readFile(manifestPath, "utf8");
     manifest = parseModuleSourcePackManifest(JSON.parse(raw) as unknown, index.catalog);
-    await assertSourcePackInventory(directory, manifest);
+    await assertSourcePackInventory(directory, manifest, index.catalog);
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
     const existing = await fs.readdir(directory).catch(() => []);

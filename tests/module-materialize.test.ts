@@ -81,36 +81,55 @@ function fixtureCatalog() {
   return { module, catalog, archiveBytes: archive, archiveSha256: sha256 };
 }
 
+function moduleFixture(moduleId: string) {
+  const base = fixtureCatalog();
+  const module: ModuleCatalogEntry = {
+    ...base.module,
+    moduleId,
+    source: { ...base.module.source, path: `modules/${moduleId}` },
+    archive: { ...base.module.archive, path: `archives/${moduleId}.zip` },
+    preview: { ...base.module.preview, path: `previews/${moduleId}/preview.png` },
+    thumbnail: { ...base.module.thumbnail, path: `thumbs/${moduleId}.png` },
+  };
+  return { module, catalog: { ...base.catalog, modules: [module] }, archiveBytes: base.archiveBytes, archiveSha256: base.archiveSha256 };
+}
+
+function sourcePackEntryJson(module: ModuleCatalogEntry) {
+  return {
+    moduleId: module.moduleId,
+    sourceRepository: module.source.repository,
+    sourceCommit: module.source.commit,
+    archiveRepository: module.archive.repository,
+    archiveCommit: module.archive.commit,
+    file: module.archive.path,
+    bytes: module.archive.bytes,
+    sha256: module.archive.sha256,
+  };
+}
+
 async function writeIndex(root: string, fixture = fixtureCatalog()) {
-  await fs.mkdir(path.join(root, "previews", fixture.module.moduleId), { recursive: true });
   await fs.mkdir(path.join(root, "thumbs"), { recursive: true });
+  for (const module of fixture.catalog.modules) {
+    await fs.mkdir(path.join(root, "previews", module.moduleId), { recursive: true });
+    await fs.writeFile(path.join(root, ...module.preview.path.split("/")), ONE_PIXEL_PNG);
+    await fs.writeFile(path.join(root, ...module.thumbnail.path.split("/")), ONE_PIXEL_PNG);
+  }
   await fs.writeFile(path.join(root, "module-catalog.json"), `${JSON.stringify(fixture.catalog)}\n`);
   await fs.writeFile(path.join(root, "module-preview.manifest.json"), `${JSON.stringify({
     schema: "figure-library.module-preview-manifest.v1",
     providerId: PERSONAL_MODULE_PROVIDER_ID,
-    entries: [
-      { moduleId: fixture.module.moduleId, role: "primary", ...fixture.module.preview },
-      { moduleId: fixture.module.moduleId, role: "thumbnail", ...fixture.module.thumbnail },
-    ],
+    entries: fixture.catalog.modules.flatMap((module) => [
+      { moduleId: module.moduleId, role: "primary", ...module.preview },
+      { moduleId: module.moduleId, role: "thumbnail", ...module.thumbnail },
+    ]),
   })}\n`);
   await fs.writeFile(path.join(root, "module-source-pack.manifest.json"), `${JSON.stringify({
     schema: "figure-library.module-source-pack.v1",
     providerId: PERSONAL_MODULE_PROVIDER_ID,
     repository: fixture.catalog.provider.repository,
-    entries: [{
-      moduleId: fixture.module.moduleId,
-      sourceRepository: fixture.module.source.repository,
-      sourceCommit: fixture.module.source.commit,
-      archiveRepository: fixture.module.archive.repository,
-      archiveCommit: fixture.module.archive.commit,
-      file: fixture.module.archive.path,
-      bytes: fixture.module.archive.bytes,
-      sha256: fixture.module.archive.sha256,
-    }],
+    entries: fixture.catalog.modules.map((module) => sourcePackEntryJson(module)),
   })}\n`);
   await fs.writeFile(path.join(root, "PERSONAL_MODULES_LICENSE.txt"), "Personal module fixture\n");
-  await fs.writeFile(path.join(root, ...fixture.module.preview.path.split("/")), ONE_PIXEL_PNG);
-  await fs.writeFile(path.join(root, ...fixture.module.thumbnail.path.split("/")), ONE_PIXEL_PNG);
   return fixture;
 }
 
@@ -121,16 +140,7 @@ async function writePack(root: string, fixture: ReturnType<typeof fixtureCatalog
     schema: "figure-library.module-source-pack.v1",
     providerId: PERSONAL_MODULE_PROVIDER_ID,
     repository: fixture.catalog.provider.repository,
-    entries: [{
-      moduleId: fixture.module.moduleId,
-      sourceRepository: fixture.module.source.repository,
-      sourceCommit: fixture.module.source.commit,
-      archiveRepository: fixture.module.archive.repository,
-      archiveCommit: fixture.module.archive.commit,
-      file: fixture.module.archive.path,
-      bytes: fixture.module.archive.bytes,
-      sha256: fixture.module.archive.sha256,
-    }],
+    entries: [sourcePackEntryJson(fixture.module)],
   })}\n`);
 }
 
@@ -249,6 +259,30 @@ test("personal module materialization fails closed for Source Pack identity mism
       allowNetwork: false,
     }),
     /Source Pack rejected|inventory differs/u,
+  );
+});
+
+test("Open Modules Source Pack adopts an unindexed catalog ZIP left by an interrupted persist", async (t) => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "sfl-module-orphan-zip-"));
+  t.after(() => fs.rm(root, { recursive: true, force: true }));
+  const first = moduleFixture("alluvial-plot");
+  const second = moduleFixture("complex-network");
+  const catalog: ModuleCatalog = {
+    ...first.catalog,
+    modules: [first.module, second.module],
+  };
+  const assets = path.join(root, "assets");
+  const pack = path.join(root, "pack");
+  await writeIndex(assets, { ...first, catalog });
+  await writePack(pack, first);
+  await fs.writeFile(path.join(pack, second.module.archive.path), second.archiveBytes);
+  const index = await ModuleCatalogIndex.load(assets, { expectedProviderId: PERSONAL_MODULE_PROVIDER_ID });
+  assert.equal(await cacheModuleSourceArchive(index, first.module, pack, false), "cached");
+  assert.equal(await cacheModuleSourceArchive(index, second.module, pack, false), "cached");
+  const manifest = JSON.parse(await fs.readFile(path.join(pack, "module-source-pack.manifest.json"), "utf8"));
+  assert.deepEqual(
+    manifest.entries.map((entry: { moduleId: string }) => entry.moduleId),
+    ["alluvial-plot", "complex-network"],
   );
 });
 

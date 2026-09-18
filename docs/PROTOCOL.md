@@ -692,8 +692,10 @@ The Open Figure Modules Source Pack uses
 `<globalLibraryRoot>/source-packs/open-modules/`, contains selected archive ZIPs
 and its manifest, and is never bundled into an SFL plugin. A valid partial pack
 may omit a requested module and continue to configured archive sources when
-networking is allowed. A corrupt manifest, unsafe inventory, or
-Provider/module/commit/path/byte/hash mismatch is a hard failure. Network
+networking is allowed. An `archives/<moduleId>.zip` written before the
+manifest update is adopted on the next cache of that Catalog module; unknown
+extra files remain an unsafe inventory. A corrupt manifest, other unsafe
+inventory, or Provider/module/commit/path/byte/hash mismatch is a hard failure. Network
 resolution tries the global local mirror override, then the official Gitee
 source shipped in the bundled Catalog, then any other Catalog-configured
 sources, before the canonical GitHub archive. The bundled default is
