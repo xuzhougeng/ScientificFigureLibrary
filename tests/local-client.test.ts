@@ -88,9 +88,10 @@ test("local app HTML exposes dual gallery pagination without a browse-gallery bu
   assert.match(html, /id="pick-materialize-directory"/u);
   assert.match(html, /id="copy-selection"/u);
   assert.match(html, /复制绘图提示词/u);
-  assert.match(html, /未缓存的会先下载固定版本再复制/u);
+  assert.match(html, /参考包未缓存时会先下载固定版本再复制/u);
   assert.doesNotMatch(html, /id="cache-selection"|缓存所选参考/u);
-  assert.match(html, /AI 无法访问本机文件时需上传材料/u);
+  assert.doesNotMatch(html, /selection-hint/u);
+  assert.match(html, /class="local-toast"/u);
   assert.match(html, /id="allow-network"[^>]*checked/u);
   assert.doesNotMatch(html, /请选择下面的某个图库/u);
   assert.match(html, /id="notice-message"/u);
@@ -102,6 +103,8 @@ test("local app HTML exposes dual gallery pagination without a browse-gallery bu
   assert.match(main, /notice-copy/u);
   assert.match(main, /copy-selection/u);
   assert.match(main, /copyOrCacheReferences/u);
+  assert.match(main, /copiedNotice/u);
+  assert.match(main, /hideNotice/u);
   assert.match(main, /selectionPurpose: "复制绘图提示词"/u);
   assert.match(main, /showSelectionControl: false/u);
   assert.match(main, /galleryCacheActionLabel/u);

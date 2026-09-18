@@ -65,7 +65,13 @@ export function referenceStatusFacts(status: ReferenceCacheStatus, candidate: Pi
   return facts;
 }
 
-async function copyPreparedPrompts(resultSetId: string, targets: ReferenceCopyCandidate[], status: HTMLElement, prefix = "") {
+async function copyPreparedPrompts(
+  resultSetId: string,
+  targets: ReferenceCopyCandidate[],
+  status: HTMLElement,
+  prefix = "",
+  onCopied?: (count: number) => void,
+) {
   const lead = prefix ? `${prefix} ` : "";
   try {
     const plan = planReferenceCopy(targets, await referenceStatuses(resultSetId, targets));
@@ -76,6 +82,7 @@ async function copyPreparedPrompts(resultSetId: string, targets: ReferenceCopyCa
     await writeReferencePrompts(plan.ready.map((item) => item.prompt));
     const blocked = plan.blocked.length ? ` ${plan.blocked.length} 个参考无法复制。` : "";
     status.textContent = `${lead}已复制 ${plan.ready.length} 条绘图提示词。AI 无法读取本机路径时，请上传提示词列出的材料。${blocked}`.trim();
+    onCopied?.(plan.ready.length);
   } catch (error) {
     status.textContent = `${lead}参考包已缓存，但复制提示词失败：${String(error)}`.trim();
   }
@@ -87,6 +94,7 @@ export async function cacheReferences(options: {
   onChanged(): void;
   copyWhenReady?: boolean;
   copyCandidates?: Candidate[];
+  onCopied?: (count: number) => void;
 }) {
   const { resultSetId, candidates } = options;
   const copyTargets = options.copyCandidates ?? candidates;
@@ -119,7 +127,11 @@ export async function cacheReferences(options: {
     copy.type = "button";
     copy.onclick = async () => {
       copy.disabled = true;
-      try { await copyReferencePrompt(resultSetId, item.candidate); item.message.textContent = "已复制。AI 无法读取本机路径时，请上传提示词列出的材料。"; }
+      try {
+        await copyReferencePrompt(resultSetId, item.candidate);
+        item.message.textContent = "已复制。AI 无法读取本机路径时，请上传提示词列出的材料。";
+        options.onCopied?.(1);
+      }
       catch (error) { item.message.textContent = String(error); }
       finally { copy.disabled = false; }
     };
@@ -146,7 +158,7 @@ export async function cacheReferences(options: {
     next.disabled = pending.length === 0;
     if (!pending.length) {
       next.hidden = true; networkLabel.hidden = true;
-      if (options.copyWhenReady) await copyPreparedPrompts(resultSetId, copyTargets, status);
+      if (options.copyWhenReady) await copyPreparedPrompts(resultSetId, copyTargets, status, "", options.onCopied);
     }
   } catch (error) { status.textContent = String(error); return; }
 
@@ -170,7 +182,7 @@ export async function cacheReferences(options: {
     }
     busy = false; close.disabled = false; next.hidden = true;
     const summary = `${completed} 个参考包可用，本次执行 ${failed} 个失败。`;
-    if (options.copyWhenReady) await copyPreparedPrompts(resultSetId, copyTargets, status, summary);
+    if (options.copyWhenReady) await copyPreparedPrompts(resultSetId, copyTargets, status, summary, options.onCopied);
     else status.textContent = `${summary}已缓存的参考包才能复制绘图提示词。`;
     options.onChanged();
   };

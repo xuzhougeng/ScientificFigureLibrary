@@ -35,7 +35,14 @@ let cacheGalleries: Array<Record<string, unknown>> = [];
 let galleryCacheStatuses: Record<string, Record<string, unknown>> = {};
 let statusLoaded = false;
 let statusPromise: Promise<void> | undefined;
+let noticeTimer = 0;
 (el<HTMLImageElement>("local-logo")).src = SFL_BRAND_ICON_DATA_URI;
+
+function hideNotice() {
+  window.clearTimeout(noticeTimer);
+  noticeTimer = 0;
+  el("notice").hidden = true;
+}
 
 function notify(message: string, error = false) {
   const target = el("notice");
@@ -44,6 +51,13 @@ function notify(message: string, error = false) {
   button("notice-copy").hidden = !error;
   button("notice-copy").textContent = "复制";
   target.hidden = false;
+  window.clearTimeout(noticeTimer);
+  noticeTimer = 0;
+  if (!error) noticeTimer = window.setTimeout(() => { if (!target.classList.contains("error")) hideNotice(); }, 4000);
+}
+
+function copiedNotice(count: number, extra = "") {
+  notify(`已复制 ${count} 条绘图提示词。AI 无法访问本机路径时，请上传列出的材料。${extra}`);
 }
 async function run(action: () => Promise<void>, control?: HTMLButtonElement) {
   if (control) control.disabled = true;
@@ -109,6 +123,7 @@ async function refreshReferenceCards(current: SearchResult) {
     const control = action("复制绘图提示词", async () => {
       await copyOrCacheReferences([candidate], current.resultSetId);
     });
+    control.addEventListener("click", (event) => event.stopPropagation());
     setButtonContent(control, "copy", "复制绘图提示词", { iconOnly: true });
     control.classList.add("reference-icon-action");
     control.disabled = state.archive === "not_applicable" || !candidate.materializable;
@@ -134,13 +149,14 @@ async function copyOrCacheReferences(candidates: Candidate[], resultSetId = resu
       copyWhenReady: true,
       copyCandidates: candidates,
       onChanged: () => referenceChanged(onChanged),
+      onCopied: (count) => copiedNotice(count),
     });
     return "caching" as const;
   }
   if (!plan.ready.length) throw new Error(plan.blocked[0]?.reason ?? "没有可复制的绘图提示词。");
   await writeReferencePrompts(plan.ready.map((item) => item.prompt));
   const extra = plan.blocked.length ? ` ${plan.blocked.length} 个参考无法复制。` : "";
-  notify(`已复制 ${plan.ready.length} 条绘图提示词。AI 无法访问本机路径时，请上传列出的材料。${extra}`);
+  copiedNotice(plan.ready.length, extra);
   return "copied" as const;
 }
 function display(parsed: SearchResult) {
@@ -849,7 +865,7 @@ for (const control of [input("use-system-proxy"), input("https-proxy")]) {
 button("notice-close").onclick = (event) => {
   event.preventDefault();
   event.stopPropagation();
-  el("notice").hidden = true;
+  hideNotice();
 };
 button("notice-copy").onclick = (event) => {
   event.preventDefault();
