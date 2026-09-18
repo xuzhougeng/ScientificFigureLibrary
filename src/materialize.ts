@@ -547,6 +547,13 @@ async function acquireArchive(options: {
   );
 }
 
+/** Cache verified source archives without materializing a project or executing code. */
+export async function cacheFigureYaSourceArchive(catalog: FigureYaCatalog, module: FigureYaModule, sourcePackDir: string) {
+  const acquired = await acquireArchive({ catalog, module, sourcePackDir, allowNetwork: true });
+  if (acquired.source === "network") await persistFigureYaCache(sourcePackDir, catalog, module, acquired.bytes, acquired.identity);
+  return acquired.source === "source-pack" ? "cached" : "downloaded";
+}
+
 export async function inspectFigureYaSourcePack(
   catalog: FigureYaCatalog,
   directory = process.env.FIGUREYA_SOURCE_PACK_DIR?.trim(),

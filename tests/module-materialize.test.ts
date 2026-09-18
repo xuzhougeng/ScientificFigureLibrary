@@ -10,6 +10,7 @@ import { strToU8, zipSync } from "fflate";
 import { ModuleCatalogIndex } from "../src/module-catalog.ts";
 import {
   materializeModuleTemplate,
+  cacheModuleSourceArchive,
   validateModuleArchive,
 } from "../src/module-materialize.ts";
 import { defaultOpenModulesSourcePackDir } from "../src/open-modules.ts";
@@ -150,6 +151,8 @@ test("personal module template/full materialization uses Source Pack and never e
   await writePack(pack, fixture);
   const index = await ModuleCatalogIndex.load(assets, { expectedProviderId: PERSONAL_MODULE_PROVIDER_ID, validatePreviews: true });
   const targetParent = path.join(root, "output");
+  assert.equal(await cacheModuleSourceArchive(index, fixture.module, pack), "cached");
+  await assert.rejects(fs.stat(targetParent), { code: "ENOENT" });
   const template = await materializeModuleTemplate({
     providerId: PERSONAL_MODULE_PROVIDER_ID,
     index,

@@ -9,6 +9,7 @@ import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { strToU8, zipSync } from "fflate";
 import { CatalogIndex } from "../src/catalog.ts";
+import { cacheFigureYaSourceArchive } from "../src/materialize.ts";
 import type { CurrentLibraryContext } from "../src/library-binding-tools.ts";
 import {
   ensureLibraryRootMarker,
@@ -966,6 +967,7 @@ test("FigureYa replay requires an authoritative receipt and a selector matching 
   try {
     const context = await publishedContext(path.join(root, "library"));
     const fixture = await figureYaFixture(root);
+    assert.equal(await cacheFigureYaSourceArchive(fixture.index.catalog, fixture.index.catalog.modules[0]!, fixture.sourcePack), "cached");
     const destination = path.join(root, "materialized");
     const operationId = "materialize-figureya-authoritative";
     const first = await startClient(context, fixture.index);

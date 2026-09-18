@@ -1176,3 +1176,9 @@ license. See
 候选可返回 `previewDelivery: "download"`。此模式下 `previewAvailable` 表示存在可获取的固定身份，并不承诺网络可达或已经缓存；当前页图片传输结果由 `searchPreviewAvailable` / `searchPreviewStatus` 表达。搜索不会下载非当前页候选的图片。精确预览只有取得、校验和传输真实图片后才可确认。缩略图下载失败不改变精确图片身份，可重新请求预览。
 
 图片缓存位于用户缓存目录，按 SHA-256 寻址并校验大小和格式。本地客户端可对用户明确选择的一个图库预取该图库清单中的固定预览图；这不会改变搜索只下载当前页、精确预览只下载选中图片的契约。确认后的材料化重验证仅允许读取缓存，不隐式重新下载已确认图片；缓存缺失或损坏需重新预览确认。`allowNetwork` 仍控制模板归档材料化，不能当作此前浏览图片的网络开关。既有 Provider 签名快照更新策略保持独立。
+
+### Local gallery source caches
+
+Private authenticated POST endpoints `gallery-cache/plan` and `gallery-cache/apply` support FigureYa and Open Figure Modules only. Plan accepts `providerId` and `mode` (`images`, `code`, `update`) and returns a session token, fixed-catalog counts, and Library-contained destinations. Apply requires that exact token and `confirmedBy: user`; expired plans, changed Library context, and changed catalogs are rejected. Concurrent/repeated Apply reuses the same in-session result. Results report image/archive successes and per-item failures; no cross-session completion replay is claimed.
+
+These operations prepare verified source archives and preview cache files only, never project materializations or execution. Existing exact-preview receipts and materialization plan/apply remain required when using a reference. Update verifies and fills the current catalog's cache, not its upstream catalog version. Successful old fixed-version caches remain intact when a later item fails. FigureYa and Open Figure use their shared Library source-pack directories, allowing subsequent single-reference acquisition to reuse them.

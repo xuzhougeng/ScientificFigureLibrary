@@ -51,6 +51,7 @@ let libraryGreen = Color(red: 0.14, green: 0.42, blue: 0.30)
             case .candidate(let value): CandidateView(model: model, candidate: value)
             case .library(let value): LibraryDetailView(model: model, detail: value)
             case .plan(let value): PlanView(model: model, plan: value)
+            case .galleryCache(let plan): GalleryCacheView(model: model, plan: plan)
             case .references(let values, let resultSetId): ReferenceCacheView(model: model, candidates: values, resultSetId: resultSetId)
             case .code(let title, let source): VStack { HStack { Text(title).font(.headline); Spacer(); Button("关闭") { model.sheet = nil } }; ScrollView([.horizontal, .vertical]) { Text(source).font(.system(.body, design: .monospaced)).textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading) } }.padding(24).frame(width: 800, height: 600)
             }
@@ -690,7 +691,14 @@ func prefetchConfirmText(label: String, gallery: JSON) -> String {
             if let gallery = cacheGallery {
                 Text(galleryCacheLabel(gallery)).font(.caption).foregroundStyle(.secondary)
             }
-            if let label = prefetchButtonLabel(cacheGallery ?? .null, failed: model.failedPrefetchIds.contains(providerId)) {
+            if ["org.figureya.module", "io.github.jarxunlai.personal-figures"].contains(providerId) {
+                HStack {
+                    Button("缓存图片") { prepareCache("images") }
+                    Button("缓存代码") { prepareCache("code") }
+                    Button("更新缓存") { prepareCache("update") }
+                }.disabled(model.busy)
+                Text("更新缓存会校验并补齐当前目录版本；目录版本更新请使用「检查更新」。").font(.caption).foregroundStyle(.secondary)
+            } else if let label = prefetchButtonLabel(cacheGallery ?? .null, failed: model.failedPrefetchIds.contains(providerId)) {
                 Button(label) { confirmPrefetch = true }.disabled(model.busy)
             }
             if personal && !removed {
@@ -733,6 +741,12 @@ func prefetchConfirmText(label: String, gallery: JSON) -> String {
         let gallery = cacheGallery ?? .null
         let label = source["sourceLabel"].string.isEmpty ? providerId : source["sourceLabel"].string
         return prefetchConfirmText(label: label, gallery: gallery)
+    }
+    private func prepareCache(_ mode: String) {
+        model.perform {
+            let response = try await model.backend.request("gallery-cache/plan", object(["providerId": text(providerId), "mode": text(mode)]))
+            model.sheet = .galleryCache(response["plan"])
+        }
     }
 }
 

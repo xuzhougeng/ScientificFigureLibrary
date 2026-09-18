@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { createGalleryCache } from "./local/gallery-cache.ts";
 import fs from "node:fs/promises";
 import path from "node:path";
 import type { CallToolResult, ReadResourceResult } from "@modelcontextprotocol/sdk/types.js";
@@ -2361,9 +2362,12 @@ export async function createLibraryService(options: LibraryServiceOptions = {}) 
     onApplied: providerController?.refreshPersonalProviders,
   });
 
+  const galleryCache = createGalleryCache({ figureYa: index, modules: () => liveModuleCatalogs()?.get(PERSONAL_MODULE_PROVIDER_ID), library: async () => (await currentLibraries()).snapshot });
   return {
     operations,
     local: {
+      planGalleryCache: (input: unknown) => operations.run(() => galleryCache.plan(input)),
+      applyGalleryCache: (input: unknown) => operations.run(() => galleryCache.apply(input)),
       referenceStatus: (input: unknown) => operations.run(() => referenceCache.status(input)),
       planReference: (input: unknown) => operations.run(() => referenceCache.plan(input)),
       applyReference: (input: unknown) => operations.run(() => referenceCache.apply(input)),

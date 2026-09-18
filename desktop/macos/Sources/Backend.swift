@@ -126,7 +126,7 @@ func sha256(_ data: Data) -> String { SHA256.hash(data: data).map { String(forma
         let url = origin.appendingPathComponent("api").appendingPathComponent(route)
         var request = URLRequest(url: url)
         request.httpMethod = body == nil ? "GET" : "POST"
-        request.timeoutInterval = body?["action"].string == "prefetch" ? 600 : 180
+        request.timeoutInterval = route == "gallery-cache/apply" ? 7200 : body?["action"].string == "prefetch" ? 600 : 180
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         if let body = body { request.httpBody = try JSONEncoder().encode(body); request.setValue("application/json", forHTTPHeaderField: "Content-Type") }
         let (bytes, response) = try await URLSession.shared.data(for: request)

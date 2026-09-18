@@ -137,6 +137,11 @@ export async function startLocalHttp(options: {
         return json(response, 200, { sourcePath: file, filename, bytes: bytes.length });
       }
       const input: unknown = JSON.parse((await readBody(request, BODY_LIMIT)).toString());
+      if (url.pathname === "/api/gallery-cache/plan") return json(response, 200, await service.local.planGalleryCache(input));
+      if (url.pathname === "/api/gallery-cache/apply") {
+        request.socket?.setTimeout(0);
+        return json(response, 200, await service.local.applyGalleryCache(input));
+      }
       if (url.pathname === "/api/call") {
         const call = CallInput.parse(input);
         if (!LOCAL_TOOLS.has(call.name)) return json(response, 403, { error: "This operation is not available through the local interface" });

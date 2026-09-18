@@ -8,6 +8,7 @@ import type { TemplateCandidate } from "../types.ts";
 import { exactSelectorDigest } from "../providers.ts";
 import { inspectMaterializedReference } from "../materialization-tools.ts";
 import { buildReferencePrompt } from "./reference-prompt.ts";
+import { galleryCodeDirectory } from "./gallery-cache.ts";
 
 export interface CachedReference {
   target: string;
@@ -114,7 +115,7 @@ export function createReferenceCache(options: {
       const value = checked(await options.operations.execute("figure_library_plan_materialize", {
         providerId: candidate.providerId, exactSelector: candidate.exactSelector,
         previewReceipt: input.previewReceipt, allowNetwork: input.allowNetwork, destination,
-        sourcePackDir: path.join(context.library.snapshot.root, "source-packs", "references", exactSelectorDigest(candidate.exactSelector)),
+        sourcePackDir: galleryCodeDirectory(context.library.snapshot.root, candidate.providerId),
       }));
       const plan = value.plan as { planDigest: string; target: string };
       plans.set(plan.planDigest, { candidate, root: context.library.snapshot.root, keyDirectory: directory, generation, operationId: randomUUID(), target: plan.target });

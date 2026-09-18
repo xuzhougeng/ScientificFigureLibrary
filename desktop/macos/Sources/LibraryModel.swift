@@ -38,8 +38,8 @@ struct PendingPlan: Identifiable {
     var after: (() async throws -> Void)? = nil
 }
 enum Sheet: Identifiable {
-    case candidate(JSON), library(JSON), plan(PendingPlan), code(String, String), references([JSON], String)
-    var id: String { switch self { case .candidate(let v): return "candidate-" + v["candidateId"].string; case .library(let v): return "library-" + v["templateId"].string; case .plan(let p): return p.id.uuidString; case .code(let name, _): return "code-" + name; case .references(_, let resultSetId): return "references-" + resultSetId } }
+    case candidate(JSON), library(JSON), plan(PendingPlan), code(String, String), references([JSON], String), galleryCache(JSON)
+    var id: String { switch self { case .candidate(let v): return "candidate-" + v["candidateId"].string; case .library(let v): return "library-" + v["templateId"].string; case .plan(let p): return p.id.uuidString; case .code(let name, _): return "code-" + name; case .references(_, let resultSetId): return "references-" + resultSetId; case .galleryCache(let plan): return "gallery-cache-" + plan["planDigest"].string } }
 }
 
 @MainActor final class LibraryModel: ObservableObject {
