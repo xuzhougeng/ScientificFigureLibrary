@@ -9,8 +9,8 @@ import SwiftUI
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
             Text("缓存外部图库").font(.title2).bold()
-            Text("图片：\(plan["images"].int) 张 · 源码包：\(plan["archives"].int) 个")
-            Text("校验并补齐当前目录中的固定版本，已有且有效的代码包会复用。不会自动切换目录版本。").foregroundStyle(.secondary)
+            Text("预览图：\(plan["images"].int) 张 · 参考包：\(plan["archives"].int) 个")
+            Text("校验并补齐当前目录中的固定版本，已有且有效的参考包会复用。不会自动切换目录版本。").foregroundStyle(.secondary)
             Text(plan["imageDirectory"].string).textSelection(.enabled)
             Text(plan["codeDirectory"].string).textSelection(.enabled)
             ScrollView { Text(status).textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading) }
@@ -24,7 +24,7 @@ import SwiftUI
                         Task {
                             do {
                                 let result = try await model.backend.request("gallery-cache/apply", object(["planDigest": plan["planDigest"], "confirmedBy": text("user")]))
-                                status = "本次校验可用：\(result["images"].int) 张图片、\(result["archives"].int) 个源码包；失败 \(result["failures"].array.count) 项。"
+                                status = "本次校验可用：\(result["images"].int) 张预览图、\(result["archives"].int) 个参考包；失败 \(result["failures"].array.count) 项。"
                                 for failure in result["failures"].array { status += "\n" + failure["item"].string + "：" + failure["message"].string }
                             } catch { status = error.localizedDescription }
                             busy = false; finished = true

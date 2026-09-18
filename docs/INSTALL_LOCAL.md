@@ -56,8 +56,8 @@ macOS 可能阻止从网络下载的 App 首次运行；只在确认下载来源
 
 - 在线图片预览：`indexes/preview-cache/v1/`。
 - 已确认的参考图片和代码：`indexes/reference-cache/`。
-- FigureYa / Open Figure Modules 源码包：`source-packs/figureya/` 与 `source-packs/open-modules/`，单参考下载与整库缓存复用同一份已校验源码包。旧版 `source-packs/references/` 不自动删除。
-- 缓存状态数据库：`indexes/cache-state.sqlite`。它按图库身份记录预览图和源码包的缓存数量、扫描/缓存/校验时间及任务状态；只保存可重建的索引，不替代实际缓存文件。
+- FigureYa / Open Figure Modules 参考包：`source-packs/figureya/` 与 `source-packs/open-modules/`，整库「缓存参考包」与单张展开复用同一份已校验压缩包。旧版 `source-packs/references/` 不自动删除。
+- 缓存状态数据库：`indexes/cache-state.sqlite`。它按图库身份记录预览图和参考包的缓存数量、扫描/缓存/校验时间及任务状态；只保存可重建的索引，不替代实际缓存文件。
 
 设置页的「图片缓存」按图库列出可下载数量和已缓存数量，可对单个图库下载、复制路径或清除预览缓存，不删除完整参考副本。更换图库位置后，新预览缓存跟随新位置。旧版系统缓存不会自动迁移或删除，首次访问会重新下载。高级配置 `SFL_PREVIEW_CACHE_DIR` 仅允许指定当前图库内的子目录，外部路径会报错。清除已确认图片的缓存后，需要重新预览再保存模板。
 

@@ -5,8 +5,10 @@ import { z } from "zod";
 import type { OperationRegistry } from "../service/operations.ts";
 import type { ProviderContext, ProviderRegistry } from "../provider-registry.ts";
 import type { TemplateCandidate } from "../types.ts";
-import { exactSelectorDigest } from "../providers.ts";
+import { exactSelectorDigest, FIGUREYA_PROVIDER_ID, PERSONAL_MODULE_PROVIDER_ID } from "../providers.ts";
 import { inspectMaterializedReference } from "../materialization-tools.ts";
+import { inspectFigureYaSourcePack } from "../materialize.ts";
+import { inspectModuleSourcePack } from "../module-materialize.ts";
 import { buildReferencePrompt } from "./reference-prompt.ts";
 import { galleryCodeDirectory } from "./gallery-cache.ts";
 
@@ -24,6 +26,11 @@ export interface ReferenceCacheStatus {
    * not report a readable bundled preview as a downloaded cache entry.
    */
   image: "bundled" | "preview_cached" | "not_cached";
+  /**
+   * Gallery-level source-pack archive for this template. Distinct from
+   * `reference`, which is the extracted, copy-ready exact cache.
+   */
+  archive: "cached" | "missing" | "not_applicable";
   reference: "ready" | "missing" | "invalid" | "unavailable";
   cached?: CachedReference;
   error?: string;
@@ -97,6 +104,35 @@ export function createReferenceCache(options: {
     status: async (raw: unknown) => {
       const input = z.object({ resultSetId: z.string().min(1), candidateIds: z.array(z.string().min(1)).min(1).max(12) }).strict().parse(raw);
       const context = await options.context();
+      const packs = new Map<string, Set<string> | "not_applicable">();
+      const sourcePack = async (providerId: string) => {
+        const existing = packs.get(providerId);
+        if (existing) return existing;
+        const directory = galleryCodeDirectory(context.library.snapshot.root, providerId);
+        try {
+          if (providerId === FIGUREYA_PROVIDER_ID) {
+            const inspected = await inspectFigureYaSourcePack(context.catalog.catalog, directory, { verifyArchives: false });
+            const ids = new Set(inspected.availableTemplates);
+            packs.set(providerId, ids);
+            return ids;
+          }
+          if (providerId === PERSONAL_MODULE_PROVIDER_ID) {
+            const index = context.moduleCatalogs?.get(providerId);
+            if (!index) {
+              const empty = new Set<string>();
+              packs.set(providerId, empty);
+              return empty;
+            }
+            const inspected = await inspectModuleSourcePack(index, directory, { verifyArchives: false });
+            const ids = new Set(inspected.availableTemplates);
+            packs.set(providerId, ids);
+            return ids;
+          }
+        } catch { /* Status must not fail the whole page if a source pack is unreadable. */ }
+        const fallback = providerId === FIGUREYA_PROVIDER_ID || providerId === PERSONAL_MODULE_PROVIDER_ID ? new Set<string>() : "not_applicable";
+        packs.set(providerId, fallback);
+        return fallback;
+      };
       const items: ReferenceCacheStatus[] = [];
       for (const candidateId of [...new Set(input.candidateIds)]) {
         const candidate = await options.candidate(input.resultSetId, candidateId);
@@ -108,12 +144,14 @@ export function createReferenceCache(options: {
           const preview = await adapter.loadPreview(offline, resolved);
           image = await previewCacheHasFile(context.library.snapshot.root, preview) ? "preview_cached" : "bundled";
         } catch { /* Status must never download a missing image. */ }
-        if (!candidate.materializable) { items.push({ candidateId, image, reference: "unavailable" }); continue; }
+        const pack = await sourcePack(candidate.providerId);
+        const archive: ReferenceCacheStatus["archive"] = pack === "not_applicable" ? "not_applicable" : pack.has(candidate.templateId) ? "cached" : "missing";
+        if (!candidate.materializable) { items.push({ candidateId, image, archive, reference: "unavailable" }); continue; }
         try {
           const value = await cached(context, candidate);
-          items.push({ candidateId, image, reference: value ? "ready" : "missing", ...(value ? { cached: value } : {}) });
+          items.push({ candidateId, image, archive, reference: value ? "ready" : "missing", ...(value ? { cached: value } : {}) });
         } catch (error) {
-          items.push({ candidateId, image, reference: "invalid", error: error instanceof Error ? error.message : String(error) });
+          items.push({ candidateId, image, archive, reference: "invalid", error: error instanceof Error ? error.message : String(error) });
         }
       }
       return { items };

@@ -103,6 +103,11 @@ test("local app HTML exposes dual gallery pagination without a browse-gallery bu
   assert.match(main, /copy-selection/u);
   assert.match(main, /copyOrCacheReferences/u);
   assert.match(main, /selectionPurpose: "复制绘图提示词"/u);
+  assert.match(main, /galleryCacheActionLabel/u);
+  assert.doesNotMatch(main, /缓存代码/u);
+  const uiState = await fs.readFile(path.resolve(import.meta.dirname, "../app/local/ui-state.ts"), "utf8");
+  assert.match(uiState, /缓存参考包/u);
+  assert.doesNotMatch(uiState, /缓存代码/u);
   assert.doesNotMatch(main, /el\("notice"\)\.addEventListener\("click"/u);
   assert.doesNotMatch(main, /批量缓存参考|缓存所选参考/u);
 });
@@ -345,6 +350,7 @@ test("local client binds, uploads, imports, reviews, publishes, previews and mat
   // The local provider can read its bundled preview, but that is not the
   // downloaded preview-cache entry maintained by the gallery cache.
   assert.equal(before.image, "bundled");
+  assert.equal(before.archive, "not_applicable");
   assert.equal(before.reference, "missing");
   assert.equal(before.cached, undefined);
   await assert.rejects(service.local.planReference({ ...selected, previewReceipt: "invented", allowNetwork: false }));

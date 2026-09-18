@@ -18,16 +18,17 @@ export function imageCacheLabel(image: ReferenceCacheStatus["image"]): { tone: S
 }
 
 export function referencePackLabel(
-  status: Pick<ReferenceCacheStatus, "reference" | "cached">,
+  status: Pick<ReferenceCacheStatus, "reference" | "cached"> & Partial<Pick<ReferenceCacheStatus, "archive">>,
   candidate: Pick<ReferenceCopyCandidate, "codeStatus">,
 ): { tone: StatusTone; text: string } {
   if (status.reference === "ready") {
     return status.cached?.hasCode
-      ? { tone: "ready", text: "已缓存 · 含代码" }
+      ? { tone: "ready", text: "可复制 · 含代码" }
       : { tone: "warning", text: "已缓存 · 无代码" };
   }
   if (status.reference === "invalid") return { tone: "warning", text: "需重新获取" };
   if (status.reference === "unavailable") return { tone: "warning", text: "不可获取" };
+  if (status.archive === "cached") return { tone: "ready", text: "已缓存" };
   return { tone: "empty", text: candidate.codeStatus === "none" ? "仅图片 · 待缓存" : "待缓存" };
 }
 

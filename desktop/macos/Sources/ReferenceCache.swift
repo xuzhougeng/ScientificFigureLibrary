@@ -11,10 +11,10 @@ func referenceStatusLabel(_ status: JSON, candidate: JSON) -> String {
     }
     let pack: String
     switch status["reference"].string {
-    case "ready": pack = status["cached"]["hasCode"].bool ? "已缓存 · 含代码" : "已缓存 · 无代码"
+    case "ready": pack = status["cached"]["hasCode"].bool ? "可复制 · 含代码" : "已缓存 · 无代码"
     case "invalid": pack = "需重新获取"
     case "unavailable": pack = "不可获取"
-    default: pack = candidate["codeStatus"].string == "none" ? "仅图片 · 待缓存" : "待缓存"
+    default: pack = status["archive"].string == "cached" ? "已缓存" : (candidate["codeStatus"].string == "none" ? "仅图片 · 待缓存" : "待缓存")
     }
     return "预览图：\(image) · 参考包：\(pack)"
 }

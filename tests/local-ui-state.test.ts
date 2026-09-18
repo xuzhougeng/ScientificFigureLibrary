@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  galleryCacheActionLabel,
   galleryMissingCount,
   pageHash,
   prefetchButtonLabel,
@@ -31,4 +32,10 @@ test("partial cache failure still counts as missing and offers continue", () => 
   assert.equal(prefetchButtonLabel({ declared: 316, cached: 240 }, true), "继续缓存");
   assert.equal(galleryMissingCount({ declared: 316, cached: 240 }), 76);
   assert.equal(prefetchButtonLabel(undefined, true), "继续缓存");
+});
+
+test("gallery cache actions name source archives as reference packs", () => {
+  assert.equal(galleryCacheActionLabel("images"), "缓存图片");
+  assert.equal(galleryCacheActionLabel("code"), "缓存参考包");
+  assert.equal(galleryCacheActionLabel("update"), "更新缓存");
 });

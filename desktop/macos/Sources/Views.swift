@@ -697,10 +697,10 @@ func prefetchConfirmText(label: String, gallery: JSON) -> String {
             if ["org.figureya.module", "io.github.jarxunlai.personal-figures"].contains(providerId) {
                 HStack {
                     Button("缓存图片") { prepareCache("images") }
-                    Button("缓存代码") { prepareCache("code") }
+                    Button("缓存参考包") { prepareCache("code") }
                     Button("更新缓存") { prepareCache("update") }
                 }.disabled(model.busy)
-                Text("更新缓存会校验并补齐当前目录版本；目录版本更新请使用「检查更新」。").font(.caption).foregroundStyle(.secondary)
+                Text("可分别准备预览图和参考包。更新缓存会校验并补齐当前目录版本；目录版本更新请使用「检查更新」。").font(.caption).foregroundStyle(.secondary)
             } else if let label = prefetchButtonLabel(cacheGallery ?? .null, failed: model.failedPrefetchIds.contains(providerId)) {
                 Button(label) { confirmPrefetch = true }.disabled(model.busy)
             }

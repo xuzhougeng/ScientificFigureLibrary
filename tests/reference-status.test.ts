@@ -20,6 +20,7 @@ const candidate = (id: string, extras: Partial<{ title: string; materializable: 
 const status = (id: string, extras: Partial<ReferenceCacheStatus> = {}): ReferenceCacheStatus => ({
   candidateId: id,
   image: extras.image ?? "not_cached",
+  archive: extras.archive ?? "missing",
   reference: extras.reference ?? "missing",
   ...(extras.cached ? { cached: extras.cached } : {}),
   ...(extras.error ? { error: extras.error } : {}),
@@ -31,8 +32,10 @@ test("gallery cache labels distinguish preview cache, bundled files, and exact r
   assert.deepEqual(imageCacheLabel("preview_cached"), { tone: "image", text: "已缓存" });
   assert.equal(referencePackLabel({ reference: "missing" }, { codeStatus: "scaffold" }).text, "待缓存");
   assert.equal(referencePackLabel({ reference: "missing" }, { codeStatus: "none" }).text, "仅图片 · 待缓存");
-  assert.equal(referencePackLabel({ reference: "ready", cached: { target: "/tmp", files: [], hasCode: true, prompt: "p" } }, { codeStatus: "scaffold" }).text, "已缓存 · 含代码");
+  assert.equal(referencePackLabel({ reference: "missing", archive: "cached" }, { codeStatus: "scaffold" }).text, "已缓存");
+  assert.equal(referencePackLabel({ reference: "ready", cached: { target: "/tmp", files: [], hasCode: true, prompt: "p" } }, { codeStatus: "scaffold" }).text, "可复制 · 含代码");
   assert.match(referenceStatusText(status("a", { image: "preview_cached", reference: "missing" }), { codeStatus: "scaffold" }), /预览图：已缓存 · 参考包：待缓存/u);
+  assert.match(referenceStatusText(status("a", { image: "preview_cached", reference: "missing", archive: "cached" }), { codeStatus: "scaffold" }), /预览图：已缓存 · 参考包：已缓存/u);
 });
 
 test("copying a reference uses cached prompts and caches missing packs first", () => {
@@ -80,6 +83,13 @@ test("gallery cards render separate preview and reference-pack chips", async () 
     assert.match(facts.textContent ?? "", /已缓存/u);
     assert.match(facts.textContent ?? "", /参考包/u);
     assert.match(facts.textContent ?? "", /待缓存/u);
+    const cachedPack = referenceStatusFacts(
+      status("b", { image: "preview_cached", reference: "missing", archive: "cached" }),
+      { codeStatus: "scaffold" },
+    );
+    assert.match(cachedPack.textContent ?? "", /参考包/u);
+    assert.match(cachedPack.textContent ?? "", /已缓存/u);
+    assert.doesNotMatch(cachedPack.textContent ?? "", /待缓存/u);
   } finally {
     Object.defineProperty(globalThis, "document", { configurable: true, value: previous });
     window.close();

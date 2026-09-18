@@ -1,5 +1,6 @@
 import { api } from "./api.ts";
 import type { GalleryCacheTask } from "../../src/local/gallery-cache.ts";
+import { galleryCacheActionLabel } from "./ui-state.ts";
 
 let watching = false;
 const states = new Map<string, string>();
@@ -21,7 +22,7 @@ function render(tasks: GalleryCacheTask[]) {
     let row = rows.get(task.id);
     if (!row) { row = document.createElement("article"); rows.set(task.id, row); list.append(row); }
     const title = document.createElement("strong");
-    title.textContent = `${task.providerId === "org.figureya.module" ? "FigureYa" : "Open Figure Modules"} · ${task.mode === "images" ? "缓存图片" : task.mode === "code" ? "缓存代码" : "更新缓存"}`;
+    title.textContent = `${task.providerId === "org.figureya.module" ? "FigureYa" : "Open Figure Modules"} · ${galleryCacheActionLabel(task.mode)}`;
     const progress = document.createElement("progress"); progress.max = Math.max(task.total, 1); progress.value = task.processed;
     progress.setAttribute("aria-label", title.textContent);
     const status = document.createElement("p");

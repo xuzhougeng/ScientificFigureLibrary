@@ -42,12 +42,14 @@ export function referenceStatusIcons(status: ReferenceCacheStatus, candidate: Ca
   const image = imageCacheLabel(status.image);
   const pack = referencePackLabel(status, candidate);
   const label = codeReady
-    ? "精确图片与代码已缓存到本地"
-    : status.image === "preview_cached"
-      ? "预览图已缓存到本地，精确参考尚未缓存"
-      : status.image === "bundled"
-        ? "图片可从图库本地资源读取，尚未写入预览缓存"
-        : "预览图与精确参考均未缓存到本地";
+    ? "精确图片与参考包已展开到本地，可复制提示词"
+    : status.archive === "cached"
+      ? "参考包已缓存到本地；复制提示词前仍需确认精确图片"
+      : status.image === "preview_cached"
+        ? "预览图已缓存到本地，参考包尚未缓存"
+        : status.image === "bundled"
+          ? "图片可从图库本地资源读取，参考包尚未缓存"
+          : "预览图与参考包均未缓存到本地";
   const badge = element("span", undefined, `reference-status-light is-${state}`);
   const explanation = `${label}。预览图：${image.text}。参考包：${pack.text}`;
   badge.tabIndex = 0; badge.setAttribute("role", "img"); badge.setAttribute("aria-label", explanation); badge.dataset.tooltip = explanation;

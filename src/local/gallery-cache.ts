@@ -168,7 +168,7 @@ export function createGalleryCache(options: {
         if (plan.providerId === FIGUREYA_PROVIDER_ID) {
           for (const module of options.figureYa.catalog.modules) {
             if (plan.mode !== "code" && (module.primaryPreview ?? module.thumbnail)) await attempt(`${module.moduleId}/image`, async () => saveImage(await options.figureYa.preview(module.moduleId)));
-            if (plan.mode !== "images" && module.archiveAvailable) await attempt(`${module.moduleId}/code`, async () => {
+            if (plan.mode !== "images" && module.archiveAvailable) await attempt(`${module.moduleId}/pack`, async () => {
               const state = await cacheFigureYaSourceArchive(options.figureYa.catalog, module, plan.codeDirectory);
               result.archives++; if (state === "downloaded") result.downloadedArchives++;
             });
@@ -177,7 +177,7 @@ export function createGalleryCache(options: {
           const index = options.modules()!;
           for (const module of index.catalog.modules) {
             if (plan.mode !== "code") for (const role of ["primary", "thumbnail"] as const) await attempt(`${module.moduleId}/${role}`, async () => saveImage(await index.preview(module, role)));
-            if (plan.mode !== "images") await attempt(`${module.moduleId}/code`, async () => {
+            if (plan.mode !== "images") await attempt(`${module.moduleId}/pack`, async () => {
               const state = await cacheModuleSourceArchive(index, module, plan.codeDirectory);
               result.archives++; if (state === "downloaded") result.downloadedArchives++;
             });

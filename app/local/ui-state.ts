@@ -46,3 +46,10 @@ export function prefetchButtonLabel(gallery: Record<string, unknown> | undefined
   if (failed) return "继续缓存";
   return undefined;
 }
+
+export function galleryCacheActionLabel(mode: "images" | "code" | "update" | string) {
+  if (mode === "images") return "缓存图片";
+  if (mode === "code") return "缓存参考包";
+  if (mode === "update") return "更新缓存";
+  return mode;
+}
