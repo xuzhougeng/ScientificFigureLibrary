@@ -1,0 +1,3 @@
+# Community 快照按字节校验（source.lock.json 的 bytes/sha256），必须保持 LF。
+assets/community/*.json text eol=lf
+assets/community/LICENSES/* text eol=lf
