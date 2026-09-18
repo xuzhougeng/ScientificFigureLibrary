@@ -147,7 +147,7 @@ function display(parsed: SearchResult) {
   if (parsed.resultSetId !== result?.resultSetId) { selected = new Map(); pages.clear(); }
   result = parsed;
   pages.set(parsed.pagination.pageIndex, parsed);
-  renderCandidateCards({ document, cards: el("cards"), empty: el("empty"), result: parsed, selectionPurpose: "复制绘图提示词", showDetailAction: false, selectedIds: new Set(selected.keys()),
+  renderCandidateCards({ document, cards: el("cards"), empty: el("empty"), result: parsed, selectionPurpose: "复制绘图提示词", showDetailAction: false, showSelectionControl: false, selectedIds: new Set(selected.keys()),
     onToggleSelect: (candidate, checked) => {
       if (checked && selected.size < 12) selected.set(candidate.candidateId, candidate);
       else selected.delete(candidate.candidateId);

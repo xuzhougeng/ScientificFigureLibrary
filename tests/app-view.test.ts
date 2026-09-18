@@ -1009,6 +1009,31 @@ test("cards show only actionable preview/materialization status", () => {
   window.close();
 });
 
+test("gallery cards can hide the extra select control and still toggle by card click", () => {
+  const window = createTestWindow();
+  const document = window.document as unknown as Document;
+  const cards = document.createElement("section");
+  const empty = document.createElement("section");
+  const item = candidate("org.figureya.module", "no-select-control", "ready");
+  const toggles: boolean[] = [];
+  renderCandidateCards({
+    document,
+    cards,
+    empty,
+    result: searchResult([item]),
+    showSelectionControl: false,
+    onToggleSelect(_candidate, selected) { toggles.push(selected); },
+    onDetail() {},
+  });
+  const card = cards.querySelector(".card") as HTMLElement;
+  assert.equal(card.querySelector(".candidate-select"), null);
+  (card.querySelector(".card-context") as HTMLElement).click();
+  assert.deepEqual(toggles, [true]);
+  assert.equal(card.dataset.selected, "true");
+  assert.match(card.querySelector(".select-badge")?.textContent ?? "", /已选/u);
+  window.close();
+});
+
 test("cards prefer a scientific question and fall back to the application scenario", () => {
   const window = createTestWindow();
   const document = window.document as unknown as Document;

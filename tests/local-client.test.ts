@@ -103,6 +103,7 @@ test("local app HTML exposes dual gallery pagination without a browse-gallery bu
   assert.match(main, /copy-selection/u);
   assert.match(main, /copyOrCacheReferences/u);
   assert.match(main, /selectionPurpose: "复制绘图提示词"/u);
+  assert.match(main, /showSelectionControl: false/u);
   assert.match(main, /galleryCacheActionLabel/u);
   assert.doesNotMatch(main, /缓存代码/u);
   const uiState = await fs.readFile(path.resolve(import.meta.dirname, "../app/local/ui-state.ts"), "utf8");

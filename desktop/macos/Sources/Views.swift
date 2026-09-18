@@ -92,29 +92,41 @@ let libraryGreen = Color(red: 0.14, green: 0.42, blue: 0.30)
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 230, maximum: 360))], spacing: 20) {
                     ForEach(candidates.indices, id: \.self) { index in
                         let candidate = candidates[index]
+                        let selected = model.selectedReferences[candidate["candidateId"].string] != nil
                         VStack(alignment: .leading, spacing: 10) {
-                        Button { model.sheet = .candidate(candidate) } label: {
                             VStack(alignment: .leading, spacing: 10) {
-                                Group { if let image = model.thumbnail(candidate) { Image(nsImage: image).resizable().scaledToFit() } else { Image(systemName: "photo").font(.largeTitle).foregroundStyle(.secondary) } }.frame(maxWidth: .infinity).frame(height: 170).background(Color.white)
-                                Text(candidate["title"].string).font(.headline).lineLimit(3)
-                                Text(candidate["sourceLabel"].string).font(.caption).foregroundStyle(libraryGreen)
-                                Text(candidate["application"].string).font(.caption).foregroundStyle(.secondary).lineLimit(3)
-                            }.padding(14).frame(maxWidth: .infinity, alignment: .leading).background(Color(NSColor.controlBackgroundColor)).clipShape(RoundedRectangle(cornerRadius: 12))
-                        }.buttonStyle(.plain).contextMenu { Button("复制精确引用") { copyText(object(["title": candidate["title"], "providerId": candidate["providerId"], "exactSelector": candidate["exactSelector"]]).pretty) } }
-                        HStack {
-                            Toggle("选择", isOn: Binding(get: { model.selectedReferences[candidate["candidateId"].string] != nil }, set: { checked in
-                                if !checked { model.selectedReferences.removeValue(forKey: candidate["candidateId"].string) }
-                                else if model.selectedReferences.count < 12 { model.selectedReferences[candidate["candidateId"].string] = candidate }
-                                else { model.error = "一次最多选择 12 个参考。" }
-                            })).toggleStyle(.checkbox)
-                            Spacer()
-                            let status = model.referenceStates[candidate["candidateId"].string] ?? .null
-                            ReferenceStateIcons(status: status, candidate: candidate)
-                            Button { model.perform { try await model.copyOrCache([candidate], resultSetId: model.result["resultSetId"].string) } } label: { Label("复制绘图提示词", systemImage: "doc.on.doc").labelStyle(.iconOnly) }
-                                .help("复制绘图提示词")
-                                .disabled(status["reference"].string == "unavailable" || !candidate["materializable"].bool)
-                        }
-                        Text(referenceStatusLabel(model.referenceStates[candidate["candidateId"].string] ?? .null, candidate: candidate)).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                                Button { model.sheet = .candidate(candidate) } label: {
+                                    Group { if let image = model.thumbnail(candidate) { Image(nsImage: image).resizable().scaledToFit() } else { Image(systemName: "photo").font(.largeTitle).foregroundStyle(.secondary) } }.frame(maxWidth: .infinity).frame(height: 170).background(Color.white)
+                                }.buttonStyle(.plain).help("查看详情")
+                                VStack(alignment: .leading, spacing: 10) {
+                                    Text(candidate["title"].string).font(.headline).lineLimit(3)
+                                    Text(candidate["sourceLabel"].string).font(.caption).foregroundStyle(libraryGreen)
+                                    Text(candidate["application"].string).font(.caption).foregroundStyle(.secondary).lineLimit(3)
+                                }
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .contentShape(Rectangle())
+                                .onTapGesture {
+                                    let id = candidate["candidateId"].string
+                                    if selected { model.selectedReferences.removeValue(forKey: id) }
+                                    else if model.selectedReferences.count < 12 { model.selectedReferences[id] = candidate }
+                                    else { model.error = "一次最多选择 12 个参考。" }
+                                }
+                            }
+                            .padding(14)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(selected ? libraryGreen.opacity(0.12) : Color(NSColor.controlBackgroundColor))
+                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                            .overlay(RoundedRectangle(cornerRadius: 12).stroke(selected ? libraryGreen : Color.clear, lineWidth: 2))
+                            .contextMenu { Button("复制精确引用") { copyText(object(["title": candidate["title"], "providerId": candidate["providerId"], "exactSelector": candidate["exactSelector"]]).pretty) } }
+                            HStack {
+                                Spacer()
+                                let status = model.referenceStates[candidate["candidateId"].string] ?? .null
+                                ReferenceStateIcons(status: status, candidate: candidate)
+                                Button { model.perform { try await model.copyOrCache([candidate], resultSetId: model.result["resultSetId"].string) } } label: { Label("复制绘图提示词", systemImage: "doc.on.doc").labelStyle(.iconOnly) }
+                                    .help("复制绘图提示词")
+                                    .disabled(status["archive"].string == "not_applicable" || !candidate["materializable"].bool)
+                            }
+                            Text(referenceStatusLabel(model.referenceStates[candidate["candidateId"].string] ?? .null, candidate: candidate)).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                         }
                     }
                 }

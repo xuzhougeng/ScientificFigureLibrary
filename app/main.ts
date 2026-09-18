@@ -267,6 +267,7 @@ function render(result: SearchResult) {
     cards,
     empty,
     result,
+    showSelectionControl: false,
     selectedIds: selectedIds(),
     onToggleSelect: (candidate, selected) => {
       if (selected) selectedCandidates.set(candidate.candidateId, candidate);
