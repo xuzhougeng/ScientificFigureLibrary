@@ -115,6 +115,8 @@ Requires Node.js 22+:
 
 Pull requests run tests, type checking, build and MCP smoke across Linux, Windows
 and macOS. See [basic CI](docs/CI.md) for the matrix and merge-check setup.
+Pushing a stable `vX.Y.Z` tag packages local clients, host plugins, the npm
+tarball and the Wisp update feed, then uploads them to the GitHub Release.
 Maintainers can also configure the optional [AI comment bot](docs/COMMENT_BOT.md)
 for manually requested issue suggestions and PR reviews.
 

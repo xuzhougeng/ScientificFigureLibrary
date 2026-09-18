@@ -1,0 +1,195 @@
+name: GitHub Release
+
+on:
+  push:
+    tags:
+      - "v[0-9]+.[0-9]+.[0-9]+"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing stable tag to package and publish (vX.Y.Z)
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  actions: read
+  checks: read
+
+concurrency:
+  group: github-release-${{ github.event.inputs.tag || github.ref }}
+  cancel-in-progress: false
+
+env:
+  CI: "true"
+  SFL_OPEN_FIGURE_AUTO_REFRESH: "0"
+
+jobs:
+  validate:
+    name: Check tag and release notes
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    outputs:
+      tag: ${{ steps.check.outputs.tag }}
+      version: ${{ steps.check.outputs.version }}
+      sha: ${{ steps.check.outputs.sha }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        env:
+          GIT_CONFIG_COUNT: "2"
+          GIT_CONFIG_KEY_0: core.autocrlf
+          GIT_CONFIG_VALUE_0: "false"
+          GIT_CONFIG_KEY_1: core.eol
+          GIT_CONFIG_VALUE_1: lf
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
+          fetch-tags: true
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - run: npm ci
+      - id: check
+        env:
+          RELEASE_TAG: ${{ github.event.inputs.tag || github.ref_name }}
+        run: node scripts/github-release.mjs check-tag --tag "$RELEASE_TAG" --github-output
+      - name: Require SFL / CI required on this commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_SHA: ${{ steps.check.outputs.sha }}
+        run: |
+          set -euo pipefail
+          for attempt in $(seq 1 24); do
+            conclusions="$(gh api "repos/${GITHUB_REPOSITORY}/commits/${RELEASE_SHA}/check-runs" --paginate \
+              --jq '.check_runs[] | select(.name == "SFL / CI required") | .conclusion' || true)"
+            echo "SFL / CI required: ${conclusions:-pending} (attempt ${attempt})"
+            if printf '%s\n' "$conclusions" | grep -qx success; then
+              exit 0
+            fi
+            if printf '%s\n' "$conclusions" | grep -Eqx 'failure|cancelled|skipped|timed_out'; then
+              echo "Refusing to publish: SFL / CI required is not success"
+              exit 1
+            fi
+            sleep 30
+          done
+          echo "Timed out waiting for SFL / CI required on $RELEASE_SHA"
+          exit 1
+
+  plugins:
+    name: Package host plugins and npm tarball
+    needs: [validate]
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        env:
+          GIT_CONFIG_COUNT: "2"
+          GIT_CONFIG_KEY_0: core.autocrlf
+          GIT_CONFIG_VALUE_0: "false"
+          GIT_CONFIG_KEY_1: core.eol
+          GIT_CONFIG_VALUE_1: lf
+        with:
+          ref: ${{ needs.validate.outputs.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - name: Isolate application state
+        run: |
+          root="$RUNNER_TEMP/sfl-release-state"
+          mkdir -p "$root/config" "$root/cache" "$root/data" "$root/tmp"
+          {
+            echo "XDG_CONFIG_HOME=$root/config"
+            echo "XDG_CACHE_HOME=$root/cache"
+            echo "XDG_DATA_HOME=$root/data"
+            echo "TMPDIR=$root/tmp"
+            echo "TEMP=$root/tmp"
+            echo "TMP=$root/tmp"
+          } >> "$GITHUB_ENV"
+      - run: npm ci
+      - run: npm run package:plugins
+      - run: npm run package:npm
+      - name: Stage plugin and npm release files
+        run: |
+          mkdir -p staged-release
+          cp release/scientific-figure-library-*.zip \
+            release/scientific-figure-library-*.tgz \
+            release/scientific-figure-library-*.sha256 \
+            release/scientific-figure-library-wisp-update.json \
+            staged-release/
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: host-plugins-and-npm
+          path: staged-release/
+          compression-level: 0
+          if-no-files-found: error
+
+  local-clients:
+    name: Package local clients
+    needs: [validate]
+    uses: ./.github/workflows/local-clients.yml
+    with:
+      ref: ${{ needs.validate.outputs.sha }}
+    permissions:
+      contents: read
+
+  publish:
+    name: Upload GitHub Release
+    needs: [validate, plugins, local-clients]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write
+      actions: read
+    env:
+      GH_TOKEN: ${{ github.token }}
+      RELEASE_TAG: ${{ needs.validate.outputs.tag }}
+      RELEASE_VERSION: ${{ needs.validate.outputs.version }}
+      RELEASE_SHA: ${{ needs.validate.outputs.sha }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        env:
+          GIT_CONFIG_COUNT: "2"
+          GIT_CONFIG_KEY_0: core.autocrlf
+          GIT_CONFIG_VALUE_0: "false"
+          GIT_CONFIG_KEY_1: core.eol
+          GIT_CONFIG_VALUE_1: lf
+        with:
+          ref: ${{ needs.validate.outputs.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - run: npm ci
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          path: release-assets
+          merge-multiple: true
+      - name: Verify inventory and write UTF-8 release payload
+        run: |
+          node scripts/github-release.mjs prepare \
+            --dir release-assets \
+            --version "$RELEASE_VERSION" \
+            --tag-sha "$RELEASE_SHA" \
+            --out-dir release-meta
+      - name: Create or update the GitHub Release
+        run: |
+          set -euo pipefail
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            echo "Release $RELEASE_TAG already exists; replacing assets and notes"
+          else
+            gh api --method POST "/repos/${GITHUB_REPOSITORY}/releases" \
+              --input release-meta/github-release-create.json
+          fi
+          mapfile -t files < release-meta/upload-files.txt
+          gh release upload "$RELEASE_TAG" "${files[@]}" --clobber
+          release_id="$(gh api "/repos/${GITHUB_REPOSITORY}/releases/tags/${RELEASE_TAG}" --jq .id)"
+          gh api --method PATCH "/repos/${GITHUB_REPOSITORY}/releases/${release_id}" \
+            --input release-meta/github-release-update.json
+          echo "Published https://github.com/${GITHUB_REPOSITORY}/releases/tag/${RELEASE_TAG}"

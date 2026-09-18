@@ -40,6 +40,7 @@
 | 构建及 MCP smoke | `npm run test:smoke` |
 | 完整开发检查 | `npm run check` |
 | Markdown 链接检查 | `npm run docs:check-links -- <文件路径>` |
+| 发布 GitHub Release | 先 `version:set` 并撰写 `.github/release-notes/vX.Y.Z.md`，再推送 `vX.Y.Z` 标签；流程见 [基础 CI](docs/CI.md#github-release) |
 
 - 按改动范围运行相关测试；影响服务接入或构建时补充 smoke。纯文档改动检查相关链接即可，不要求重跑完整测试。
 - 版本调整使用 `npm run version:set -- <版本>`，再运行 `npm run version:check`；打包入口查阅 `package.json` 中的 `package:*`。

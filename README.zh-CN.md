@@ -57,6 +57,7 @@ Wisp、Codex、Claude、Cursor 插件均分发一个核心 figure-library Skill�
 本地使用 Node.js 22+，执行 `npm ci` 和 `npm run check`。
 PR 的基础 CI 覆盖 Linux、Windows、macOS 上的测试、类型检查、构建和 MCP smoke。
 检查矩阵与合并门禁配置见 [基础 CI](docs/CI.md)。
+推送稳定标签 `vX.Y.Z` 会打包本地客户端、宿主插件、npm 包和 Wisp 更新 feed，并上传到 GitHub Release。
 维护者也可配置 [AI 评论 bot](docs/COMMENT_BOT.md)，手动生成 Issue 回复建议和 PR 审查评论。
 
 ## 许可证

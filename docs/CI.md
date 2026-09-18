@@ -40,5 +40,32 @@ checkout 单独固定 LF，避免改变已提交快照的字节；临时目录�
 环境隔离的具体设置见工作流；本机通过不能代替远端跨平台验收。
 
 本阶段覆盖基础质量检查。[评论 bot](COMMENT_BOT.md) 的离线测试纳入 CI，真实模型调用在独立手动工作流中运行。
-Dependabot、依赖安全审计、发布打包和自动发布不在该工作流中。
+Dependabot 和依赖安全审计不在该工作流中。面向 `main` 的 [本地客户端打包](../.github/workflows/local-clients.yml) 只上传 Actions artifacts，不创建 GitHub Release。
 MCP smoke 验证服务协议流程，不代表真实桌面宿主安装/交互验收，也不执行用户绘图代码。
+
+## GitHub Release
+
+推送稳定标签 `vX.Y.Z`（或对已有标签手动运行）会触发
+[GitHub Release](../.github/workflows/release.yml)。该工作流按
+[v0.8.0 发布页](https://github.com/xuzhougeng/ScientificFigureLibrary/releases/tag/v0.8.0)
+的标准打包并上传，不在每次 `main` 推送时发布。
+
+发布前在同一提交上完成：
+
+1. `npm run version:set -- <x.y.z>`，使 `package.json`、插件 manifest、Skill 标题与 PROTOCOL 中的包名一致。
+2. 按 [release notes 说明](../.github/release-notes/README.md) 撰写 `.github/release-notes/v<x.y.z>.md`：YAML 前言里写上一标签和中英摘要，正文只写相对上一标签的完整中英 changelog。不要手写下载表、体积、SHA 或提交哈希。
+3. 将该提交推到 `main`。
+4. `git tag v<x.y.z>` 后 `git push origin v<x.y.z>`。发布作业会等待同一提交上的 **SFL / CI required** 成功；失败或超时不会打包上传。
+
+工作流随后：
+
+| 作业 | 作用 |
+| --- | --- |
+| Check tag and release notes | 标签与 `package.json` 版本一致；notes 可解析；`previous_tag` 是已有 git 标签 |
+| Package host plugins and npm tarball | `npm run package:plugins` 与 `npm run package:npm`，含 Wisp 更新 feed |
+| Package local clients | 复用本地客户端工作流，按标签提交打包五个平台的内置 Node / `no-node` 安装包 |
+| Upload GitHub Release | 清单必须正好 31 个文件（15 个安装包/插件/npm + 15 个 `.sha256` + `scientific-figure-library-wisp-update.json`），用 UTF-8 JSON 写双语说明并上传 |
+
+缺 notes、缺 Wisp feed、SHA-256 对不上、或目录里多出/缺少文件时，发布作业失败，不会把不完整的资源标成正式版。已有同名 Release 时覆盖资源和说明，便于重跑。说明正文由脚本生成下载表和来源信息，changelog 仍来自人工撰写的 notes，避免只列出本地客户端。
+
+本地 `npm run package:*` 仍只写入 `release/`，不会上传。重新发布已有标签可在 Actions 里手动运行 **GitHub Release** 并填写该标签。打包 smoke 不能代替真实宿主或桌面端验收。

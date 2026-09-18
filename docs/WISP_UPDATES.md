@@ -25,9 +25,12 @@ SHA-256 sidecar. The feed is committed in the same rollback-protected local
 transaction, after the archive checks and packaged MCP smoke test pass.
 The all-host packager rechecks the feed against the staged archive.
 
-Upload all three files to the matching stable GitHub Release `v<version>` before
-publishing that release. The scripts do not upload assets. The Wisp feed currently
-requires a stable version; prerelease packaging through these entrypoints fails.
+Pushing a stable tag `v<version>` uploads all three files to the matching GitHub
+Release through [.github/workflows/release.yml](../.github/workflows/release.yml).
+Local `npm run package:wisp` / `package:plugins` still only write `release/` and
+do not upload. The Wisp feed currently requires a stable version; prerelease
+packaging through these entrypoints fails. The release job fails closed if the
+feed is missing or does not match the verified Wisp ZIP.
 
 Discovery URL (read when the installed plugin's update flow is invoked):
 https://github.com/xuzhougeng/ScientificFigureLibrary/releases/latest/download/scientific-figure-library-wisp-update.json

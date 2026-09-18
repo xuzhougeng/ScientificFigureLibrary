@@ -1008,7 +1008,12 @@ same time; that duplicates tools.
 npm run package:plugins
 ```
 
-This writes four artifacts into `release/`:
+This writes four artifacts into `release/`. Pushing a stable tag `vX.Y.Z`
+packages those ZIPs, the npm tarball, local-client installers, SHA-256 sidecars,
+and the Wisp update feed, then uploads them to the GitHub Release. See
+[basic CI](CI.md#github-release). Local `package:*` scripts do not upload.
+
+The four host archives are:
 
 - `scientific-figure-library-wisp-0.8.0.zip` — install from Wisp **Settings → Plugins**
 - `scientific-figure-library-codex-0.8.0.zip` — Codex plugin with `.codex-plugin/plugin.json`, `.codex-plugin/mcp.json`, and `skills/figure-library`
