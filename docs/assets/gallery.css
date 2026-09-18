@@ -65,7 +65,6 @@
 .figure-detail-copy > p { font-size: 13px; color: var(--muted); line-height: 1.85; overflow-wrap: anywhere; white-space: pre-line; }
 .figure-detail-copy h3 { font-size: 12px; font-weight: 600; margin: 24px 0 8px; }
 .figure-detail-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 28px; }
-.nav-links a[aria-current="page"] { color: var(--accent); background: var(--accent-soft); }
 @media (max-width: 1000px) {
   .figure-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
   .gallery-intro-head { display: block; }

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="zh-CN" data-page="tutorial">
   <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,20 +8,27 @@
     <link rel="icon" href="assets/logo.svg" type="image/svg+xml">
     <link rel="stylesheet" href="assets/pages.css">
     <link rel="stylesheet" href="assets/tutorial.css">
+    <script src="assets/pages.js" defer></script>
   </head>
   <body>
-    <a class="skip-link" href="#main">跳至主要内容</a>
+    <a class="skip-link" data-i18n="skip" href="#main">跳至主要内容</a>
     <header class="site-nav">
       <div class="container">
         <a class="brand" href="index.html"><img src="assets/logo.svg" alt="" width="28" height="28"><span class="brand-name">Scientific Figure Library</span><span class="brand-short" aria-hidden="true">SFL</span></a>
-        <nav class="nav-links" aria-label="页面导航">
-          <a href="index.html">首页</a>
-          <a href="gallery.html">图库</a>
-          <a href="#install">安装</a>
-          <a href="#use">使用</a>
-          <a href="#update">更新</a>
+        <nav class="nav-links" aria-label="页面导航" data-i18n-aria="nav.aria">
+          <a href="index.html" data-page-link data-i18n="nav.home">首页</a>
+          <a href="gallery.html" data-page-link data-i18n="nav.gallery">图库</a>
+          <a href="tutorial.html" data-page-link data-i18n="nav.tutorial" aria-current="page">教程</a>
+          <a href="quickstart.html" data-page-link data-i18n="nav.quickstart">快速开始</a>
         </nav>
-        <div class="nav-cta"><a class="btn btn-secondary nav-github" href="https://github.com/xuzhougeng/ScientificFigureLibrary">GitHub</a><a class="btn btn-primary" href="https://github.com/xuzhougeng/ScientificFigureLibrary/releases/tag/v0.8.0">下载 0.8.0</a></div>
+        <div class="nav-cta">
+          <div class="lang-switch" role="group" aria-label="语言" data-i18n-aria="lang.aria">
+            <button type="button" data-lang="zh" aria-pressed="true">中文</button>
+            <button type="button" data-lang="en" aria-pressed="false">EN</button>
+          </div>
+          <a class="btn btn-secondary nav-github" href="https://github.com/xuzhougeng/ScientificFigureLibrary">GitHub</a>
+          <a data-i18n="nav.download" class="btn btn-primary" href="https://github.com/xuzhougeng/ScientificFigureLibrary/releases/latest">获取插件</a>
+        </div>
       </div>
     </header>
     <main id="main">
@@ -75,6 +82,6 @@
         </div>
       </section>
     </main>
-    <footer class="site-footer"><div class="container footer-inner"><a class="brand" href="index.html"><img src="assets/logo.svg" alt="" width="28" height="28"><span class="brand-name">Scientific Figure Library</span><span class="brand-short" aria-hidden="true">SFL</span></a><nav class="footer-links" aria-label="项目链接"><a href="index.html">首页</a><a href="gallery.html">图库</a><a href="https://github.com/xuzhougeng/ScientificFigureLibrary/releases">版本记录</a><a href="https://github.com/xuzhougeng/ScientificFigureLibrary/issues">问题反馈</a></nav><p class="footer-copy">代码 MIT · 导入图形保留其记录的许可证。</p></div></footer>
+    <footer class="site-footer"><div class="container footer-inner"><a class="brand" href="index.html"><img src="assets/logo.svg" alt="" width="28" height="28"><span class="brand-name">Scientific Figure Library</span><span class="brand-short" aria-hidden="true">SFL</span></a><nav class="footer-links" aria-label="项目链接" data-i18n-aria="footer.aria"><a href="index.html" data-page-link data-i18n="nav.home">首页</a><a href="gallery.html" data-page-link data-i18n="nav.gallery">图库</a><a href="tutorial.html" data-page-link data-i18n="nav.tutorial">教程</a><a href="quickstart.html" data-page-link data-i18n="nav.quickstart">快速开始</a><a href="https://github.com/xuzhougeng/ScientificFigureLibrary/releases" data-i18n="footer.releases">版本记录</a><a href="https://github.com/xuzhougeng/ScientificFigureLibrary/issues" data-i18n="footer.issues">问题反馈</a></nav><p class="footer-copy" data-i18n="footer.note">代码 MIT · 导入图形保留其记录的许可证。</p></div></footer>
   </body>
 </html>

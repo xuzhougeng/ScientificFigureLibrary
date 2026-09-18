@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-page="quickstart">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="三步接入 Scientific Figure Library：选择安装方式、绑定本机目录，在宿主中导入并复用第一张图。">
+    <title>快速开始 | Scientific Figure Library</title>
+    <link rel="icon" href="assets/logo.svg" type="image/svg+xml">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Noto+Sans+SC:wght@400;500;600&family=Noto+Serif+SC:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600&family=Source+Serif+4:opsz,wght@8..60,400;8..60,500;8..60,600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="assets/pages.css">
+    <link rel="stylesheet" href="assets/quickstart.css">
+    <script src="assets/pages.js" defer></script>
+  </head>
+  <body>
+    <a data-i18n="skip" class="skip-link" href="#top">跳至主要内容</a>
+    <header class="site-nav">
+      <div class="container">
+        <a class="brand" href="index.html" data-page-link>
+          <img src="assets/logo.svg" alt="" width="28" height="28">
+          <span class="brand-name">Scientific Figure Library</span>
+          <span class="brand-short" aria-hidden="true">SFL</span>
+        </a>
+        <nav class="nav-links" aria-label="页面导航" data-i18n-aria="nav.aria">
+          <a href="index.html" data-page-link data-i18n="nav.home">首页</a>
+          <a href="gallery.html" data-page-link data-i18n="nav.gallery">图库</a>
+          <a href="tutorial.html" data-page-link data-i18n="nav.tutorial">教程</a>
+          <a href="quickstart.html" data-page-link data-i18n="nav.quickstart" aria-current="page">快速开始</a>
+        </nav>
+        <div class="nav-cta">
+          <div class="lang-switch" role="group" aria-label="语言" data-i18n-aria="lang.aria">
+            <button type="button" data-lang="zh" aria-pressed="true">中文</button>
+            <button type="button" data-lang="en" aria-pressed="false">EN</button>
+          </div>
+          <a class="btn btn-secondary nav-github" href="https://github.com/xuzhougeng/ScientificFigureLibrary">GitHub</a>
+          <a data-i18n="nav.download" class="btn btn-primary" href="https://github.com/xuzhougeng/ScientificFigureLibrary/releases/latest">获取插件</a>
+        </div>
+      </div>
+    </header>
+    <main id="top">
+      <section class="qs-hero">
+        <div class="container">
+          <div class="section-label"><span class="idx">[ QUICK START ]</span><span data-i18n="qs.kicker">三步接入本机图库</span></div>
+          <h1 data-i18n="qs.title">从安装到第一张图。</h1>
+          <p data-i18n="qs.lead" class="lead">SFL 是本机优先的 stdio MCP 服务。选一种安装方式，绑定两个本机目录，然后在宿主中导入、发布并复用你的第一张图。</p>
+          <div class="qs-hero-actions">
+            <a data-i18n="hero.download" class="btn btn-primary" href="https://github.com/xuzhougeng/ScientificFigureLibrary/releases/latest">获取最新插件</a>
+            <a data-i18n="qs.tutorial" class="btn btn-secondary" data-page-link href="tutorial.html">查看安装教程</a>
+          </div>
+          <p data-i18n="qs.req" class="qs-req">开始前请确认：Node.js 22+，以及支持 stdio MCP 的宿主 —— Wisp Science、Claude Science、Codex、Cursor 或任意 stdio 客户端。</p>
+        </div>
+      </section>
+      <section id="paths">
+        <div class="container">
+          <div class="section-label"><span class="idx">[ 001 ]</span><span data-i18n="qs.paths.label">选择安装方式</span></div>
+          <div class="section-head">
+            <h2 data-i18n="qs.paths.title">三种接入方式，选一种即可。</h2>
+          </div>
+          <div class="feature-grid">
+            <article class="feature-card">
+              <p class="card-index">01 / LOCAL CLIENT</p>
+              <h3 data-i18n="qs.path1.title">本地客户端</h3>
+              <p data-i18n="qs.path1.body">下载 0.8.0 安装包：macOS 原生 SwiftUI App，或 Windows / Linux 本地网页客户端。</p>
+              <a data-i18n="qs.tutorial" class="btn btn-secondary" data-page-link href="tutorial.html">查看安装教程</a>
+            </article>
+            <article class="feature-card">
+              <p class="card-index">02 / WISP SCIENCE</p>
+              <h3 data-i18n="qs.path2.title">Wisp Science 插件</h3>
+              <p data-i18n="qs.path2.body">构建插件 ZIP，在「设置 → 插件」中安装，为新会话启用。</p>
+              <p class="qs-code-inline"><code>npm run package:wisp</code></p>
+            </article>
+            <article class="feature-card">
+              <p class="card-index">03 / ANY STDIO HOST</p>
+              <h3 data-i18n="qs.path3.title">其他 stdio 宿主</h3>
+              <p data-i18n="qs.path3.body">从源码构建，把 dist/index.js 注册为宿主的 stdio MCP 服务。</p>
+              <p class="qs-code-inline"><code>dist/index.js</code></p>
+            </article>
+          </div>
+        </div>
+      </section>
+      <section id="setup" class="section-muted">
+        <div class="container">
+          <div class="section-label"><span class="idx">[ 002 ]</span><span data-i18n="qs.setup.label">首次设置</span></div>
+          <div class="section-head">
+            <h2 data-i18n="qs.setup.title">绑定目录，导入第一张图。</h2>
+          </div>
+          <ol class="install-steps">
+            <li>
+              <h3 data-i18n="qs.step1.title">绑定全局图库</h3>
+              <p data-i18n="qs.step1.body">指定一个长期保存已发布版本的目录，跨项目复用。</p>
+            </li>
+            <li>
+              <h3 data-i18n="qs.step2.title">绑定本地工作区</h3>
+              <p data-i18n="qs.step2.body">指定当前项目的工作目录，与全局图库分开管理。</p>
+            </li>
+            <li>
+              <h3 data-i18n="qs.step3.title">导入图与代码</h3>
+              <p data-i18n="qs.step3.body">把图形、绘图代码和方法说明一起整理进图库。</p>
+            </li>
+            <li>
+              <h3 data-i18n="qs.step4.title">审阅并发布</h3>
+              <p data-i18n="qs.step4.body">记录验证情况，发布为可追溯的不可变版本。</p>
+            </li>
+          </ol>
+          <div class="workflow-note">
+            <p data-i18n="workflow.note">图与代码保存在一起；实际绘图由宿主在你批准的 R / Python 环境中完成。</p>
+          </div>
+        </div>
+      </section>
+      <section id="build">
+        <div class="container">
+          <div class="section-label"><span class="idx">[ 003 ]</span><span data-i18n="qs.code.label">从源码构建</span></div>
+          <div class="section-head">
+            <h2 data-i18n="qs.code.title">构建并注册 MCP 服务。</h2>
+          </div>
+          <div class="qs-code-grid">
+            <div class="code-card">
+              <div class="code-header">
+                <span data-i18n="install.code">从源码构建</span>
+                <button data-i18n="copy.label" class="copy-button" type="button" data-copy="qs-build-code">复制命令</button>
+              </div>
+              <pre>
+<code id="qs-build-code">git clone https://github.com/xuzhougeng/ScientificFigureLibrary.git
+cd ScientificFigureLibrary
+npm ci
+npm run check
+
+# Wisp Science plugin
+npm run package:wisp</code>
+</pre>
+              <p class="copy-status" role="status" aria-live="polite"></p>
+            </div>
+            <div class="code-card">
+              <div class="code-header">
+                <span data-i18n="qs.code.config">MCP 配置</span>
+                <button data-i18n="copy.label" class="copy-button" type="button" data-copy="qs-mcp-code">复制命令</button>
+              </div>
+              <pre>
+<code id="qs-mcp-code">{
+  "mcpServers": {
+    "figure-library": {
+      "command": "node",
+      "args": [
+        "/absolute/path/to/ScientificFigureLibrary/dist/index.js"
+      ]
+    }
+  }
+}</code>
+</pre>
+              <p class="copy-status" role="status" aria-live="polite"></p>
+            </div>
+          </div>
+          <p data-i18n="install.codeNote" class="code-note">构建后，在 release/ 中找到 Wisp 插件 ZIP。通用 MCP 入口为 dist/index.js。</p>
+        </div>
+      </section>
+      <section id="more" class="section-muted">
+        <div class="container faq-layout">
+          <div>
+            <div class="section-label"><span class="idx">[ 004 ]</span><span data-i18n="qs.more.label">继续阅读</span></div>
+            <div class="section-head">
+              <h2 data-i18n="qs.more.title">需要更多细节时。</h2>
+            </div>
+          </div>
+          <div class="install-links">
+            <a data-i18n="qs.more.docs" class="text-link" href="https://github.com/xuzhougeng/ScientificFigureLibrary/blob/main/docs/QUICKSTART.md">快速开始文档（Markdown）</a>
+            <a data-i18n="install.tutorial" class="text-link" data-page-link href="tutorial.html">阅读本地客户端教程</a>
+            <a data-i18n="faq.docs" class="text-link" href="https://github.com/xuzhougeng/ScientificFigureLibrary/blob/main/docs/PROTOCOL.md">查看协议文档</a>
+            <a data-i18n="footer.releases" class="text-link" href="https://github.com/xuzhougeng/ScientificFigureLibrary/releases">版本记录</a>
+          </div>
+        </div>
+      </section>
+    </main>
+    <footer class="site-footer">
+      <div class="container footer-inner">
+        <a class="brand" href="index.html" data-page-link>
+          <img src="assets/logo.svg" alt="" width="28" height="28">
+          <span class="brand-name">Scientific Figure Library</span>
+          <span class="brand-short" aria-hidden="true">SFL</span>
+        </a>
+        <nav class="footer-links" aria-label="项目链接" data-i18n-aria="footer.aria">
+          <a href="https://github.com/xuzhougeng/ScientificFigureLibrary">GitHub</a>
+          <a data-page-link href="gallery.html" data-i18n="nav.gallery">图库</a>
+          <a data-page-link href="tutorial.html" data-i18n="nav.tutorial">教程</a>
+          <a data-page-link href="quickstart.html" data-i18n="nav.quickstart">快速开始</a>
+          <a data-i18n="footer.releases" href="https://github.com/xuzhougeng/ScientificFigureLibrary/releases">版本记录</a>
+          <a data-i18n="footer.issues" href="https://github.com/xuzhougeng/ScientificFigureLibrary/issues">问题反馈</a>
+        </nav>
+        <p data-i18n="footer.note" class="footer-copy">代码 MIT · 导入图形保留其记录的许可证。</p>
+      </div>
+    </footer>
+  </body>
+</html>

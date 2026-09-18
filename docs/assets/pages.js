@@ -5,7 +5,8 @@ const I18N = {
     "nav.workflow": "使用流程",
     "nav.install": "安装",
     "nav.faq": "常见问题",
-    "nav.tutorial": "0.8.0 教程",
+    "nav.tutorial": "教程",
+    "nav.quickstart": "快速开始",
     "nav.download": "获取插件",
     "hero.eyebrow": "开源 · 本机优先 · MCP App",
     "hero.title": "让每一张好图，<br>成为下一次研究的起点。",
@@ -46,7 +47,7 @@ const I18N = {
     "install.3.title": "打开图库，导入第一张图",
     "install.3.body": "在宿主中打开 Scientific Figure Library，导入图与代码，审阅后发布。",
     "install.guide": "阅读完整安装指南",
-    "install.tutorial": "阅读 0.8.0 本地客户端教程",
+    "install.tutorial": "阅读本地客户端教程",
     "install.code": "从源码构建",
     "copy.label": "复制命令",
     "install.codeNote": "构建后，在 release/ 中找到 Wisp 插件 ZIP。通用 MCP 入口为 dist/index.js。",
@@ -126,7 +127,38 @@ const I18N = {
     "gallery.browse": "浏览 Figure Gallery",
     "gallery.feature1": "通路 NES 热图",
     "gallery.feature2": "环形 UMAP",
-    "gallery.feature3": "系统发育环形树"
+    "gallery.feature3": "系统发育环形树",
+    "quickstart.meta.title": "快速开始 | Scientific Figure Library",
+    "quickstart.meta.desc": "三步接入 Scientific Figure Library：选择安装方式、绑定本机目录，在宿主中导入并复用第一张图。",
+    "qs.kicker": "三步接入本机图库",
+    "qs.title": "从安装到第一张图。",
+    "qs.lead": "SFL 是本机优先的 stdio MCP 服务。选一种安装方式，绑定两个本机目录，然后在宿主中导入、发布并复用你的第一张图。",
+    "qs.req": "开始前请确认：Node.js 22+，以及支持 stdio MCP 的宿主 —— Wisp Science、Claude Science、Codex、Cursor 或任意 stdio 客户端。",
+    "qs.paths.label": "选择安装方式",
+    "qs.paths.title": "三种接入方式，选一种即可。",
+    "qs.path1.title": "本地客户端",
+    "qs.path1.body": "下载 0.8.0 安装包：macOS 原生 SwiftUI App，或 Windows / Linux 本地网页客户端。",
+    "qs.path2.title": "Wisp Science 插件",
+    "qs.path2.body": "构建插件 ZIP，在「设置 → 插件」中安装，为新会话启用。",
+    "qs.path3.title": "其他 stdio 宿主",
+    "qs.path3.body": "从源码构建，把 dist/index.js 注册为宿主的 stdio MCP 服务。",
+    "qs.tutorial": "查看安装教程",
+    "qs.setup.label": "首次设置",
+    "qs.setup.title": "绑定目录，导入第一张图。",
+    "qs.step1.title": "绑定全局图库",
+    "qs.step1.body": "指定一个长期保存已发布版本的目录，跨项目复用。",
+    "qs.step2.title": "绑定本地工作区",
+    "qs.step2.body": "指定当前项目的工作目录，与全局图库分开管理。",
+    "qs.step3.title": "导入图与代码",
+    "qs.step3.body": "把图形、绘图代码和方法说明一起整理进图库。",
+    "qs.step4.title": "审阅并发布",
+    "qs.step4.body": "记录验证情况，发布为可追溯的不可变版本。",
+    "qs.code.label": "从源码构建",
+    "qs.code.title": "构建并注册 MCP 服务。",
+    "qs.code.config": "MCP 配置",
+    "qs.more.label": "继续阅读",
+    "qs.more.title": "需要更多细节时。",
+    "qs.more.docs": "快速开始文档（Markdown）"
   },
   "en": {
     "skip": "Skip to content",
@@ -134,7 +166,8 @@ const I18N = {
     "nav.workflow": "Workflow",
     "nav.install": "Install",
     "nav.faq": "FAQ",
-    "nav.tutorial": "0.8.0 tutorial",
+    "nav.tutorial": "Tutorial",
+    "nav.quickstart": "Quick start",
     "nav.download": "Get plugin",
     "hero.eyebrow": "Open source · Local first · MCP App",
     "hero.title": "Good figures.<br>A head start for your next study.",
@@ -175,7 +208,7 @@ const I18N = {
     "install.3.title": "Open the gallery and import a figure",
     "install.3.body": "Open Scientific Figure Library in your host, import a figure and its code, then review and publish.",
     "install.guide": "Read the installation guide",
-    "install.tutorial": "Read the 0.8.0 local client tutorial",
+    "install.tutorial": "Read the local client tutorial",
     "install.code": "Build from source",
     "copy.label": "Copy commands",
     "install.codeNote": "After building, find the Wisp plugin ZIP in release/. The standard MCP entry point is dist/index.js.",
@@ -255,7 +288,38 @@ const I18N = {
     "gallery.browse": "Browse Figure Gallery",
     "gallery.feature1": "Pathway NES heatmap",
     "gallery.feature2": "Circular UMAP",
-    "gallery.feature3": "Circular phylogenetic tree"
+    "gallery.feature3": "Circular phylogenetic tree",
+    "quickstart.meta.title": "Quick start | Scientific Figure Library",
+    "quickstart.meta.desc": "Connect Scientific Figure Library in three steps: pick an install path, bind local directories, then import and reuse your first figure.",
+    "qs.kicker": "Three steps to your local library",
+    "qs.title": "From setup to your first figure.",
+    "qs.lead": "SFL is a local-first stdio MCP server. Pick an install path, bind two local directories, then import, publish, and reuse your first figure from your host.",
+    "qs.req": "Before you begin: Node.js 22+ and an MCP host that supports stdio — Wisp Science, Claude Science, Codex, Cursor, or any stdio client.",
+    "qs.paths.label": "Choose an install path",
+    "qs.paths.title": "Three ways in. Pick one.",
+    "qs.path1.title": "Local client",
+    "qs.path1.body": "Download the 0.8.0 packages: a native SwiftUI app on macOS, or the local web client on Windows / Linux.",
+    "qs.path2.title": "Wisp Science plugin",
+    "qs.path2.body": "Build the plugin ZIP, install it under Settings → Plugins, and enable it for a new session.",
+    "qs.path3.title": "Other stdio hosts",
+    "qs.path3.body": "Build from source and register dist/index.js as a stdio MCP server in your host.",
+    "qs.tutorial": "Install tutorial",
+    "qs.setup.label": "First-time setup",
+    "qs.setup.title": "Bind directories, import a figure.",
+    "qs.step1.title": "Bind the global Library",
+    "qs.step1.body": "Choose a directory that keeps published releases for the long term, reused across projects.",
+    "qs.step2.title": "Bind the Local workspace",
+    "qs.step2.body": "Choose a working directory for the current project, kept separate from the global Library.",
+    "qs.step3.title": "Import a figure and code",
+    "qs.step3.body": "Collect the figure, plotting code, and method notes into the library together.",
+    "qs.step4.title": "Review and publish",
+    "qs.step4.body": "Record validation, then publish a traceable, immutable release.",
+    "qs.code.label": "Build from source",
+    "qs.code.title": "Build and register the MCP server.",
+    "qs.code.config": "MCP configuration",
+    "qs.more.label": "Keep reading",
+    "qs.more.title": "When you need more detail.",
+    "qs.more.docs": "Quickstart document (Markdown)"
   }
 };
 const KEY = "sfl-pages-lang";
@@ -272,9 +336,13 @@ function apply(current) {
   const pack = I18N[current] || I18N.zh;
   document.documentElement.lang = current === "en" ? "en" : "zh-CN";
   document.documentElement.dataset.lang = current;
-  const meta = document.documentElement.dataset.page === "gallery" ? "gallery.meta" : "meta";
-  document.title = pack[`${meta}.title`];
-  document.querySelector('meta[name="description"]').setAttribute("content", pack[`${meta}.desc`]);
+  // The tutorial page keeps its own version-specific title and description.
+  const page = document.documentElement.dataset.page;
+  if (page !== "tutorial") {
+    const meta = page === "gallery" || page === "quickstart" ? `${page}.meta` : "meta";
+    document.title = pack[`${meta}.title`];
+    document.querySelector('meta[name="description"]').setAttribute("content", pack[`${meta}.desc`]);
+  }
   for (const [attribute, target] of [["data-i18n", "textContent"], ["data-i18n-html", "innerHTML"]]) {
     document.querySelectorAll(`[${attribute}]`).forEach((element) => {
       const value = pack[element.getAttribute(attribute)];
@@ -315,6 +383,7 @@ document.querySelectorAll("[data-copy]").forEach((button) => {
     let message = "copy.success";
     try { await navigator.clipboard.writeText(content); }
     catch { message = "copy.error"; }
-    document.querySelector(".copy-status").textContent = I18N[lang()][message];
+    const status = button.closest(".code-card")?.querySelector(".copy-status") ?? document.querySelector(".copy-status");
+    status.textContent = I18N[lang()][message];
   });
 });

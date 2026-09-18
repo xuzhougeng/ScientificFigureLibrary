@@ -36,6 +36,7 @@ main { scroll-margin-top: 80px; }
 .nav-links { display: flex; align-items: center; gap: 2px; }
 .nav-links a { padding: 10px; font-size: 13px; color: var(--muted); white-space: nowrap; border-radius: 10px; }
 .nav-links a:hover { background: var(--bg-muted); color: var(--text); }
+.nav-links a[aria-current="page"] { color: var(--accent); background: var(--accent-soft); }
 .nav-cta { display: flex; align-items: center; gap: 8px; flex: none; }
 .lang-switch { display: inline-flex; align-items: center; padding: 3px; border: 1px solid var(--line); border-radius: 999px; background: var(--panel); }
 .lang-switch button { appearance: none; border: 0; background: transparent; color: var(--muted); font-size: 12px; font-weight: 600; padding: 7px 10px; border-radius: 999px; cursor: pointer; line-height: 1.2; }
