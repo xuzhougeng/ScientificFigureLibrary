@@ -321,7 +321,7 @@ async function loadStatus() {
     ? `已缓存 ${cacheCount} 张图片 · ${formatBytes(cacheBytes)}`
     : cache.exists === true
       ? "缓存目录已创建，当前没有图片。"
-      : "尚未缓存任何在线预览图。请先选择下面的某个图库。";
+      : "尚未缓存在线预览图。请前往「连接外部图库」选择图库并点击「缓存图片」；也可以在搜索或精确预览时按需缓存。";
   renderPreviewCacheGalleries(cacheGalleries);
   renderProviderSources(sourceRows);
   refreshSelection();
@@ -806,7 +806,10 @@ async function saveProxy() {
     : "已关闭系统代理，将直连 GitHub。");
 }
 button("save-proxy").onclick = () => void run(saveProxy, button("save-proxy"));
-input("use-system-proxy").addEventListener("change", () => void run(saveProxy, button("save-proxy")));
+for (const control of [input("use-system-proxy"), input("https-proxy")]) {
+  control.addEventListener("input", () => { button("save-proxy").disabled = false; });
+  control.addEventListener("change", () => { button("save-proxy").disabled = false; });
+}
 button("notice-close").onclick = (event) => {
   event.preventDefault();
   event.stopPropagation();

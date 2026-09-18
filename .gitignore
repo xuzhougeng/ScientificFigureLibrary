@@ -12,3 +12,6 @@ __pycache__/
 
 .runtime-cache/
 desktop/macos/.build/
+
+# Local validation artifacts
+test-results/

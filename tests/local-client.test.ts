@@ -89,6 +89,7 @@ test("local app HTML exposes dual gallery pagination without a browse-gallery bu
   assert.match(html, /缓存所选参考/u);
   assert.match(html, /AI 无法访问本机文件时需上传材料/u);
   assert.match(html, /id="allow-network"[^>]*checked/u);
+  assert.doesNotMatch(html, /请选择下面的某个图库/u);
   assert.match(html, /id="notice-message"/u);
   assert.match(html, /id="notice-copy"/u);
   assert.match(html, /id="notice-close"/u);
