@@ -2369,6 +2369,7 @@ export async function createLibraryService(options: LibraryServiceOptions = {}) 
       planGalleryCache: (input: unknown) => operations.run(() => galleryCache.plan(input)),
       startGalleryCache: (input: unknown) => operations.run(async () => galleryCache.start(input)),
       galleryCacheTasks: () => operations.run(async () => galleryCache.tasks()),
+      galleryCacheStatus: () => operations.run(() => galleryCache.status()),
       applyGalleryCache: (input: unknown) => operations.run(() => galleryCache.apply(input)),
       referenceStatus: (input: unknown) => operations.run(() => referenceCache.status(input)),
       planReference: (input: unknown) => operations.run(() => referenceCache.plan(input)),

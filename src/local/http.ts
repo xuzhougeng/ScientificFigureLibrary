@@ -125,6 +125,7 @@ export async function startLocalHttp(options: {
       if (request.method === "GET" && url.pathname === "/api/library") return json(response, 200, await service.local.library());
       if (request.method === "GET" && url.pathname === "/api/preview-cache") return json(response, 200, await service.local.previewCache());
       if (request.method === "GET" && url.pathname === "/api/gallery-cache/tasks") return json(response, 200, await service.local.galleryCacheTasks());
+      if (request.method === "GET" && url.pathname === "/api/gallery-cache/status") return json(response, 200, await service.local.galleryCacheStatus());
       if (request.method === "GET" && url.pathname === "/api/network-access") return json(response, 200, await inspectNetworkAccess());
       if (request.method !== "POST") return json(response, 404, { error: "Unknown local client endpoint" });
       if (url.pathname === "/api/upload") {

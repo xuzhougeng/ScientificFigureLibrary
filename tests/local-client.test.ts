@@ -84,7 +84,7 @@ test("local app HTML exposes dual gallery pagination without a browse-gallery bu
   assert.match(html, /id="copy-mcp"/u);
   assert.match(html, /id="gallery-loading"/u);
   assert.match(html, /正在同步图库/u);
-  assert.match(html, /id="refresh"[^>]*type="button"/u);
+  assert.doesNotMatch(html, /id="refresh"/u);
   assert.match(html, /id="pick-materialize-directory"/u);
   assert.match(html, /缓存所选参考/u);
   assert.match(html, /AI 无法访问本机文件时需上传材料/u);

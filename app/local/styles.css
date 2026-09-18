@@ -183,6 +183,7 @@ html.dialog-open .local-main { overflow: hidden; }
 
 .local-client .card[data-selected="true"] { border-color: #246c4e; background: #eef7f1; }
 .reference-card-state { display: flex; align-items: center; justify-content: space-between; margin-top: 12px; padding-top: 12px; border-top: 1px solid #edf0ec; }
+.reference-card-state-text { flex: 1; margin-left: 8px; color: #66766c; font-size: 12px; line-height: 1.4; }
 /* A single light summarizes verified local availability, with accessible text. */
 .reference-status-light { position: relative; display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 36px; flex: 0 0 32px; outline-offset: 2px; }
 .reference-status-light::before { content: ""; width: 9px; height: 9px; border-radius: 50%; background: #98a19d; box-shadow: 0 0 0 4px #98a19d15; }

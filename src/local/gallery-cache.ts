@@ -11,6 +11,29 @@ import { FIGUREYA_PROVIDER_ID, PERSONAL_MODULE_PROVIDER_ID } from "../providers.
 export function galleryCodeDirectory(root: string, providerId: string) {
   return path.join(root, "source-packs", providerId === FIGUREYA_PROVIDER_ID ? "figureya" : "open-modules");
 }
+
+function previewFileIdentities(providerId: string, figureYa: CatalogIndex, modules: ModuleCatalogIndex | undefined) {
+  if (providerId === FIGUREYA_PROVIDER_ID) {
+    return figureYa.catalog.modules.flatMap(module => {
+      const file = module.primaryPreview ?? module.thumbnail;
+      return file && module.previewSha256 ? [{ sha256: module.previewSha256, extension: path.extname(file).toLowerCase() }] : [];
+    });
+  }
+  return modules?.catalog.modules.flatMap(module => [
+    { sha256: module.preview.sha256, extension: path.extname(module.preview.path).toLowerCase() },
+    { sha256: module.thumbnail.sha256, extension: path.extname(module.thumbnail.path).toLowerCase() },
+  ]) ?? [];
+}
+
+async function countCachedPreviewFiles(directory: string, identities: Array<{ sha256: string; extension: string }>) {
+  const expected = new Set(identities.map(identity => `${identity.sha256}${identity.extension}`));
+  if (!expected.size) return 0;
+  let names: string[];
+  try { names = await fs.readdir(directory); }
+  catch (error) { if ((error as NodeJS.ErrnoException).code === "ENOENT") return 0; throw error; }
+  return names.filter(name => expected.has(name)).length;
+}
+
 export interface GalleryCacheTask {
   id: string; providerId: string; mode: string; state: "running" | "completed" | "failed";
   total: number; processed: number; currentItem: string; images: number; archives: number;
@@ -29,6 +52,22 @@ export function createGalleryCache(options: {
     ? figureYaIdentity
     : options.modules()?.catalogSha256;
   const api = {
+    status: async () => {
+      const library = await options.library();
+      const imageDirectory = path.join(library.root, "indexes", "preview-cache", "v1");
+      let imageFiles = 0;
+      try { imageFiles = (await fs.readdir(imageDirectory)).filter(name => /^[a-f0-9]{64}\.(png|jpe?g|webp|gif)$/u.test(name)).length; } catch (error) { if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error; }
+      const providers: Record<string, unknown> = {};
+      for (const providerId of [FIGUREYA_PROVIDER_ID, PERSONAL_MODULE_PROVIDER_ID]) {
+        const codeDirectory = galleryCodeDirectory(library.root, providerId);
+        let codeFiles = 0;
+        try { codeFiles = (await fs.readdir(codeDirectory)).filter(name => name.endsWith(".zip")).length; } catch (error) { if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error; }
+        const imageFilesForGallery = await countCachedPreviewFiles(imageDirectory, previewFileIdentities(providerId, options.figureYa, options.modules()));
+        const task = [...plans.values()].map(item => item.task).reverse().find(item => item?.providerId === providerId);
+        providers[providerId] = { imageFiles: imageFilesForGallery, codeFiles, ...(task ? { task: structuredClone(task) } : {}) };
+      }
+      return { imageFiles, providers };
+    },
     tasks: () => ({ tasks: [...plans.values()].flatMap(item => item.task ? [structuredClone(item.task)] : []) }),
     start: (raw: unknown): { task: GalleryCacheTask } => {
       const input = z.object({ planDigest: z.string().uuid(), confirmedBy: z.literal("user") }).strict().parse(raw);

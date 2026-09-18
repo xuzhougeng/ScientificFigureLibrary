@@ -1161,7 +1161,14 @@ async function atomicWriteFile(file: string, bytes: Uint8Array | string) {
   const temporary = `${file}.tmp-${randomUUID()}`;
   await fs.writeFile(temporary, bytes, { flag: "wx" });
   try {
-    await fs.rename(temporary, file);
+    try {
+      await fs.rename(temporary, file);
+    } catch (error) {
+      // Windows rename does not replace an existing manifest file.
+      if (process.platform !== "win32" || !["EEXIST", "EPERM", "EBUSY"].includes((error as NodeJS.ErrnoException).code ?? "")) throw error;
+      await fs.rm(file, { force: true });
+      await fs.rename(temporary, file);
+    }
   } catch (error) {
     await fs.rm(temporary, { force: true }).catch(() => undefined);
     throw error;

@@ -28,6 +28,7 @@ export function referenceStatusText(status: ReferenceCacheStatus, candidate: Can
     ? status.cached?.hasCode ? "代码已缓存" : "参考已缓存 · 无代码"
     : status.reference === "invalid" ? "参考缓存需重新获取"
     : status.reference === "unavailable" ? "无可获取的参考包"
+    : status.image === "local" ? "图片已缓存 · 代码包待缓存"
     : candidate.codeStatus === "none" ? "仅图片参考 · 待缓存" : "参考包待缓存";
   return `${image} · ${reference}`;
 }

@@ -4,7 +4,7 @@ import { bindModalScrollLock, mountExactPreviewImage, openCandidateDetail, parse
 import { renderMarkdown } from "../markdown.ts";
 import { api, call, details, imageData, imageHash, record, records, requireResult, upload } from "./api.ts";
 import { formatUserNetworkError } from "../../src/process-log.ts";
-import { cacheReferences, copyReferencePrompt, referenceStatuses, referenceStatusIcons } from "./reference-cache.ts";
+import { cacheReferences, copyReferencePrompt, referenceStatuses, referenceStatusIcons, referenceStatusText } from "./reference-cache.ts";
 import { setButtonContent } from "../icons.ts";
 import { refreshCacheTasks, watchCacheTasks } from "./cache-tasks.ts";
 import { PAGE_STORAGE_KEY, PAGE_TITLES, galleryMissingCount, isPageId, pageHash, prefetchButtonLabel, readSavedPage, type PageId } from "./ui-state.ts";
@@ -32,6 +32,7 @@ let pendingMaterialize: { candidate: Candidate; receipt: string; resultSetId: st
 let canShutdown = false;
 let stopped = false;
 let cacheGalleries: Array<Record<string, unknown>> = [];
+let galleryCacheStatuses: Record<string, Record<string, unknown>> = {};
 (el<HTMLImageElement>("local-logo")).src = SFL_BRAND_ICON_DATA_URI;
 
 function notify(message: string, error = false) {
@@ -103,6 +104,7 @@ async function refreshReferenceCards(current: SearchResult) {
     card.querySelector(".reference-card-state")?.remove();
     const area = node("div", undefined, "reference-card-state");
     area.append(referenceStatusIcons(state, candidate));
+    area.append(node("span", referenceStatusText(state, candidate), "reference-card-state-text"));
     const control = action(state.reference === "ready" ? "复制绘图提示词" : "缓存此参考", async () => {
       if (state.reference === "ready") {
         await copyReferencePrompt(current.resultSetId, candidate);
@@ -313,6 +315,8 @@ async function loadStatus() {
       ? `当前使用已保存的本机代理 ${String(network.activeProxy ?? "")}。`
       : `当前来自系统设置或环境变量 ${String(network.activeProxy ?? "")}。`;
   const cache = await api<Record<string, unknown>>("preview-cache");
+  const cacheStatus = await api<{ providers: Record<string, Record<string, unknown>> }>("gallery-cache/status");
+  galleryCacheStatuses = cacheStatus.providers ?? {};
   el("preview-cache-directory").textContent = String(cache.directory ?? "");
   const cacheBytes = Number(cache.bytes ?? 0);
   const cacheCount = Number(cache.fileCount ?? 0);
@@ -488,6 +492,13 @@ function renderProviderSources(sources: Array<Record<string, unknown>>) {
     if (official && autoRefresh && source.enabled !== false) card.append(node("p", "官方频道自动刷新已开启"));
     const gallery = cacheGallery(providerId);
     if (gallery) card.append(node("p", galleryCacheLabel(gallery)));
+    const cacheStatus = galleryCacheStatuses[providerId];
+    if (cacheStatus) {
+      const task = record(cacheStatus.task);
+      const state = String(task.state ?? "");
+      const suffix = state ? ` · ${state === "running" ? "后台缓存中" : state === "completed" ? "最近任务已完成" : "最近任务失败"}` : "";
+      card.append(node("p", `缓存状态：图片 ${Number(cacheStatus.imageFiles ?? 0)} 个文件 · 代码 ${Number(cacheStatus.codeFiles ?? 0)} 个源码包${suffix}`));
+    }
     const actions = node("div", undefined, "provider-actions");
     if (["org.figureya.module", "io.github.jarxunlai.personal-figures"].includes(providerId)) {
       for (const [mode, label] of [["images", "缓存图片"], ["code", "缓存代码"], ["update", "更新缓存"]] as const) {
@@ -759,14 +770,6 @@ form("add-provider-form").addEventListener("submit", (event) => {
   });
 });
 form("import-form").addEventListener("submit", (event) => { event.preventDefault(); void run(importAsset, form("import-form").querySelector<HTMLButtonElement>("button[type=submit]")!); });
-button("refresh").onclick = () => void run(async () => {
-  const current = page;
-  await showPage(current);
-  if (current === "discover") {
-    if (input("search-query").value.trim()) await search();
-    else await loadGallery();
-  }
-});
 button("cache-selection").onclick = () => void run(() => openReferenceCache([...selected.values()]), button("cache-selection"));
 button("plan-apply").onclick = () => void run(async () => { await planAction?.(); }, button("plan-apply"));
 button("plan-cancel").onclick = () => { planAction = undefined; dialog("plan-dialog").close(); };
