@@ -847,9 +847,17 @@ async function download(source: ArchiveTransportSource, module: ModuleCatalogEnt
 }
 
 /** Cache the pinned source archive, preserving the shared manifest and validation rules. */
-export async function cacheModuleSourceArchive(index: ModuleCatalogIndex, module: ModuleCatalogEntry, sourcePackDir: string) {
-  const acquired = await acquireArchive({ index, module, sourcePackDir, allowNetwork: true });
-  if (acquired.source === "network") await persistOpenModulesCache(sourcePackDir, index, module, acquired.bytes);
+export async function cacheModuleSourceArchive(
+  index: ModuleCatalogIndex,
+  module: ModuleCatalogEntry,
+  sourcePackDir: string,
+  allowNetwork = true,
+  persistPack = false,
+) {
+  const acquired = await acquireArchive({ index, module, sourcePackDir, allowNetwork });
+  if (acquired.source === "network" || persistPack) {
+    await persistOpenModulesCache(sourcePackDir, index, module, acquired.bytes);
+  }
   return acquired.source === "source-pack" ? "cached" : "downloaded";
 }
 

@@ -189,14 +189,12 @@ html.dialog-open .local-main { overflow: hidden; }
 .reference-status-chip-kind { color: inherit; opacity: 0.72; }
 .reference-status-chip-kind::after { content: " · "; opacity: 0.7; }
 .reference-status-chip.is-image { background: #f8efd8; color: #8a5a12; }
-.reference-status-chip.is-bundled { background: #e7eef7; color: #355888; }
 .reference-status-chip.is-ready { background: #e4f4eb; color: #1f6b45; }
 .reference-status-chip.is-warning { background: #fdece6; color: #8a3b22; }
 /* A single light summarizes verified local availability, with accessible text. */
 .reference-status-light { position: relative; display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 36px; flex: 0 0 32px; outline-offset: 2px; }
 .reference-status-light::before { content: ""; width: 9px; height: 9px; border-radius: 50%; background: #98a19d; box-shadow: 0 0 0 4px #98a19d15; }
 .reference-status-light.is-image::before { background: #b77c20; box-shadow: 0 0 0 4px #b77c2015; }
-.reference-status-light.is-bundled::before { background: #4f78a8; box-shadow: 0 0 0 4px #4f78a815; }
 .reference-status-light.is-ready::before { background: #2b875e; box-shadow: 0 0 0 4px #2b875e15; }
 .reference-status-light::after, .reference-icon-action[data-tooltip]::after { content: attr(data-tooltip); pointer-events: none; position: absolute; bottom: calc(100% + 9px); left: 0; z-index: 5; width: max-content; max-width: 210px; white-space: normal; padding: 8px 10px; border-radius: 7px; background: #263f32; color: white; font: 12px/1.5 var(--font-sans, sans-serif); box-shadow: 0 4px 14px #17362624; opacity: 0; transform: translateY(3px); transition: opacity .12s, transform .12s; }
 .reference-status-light:hover::after, .reference-status-light:focus-visible::after, .reference-icon-action:hover::after, .reference-icon-action:focus-visible::after { opacity: 1; transform: translateY(0); }

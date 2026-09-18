@@ -97,6 +97,7 @@ writing a conflicting locator.
 │   ├── exports/
 │   └── quarantine/
 ├── indexes/
+├── source-packs/
 └── locks/
 ```
 
@@ -110,7 +111,8 @@ writing a conflicting locator.
 | `store/exports/` | authoritative export receipts when present | include |
 | `store/quarantine/` | retained exceptional records | include |
 | `indexes/` | derived, rebuildable | exclude from canonical full backup |
-| `indexes/reference-cache/` | verified reference copies and non-authoritative locators for the local client | derived; reacquire if absent or invalid, preserve source identity and original materialization receipts |
+| `indexes/preview-cache/` | derived preview-image cache for the local client | rebuildable; gallery cache and on-demand preview writes |
+| `source-packs/` | derived FigureYa / Open Figure Modules archive cache | rebuildable; gallery cache and copy-prompt reuse |
 | `locks/` | runtime coordination only | exclude; never transfer as content |
 
 The root marker schema is `figure-library.root.v1`. Storage format 1.0 uses

@@ -24,13 +24,13 @@
 
       <div id="suggestions" class="suggestions"><span>从常见图形开始</span><button data-query="volcano differential expression">火山图</button><button data-query="heatmap expression matrix">热图</button><button data-query="UMAP single cell">UMAP</button><button data-query="barplot proportion cell type">细胞比例</button><button data-query="GO enrichment pathway">富集分析</button></div>
       </div>
-      <p class="gallery-help">卡片同时显示预览图和参考包是否已在本地。选择参考后复制绘图提示词；未缓存的会先确认精确图片并缓存，再复制。整库预览图请到「连接外部图库」缓存。已缓存的图片可离线查看。</p>
+      <p class="gallery-help">卡片同时显示预览图和参考包是否已在本地。本地只缓存这两类：图片和参考包。选择参考后复制绘图提示词；参考包未缓存时会先下载固定版本再复制。整库预览图请到「连接外部图库」缓存。已缓存的图片可离线查看。</p>
       <div class="results-heading" id="results-heading"><h2 id="results-title">图库</h2><span id="results-count"></span></div>
       <nav class="pagination gallery-pagination" id="local-pagination-top" hidden aria-label="图库分页"><button type="button" class="page-previous" disabled>上一页</button><span class="page-label"></span><button type="button" class="page-next" disabled>下一页</button></nav>
       <div id="gallery-loading" class="gallery-sync" role="status" aria-live="polite"><div class="gallery-sync-spinner" aria-hidden="true"></div><p>正在同步图库…</p></div>
       <div id="empty" class="local-empty" hidden><h3>让图片成为下一次研究的起点</h3><p>打开图库即浏览全部图片。可用搜索或常见图形筛选。自己的资产在「我的图库」，也可以「创建参考图」。</p></div>
       <section id="cards" class="cards" aria-label="候选图片"></section>
-      <div id="selection-bar" class="local-selection" hidden><div><span id="selection-count"></span></div><div class="selection-copy"><button type="button" id="copy-selection">复制绘图提示词</button><p class="selection-hint">先检查每张参考的本地缓存。未缓存的会先确认精确图片并缓存，再复制提示词；已缓存的直接复制。AI 无法访问本机文件时需上传材料。</p></div></div>
+      <div id="selection-bar" class="local-selection" hidden><div><span id="selection-count"></span></div><div class="selection-copy"><button type="button" id="copy-selection">复制绘图提示词</button><p class="selection-hint">先检查每张参考的本地参考包。已缓存的直接复制提示词；未缓存的会先下载固定版本再复制。AI 无法访问本机文件时需上传材料。</p></div></div>
       <nav class="pagination gallery-pagination" id="local-pagination" hidden aria-label="图库分页"><button type="button" class="page-previous" disabled>上一页</button><span class="page-label"></span><button type="button" class="page-next" disabled>下一页</button></nav>
     </section>
     <section id="library-page" class="local-page" hidden><div class="section-heading"><p>这里是你自己的图片与代码。草稿与已发布版本分别管理，与外部图库分开。</p><div class="library-toolbar"><div class="library-view-switch" role="group" aria-label="我的图库显示方式"><button type="button" id="library-gallery" aria-pressed="true">Gallery</button><button type="button" id="library-list" aria-pressed="false">List</button></div><button data-page="import">创建参考图</button></div></div><div id="library-items" class="library-items"></div></section>

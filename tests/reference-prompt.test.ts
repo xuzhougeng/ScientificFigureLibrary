@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import path from "node:path";
 import test from "node:test";
-import { buildReferencePrompt } from "../src/local/reference-prompt.ts";
+import { buildReferencePrompt, referenceHasCode } from "../src/local/reference-prompt.ts";
 import { localPublishedExactSelector } from "../src/providers.ts";
 
 const candidate = {
@@ -26,4 +26,6 @@ test("image-only reference never promises an original implementation", () => {
   const prompt = buildReferencePrompt(candidate, path.resolve("image-only"), ["assets/visuals/plot.png", "template.lock.json"]);
   assert.match(prompt, /只能作为视觉参考/u);
   assert.match(prompt, /新写代码不能称为复用原始实现/u);
+  assert.equal(referenceHasCode(["assets/visuals/plot.png", "template.lock.json"]), false);
+  assert.equal(referenceHasCode(["assets/code/plot.R"]), true);
 });

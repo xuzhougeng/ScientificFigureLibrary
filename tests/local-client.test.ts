@@ -88,7 +88,7 @@ test("local app HTML exposes dual gallery pagination without a browse-gallery bu
   assert.match(html, /id="pick-materialize-directory"/u);
   assert.match(html, /id="copy-selection"/u);
   assert.match(html, /复制绘图提示词/u);
-  assert.match(html, /未缓存的会先确认精确图片并缓存/u);
+  assert.match(html, /未缓存的会先下载固定版本再复制/u);
   assert.doesNotMatch(html, /id="cache-selection"|缓存所选参考/u);
   assert.match(html, /AI 无法访问本机文件时需上传材料/u);
   assert.match(html, /id="allow-network"[^>]*checked/u);
@@ -347,51 +347,27 @@ test("local client binds, uploads, imports, reviews, publishes, previews and mat
   const selected = { resultSetId: selection.resultSetId, candidateId: candidate.candidateId };
   const statusArgs = { resultSetId: selection.resultSetId, candidateIds: [candidate.candidateId] };
   const before = records((await api("/api/reference-cache/status", statusArgs)).items)[0]!;
-  // The local provider can read its bundled preview, but that is not the
-  // downloaded preview-cache entry maintained by the gallery cache.
-  assert.equal(before.image, "bundled");
-  assert.equal(before.archive, "not_applicable");
-  assert.equal(before.reference, "missing");
-  assert.equal(before.cached, undefined);
-  await assert.rejects(service.local.planReference({ ...selected, previewReceipt: "invented", allowNetwork: false }));
+  assert.equal(before.image, "cached");
+  assert.equal(before.archive, "cached");
+  assert.equal(before.reference, undefined);
+  assert.equal(record(before.pack).hasCode, true);
+  assert.ok(String(record(before.pack).prompt).includes(String(record(before.pack).target)));
+  assert.match(String(record(before.pack).prompt), /无法读取这些路径/u);
+  const ensured = record((await api("/api/reference-cache/ensure", { ...selected, allowNetwork: false })).pack);
+  assert.equal(ensured.target, record(before.pack).target);
+  assert.equal(ensured.hasCode, true);
   await assert.rejects(service.local.referenceStatus({ ...statusArgs, candidateIds: ["unknown"] }));
-  const exactForCache = data(await api("/api/preview", selection));
-  const cacheReceipt = data(await api("/api/confirm", { previewChallenge: exactForCache.previewChallenge, displayedImageSha256: exactForCache.transportSha256, imageLoaded: true, confirmedBy: "user" }));
-  const cachePlan = record((await api("/api/reference-cache/plan", { ...selected, previewReceipt: cacheReceipt.previewReceipt, allowNetwork: false })).plan);
-  await assert.rejects(fs.stat(String(cachePlan.target)), { code: "ENOENT" });
-  await assert.rejects(service.local.applyReference({ planDigest: cachePlan.planDigest }));
-  const cacheApply = { planDigest: cachePlan.planDigest, confirmedBy: "user" };
-  const cached = record((await api("/api/reference-cache/apply", cacheApply)).reference);
-  assert.equal(cached.hasCode, true);
-  assert.ok(String(cached.prompt).includes(String(cached.target)));
-  assert.match(String(cached.prompt), /无法读取这些路径/u);
-  assert.equal(record((await api("/api/reference-cache/apply", cacheApply)).reference).target, cached.target);
-  assert.equal(records((await api("/api/reference-cache/status", statusArgs)).items)[0]!.reference, "ready");
-  // The new service has no search session or cached write plans from this service.
   const restarted = await createLibraryService({ registry: createDefaultProviderRegistry() });
   try {
     await assert.rejects(restarted.local.referenceStatus(statusArgs));
     const refreshed = data(await restarted.execute("figure_library_search", { query: "localclientfixture", providerIds: [candidate.providerId] }));
     const refreshedCandidate = records(refreshed.candidates)[0]!;
     const persisted = await restarted.local.referenceStatus({ resultSetId: refreshed.resultSetId, candidateIds: [refreshedCandidate.candidateId] });
-    assert.equal(persisted.items[0]!.reference, "ready");
-    assert.equal(persisted.items[0]!.cached!.target, cached.target);
+    assert.equal(persisted.items[0]!.archive, "cached");
+    assert.equal(persisted.items[0]!.pack!.target, record(before.pack).target);
   } finally { await restarted.close(); }
-  const codeFile = (cached.files as string[]).find((file) => /\.r$/iu.test(file))!;
-  assert.equal(await fs.readFile(path.join(String(cached.target), codeFile), "utf8"), "stop('must not execute')\n");
-  await fs.chmod(path.join(String(cached.target), codeFile), 0o644);
-  await fs.writeFile(path.join(String(cached.target), codeFile), "corrupted");
-  const damaged = records((await api("/api/reference-cache/status", statusArgs)).items)[0]!;
-  assert.equal(damaged.reference, "invalid");
-  assert.equal(damaged.cached, undefined);
-  const repairPreview = data(await api("/api/preview", selection));
-  const repairReceipt = data(await api("/api/confirm", { previewChallenge: repairPreview.previewChallenge, displayedImageSha256: repairPreview.transportSha256, imageLoaded: true, confirmedBy: "user" }));
-  const repair = record((await api("/api/reference-cache/plan", { ...selected, previewReceipt: repairReceipt.previewReceipt, allowNetwork: false })).plan);
-  assert.notEqual(repair.target, cached.target);
-  const repaired = record((await api("/api/reference-cache/apply", { planDigest: repair.planDigest, confirmedBy: "user" })).reference);
-  assert.equal(await fs.readFile(path.join(String(repaired.target), codeFile), "utf8"), "stop('must not execute')\n");
-  assert.equal(await fs.readFile(path.join(String(cached.target), codeFile), "utf8"), "corrupted");
-  assert.equal(records((await api("/api/reference-cache/status", statusArgs)).items)[0]!.reference, "ready");
+  const codeFile = (record(before.pack).files as string[]).find((file) => /\.r$/iu.test(file))!;
+  assert.equal(await fs.readFile(path.join(String(record(before.pack).target), codeFile), "utf8"), "stop('must not execute')\n");
 
 });
 

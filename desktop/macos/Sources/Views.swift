@@ -75,7 +75,7 @@ let libraryGreen = Color(red: 0.14, green: 0.42, blue: 0.30)
                     }
                 }.frame(maxWidth: 330); TextField("数据特征（可选）", text: $model.dataProfile).textFieldStyle(.roundedBorder) }
                 HStack { ForEach(["火山图", "热图", "UMAP", "细胞比例", "富集分析"], id: \.self) { label in Button(label) { model.query = ["火山图": "volcano differential expression", "热图": "heatmap expression", "UMAP": "UMAP single cell", "细胞比例": "cell proportion barplot", "富集分析": "GO enrichment"][label]!; model.perform { try await model.search() } }.disabled(model.busy) } }
-                Text("卡片同时显示预览图和参考包是否已在本地。选择参考后复制绘图提示词；未缓存的会先确认精确图片并缓存，再复制。整库预览图请到「连接外部图库」缓存。").font(.callout).foregroundStyle(.secondary)
+                Text("卡片同时显示预览图和参考包是否已在本地。本地只缓存这两类：图片和参考包。选择参考后复制绘图提示词；参考包未缓存时会先下载固定版本再复制。整库预览图请到「连接外部图库」缓存。").font(.callout).foregroundStyle(.secondary)
                 HStack { Text(model.query.isEmpty && model.result != .null ? "图库" : "候选图片").font(.headline); Spacer(); if model.result != .null { Text("\(model.result["total"].int) 个结果").foregroundStyle(.secondary) } }
                 galleryPager
                 if !model.selectedReferences.isEmpty {
@@ -84,7 +84,7 @@ let libraryGreen = Color(red: 0.14, green: 0.42, blue: 0.30)
                         Spacer()
                         Button("复制绘图提示词") { model.perform { try await model.copyOrCache(Array(model.selectedReferences.values).sorted { $0["title"].string < $1["title"].string }, resultSetId: model.result["resultSetId"].string) } }.buttonStyle(.borderedProminent)
                     }
-                    Text("先检查本地缓存。未缓存的参考会先确认精确图片并缓存，再复制提示词；已缓存的直接复制。").font(.callout).foregroundStyle(.secondary)
+                    Text("先检查本地参考包。已缓存的直接复制提示词；未缓存的会先下载固定版本再复制。").font(.callout).foregroundStyle(.secondary)
                 }
                 if model.syncingGallery && candidates.isEmpty {
                     VStack(spacing: 16) { ProgressView(); Text("正在同步图库…").foregroundStyle(.secondary) }.frame(maxWidth: .infinity).padding(.vertical, 80)

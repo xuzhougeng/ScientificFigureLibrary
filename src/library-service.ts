@@ -662,7 +662,7 @@ export async function createLibraryService(options: LibraryServiceOptions = {}) 
     return { state, context };
   };
   const referenceCache = createReferenceCache({
-    operations, registry, context: currentProviderContext,
+    registry, context: currentProviderContext,
     candidate: async (resultSetId, candidateId) => {
       const { state } = await requireSearchState(resultSetId);
       const candidate = state.candidates.find((item) => scopedCandidateId(resultSetId, item) === candidateId);
@@ -2388,8 +2388,7 @@ export async function createLibraryService(options: LibraryServiceOptions = {}) 
       galleryCacheStatus: () => operations.run(() => galleryCache.status()),
       applyGalleryCache: (input: unknown) => operations.run(() => galleryCache.apply(input)),
       referenceStatus: (input: unknown) => operations.run(() => referenceCache.status(input)),
-      planReference: (input: unknown) => operations.run(() => referenceCache.plan(input)),
-      applyReference: (input: unknown) => operations.run(() => referenceCache.apply(input)),
+      ensureReference: (input: unknown) => operations.run(() => referenceCache.ensure(input)),
       preview: (input: unknown) => operations.run(() => localOperations.preview(input)),
       confirm: (input: unknown) => operations.run(() => localOperations.confirm(input)),
       library: () => operations.run(() => localOperations.library()),

@@ -109,16 +109,15 @@ no second model and does not execute plotting code.
 
 ## Safety and truthfulness contract
 
-The private local client reference-cache API (`reference-cache/status`, `reference-cache/plan`,
-`reference-cache/apply`) reuses materialization protocol v2. A selected candidate must belong to a
-live result set; every new cache write needs its own local exact-preview receipt and reviewed plan.
-Batch selection creates independent plans, not a plotting task or an atomic batch transaction.
-Derived copies live under the explicitly bound Library's `indexes/reference-cache/`; a locator
-there is never authoritative. Before reporting a reference ready or producing a file-based prompt,
-SFL verifies its authoritative materialization receipt, provider-qualified identity, lock and entire
-file inventory. Status reads do not download code or missing previews. Reacquisition writes a new
-directory; existing copies are not overwritten. Cache operations do not publish or execute code.
-These authenticated private HTTP operations do not change the public MCP tool schema.
+The private local client cache API (`reference-cache/status`, `reference-cache/ensure`)
+reports and fills only two local caches: preview images and source-pack archives.
+A selected candidate must belong to a live result set. Status reads do not download
+missing previews or archives. `ensure` downloads the pinned source-pack ZIP into the
+bound Library `source-packs/` directory when needed, then reads the pack's extracted
+template cache; it does not write a third copy under `indexes/reference-cache/` and
+does not replace exact-preview confirmation for project materialization. Local
+Published copy prompts point at the Library store. These authenticated private HTTP
+operations do not change the public MCP tool schema.
 
 SFL treats every supplied or downloaded asset as untrusted reference material.
 It copies and hashes files but never runs plotting code, notebooks, shell
@@ -1183,4 +1182,4 @@ The local Web client starts background work using authenticated POST `gallery-ca
 
 Private authenticated POST endpoints `gallery-cache/plan` and `gallery-cache/apply` support FigureYa and Open Figure Modules only. Plan accepts `providerId` and `mode` (`images`, `code`, `update`) and returns a session token, fixed-catalog counts, and Library-contained destinations. Apply requires that exact token and `confirmedBy: user`; expired plans, changed Library context, and changed catalogs are rejected. Concurrent/repeated Apply reuses the same in-session result. Results report image/archive successes and per-item failures; no cross-session completion replay is claimed.
 
-These operations prepare verified source archives and preview cache files only, never project materializations or execution. Existing exact-preview receipts and materialization plan/apply remain required when using a reference. Update verifies and fills the current catalog's cache, not its upstream catalog version. Successful old fixed-version caches remain intact when a later item fails. FigureYa and Open Figure use their shared Library source-pack directories, allowing subsequent single-reference acquisition to reuse them.
+These operations prepare verified source archives and preview cache files only, never project materializations or execution. Copying a drawing prompt reuses the same source-pack cache; it does not write a third derived copy. Exact-preview receipts and materialization plan/apply remain required for Save to project. Update verifies and fills the current catalog's cache, not its upstream catalog version. Successful old fixed-version caches remain intact when a later item fails. FigureYa and Open Figure use their shared Library source-pack directories.

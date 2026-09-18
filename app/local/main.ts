@@ -111,7 +111,7 @@ async function refreshReferenceCards(current: SearchResult) {
     });
     setButtonContent(control, "copy", "复制绘图提示词", { iconOnly: true });
     control.classList.add("reference-icon-action");
-    control.disabled = state.reference === "unavailable" || !candidate.materializable;
+    control.disabled = state.archive === "not_applicable" || !candidate.materializable;
     area.append(control); card.querySelector(".content")?.append(area);
   }
 }
@@ -169,7 +169,7 @@ function display(parsed: SearchResult) {
           const outcome = await copyOrCacheReferences([candidate], parsed.resultSetId, refreshDetailState);
           view.status.textContent = outcome === "copied"
             ? "已复制提示词。AI 无法读取本机文件时，请上传提示词列出的材料。"
-            : "未缓存的参考需要先确认精确图片并缓存，完成后会复制提示词。";
+            : "未缓存的参考包需要先下载固定版本，完成后会复制提示词。";
         } catch (error) {
           view.status.textContent = error instanceof Error ? error.message : String(error);
           cache.focus();
@@ -207,8 +207,8 @@ function display(parsed: SearchResult) {
             const state = (await referenceStatuses(parsed.resultSetId, [candidate]))[0];
             if (state && view.dialog.isConnected) {
               light.replaceChildren(referenceStatusIcons(state, candidate));
-              if (state.reference === "ready" && state.cached?.hasCode && view.status.textContent === "图片可复制或保存到项目。使用绘图提示词前，请先下载代码。") {
-                view.status.textContent = "图片与代码已缓存，可复制提示词交给 AI，或将参考保存到项目。";
+              if ((state.pack || state.archive === "cached") && view.status.textContent === "图片可复制或保存到项目。参考包已缓存时可直接复制提示词。") {
+                view.status.textContent = "图片与参考包已在本地，可复制提示词交给 AI，或将参考保存到项目。";
               }
             }
           } catch { if (view.dialog.isConnected) { light.textContent = "?"; light.title = "本地状态暂时无法读取"; } }
@@ -275,7 +275,7 @@ async function exactPreview(candidate: Candidate, view: DetailViewElements, onLo
       loaded = true;
       setButtonContent(view.confirmButton, "save", "保存到项目", { iconOnly: true });
       view.confirmButton.removeAttribute("title");
-      view.status.textContent = "图片可复制或保存到项目。使用绘图提示词前，请先下载代码。";
+      view.status.textContent = "图片可复制或保存到项目。参考包已缓存时可直接复制提示词。";
       onLoaded?.();
     },
     onError: () => { loaded = false; view.confirmButton.disabled = true; view.status.textContent = "图片加载失败，无法确认。"; },

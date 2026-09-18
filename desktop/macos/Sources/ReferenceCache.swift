@@ -3,18 +3,14 @@ import AppKit
 
 func referenceStatusLabel(_ status: JSON, candidate: JSON) -> String {
     if status == .null { return "正在检查本地状态…" }
-    let image: String
-    switch status["image"].string {
-    case "preview_cached": image = "已缓存"
-    case "bundled": image = "可本地读取"
-    default: image = "待缓存"
-    }
+    let image = status["image"].string == "cached" ? "已缓存" : "待缓存"
     let pack: String
-    switch status["reference"].string {
-    case "ready": pack = status["cached"]["hasCode"].bool ? "可复制 · 含代码" : "已缓存 · 无代码"
-    case "invalid": pack = "需重新获取"
-    case "unavailable": pack = "不可获取"
-    default: pack = status["archive"].string == "cached" ? "已缓存" : (candidate["codeStatus"].string == "none" ? "仅图片 · 待缓存" : "待缓存")
+    if status["pack"] != .null || status["archive"].string == "cached" {
+        pack = "已缓存"
+    } else if status["archive"].string == "not_applicable" {
+        pack = "不可获取"
+    } else {
+        pack = "待缓存"
     }
     return "预览图：\(image) · 参考包：\(pack)"
 }
@@ -22,14 +18,11 @@ func referenceStatusLabel(_ status: JSON, candidate: JSON) -> String {
 struct ReferenceStateIcons: View {
     let status: JSON
     let candidate: JSON
-    private var ready: Bool { status["reference"].string == "ready" && status["cached"]["hasCode"].bool }
+    private var packReady: Bool { status["pack"] != .null || status["archive"].string == "cached" }
     private var color: Color {
-        if ready { return libraryGreen }
-        switch status["image"].string {
-        case "preview_cached": return .orange
-        case "bundled": return Color(red: 0.31, green: 0.47, blue: 0.66)
-        default: return .secondary
-        }
+        if packReady { return libraryGreen }
+        if status["image"].string == "cached" { return .orange }
+        return .secondary
     }
     var body: some View {
         Circle().fill(color).frame(width: 9, height: 9)
@@ -55,10 +48,9 @@ extension LibraryModel {
         var prompts: [String] = []
         for candidate in candidates {
             if let state = response["items"].array.first(where: { $0["candidateId"] == candidate["candidateId"] }),
-               state["reference"].string == "ready",
-               state["cached"]["hasCode"].bool,
-               !state["cached"]["prompt"].string.isEmpty {
-                prompts.append(state["cached"]["prompt"].string)
+               state["pack"]["hasCode"].bool,
+               !state["pack"]["prompt"].string.isEmpty {
+                prompts.append(state["pack"]["prompt"].string)
             }
         }
         guard !prompts.isEmpty else { throw LocalError(message: "没有可复制的绘图提示词。请选择有配套代码的参考。") }
@@ -74,8 +66,9 @@ extension LibraryModel {
         var needsCache: [JSON] = []
         for candidate in candidates {
             let state = response["items"].array.first(where: { $0["candidateId"] == candidate["candidateId"] }) ?? .null
-            if state["reference"].string == "ready" { continue }
-            if !candidate["materializable"].bool || state["reference"].string == "unavailable" { continue }
+            if state["pack"]["hasCode"].bool { continue }
+            if state["pack"] != .null { continue }
+            if !candidate["materializable"].bool || state["archive"].string == "not_applicable" { continue }
             needsCache.append(candidate)
         }
         if !needsCache.isEmpty {
@@ -90,12 +83,7 @@ extension LibraryModel {
 private struct ReferenceReviewItem: Identifiable {
     let candidate: JSON
     var id: String { candidate["candidateId"].string }
-    var preview: JSON = .null
-    var bytes: Data?
-    var image: NSImage?
-    var displayed = false
-    var plan: JSON = .null
-    var cached: JSON = .null
+    var pack: JSON = .null
     var message = "正在检查…"
 }
 
@@ -106,48 +94,39 @@ private struct ReferenceReviewItem: Identifiable {
     @State private var items: [ReferenceReviewItem] = []
     @State private var allowNetwork = true
     @State private var busy = true
-    @State private var phase = 0
-    @State private var status = "正在检查本地参考…"
-    var pendingIndices: [Int] { items.indices.filter { items[$0].displayed && items[$0].cached == .null } }
+    @State private var status = "正在检查本地参考包…"
+    var pendingIndices: [Int] { items.indices.filter { items[$0].pack == .null && items[$0].candidate["materializable"].bool } }
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("缓存 \(candidates.count) 个参考").font(.title2).bold()
-            Text("查看精确图片后生成缓存计划。图片与代码按固定版本保存在本地参考目录，缓存不会启动绘图任务。").foregroundStyle(.secondary)
+            Text("缓存 \(candidates.count) 个参考包").font(.title2).bold()
+            Text("将把固定版本压缩包保存到图库的参考包目录。这与预览图是两类缓存，不会另存第三份展开副本，也不会启动绘图任务。").foregroundStyle(.secondary)
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
                     ForEach(items.indices, id: \.self) { index in
                         VStack(alignment: .leading, spacing: 10) {
                             Text(items[index].candidate["title"].string).font(.headline)
-                            if let image = items[index].image {
-                                Image(nsImage: image).resizable().scaledToFit().frame(maxHeight: 260).onAppear { items[index].displayed = true }
-                            }
                             Text(items[index].message).textSelection(.enabled)
-                            if items[index].plan != .null {
-                                DisclosureGroup("完整缓存计划") { Text(items[index].plan.pretty).font(.system(.caption, design: .monospaced)).textSelection(.enabled) }
-                            }
-                            if items[index].cached != .null {
-                                Text(items[index].cached["target"].string).font(.caption).textSelection(.enabled)
+                            if items[index].pack != .null {
+                                Text(items[index].pack["target"].string).font(.caption).textSelection(.enabled)
                                 HStack {
                                     Button("复制绘图提示词") { model.perform { try await model.copyReference(items[index].candidate, resultSetId: resultSetId) } }
-                                    Button("在 Finder 中显示") { NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: items[index].cached["target"].string)]) }
+                                    Button("在 Finder 中显示") { NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: items[index].pack["target"].string)]) }
                                 }
                             }
                         }.padding(16).frame(maxWidth: .infinity, alignment: .leading).background(Color(NSColor.controlBackgroundColor)).clipShape(RoundedRectangle(cornerRadius: 10))
                     }
                 }
             }
-            if phase == 0 { Toggle("缺少代码包时允许联网下载所选固定版本", isOn: $allowNetwork).disabled(busy) }
+            Toggle("缺少参考包时允许联网下载所选固定版本", isOn: $allowNetwork).disabled(busy || pendingIndices.isEmpty)
             Text(status).font(.callout)
             HStack {
                 Button("关闭") { model.sheet = nil }.disabled(busy)
                 Spacer()
-                if phase == 0 {
-                    Button("确认已显示图片并生成缓存计划") { Task { await prepare() } }.disabled(busy || pendingIndices.isEmpty || items.contains { $0.image != nil && !$0.displayed })
-                } else if phase == 1 {
-                    Button("确认缓存 \(items.filter { $0.plan != .null }.count) 个参考") { Task { await apply() } }.disabled(busy || !items.contains { $0.plan != .null })
+                if !pendingIndices.isEmpty {
+                    Button("确认缓存 \(pendingIndices.count) 个参考包") { Task { await apply() } }.disabled(busy)
                 }
             }
-        }.padding(24).frame(width: 780, height: 720).interactiveDismissDisabled(busy)
+        }.padding(24).frame(width: 780, height: 560).interactiveDismissDisabled(busy)
         .onDisappear { if !busy { model.pendingCopyAfterCache = [] } }
         .task { await load() }
     }
@@ -158,45 +137,36 @@ private struct ReferenceReviewItem: Identifiable {
             let response = try await model.backend.request("reference-cache/status", object(["resultSetId": text(resultSetId), "candidateIds": .array(candidates.map { $0["candidateId"] })]))
             for index in items.indices {
                 let candidate = items[index].candidate
-                if let saved = response["items"].array.first(where: { $0["candidateId"] == candidate["candidateId"] }), saved["reference"].string == "ready" {
-                    items[index].cached = saved["cached"]; items[index].message = "参考已缓存，无需重复下载。"; continue
+                if let saved = response["items"].array.first(where: { $0["candidateId"] == candidate["candidateId"] }), saved["pack"] != .null {
+                    items[index].pack = saved["pack"]; items[index].message = "参考包已缓存，无需重复下载。"; continue
                 }
                 guard candidate["materializable"].bool else { items[index].message = "没有可获取的固定版本参考包。"; continue }
-                do {
-                    let preview = try await model.backend.exactPreview(["resultSetId": text(resultSetId), "providerId": candidate["providerId"], "exactSelector": candidate["exactSelector"]])
-                    items[index].preview = preview.0; items[index].bytes = preview.1; items[index].image = preview.2
-                    items[index].message = "请查看此精确图片。"
-                } catch { items[index].message = friendlyNetworkError(error) }
+                items[index].message = "待下载固定版本参考包。"
             }
-            status = "请滚动查看全部待缓存图片后生成计划；已缓存参考可以直接复制提示词。"
+            if pendingIndices.isEmpty {
+                status = "已缓存参考包可以直接复制提示词。"
+                if !model.pendingCopyAfterCache.isEmpty {
+                    try await model.copyReadyPrompts(model.pendingCopyAfterCache, resultSetId: resultSetId)
+                    model.pendingCopyAfterCache = []
+                    status += " " + model.message
+                }
+            } else {
+                status = "确认后下载尚未缓存的固定版本参考包。"
+            }
         } catch { status = friendlyNetworkError(error) }
-    }
-    private func prepare() async {
-        busy = true
-        defer { busy = false }
-        for index in pendingIndices {
-            guard let bytes = items[index].bytes else { continue }
-            do {
-                let confirmed = try await model.backend.confirm(items[index].preview, image: bytes)
-                let response = try await model.backend.request("reference-cache/plan", object(["resultSetId": text(resultSetId), "candidateId": items[index].candidate["candidateId"], "previewReceipt": confirmed["previewReceipt"], "allowNetwork": .bool(allowNetwork)]))
-                items[index].plan = response["plan"]
-                items[index].message = "待写入：" + response["plan"]["target"].string + (allowNetwork ? "；缺少代码包时联网获取" : "；仅使用本地代码包")
-            } catch { items[index].message = "计划失败，未缓存：" + friendlyNetworkError(error) }
-        }
-        phase = 1; status = "请核对写入目录和下载策略。确认后才开始缓存，失败项不会执行。"
     }
     private func apply() async {
         busy = true
         defer { busy = false }
-        for index in items.indices where items[index].plan != .null {
+        for index in pendingIndices {
             do {
-                items[index].message = "正在缓存…"
-                let response = try await model.backend.request("reference-cache/apply", object(["planDigest": items[index].plan["planDigest"], "confirmedBy": text("user")]))
-                items[index].cached = response["reference"]
-                items[index].message = response["reference"]["hasCode"].bool ? "图片与代码已缓存" : "参考已缓存；此包没有可识别的代码文件"
+                items[index].message = "正在缓存参考包…"
+                let response = try await model.backend.request("reference-cache/ensure", object(["resultSetId": text(resultSetId), "candidateId": items[index].candidate["candidateId"], "allowNetwork": .bool(allowNetwork)]))
+                items[index].pack = response["pack"]
+                items[index].message = response["pack"]["hasCode"].bool ? "参考包已缓存" : "参考包已缓存；此包没有可识别的代码文件"
             } catch { items[index].message = "缓存失败：" + friendlyNetworkError(error) }
         }
-        phase = 2; status = "\(items.filter { $0.cached != .null }.count) 个参考可用。"
+        status = "\(items.filter { $0.pack != .null }.count) 个参考包可用。"
         do { try await model.refreshReferenceStates() } catch { status += " 状态刷新失败：" + friendlyNetworkError(error) }
         if !model.pendingCopyAfterCache.isEmpty {
             do {
@@ -207,7 +177,7 @@ private struct ReferenceReviewItem: Identifiable {
                 status += " " + friendlyNetworkError(error)
             }
         } else {
-            status += "可用参考才能复制绘图提示词。"
+            status += "已缓存的参考包才能复制绘图提示词。"
         }
     }
 }

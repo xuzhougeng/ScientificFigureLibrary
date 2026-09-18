@@ -905,26 +905,6 @@ async function verifyReceiptAndTarget(input: {
   } satisfies MaterializationResult;
 }
 
-/** Read-only verification for local reference-cache entries. A directory or lock alone is not proof. */
-export async function inspectMaterializedReference(input: {
-  context: CurrentLibraryContext;
-  index: CatalogIndex;
-  registry: ProviderRegistry;
-  target: string;
-  operationId: string;
-  selector: ExactTemplateSelector;
-  moduleCatalogs?: ReadonlyMap<string, ModuleCatalogIndex>;
-}) {
-  assertExactTemplateSelector(input.selector);
-  if (!OPERATION_ID.test(input.operationId)) throw new Error("Invalid reference operation identity");
-  const marker = await requireLibraryAuthority(input.context);
-  const receipt = await readAuthoritativeReceipt(input.context, input.selector.providerId, input.operationId, marker.libraryId, input.registry);
-  if (!receipt || canonicalJson(receipt.plannedSelector) !== canonicalJson(input.selector)) {
-    throw new Error("Reference cache has no matching authoritative receipt");
-  }
-  return verifyReceiptAndTarget({ ...input, receipt, expectedProviderId: input.selector.providerId, planDigest: receipt.planDigest });
-}
-
 async function durableReplay(input: {
   context: CurrentLibraryContext;
   index: CatalogIndex;

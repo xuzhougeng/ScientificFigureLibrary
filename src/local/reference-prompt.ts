@@ -1,7 +1,11 @@
 import path from "node:path";
 import type { TemplateCandidate } from "../types.ts";
 
-/** Only called with a verified, materialized inventory, never with search metadata alone. */
+export function referenceHasCode(files: string[]) {
+  return files.some((file) => /(?:^|\/)code\/|\.(?:r|py|rmd|qmd|ipynb|jl|js|ts|m)$/iu.test(file));
+}
+
+/** Only called with a verified local file inventory, never with search metadata alone. */
 export function buildReferencePrompt(candidate: Pick<TemplateCandidate, "title" | "sourceLabel" | "exactSelector" | "application" | "dataProfile" | "inputFiles" | "packages">, target: string, files: string[]) {
   const code = files.filter((file) => /(?:^|\/)code\/|\.(?:r|py|rmd|qmd|ipynb|jl|js|ts|m)$/iu.test(file));
   const images = files.filter((file) => /\.(?:png|jpe?g|webp|svg|pdf|tiff?)$/iu.test(file));

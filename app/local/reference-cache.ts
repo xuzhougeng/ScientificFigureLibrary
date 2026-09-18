@@ -1,7 +1,7 @@
 import type { Candidate } from "../view.ts";
 import { bindModalScrollLock } from "../view.ts";
-import type { CachedReference, ReferenceCacheStatus } from "../../src/local/reference-cache.ts";
-import { api, details, imageData, imageHash, requireResult } from "./api.ts";
+import type { ReferenceCacheStatus, ReferencePackFiles } from "../../src/local/reference-cache.ts";
+import { api } from "./api.ts";
 import {
   imageCacheLabel,
   joinReferencePrompts,
@@ -31,25 +31,20 @@ export async function writeReferencePrompts(prompts: string[]) {
 
 export async function copyReferencePrompt(resultSetId: string, candidate: Candidate) {
   const status = (await referenceStatuses(resultSetId, [candidate]))[0];
-  if (!status?.cached || status.reference !== "ready") throw new Error("请先缓存图片与代码后再复制提示词。");
-  if (!status.cached.hasCode) throw new Error("此参考没有配套代码，无法复制含代码的绘图提示词。请选择有代码的参考。");
-  await writeReferencePrompts([status.cached.prompt]);
+  if (!status?.pack?.hasCode || !status.pack.prompt) throw new Error("请先缓存参考包后再复制提示词。");
+  await writeReferencePrompts([status.pack.prompt]);
 }
 
 export function referenceStatusIcons(status: ReferenceCacheStatus, candidate: Candidate) {
-  const codeReady = status.reference === "ready" && status.cached?.hasCode;
-  const state = codeReady ? "ready" : status.image === "preview_cached" ? "image" : status.image === "bundled" ? "bundled" : "empty";
+  const packReady = Boolean(status.pack) || status.archive === "cached";
+  const state = packReady ? "ready" : status.image === "cached" ? "image" : "empty";
   const image = imageCacheLabel(status.image);
   const pack = referencePackLabel(status, candidate);
-  const label = codeReady
-    ? "精确图片与参考包已展开到本地，可复制提示词"
-    : status.archive === "cached"
-      ? "参考包已缓存到本地；复制提示词前仍需确认精确图片"
-      : status.image === "preview_cached"
-        ? "预览图已缓存到本地，参考包尚未缓存"
-        : status.image === "bundled"
-          ? "图片可从图库本地资源读取，参考包尚未缓存"
-          : "预览图与参考包均未缓存到本地";
+  const label = packReady
+    ? "参考包已缓存到本地，可复制提示词"
+    : status.image === "cached"
+      ? "预览图已缓存到本地，参考包尚未缓存"
+      : "预览图与参考包均未缓存到本地";
   const badge = element("span", undefined, `reference-status-light is-${state}`);
   const explanation = `${label}。预览图：${image.text}。参考包：${pack.text}`;
   badge.tabIndex = 0; badge.setAttribute("role", "img"); badge.setAttribute("aria-label", explanation); badge.dataset.tooltip = explanation;
@@ -82,7 +77,7 @@ async function copyPreparedPrompts(resultSetId: string, targets: ReferenceCopyCa
     const blocked = plan.blocked.length ? ` ${plan.blocked.length} 个参考无法复制。` : "";
     status.textContent = `${lead}已复制 ${plan.ready.length} 条绘图提示词。AI 无法读取本机路径时，请上传提示词列出的材料。${blocked}`.trim();
   } catch (error) {
-    status.textContent = `${lead}缓存完成，但复制提示词失败：${String(error)}`.trim();
+    status.textContent = `${lead}参考包已缓存，但复制提示词失败：${String(error)}`.trim();
   }
 }
 
@@ -97,15 +92,15 @@ export async function cacheReferences(options: {
   const copyTargets = options.copyCandidates ?? candidates;
   if (!candidates.length || candidates.length > 12) throw new Error("请选择 1–12 个参考。");
   const dialog = element("dialog", undefined, "local-dialog reference-cache-dialog");
-  const title = element("h2", `缓存 ${candidates.length} 个参考`);
-  const intro = element("p", "查看以下精确图片后生成缓存计划。图片与代码按固定版本保存到本地参考目录，缓存不会启动绘图任务。");
+  const title = element("h2", `缓存 ${candidates.length} 个参考包`);
+  const intro = element("p", "将把固定版本压缩包保存到图库的参考包目录。这与预览图是两类缓存，不会另存第三份展开副本，也不会启动绘图任务。");
   const list = element("div", undefined, "reference-review-list");
   const network = element("input"); network.type = "checkbox"; network.checked = true;
   const networkLabel = element("label", undefined, "checkbox");
-  networkLabel.append(network, document.createTextNode("缺少代码包时允许联网下载所选固定版本"));
-  const status = element("p", "正在检查本地参考…"); status.setAttribute("role", "status");
+  networkLabel.append(network, document.createTextNode("缺少参考包时允许联网下载所选固定版本"));
+  const status = element("p", "正在检查本地参考包…"); status.setAttribute("role", "status");
   const close = element("button", "关闭", "quiet"); close.type = "button";
-  const next = element("button", "确认这些图片并生成缓存计划"); next.type = "button"; next.disabled = true;
+  const next = element("button", "确认缓存参考包"); next.type = "button"; next.disabled = true;
   const actions = element("div", undefined, "dialog-actions"); actions.append(close, next);
   dialog.append(title, intro, list, networkLabel, status, actions);
   let busy = false;
@@ -114,12 +109,12 @@ export async function cacheReferences(options: {
   dialog.addEventListener("close", () => { dialog.remove(); options.onChanged(); });
   document.body.append(dialog); dialog.showModal(); bindModalScrollLock(document, dialog);
 
-  type Item = { candidate: Candidate; row: HTMLElement; message: HTMLElement; previewChallenge?: string; hash?: string; plan?: Record<string, unknown> };
+  type Item = { candidate: Candidate; row: HTMLElement; message: HTMLElement };
   const pending: Item[] = [];
   let completed = 0;
-  function showReady(item: Item, reference: CachedReference) {
-    item.message.textContent = reference.hasCode ? "图片与代码已缓存" : "参考已缓存；此包没有可识别的代码文件";
-    const location = element("code", reference.target, "reference-path");
+  function showReady(item: Item, pack: ReferencePackFiles) {
+    item.message.textContent = pack.hasCode ? "参考包已缓存" : "参考包已缓存；此包没有可识别的代码文件";
+    const location = element("code", pack.target, "reference-path");
     const copy = element("button", "复制绘图提示词", "quiet");
     copy.type = "button";
     copy.onclick = async () => {
@@ -135,26 +130,19 @@ export async function cacheReferences(options: {
     for (const candidate of candidates) {
       if (!dialog.open) return;
       const row = element("article", undefined, "reference-review-item");
-      const message = element("p", "正在加载精确图片…");
+      const message = element("p", "正在检查参考包…");
       row.append(element("h3", candidate.title), message); list.append(row);
       const item: Item = { candidate, row, message };
       const existing = states.get(candidate.candidateId);
-      if (existing?.reference === "ready" && existing.cached) { completed++; showReady(item, existing.cached); continue; }
-      if (!candidate.materializable) { message.textContent = "此条目没有可获取的固定版本参考包；不会生成代码。"; continue; }
-      try {
-        const preview = requireResult(await api("preview", { resultSetId, providerId: candidate.providerId, exactSelector: candidate.exactSelector }));
-        const image = imageData(preview);
-        const hash = await imageHash(image.data);
-        if (hash !== details(preview).transportSha256) throw new Error("精确图片校验失败");
-        const img = element("img"); img.alt = `${candidate.title} 精确预览`;
-        const loaded = new Promise<void>((resolve, reject) => { img.onload = () => resolve(); img.onerror = () => reject(new Error("精确图片显示失败")); });
-        img.src = image.url; row.insertBefore(img, message); await loaded;
-        item.previewChallenge = String(details(preview).previewChallenge); item.hash = hash;
-        message.textContent = "请确认此图片是要缓存的参考。";
-        pending.push(item);
-      } catch (error) { message.textContent = `无法缓存：${String(error)}`; }
+      if (existing?.pack) { completed++; showReady(item, existing.pack); continue; }
+      if (!candidate.materializable || existing?.archive === "not_applicable") {
+        message.textContent = "此条目没有可获取的固定版本参考包；不会下载。";
+        continue;
+      }
+      message.textContent = "待下载固定版本参考包。";
+      pending.push(item);
     }
-    status.textContent = `${completed} 个已缓存，${pending.length} 个待确认。`;
+    status.textContent = `${completed} 个已缓存，${pending.length} 个待下载。`;
     next.disabled = pending.length === 0;
     if (!pending.length) {
       next.hidden = true; networkLabel.hidden = true;
@@ -164,34 +152,26 @@ export async function cacheReferences(options: {
 
   next.onclick = async () => {
     busy = true; next.disabled = true; close.disabled = true; network.disabled = true;
-    let plans = 0;
+    let failed = 0;
     for (const item of pending) {
+      item.message.textContent = "正在缓存参考包…";
       try {
-        const confirmation = requireResult(await api("confirm", { previewChallenge: item.previewChallenge, displayedImageSha256: item.hash, imageLoaded: true, confirmedBy: "user" }));
-        const prepared = await api<{ plan: Record<string, unknown> }>("reference-cache/plan", { resultSetId, candidateId: item.candidate.candidateId, previewReceipt: details(confirmation).previewReceipt, allowNetwork: network.checked });
-        item.plan = prepared.plan; plans++;
-        item.message.textContent = `待写入：${String(item.plan.target)}；${network.checked ? "缺失代码包时联网获取" : "仅使用本地代码包"}`;
-        const technical = element("details"); technical.append(element("summary", "查看完整缓存计划"), element("pre", JSON.stringify(item.plan, null, 2))); item.row.append(technical);
-      } catch (error) { item.message.textContent = `计划失败，未缓存：${String(error)}`; }
-    }
-    busy = false; close.disabled = false;
-    next.textContent = `确认缓存 ${plans} 个参考`; next.disabled = plans === 0;
-    status.textContent = `已生成 ${plans} 个计划，确认后才下载代码和写入参考目录。失败项不会执行。`;
-    next.onclick = async () => {
-      busy = true; next.disabled = true; close.disabled = true;
-      let failed = 0;
-      for (const item of pending.filter((item) => item.plan)) {
-        item.message.textContent = "正在缓存…";
-        try {
-          const response = await api<{ reference: CachedReference }>("reference-cache/apply", { planDigest: item.plan!.planDigest, confirmedBy: "user" });
-          completed++; showReady(item, response.reference);
-        } catch (error) { failed++; item.message.textContent = `缓存失败：${String(error)}。请关闭后检查状态，重新预览并生成计划。`; }
+        const response = await api<{ pack: ReferencePackFiles }>("reference-cache/ensure", {
+          resultSetId,
+          candidateId: item.candidate.candidateId,
+          allowNetwork: network.checked,
+        });
+        completed++;
+        showReady(item, response.pack);
+      } catch (error) {
+        failed++;
+        item.message.textContent = `缓存失败：${String(error)}。请关闭后检查状态，再试一次。`;
       }
-      busy = false; close.disabled = false; next.hidden = true;
-      const summary = `${completed} 个参考可用，本次执行 ${failed} 个失败。`;
-      if (options.copyWhenReady) await copyPreparedPrompts(resultSetId, copyTargets, status, summary);
-      else status.textContent = `${summary}可用参考才能复制绘图提示词。`;
-      options.onChanged();
-    };
+    }
+    busy = false; close.disabled = false; next.hidden = true;
+    const summary = `${completed} 个参考包可用，本次执行 ${failed} 个失败。`;
+    if (options.copyWhenReady) await copyPreparedPrompts(resultSetId, copyTargets, status, summary);
+    else status.textContent = `${summary}已缓存的参考包才能复制绘图提示词。`;
+    options.onChanged();
   };
 }
