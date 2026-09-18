@@ -58,6 +58,24 @@ test("background stale plans report a terminal failure without downloading", asy
   assert.match(cache.tasks().tasks[0]!.error!, /变化/u);
 });
 
+test("gallery cache status counts preview files per gallery", async t => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "sfl-gallery-cache-status-"));
+  t.after(() => fs.rm(root, { recursive: true, force: true }));
+  const imageDirectory = path.join(root, "indexes", "preview-cache", "v1");
+  await fs.mkdir(imageDirectory, { recursive: true });
+  const figureImage = "a".repeat(64);
+  const moduleImage = "b".repeat(64);
+  await fs.writeFile(path.join(imageDirectory, `${figureImage}.png`), "figure");
+  await fs.writeFile(path.join(imageDirectory, `${moduleImage}.jpg`), "module");
+  const figureYa = { catalog: { modules: [{ primaryPreview: "figure.png", previewSha256: figureImage }] } } as unknown as CatalogIndex;
+  const modules = { catalog: { modules: [{ preview: { path: "preview.jpg", sha256: moduleImage }, thumbnail: { path: "thumbnail.png", sha256: "c".repeat(64) } }] } } as unknown as ModuleCatalogIndex;
+  const cache = createGalleryCache({ figureYa, modules: () => modules, library: async () => ({ root, contextKey: "one", writesEnabled: true }) });
+  const status = await cache.status();
+  assert.equal((status.providers[FIGUREYA_PROVIDER_ID] as { imageFiles: number }).imageFiles, 1);
+  assert.equal((status.providers[PERSONAL_MODULE_PROVIDER_ID] as { imageFiles: number }).imageFiles, 1);
+  assert.equal(status.imageFiles, 2);
+});
+
 test("gallery cache plans are read-only, isolate image failures, and replay concurrent Apply", async t => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), "sfl-gallery-cache-"));
   t.after(() => fs.rm(root, { recursive: true, force: true }));
