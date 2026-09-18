@@ -90,6 +90,13 @@ enum Sheet: Identifiable {
             try await backend.start()
             syncingGallery = section == .discover
             ready = true
+            // The native packaging smoke binds its isolated Library before
+            // asking for cache/provider status. Those status endpoints create
+            // derived cache directories, which would make the unbound target
+            // look like an unrelated non-empty directory.
+            if ProcessInfo.processInfo.environment["SFL_NATIVE_SMOKE"] == "1" {
+                return
+            }
             try await status()
             if section == .discover {
                 do { try await gallery() } catch { self.error = friendlyNetworkError(error) }

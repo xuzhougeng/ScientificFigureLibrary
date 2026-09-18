@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Scientific Figure Library 0.8.0 安装、使用和更新教程。">
+    <title>0.8.0 安装与使用教程 | Scientific Figure Library</title>
+    <link rel="icon" href="assets/logo.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="assets/pages.css">
+    <link rel="stylesheet" href="assets/tutorial.css">
+  </head>
+  <body>
+    <a class="skip-link" href="#main">跳至主要内容</a>
+    <header class="site-nav">
+      <div class="container">
+        <a class="brand" href="index.html"><img src="assets/logo.svg" alt="" width="28" height="28"><span class="brand-name">Scientific Figure Library</span><span class="brand-short" aria-hidden="true">SFL</span></a>
+        <nav class="nav-links" aria-label="页面导航">
+          <a href="index.html">首页</a>
+          <a href="gallery.html">图库</a>
+          <a href="#install">安装</a>
+          <a href="#use">使用</a>
+          <a href="#update">更新</a>
+        </nav>
+        <div class="nav-cta"><a class="btn btn-secondary nav-github" href="https://github.com/xuzhougeng/ScientificFigureLibrary">GitHub</a><a class="btn btn-primary" href="https://github.com/xuzhougeng/ScientificFigureLibrary/releases/tag/v0.8.0">下载 0.8.0</a></div>
+      </div>
+    </header>
+    <main id="main">
+      <section class="tutorial-hero">
+        <div class="container">
+          <div class="section-label"><span class="idx">[ SFL 0.8.0 ]</span><span>安装 · 使用 · 更新</span></div>
+          <h1>从下载安装到第一次复用，<br>把你的图库放在本机。</h1>
+          <p class="lead">0.8.0 提供 macOS 原生 SwiftUI App，并同时提供复用本机 Node.js 22+ 的版本；Windows 与 Linux 继续使用本地网页客户端。下面按平台说明下载、首次设置、连接外部工具和升级方式。</p>
+          <div class="tutorial-links"><a class="btn btn-primary" href="https://github.com/xuzhougeng/ScientificFigureLibrary/releases/tag/v0.8.0">打开 0.8.0 发布页</a><a class="btn btn-secondary" href="INSTALL_LOCAL.md">查看完整安装限制</a></div>
+        </div>
+      </section>
+      <section class="tutorial-main" id="install">
+        <div class="container">
+          <div class="section-label"><span class="idx">[ 01 ]</span><span>选择安装包</span></div>
+          <h2>按系统与运行时选择文件</h2>
+          <table class="tutorial-table">
+            <thead><tr><th>系统</th><th>内置 Node 版本</th><th>本机 Node 版本</th><th>选择建议</th></tr></thead>
+            <tbody>
+              <tr><td>macOS Apple Silicon</td><td><code>macos-arm64.dmg</code></td><td><code>macos-arm64-no-node.dmg</code></td><td>M 系列 Mac 选择 arm64；不想另装 Node 请选择内置 Node。</td></tr>
+              <tr><td>macOS Intel</td><td><code>macos-x64.dmg</code></td><td><code>macos-x64-no-node.dmg</code></td><td>Intel Mac 选择 x64。两种包都是原生 SwiftUI 界面。</td></tr>
+              <tr><td>Windows x64</td><td><code>windows-x64.zip</code></td><td><code>windows-x64-no-node.zip</code></td><td>解压后运行 <code>Start SFL.cmd</code>；本机 Node 版要求 Node.js 22+。</td></tr>
+              <tr><td>Linux x64 / arm64</td><td><code>linux-x64.zip</code> / <code>linux-arm64.zip</code></td><td>文件名追加 <code>-no-node</code></td><td>解压后运行 <code>start-sfl.sh</code>；本机 Node 版要求 Node.js 22+。</td></tr>
+            </tbody>
+          </table>
+          <div class="tutorial-callout"><strong>macOS 提醒：</strong>0.8.0 DMG 是预览版，当前使用 ad-hoc 签名，尚未完成 Developer ID 签名与 Apple 公证。首次打开时按 macOS“隐私与安全性”的提示允许已确认来源的 App。</div>
+          <div class="section-label"><span class="idx">[ 02 ]</span><span>安装与首次启动</span></div>
+          <div class="tutorial-grid">
+            <article class="tutorial-step"><span class="step-number">1</span><h3>下载并校验</h3><p>从 v0.8.0 发布页下载对应文件和同名 <code>.sha256</code>。在终端运行 <code>shasum -a 256 文件名</code>（Windows 可用 <code>certutil -hashfile 文件名 SHA256</code>），确认摘要一致。</p></article>
+            <article class="tutorial-step"><span class="step-number">2</span><h3>安装程序</h3><p>macOS 将 App 拖入 Applications；Windows/Linux 解压整个目录，不要单独移动 <code>runtime</code>、<code>dist</code> 或 <code>assets</code>。</p></article>
+            <article class="tutorial-step"><span class="step-number">3</span><h3>绑定两个目录</h3><p>第一次启动在“设置”中指定全局 Library（长期保存已发布图形）和 Local workspace（当前工作内容）。目录由你选择，程序不会把它们推断为当前项目。</p></article>
+            <article class="tutorial-step"><span class="step-number">4</span><h3>连接外部工具</h3><p>打开“连接外部工具”，复制 Codex、Claude、Cursor 或通用 stdio MCP 配置。内置 Node 包会使用包内绝对路径；no-node 包会使用你选择的 Node 路径。</p></article>
+          </div>
+          <div class="section-label" id="use"><span class="idx">[ 03 ]</span><span>日常使用</span></div>
+          <h2>导入、审阅、发布，再复用</h2>
+          <div class="tutorial-grid">
+            <article class="tutorial-card"><h3>导入自己的图</h3><p>在“创建参考图”选择图片、绘图代码和方法说明，填写数据特征、用途与许可证。SFL 只保存和管理资产，不执行 R/Python 绘图脚本。</p></article>
+            <article class="tutorial-card"><h3>发布不可变版本</h3><p>在“我的图库”打开草稿，完成审阅记录后发布。发布版本保留来源、文件摘要和许可证，可在不同项目中检索。</p></article>
+            <article class="tutorial-card"><h3>搜索并确认精确预览</h3><p>在“图库”搜索本机已发布内容或外部图库。先打开精确预览并确认具体版本，再复制到项目，避免只凭缩略图选择。</p></article>
+            <article class="tutorial-card"><h3>按需缓存外部图片</h3><p>FigureYa 与 Open Figure Modules 的预览图不会随安装包全部下载。对指定图库点击“缓存图片”才会批量下载；单张预览和参考包按需获取并校验。</p></article>
+          </div>
+          <div class="tutorial-callout"><strong>网络问题：</strong>默认直连 GitHub。若所在网络需要代理，在“设置”打开系统代理并填写本机回环 HTTP 代理（例如 <code>http://127.0.0.1:7897</code>）。不要把 198.18.x fake-ip 地址当作图库地址。</div>
+          <div class="section-label" id="update"><span class="idx">[ 04 ]</span><span>更新与卸载</span></div>
+          <h2>安全替换程序，保留你的 Library</h2>
+          <ol class="tutorial-grid" style="list-style:none; padding:0">
+            <li class="tutorial-step"><span class="step-number">1</span><h3>备份数据</h3><p>退出 SFL 和仍在使用旧程序的 MCP 进程，备份你指定的全局 Library 与 Local workspace。</p></li>
+            <li class="tutorial-step"><span class="step-number">2</span><h3>下载新版本</h3><p>从新的 GitHub Release 选择平台与架构，重新校验 SHA-256。macOS 仍需选择 arm64 或 x64，不能混用。</p></li>
+            <li class="tutorial-step"><span class="step-number">3</span><h3>替换程序</h3><p>macOS 用新 App 替换 Applications 中旧 App；Windows/Linux 删除或移走旧解压目录后解压新目录。不要覆盖 Library。</p></li>
+            <li class="tutorial-step"><span class="step-number">4</span><h3>检查连接</h3><p>启动后打开“设置”和“连接外部工具”，确认目录、Node 路径和 MCP 配置。删除程序不会自动删除用户图库。</p></li>
+          </ol>
+          <div class="tutorial-links"><a class="btn btn-secondary" href="https://github.com/xuzhougeng/ScientificFigureLibrary/blob/main/docs/INSTALL_LOCAL.md">完整安装说明（Markdown）</a><a class="btn btn-secondary" href="https://github.com/xuzhougeng/ScientificFigureLibrary/blob/main/docs/USER_GUIDE.zh-CN.md">中文用户手册</a><a class="btn btn-secondary" href="https://github.com/xuzhougeng/ScientificFigureLibrary/releases">查看全部版本</a></div>
+        </div>
+      </section>
+    </main>
+    <footer class="site-footer"><div class="container footer-inner"><a class="brand" href="index.html"><img src="assets/logo.svg" alt="" width="28" height="28"><span class="brand-name">Scientific Figure Library</span><span class="brand-short" aria-hidden="true">SFL</span></a><nav class="footer-links" aria-label="项目链接"><a href="index.html">首页</a><a href="gallery.html">图库</a><a href="https://github.com/xuzhougeng/ScientificFigureLibrary/releases">版本记录</a><a href="https://github.com/xuzhougeng/ScientificFigureLibrary/issues">问题反馈</a></nav><p class="footer-copy">代码 MIT · 导入图形保留其记录的许可证。</p></div></footer>
+  </body>
+</html>

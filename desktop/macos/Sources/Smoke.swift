@@ -33,6 +33,7 @@ func nativeSmokeLog(_ stage: String) {
         _ = try await backend.call("figure_library_apply_bind_global", ["planDigest": global["plan"]["planDigest"], "operationId": text("native-smoke-bind")], approve: true)
         let workspace = try await backend.call("figure_library_plan_bind_workspace", ["workspaceDirectory": text(rawRoot + "/workspace")])
         _ = try await backend.call("figure_library_apply_bind_workspace", ["planDigest": workspace["plan"]["planDigest"], "operationId": text("native-smoke-workspace")], approve: true)
+        try await model.status()
         nativeSmokeLog("on-demand preview manifests")
         guard let assets = Bundle.main.resourceURL?.appendingPathComponent("sfl/assets") else {
             throw LocalError(message: "Installer is missing the bundled assets directory")
