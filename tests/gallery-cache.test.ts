@@ -8,6 +8,56 @@ import type { CatalogIndex } from "../src/catalog.ts";
 import type { ModuleCatalogIndex } from "../src/module-catalog.ts";
 import { FIGUREYA_PROVIDER_ID, PERSONAL_MODULE_PROVIDER_ID } from "../src/providers.ts";
 
+test("background images return immediately, expose progress, isolate failures and replay without restarting", async t => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "sfl-background-cache-"));
+  t.after(() => fs.rm(root, { recursive: true, force: true }));
+  let release!: () => void;
+  let entered!: () => void;
+  const blocked = new Promise<void>(resolve => { release = resolve; });
+  const started = new Promise<void>(resolve => { entered = resolve; });
+  let reads = 0;
+  const figureYa = { catalog: { modules: [{ moduleId: "ok", primaryPreview: "ok.png" }, { moduleId: "broken", primaryPreview: "broken.png" }] }, preview: async (id: string) => {
+    reads++; entered(); await blocked;
+    if (id === "broken") throw new Error("download failed");
+    return { bytes: Buffer.from("fixture"), extension: ".png" };
+  } } as unknown as CatalogIndex;
+  const cache = createGalleryCache({ figureYa, modules: () => undefined, library: async () => ({ root, contextKey: "one", writesEnabled: true }) });
+  const { plan } = await cache.plan({ providerId: FIGUREYA_PROVIDER_ID, mode: "images" });
+  const input = { planDigest: plan.planDigest, confirmedBy: "user" };
+  const initial = cache.start(input).task;
+  assert.equal(initial.state, "running");
+  assert.equal(initial.total, 2);
+  await started;
+  assert.equal(cache.tasks().tasks[0]!.currentItem, "ok/image");
+  assert.equal(cache.start(input).task.id, initial.id);
+  const duplicate = await cache.plan({ providerId: FIGUREYA_PROVIDER_ID, mode: "images" });
+  assert.throws(() => cache.start({ ...input, planDigest: duplicate.plan.planDigest }), /已有缓存任务/u);
+  const snapshot = cache.tasks(); snapshot.tasks[0]!.processed = 99;
+  assert.equal(cache.tasks().tasks[0]!.processed, 0);
+  release();
+  await cache.apply(input);
+  await new Promise(resolve => setImmediate(resolve));
+  const completed = cache.tasks().tasks[0]!;
+  assert.equal(completed.state, "completed");
+  assert.equal(completed.processed, 2);
+  assert.equal(completed.images, 1);
+  assert.equal(completed.failures.length, 1);
+  assert.equal(cache.start(input).task.state, "completed");
+  assert.equal(reads, 2);
+});
+
+test("background stale plans report a terminal failure without downloading", async () => {
+  let contextKey = "one";
+  const figureYa = { catalog: { modules: [] } } as unknown as CatalogIndex;
+  const cache = createGalleryCache({ figureYa, modules: () => undefined, library: async () => ({ root: os.tmpdir(), contextKey, writesEnabled: true }) });
+  const { plan } = await cache.plan({ providerId: FIGUREYA_PROVIDER_ID, mode: "images" });
+  contextKey = "two";
+  cache.start({ planDigest: plan.planDigest, confirmedBy: "user" });
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(cache.tasks().tasks[0]!.state, "failed");
+  assert.match(cache.tasks().tasks[0]!.error!, /变化/u);
+});
+
 test("gallery cache plans are read-only, isolate image failures, and replay concurrent Apply", async t => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), "sfl-gallery-cache-"));
   t.after(() => fs.rm(root, { recursive: true, force: true }));
@@ -43,8 +93,10 @@ test("Open Figure caches both preview roles and rejects a changed catalog or una
   const cache = createGalleryCache({ figureYa: {} as CatalogIndex, modules: () => index, library: async () => ({ root, contextKey: "one", writesEnabled: true }) });
   const { plan } = await cache.plan({ providerId: PERSONAL_MODULE_PROVIDER_ID, mode: "images" });
   assert.equal(plan.images, 2);
+  assert.equal(cache.start({ planDigest: plan.planDigest, confirmedBy: "user" }).task.total, 2);
   await cache.apply({ planDigest: plan.planDigest, confirmedBy: "user" });
   assert.deepEqual(roles, ["primary", "thumbnail"]);
+  assert.equal(cache.tasks().tasks[0]!.processed, 2);
   const stale = await cache.plan({ providerId: PERSONAL_MODULE_PROVIDER_ID, mode: "code" });
   Object.assign(index, { catalogSha256: "two" });
   await assert.rejects(cache.apply({ planDigest: stale.plan.planDigest, confirmedBy: "user" }), /变化/u);

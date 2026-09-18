@@ -60,6 +60,15 @@ async function isolated(t: { after: (fn: () => Promise<void>) => void }) {
   return { root, local, service, request, api, call, overrides };
 }
 
+test("background cache endpoints require a local session and a valid confirmed plan", async t => {
+  const { local, request, api } = await isolated(t);
+  assert.equal((await fetch(local.origin + "/api/gallery-cache/tasks")).status, 401);
+  assert.deepEqual((await api("/api/gallery-cache/tasks")).tasks, []);
+  const response = await request("/api/gallery-cache/start", { planDigest: "00000000-0000-4000-8000-000000000000", confirmedBy: "user" });
+  assert.equal(response.ok, false);
+  assert.match(String(record(await response.json()).error), /缓存计划不存在/u);
+});
+
 test("local app HTML exposes dual gallery pagination without a browse-gallery button", async () => {
   const html = await fs.readFile(path.resolve(import.meta.dirname, "../app/local-app.html"), "utf8");
   assert.match(html, /id="local-pagination-top"/u);

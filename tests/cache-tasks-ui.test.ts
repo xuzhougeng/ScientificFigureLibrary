@@ -1,0 +1,30 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+import { build } from "esbuild";
+import { JSDOM } from "jsdom";
+import { runInContext } from "node:vm";
+
+test("cache task panel restores running progress, preserves collapse and shows failures", async t => {
+  const bundle = await build({ entryPoints: ["app/local/cache-tasks.ts"], bundle: true, write: false, format: "iife", globalName: "cacheTasks" });
+  const dom = new JSDOM("<!doctype html><body></body>", { runScripts: "outside-only" });
+  t.after(() => dom.window.close());
+  const task = { id: "fixture", providerId: "org.figureya.module", mode: "images", state: "running", total: 2, processed: 1, currentItem: "second/image", failures: [] as Array<{ item: string; message: string }> };
+  dom.window.fetch = async () => new Response(JSON.stringify({ tasks: [task] }));
+  const context = dom.getInternalVMContext();
+  runInContext(bundle.outputFiles![0]!.text, context);
+  runInContext("cacheTasks.watchCacheTasks()", context);
+  await runInContext("cacheTasks.refreshCacheTasks()", context);
+  const panel = dom.window.document.querySelector("details")!;
+  assert.equal(panel.hidden, false);
+  assert.equal(panel.querySelector("progress")!.value, 1);
+  assert.match(panel.textContent!, /second\/image/u);
+  panel.open = false;
+  task.state = "completed"; task.processed = 2;
+  task.failures = [{ item: "second/image", message: "network unavailable" }];
+  await runInContext("cacheTasks.refreshCacheTasks()", context);
+  assert.equal(panel.open, false);
+  assert.match(panel.textContent!, /完成，有失败项/u);
+  assert.match(panel.textContent!, /network unavailable/u);
+  panel.querySelector("button")!.click();
+  assert.equal(panel.hidden, true);
+});

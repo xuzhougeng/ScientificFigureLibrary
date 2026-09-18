@@ -11,19 +11,36 @@ import { FIGUREYA_PROVIDER_ID, PERSONAL_MODULE_PROVIDER_ID } from "../providers.
 export function galleryCodeDirectory(root: string, providerId: string) {
   return path.join(root, "source-packs", providerId === FIGUREYA_PROVIDER_ID ? "figureya" : "open-modules");
 }
+export interface GalleryCacheTask {
+  id: string; providerId: string; mode: string; state: "running" | "completed" | "failed";
+  total: number; processed: number; currentItem: string; images: number; archives: number;
+  failures: Array<{ item: string; message: string }>; error?: string;
+}
 
 export function createGalleryCache(options: {
   figureYa: CatalogIndex;
   modules(): ModuleCatalogIndex | undefined;
   library(): Promise<{ root: string; contextKey: string; writesEnabled: boolean }>;
 }) {
-  type Prepared = { plan: { planDigest: string; providerId: string; mode: string; images: number; archives: number; imageDirectory: string; codeDirectory: string }; root: string; contextKey: string; identity: string; expires: number; result?: Promise<unknown> };
+  type Prepared = { plan: { planDigest: string; providerId: string; mode: string; images: number; archives: number; imageDirectory: string; codeDirectory: string }; root: string; contextKey: string; identity: string; expires: number; result?: Promise<unknown>; task?: GalleryCacheTask };
   const plans = new Map<string, Prepared>();
   const figureYaIdentity = JSON.stringify(options.figureYa.catalog);
   const identity = (providerId: string) => providerId === FIGUREYA_PROVIDER_ID
     ? figureYaIdentity
     : options.modules()?.catalogSha256;
-  return {
+  const api = {
+    tasks: () => ({ tasks: [...plans.values()].flatMap(item => item.task ? [structuredClone(item.task)] : []) }),
+    start: (raw: unknown): { task: GalleryCacheTask } => {
+      const input = z.object({ planDigest: z.string().uuid(), confirmedBy: z.literal("user") }).strict().parse(raw);
+      const prepared = plans.get(input.planDigest);
+      if (!prepared) throw new Error("缓存计划不存在，请重新生成。");
+      if (prepared.task) return { task: structuredClone(prepared.task) };
+      if ([...plans.values()].some(item => item.task?.state === "running" && item.plan.providerId === prepared.plan.providerId && item.root === prepared.root)) throw new Error("该图库已有缓存任务，请在任务进度中查看。");
+      const task: GalleryCacheTask = { id: input.planDigest, providerId: prepared.plan.providerId, mode: prepared.plan.mode, state: "running", total: prepared.plan.images + prepared.plan.archives, processed: 0, currentItem: "准备中", images: 0, archives: 0, failures: [] };
+      prepared.task = task;
+      void api.apply(input).then(() => { task.state = "completed"; task.currentItem = ""; }, error => { task.state = "failed"; task.error = error instanceof Error ? error.message : String(error); });
+      return { task: structuredClone(task) };
+    },
     plan: async (raw: unknown) => {
       const input = z.object({ providerId: z.enum([FIGUREYA_PROVIDER_ID, PERSONAL_MODULE_PROVIDER_ID]), mode: z.enum(["images", "code", "update"]) }).strict().parse(raw);
       const library = await options.library();
@@ -38,7 +55,10 @@ export function createGalleryCache(options: {
         codeDirectory: galleryCodeDirectory(library.root, input.providerId),
       };
       plans.set(plan.planDigest, { plan, root: library.root, contextKey: library.contextKey, identity: identity(input.providerId)!, expires: Date.now() + 10 * 60_000 });
-      if (plans.size > 32) plans.delete(plans.keys().next().value!);
+      if (plans.size > 32) {
+        const removable = [...plans.entries()].find(([, item]) => item.task?.state !== "running");
+        if (removable) plans.delete(removable[0]);
+      }
       return { plan };
     },
     apply: async (raw: unknown) => {
@@ -60,7 +80,9 @@ export function createGalleryCache(options: {
         };
         const attempt = async (item: string, work: () => Promise<void>) => {
           await check();
+          if (prepared.task) prepared.task.currentItem = item;
           try { await work(); } catch (error) { result.failures.push({ item, message: error instanceof Error ? error.message : String(error) }); }
+          if (prepared.task) { prepared.task.processed++; prepared.task.images = result.images; prepared.task.archives = result.archives; prepared.task.failures = [...result.failures]; }
         };
         const saveImage = async (image: { bytes: Uint8Array; extension: string } | undefined) => {
           if (!image) throw new Error("此条目没有可用图片");
@@ -94,4 +116,5 @@ export function createGalleryCache(options: {
       return prepared.result;
     },
   };
+  return api;
 }

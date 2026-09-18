@@ -124,6 +124,7 @@ export async function startLocalHttp(options: {
       if (request.method === "GET" && url.pathname === "/api/integrations") return json(response, 200, integrationGuide({ server: path.resolve(import.meta.dirname, "index.js") }));
       if (request.method === "GET" && url.pathname === "/api/library") return json(response, 200, await service.local.library());
       if (request.method === "GET" && url.pathname === "/api/preview-cache") return json(response, 200, await service.local.previewCache());
+      if (request.method === "GET" && url.pathname === "/api/gallery-cache/tasks") return json(response, 200, await service.local.galleryCacheTasks());
       if (request.method === "GET" && url.pathname === "/api/network-access") return json(response, 200, await inspectNetworkAccess());
       if (request.method !== "POST") return json(response, 404, { error: "Unknown local client endpoint" });
       if (url.pathname === "/api/upload") {
@@ -137,6 +138,7 @@ export async function startLocalHttp(options: {
         return json(response, 200, { sourcePath: file, filename, bytes: bytes.length });
       }
       const input: unknown = JSON.parse((await readBody(request, BODY_LIMIT)).toString());
+      if (url.pathname === "/api/gallery-cache/start") return json(response, 202, await service.local.startGalleryCache(input));
       if (url.pathname === "/api/gallery-cache/plan") return json(response, 200, await service.local.planGalleryCache(input));
       if (url.pathname === "/api/gallery-cache/apply") {
         request.socket?.setTimeout(0);

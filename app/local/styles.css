@@ -222,3 +222,10 @@ html.dialog-open .local-main { overflow: hidden; }
 .library-preview img { width: 100%; height: 100%; object-fit: contain; }
 .library-items[data-layout="list"] .library-preview { display: none; }
 .library-info { flex: 1; overflow-wrap: anywhere; }
+.cache-task-panel { position: fixed; right: 22px; bottom: 20px; z-index: 30; width: min(370px, calc(100vw - 32px)); max-height: 55vh; overflow-y: auto; padding: 16px; border: 1px solid #cfddd2; border-radius: 14px; background: #fff; box-shadow: 0 8px 32px #123b2626; color: #23382d; }
+.cache-task-panel > summary { cursor: pointer; font-weight: 650; }
+.cache-task-panel p { font-size: 12px; margin: 8px 0; overflow-wrap: anywhere; }
+.cache-task-list article { padding: 12px 0; border-top: 1px solid #e2e9e3; }
+.cache-task-list strong { font-size: 13px; }
+.cache-task-list progress { display: block; width: 100%; height: 8px; margin-top: 10px; accent-color: #246c4e; }
+.cache-task-list pre { max-height: 100px; overflow: auto; white-space: pre-wrap; font-size: 11px; }

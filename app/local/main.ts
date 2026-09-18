@@ -6,6 +6,7 @@ import { api, call, details, imageData, imageHash, record, records, requireResul
 import { formatUserNetworkError } from "../../src/process-log.ts";
 import { cacheReferences, copyReferencePrompt, referenceStatuses, referenceStatusIcons } from "./reference-cache.ts";
 import { setButtonContent } from "../icons.ts";
+import { refreshCacheTasks, watchCacheTasks } from "./cache-tasks.ts";
 import { PAGE_STORAGE_KEY, PAGE_TITLES, galleryMissingCount, isPageId, pageHash, prefetchButtonLabel, readSavedPage, type PageId } from "./ui-state.ts";
 import "../styles.css";
 import "./styles.css";
@@ -352,6 +353,10 @@ function prefetchConfirmMessage(sourceLabel: string, gallery: Record<string, unk
   return `缓存「${sourceLabel}」的 ${declared} 张预览图（约 ${formatBytes(bytes)}）？只下载该图库的固定图片，不会执行代码。`;
 }
 async function prefetchGallery(providerId: string, sourceLabel: string, gallery: Record<string, unknown> | undefined) {
+  if (["org.figureya.module", "io.github.jarxunlai.personal-figures"].includes(providerId)) {
+    await manageGalleryCache(providerId, sourceLabel, "images");
+    return;
+  }
   if (!window.confirm(prefetchConfirmMessage(sourceLabel, gallery))) return;
   const result = await api<Record<string, unknown>>("preview-cache", { action: "prefetch", providerId });
   const prefetch = record(result.prefetch);
@@ -433,27 +438,25 @@ function renderSearchProviders(sources: Array<Record<string, unknown>>) {
   }
   if ([...picker.options].some((option) => option.value === current)) picker.value = current;
 }
-const galleryCacheResults = new Map<string, string>();
 async function manageGalleryCache(providerId: string, sourceLabel: string, mode: "images" | "code" | "update") {
   const { plan } = await api<{ plan: { planDigest: string; images: number; archives: number; imageDirectory: string; codeDirectory: string } }>("gallery-cache/plan", { providerId, mode });
   const modal = node("dialog", undefined, "local-dialog");
   const title = { images: "缓存图片", code: "缓存代码", update: "更新缓存" }[mode];
   modal.append(node("h2", `${sourceLabel} · ${title}`), node("p", `将校验并准备 ${plan.images} 张图片、${plan.archives} 个固定版本源码包。已有且校验通过的代码包会复用。不会执行代码，也不会自动切换目录版本。`));
   modal.append(node("p", `图片：${plan.imageDirectory}`), node("p", `代码：${plan.codeDirectory}`));
-  const status = node("p", "确认后允许联网获取缺失文件。整库代码较多，可能需要几分钟。");
+  const status = node("p", "确认后在后台联网获取缺失文件，可继续浏览，右下角显示任务进度。");
   status.setAttribute("role", "status");
   const close = action("取消", async () => modal.close(), true);
   let busy = false;
-  const confirm = action("确认缓存", async () => {
-    busy = true; close.disabled = true; status.textContent = "正在逐项校验并缓存，请保持窗口打开…";
+  const confirm = action("确认并后台缓存", async () => {
+    busy = true; close.disabled = true; status.textContent = "正在启动后台任务…";
     try {
-      const result = await api<{ images: number; archives: number; downloadedArchives: number; failures: Array<{ item: string; message: string }> }>("gallery-cache/apply", { planDigest: plan.planDigest, confirmedBy: "user" });
-      const summary = `本次校验可用：${result.images} 张图片、${result.archives} 个源码包（新下载 ${result.downloadedArchives} 个）；失败 ${result.failures.length} 项。`;
-      status.textContent = summary; galleryCacheResults.set(providerId, summary);
-      for (const failure of result.failures) modal.append(node("p", `${failure.item}：${failure.message}`));
-      await loadStatus();
+      await api("gallery-cache/start", { planDigest: plan.planDigest, confirmedBy: "user" });
+      modal.close();
+      notify(`「${sourceLabel}」正在后台${title}，可在右下角查看进度。`);
+      await refreshCacheTasks();
     } catch (error) { status.textContent = String(error); }
-    finally { busy = false; close.disabled = false; close.textContent = "关闭"; confirm.hidden = true; }
+    finally { busy = false; close.disabled = false; }
   });
   modal.addEventListener("cancel", event => { if (busy) event.preventDefault(); });
   modal.addEventListener("close", () => modal.remove());
@@ -490,7 +493,7 @@ function renderProviderSources(sources: Array<Record<string, unknown>>) {
       for (const [mode, label] of [["images", "缓存图片"], ["code", "缓存代码"], ["update", "更新缓存"]] as const) {
         actions.append(action(label, () => manageGalleryCache(providerId, String(source.sourceLabel ?? providerId), mode), true));
       }
-      card.append(node("p", galleryCacheResults.get(providerId) ?? "可分别准备图片和代码；更新缓存会校验并补齐当前目录版本。"));
+      card.append(node("p", "可分别在后台准备图片和代码；更新缓存会校验并补齐当前目录版本。"));
     } else appendPrefetchAction(actions, providerId, String(source.sourceLabel ?? providerId), gallery);
     if (personal) {
       actions.append(action("检查更新", () => changeProvider("检查图库更新", { action: "update", providerId }), true));
@@ -853,6 +856,7 @@ async function connect() {
   }
   await loadStatus();
   await showPage(initial);
+  watchCacheTasks(() => loadStatus());
 }
 void run(connect);
 
