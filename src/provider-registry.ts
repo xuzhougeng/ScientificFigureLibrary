@@ -764,6 +764,7 @@ export class FigureYaProviderAdapter implements ProviderAdapter {
     const sourcePack = await inspectFigureYaSourcePack(
       context.catalog.catalog,
       context.sourcePackDir,
+      { verifyArchives: false },
     );
     return {
       providerId: this.descriptor.providerId,
@@ -1080,11 +1081,17 @@ export class ModuleCatalogProviderAdapter implements ProviderAdapter {
     const sourcePackDirectory =
       context.moduleSourcePackDir ??
       process.env.PERSONAL_MODULE_SOURCE_PACK_DIR?.trim();
-    const sourcePack = await inspectModuleSourcePack(index, sourcePackDirectory);
-    const [previewChecks, thumbnailChecks] = await Promise.all([
-      Promise.all(index.catalog.modules.map(async (module) => index.primaryPreviewAvailable(module))),
-      Promise.all(index.catalog.modules.map(async (module) => index.thumbnailAvailable(module))),
-    ]);
+    const sourcePack = await inspectModuleSourcePack(index, sourcePackDirectory, { verifyArchives: false });
+    // ModuleCatalogIndex validates bundled previews while loading its immutable
+    // snapshot. Startup status only needs availability, so do not reread and
+    // hash every image on every page refresh; search/preview still verifies the
+    // selected bytes before returning them.
+    const previewChecks = index.catalog.modules.map((module) =>
+      index.previewDownloads ? index.previewDownloads.has(module.preview.path) : true,
+    );
+    const thumbnailChecks = index.catalog.modules.map((module) =>
+      index.previewDownloads ? index.previewDownloads.has(module.thumbnail.path) : true,
+    );
     const sourceCommits = [...new Set(index.catalog.modules.map((module) => module.source.commit))].sort();
     const archiveCommits = [...new Set(index.catalog.modules.map((module) => module.archive.commit))].sort();
     const sourcePackHealth = sourcePack.manifestValid

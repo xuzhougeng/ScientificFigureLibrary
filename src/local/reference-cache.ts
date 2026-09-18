@@ -18,10 +18,26 @@ export interface CachedReference {
 }
 export interface ReferenceCacheStatus {
   candidateId: string;
-  image: "local" | "not_cached";
+  /**
+   * The preview cache is separate from a provider's bundled/local source and
+   * from the exact reference cache. Keep those states explicit so the UI does
+   * not report a readable bundled preview as a downloaded cache entry.
+   */
+  image: "bundled" | "preview_cached" | "not_cached";
   reference: "ready" | "missing" | "invalid" | "unavailable";
   cached?: CachedReference;
   error?: string;
+}
+
+async function previewCacheHasFile(root: string, preview: { sha256: string; extension: string; byteLength: number }) {
+  const file = path.join(root, "indexes", "preview-cache", "v1", `${preview.sha256}${preview.extension}`);
+  try {
+    const stat = await fs.lstat(file);
+    return stat.isFile() && !stat.isSymbolicLink() && stat.size === preview.byteLength;
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return false;
+    throw error;
+  }
 }
 
 const selection = z.object({ resultSetId: z.string().min(1), candidateId: z.string().min(1) });
@@ -89,13 +105,12 @@ export function createReferenceCache(options: {
         try {
           const offline = { ...context, allowPreviewDownload: false };
           const resolved = await adapter.resolve(offline, candidate.exactSelector, "preview");
-          await adapter.loadPreview(offline, resolved);
-          image = "local";
+          const preview = await adapter.loadPreview(offline, resolved);
+          image = await previewCacheHasFile(context.library.snapshot.root, preview) ? "preview_cached" : "bundled";
         } catch { /* Status must never download a missing image. */ }
         if (!candidate.materializable) { items.push({ candidateId, image, reference: "unavailable" }); continue; }
         try {
           const value = await cached(context, candidate);
-          if (value?.files.some((file) => /\.(?:png|jpe?g|webp|svg|pdf|tiff?)$/iu.test(file))) image = "local";
           items.push({ candidateId, image, reference: value ? "ready" : "missing", ...(value ? { cached: value } : {}) });
         } catch (error) {
           items.push({ candidateId, image, reference: "invalid", error: error instanceof Error ? error.message : String(error) });

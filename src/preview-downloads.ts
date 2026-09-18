@@ -5,6 +5,7 @@ import path from "node:path";
 import { z } from "zod";
 import { assertMcpImageBytes } from "./image-validation.ts";
 import { SecureProviderSourceFetcher } from "./provider-source-fetch.ts";
+import { cacheStateDatabase } from "./local/cache-state-db.ts";
 
 export const PREVIEW_DOWNLOAD_MANIFEST = "preview-downloads.json";
 const HASH = /^[a-f0-9]{64}$/u;
@@ -46,6 +47,8 @@ export interface PreviewCacheGalleryStatus {
   missing: number;
   bytesDeclared: number;
   bytesCached: number;
+  lastCachedAt?: string;
+  lastVerifiedAt?: string;
 }
 
 export interface PreviewCacheGallery {
@@ -104,15 +107,34 @@ async function assertPreviewCacheDirectory(directory: string) {
   if (stat.isSymbolicLink() || !stat.isDirectory()) throw new Error("Preview cache must be a regular directory");
 }
 
-async function galleryStatuses(galleries: PreviewCacheGallery[] = []) {
-  return Promise.all(galleries.map(async ({ providerId, sourceLabel, store }) => {
-    const current = await store.inspect();
-    return { providerId, sourceLabel, ...current };
-  }));
+async function galleryStatuses(galleries: PreviewCacheGallery[] = [], refreshProviderId?: string, refreshAll = false) {
+  const directory = previewCacheDirectory();
+  const stateDb = await cacheStateDatabase(resolveLibraryRuntimeSnapshotSync().root);
+  try {
+    return await Promise.all(galleries.map(async ({ providerId, sourceLabel, store }) => {
+      const cached = stateDb.get(providerId, "preview", store.cacheIdentity);
+      if (cached?.cacheRoot === directory && !store.needsCacheStateRefresh && !refreshAll && providerId !== refreshProviderId) {
+        return { providerId, sourceLabel, declared: cached.declaredCount, cached: cached.cachedCount,
+          missing: cached.missingCount, bytesDeclared: cached.bytesDeclared, bytesCached: cached.bytesCached,
+          ...(cached.lastCachedAt ? { lastCachedAt: cached.lastCachedAt } : {}),
+          ...(cached.lastVerifiedAt ? { lastVerifiedAt: cached.lastVerifiedAt } : {}) };
+      }
+      const current = await store.inspect();
+      const now = new Date().toISOString();
+      const cacheChanged = providerId === refreshProviderId || store.needsCacheStateRefresh;
+      const previousCachedAt = cached?.lastCachedAt;
+      stateDb.put({ providerId, kind: "preview", sourceIdentity: store.cacheIdentity, sourceLabel,
+        cacheRoot: directory, declaredCount: current.declared, cachedCount: current.cached,
+        missingCount: current.missing, bytesDeclared: current.bytesDeclared, bytesCached: current.bytesCached,
+        lastScannedAt: now, ...(cacheChanged ? { lastCachedAt: now } : previousCachedAt ? { lastCachedAt: previousCachedAt } : {}), lastVerifiedAt: now });
+      store.markCacheStateClean();
+      return { providerId, sourceLabel, ...current, lastVerifiedAt: now };
+    }));
+  } finally { stateDb.close(); }
 }
 
-export async function inspectPreviewCache(options: { galleries?: PreviewCacheGallery[] } = {}): Promise<PreviewCacheStatus> {
-  const galleries = await galleryStatuses(options.galleries);
+export async function inspectPreviewCache(options: { galleries?: PreviewCacheGallery[]; refreshProviderId?: string; refreshAll?: boolean } = {}): Promise<PreviewCacheStatus> {
+  const galleries = await galleryStatuses(options.galleries, options.refreshProviderId, options.refreshAll);
   const directory = previewCacheDirectory();
   try {
     await assertPreviewCacheDirectory(directory);
@@ -160,12 +182,13 @@ export async function prefetchPreviewCache(providerId: string, galleries: Previe
   const gallery = galleries.find((entry) => entry.providerId === providerId);
   if (!gallery) throw new Error("这个图库没有可按需下载的预览图。请选择 FigureYa 或 Open Figure 等在线图库后再缓存。");
   const prefetch = await gallery.store.prefetch();
-  return { ...await inspectPreviewCache({ galleries }), prefetch: { providerId, ...prefetch } };
+  return { ...await inspectPreviewCache({ galleries, refreshProviderId: providerId }), prefetch: { providerId, ...prefetch } };
 }
 
 /** Explicit lightweight-package manifest. Catalog identities remain authoritative. */
 export class PreviewDownloadStore {
   private readonly pending = new Map<string, Promise<Uint8Array>>();
+  private cacheStateDirty = false;
   private readonly files: Map<string, PreviewDownloadFile>;
   private readonly fetcher: Pick<SecureProviderSourceFetcher, "fetch">;
   private readonly configuredCache?: string;
@@ -177,6 +200,11 @@ export class PreviewDownloadStore {
     this.fetcher = options.fetcher ?? new SecureProviderSourceFetcher({ timeoutMs: 15000, maxRedirects: 2 });
     this.configuredCache = options.cacheDirectory ? path.resolve(options.cacheDirectory) : undefined;
   }
+  get cacheIdentity() {
+    return `${this.manifest.providerId}:${this.manifest.repository}:${this.manifest.commit}:${this.files.size}`;
+  }
+  get needsCacheStateRefresh() { return this.cacheStateDirty; }
+  markCacheStateClean() { this.cacheStateDirty = false; }
   static async load(root: string, providerId: string, expected: PreviewDownloadFile[], options: PreviewDownloadOptions = {}) {
     let source: string;
     try {
@@ -283,6 +311,7 @@ export class PreviewDownloadStore {
       try {
         await fs.writeFile(temporary, bytes, { flag: "wx", mode: 0o600 });
         await fs.rename(temporary, cacheFile);
+        this.cacheStateDirty = true;
       } finally { await fs.rm(temporary, { force: true }); }
       return bytes;
     })();

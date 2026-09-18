@@ -86,7 +86,10 @@ test("local app HTML exposes dual gallery pagination without a browse-gallery bu
   assert.match(html, /正在同步图库/u);
   assert.doesNotMatch(html, /id="refresh"/u);
   assert.match(html, /id="pick-materialize-directory"/u);
-  assert.match(html, /缓存所选参考/u);
+  assert.match(html, /id="copy-selection"/u);
+  assert.match(html, /复制绘图提示词/u);
+  assert.match(html, /未缓存的会先确认精确图片并缓存/u);
+  assert.doesNotMatch(html, /id="cache-selection"|缓存所选参考/u);
   assert.match(html, /AI 无法访问本机文件时需上传材料/u);
   assert.match(html, /id="allow-network"[^>]*checked/u);
   assert.doesNotMatch(html, /请选择下面的某个图库/u);
@@ -97,7 +100,11 @@ test("local app HTML exposes dual gallery pagination without a browse-gallery bu
   const main = await fs.readFile(path.resolve(import.meta.dirname, "../app/local/main.ts"), "utf8");
   assert.match(main, /notice-close/u);
   assert.match(main, /notice-copy/u);
+  assert.match(main, /copy-selection/u);
+  assert.match(main, /copyOrCacheReferences/u);
+  assert.match(main, /selectionPurpose: "复制绘图提示词"/u);
   assert.doesNotMatch(main, /el\("notice"\)\.addEventListener\("click"/u);
+  assert.doesNotMatch(main, /批量缓存参考|缓存所选参考/u);
 });
 
 test("bundled runtime lock pins official Linux Node archives", async () => {
@@ -335,7 +342,9 @@ test("local client binds, uploads, imports, reviews, publishes, previews and mat
   const selected = { resultSetId: selection.resultSetId, candidateId: candidate.candidateId };
   const statusArgs = { resultSetId: selection.resultSetId, candidateIds: [candidate.candidateId] };
   const before = records((await api("/api/reference-cache/status", statusArgs)).items)[0]!;
-  assert.equal(before.image, "local");
+  // The local provider can read its bundled preview, but that is not the
+  // downloaded preview-cache entry maintained by the gallery cache.
+  assert.equal(before.image, "bundled");
   assert.equal(before.reference, "missing");
   assert.equal(before.cached, undefined);
   await assert.rejects(service.local.planReference({ ...selected, previewReceipt: "invented", allowNetwork: false }));

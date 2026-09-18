@@ -4,7 +4,7 @@ import { bindModalScrollLock, mountExactPreviewImage, openCandidateDetail, parse
 import { renderMarkdown } from "../markdown.ts";
 import { api, call, details, imageData, imageHash, record, records, requireResult, upload } from "./api.ts";
 import { formatUserNetworkError } from "../../src/process-log.ts";
-import { cacheReferences, copyReferencePrompt, referenceStatuses, referenceStatusIcons, referenceStatusText } from "./reference-cache.ts";
+import { cacheReferences, planReferenceCopy, referenceStatuses, referenceStatusFacts, referenceStatusIcons, writeReferencePrompts } from "./reference-cache.ts";
 import { setButtonContent } from "../icons.ts";
 import { refreshCacheTasks, watchCacheTasks } from "./cache-tasks.ts";
 import { PAGE_STORAGE_KEY, PAGE_TITLES, galleryMissingCount, isPageId, pageHash, prefetchButtonLabel, readSavedPage, type PageId } from "./ui-state.ts";
@@ -33,6 +33,8 @@ let canShutdown = false;
 let stopped = false;
 let cacheGalleries: Array<Record<string, unknown>> = [];
 let galleryCacheStatuses: Record<string, Record<string, unknown>> = {};
+let statusLoaded = false;
+let statusPromise: Promise<void> | undefined;
 (el<HTMLImageElement>("local-logo")).src = SFL_BRAND_ICON_DATA_URI;
 
 function notify(message: string, error = false) {
@@ -91,8 +93,7 @@ function setGallerySyncing(syncing: boolean) {
 }
 function refreshSelection() {
   el("selection-bar").hidden = selected.size === 0;
-  el("selection-count").textContent = `已选择 ${selected.size} 个模板`;
-
+  el("selection-count").textContent = `已选择 ${selected.size} 张参考`;
 }
 async function refreshReferenceCards(current: SearchResult) {
   const states = await referenceStatuses(current.resultSetId, current.candidates);
@@ -104,32 +105,53 @@ async function refreshReferenceCards(current: SearchResult) {
     card.querySelector(".reference-card-state")?.remove();
     const area = node("div", undefined, "reference-card-state");
     area.append(referenceStatusIcons(state, candidate));
-    area.append(node("span", referenceStatusText(state, candidate), "reference-card-state-text"));
-    const control = action(state.reference === "ready" ? "复制绘图提示词" : "缓存此参考", async () => {
-      if (state.reference === "ready") {
-        await copyReferencePrompt(current.resultSetId, candidate);
-        notify("已复制参考文件路径与绘图提示词。AI 无法访问本机路径时，请上传列出的材料。");
-      } else await openReferenceCache([candidate], current.resultSetId);
+    area.append(referenceStatusFacts(state, candidate));
+    const control = action("复制绘图提示词", async () => {
+      await copyOrCacheReferences([candidate], current.resultSetId);
     });
-    setButtonContent(control, state.reference === "ready" ? "copy" : "download", state.reference === "ready" ? "复制绘图提示词" : "缓存此参考", { iconOnly: true });
+    setButtonContent(control, "copy", "复制绘图提示词", { iconOnly: true });
     control.classList.add("reference-icon-action");
-    control.disabled = state.reference === "unavailable";
+    control.disabled = state.reference === "unavailable" || !candidate.materializable;
     area.append(control); card.querySelector(".content")?.append(area);
   }
 }
+function referenceChanged(onChanged?: () => void) {
+  if (result) void run(() => refreshReferenceCards(result!));
+  onChanged?.();
+}
 async function openReferenceCache(candidates: Candidate[], resultSetId = result?.resultSetId, onChanged?: () => void) {
   if (!resultSetId) throw new Error("请先检索参考");
-  await cacheReferences({ resultSetId, candidates, onChanged: () => { if (result) void run(() => refreshReferenceCards(result!)); onChanged?.(); } });
+  await cacheReferences({ resultSetId, candidates, onChanged: () => referenceChanged(onChanged) });
+}
+async function copyOrCacheReferences(candidates: Candidate[], resultSetId = result?.resultSetId, onChanged?: () => void) {
+  if (!resultSetId) throw new Error("请先检索参考");
+  if (!candidates.length || candidates.length > 12) throw new Error("请选择 1–12 个参考。");
+  const plan = planReferenceCopy(candidates, await referenceStatuses(resultSetId, candidates));
+  if (plan.needsCache.length) {
+    await cacheReferences({
+      resultSetId,
+      candidates: plan.needsCache,
+      copyWhenReady: true,
+      copyCandidates: candidates,
+      onChanged: () => referenceChanged(onChanged),
+    });
+    return "caching" as const;
+  }
+  if (!plan.ready.length) throw new Error(plan.blocked[0]?.reason ?? "没有可复制的绘图提示词。");
+  await writeReferencePrompts(plan.ready.map((item) => item.prompt));
+  const extra = plan.blocked.length ? ` ${plan.blocked.length} 个参考无法复制。` : "";
+  notify(`已复制 ${plan.ready.length} 条绘图提示词。AI 无法访问本机路径时，请上传列出的材料。${extra}`);
+  return "copied" as const;
 }
 function display(parsed: SearchResult) {
   if (parsed.resultSetId !== result?.resultSetId) { selected = new Map(); pages.clear(); }
   result = parsed;
   pages.set(parsed.pagination.pageIndex, parsed);
-  renderCandidateCards({ document, cards: el("cards"), empty: el("empty"), result: parsed, selectionPurpose: "批量缓存参考", showDetailAction: false, showSelectionControl: false, selectedIds: new Set(selected.keys()),
+  renderCandidateCards({ document, cards: el("cards"), empty: el("empty"), result: parsed, selectionPurpose: "复制绘图提示词", showDetailAction: false, selectedIds: new Set(selected.keys()),
     onToggleSelect: (candidate, checked) => {
       if (checked && selected.size < 12) selected.set(candidate.candidateId, candidate);
       else selected.delete(candidate.candidateId);
-      if (checked && !selected.has(candidate.candidateId)) { notify("一次最多选择 12 个模板。", true); display(parsed); }
+      if (checked && !selected.has(candidate.candidateId)) { notify("一次最多选择 12 张参考。", true); display(parsed); }
       refreshSelection();
     },
     onDetail: (candidate, _elements, opener) => {
@@ -144,8 +166,10 @@ function display(parsed: SearchResult) {
       cache.disabled = !candidate.materializable;
       const copy = action("复制提示词", async () => {
         try {
-            await copyReferencePrompt(parsed.resultSetId, candidate);
-            view.status.textContent = "已复制提示词。AI 无法读取本机文件时，请上传提示词列出的材料。";
+          const outcome = await copyOrCacheReferences([candidate], parsed.resultSetId, refreshDetailState);
+          view.status.textContent = outcome === "copied"
+            ? "已复制提示词。AI 无法读取本机文件时，请上传提示词列出的材料。"
+            : "未缓存的参考需要先确认精确图片并缓存，完成后会复制提示词。";
         } catch (error) {
           view.status.textContent = error instanceof Error ? error.message : String(error);
           cache.focus();
@@ -286,10 +310,17 @@ function reviewPlan(title: string, response: CallToolResult, apply: () => Promis
   const review = record(data.reviewSummary);
   for (const warning of records(review.warnings)) planLine("注意事项", warning.message);
   el("plan-json").textContent = JSON.stringify(data, null, 2);
-  planAction = async () => { await apply(); dialog("plan-dialog").close(); planAction = undefined; await loadStatus(); };
+  planAction = async () => { await apply(); dialog("plan-dialog").close(); planAction = undefined; await loadStatus(true); };
   openLockedModal(dialog("plan-dialog"));
 }
-async function loadStatus() {
+async function loadStatus(force = false) {
+  if (statusLoaded && !force) return;
+  if (statusPromise) return statusPromise;
+  statusPromise = refreshStatus();
+  try { await statusPromise; }
+  finally { statusPromise = undefined; }
+}
+async function refreshStatus() {
   const response = await call("figure_library_source_status");
   if (stopped) return;
   const data = details(response);
@@ -329,6 +360,7 @@ async function loadStatus() {
   renderPreviewCacheGalleries(cacheGalleries);
   renderProviderSources(sourceRows);
   refreshSelection();
+  statusLoaded = true;
 }
 function formatBytes(bytes: number) {
   if (!Number.isFinite(bytes) || bytes < 1024) return `${Math.max(0, bytes | 0)} B`;
@@ -368,7 +400,7 @@ async function prefetchGallery(providerId: string, sourceLabel: string, gallery:
   if (failed > 0) failedPrefetchIds.add(providerId);
   else failedPrefetchIds.delete(providerId);
   if (Array.isArray(result.galleries)) cacheGalleries = records(result.galleries);
-  await loadStatus();
+  await loadStatus(true);
   const downloaded = Number(prefetch.downloaded ?? 0);
   const already = Number(prefetch.alreadyCached ?? 0);
   notify(failed > 0
@@ -497,7 +529,8 @@ function renderProviderSources(sources: Array<Record<string, unknown>>) {
       const task = record(cacheStatus.task);
       const state = String(task.state ?? "");
       const suffix = state ? ` · ${state === "running" ? "后台缓存中" : state === "completed" ? "最近任务已完成" : "最近任务失败"}` : "";
-      card.append(node("p", `缓存状态：图片 ${Number(cacheStatus.imageFiles ?? 0)} 个文件 · 代码 ${Number(cacheStatus.codeFiles ?? 0)} 个源码包${suffix}`));
+      const cachedAt = typeof cacheStatus.lastCachedAt === "string" ? ` · 最近缓存 ${new Date(cacheStatus.lastCachedAt).toLocaleString()}` : "";
+      card.append(node("p", `缓存状态：图片 ${Number(cacheStatus.imageFiles ?? 0)} 个文件 · 代码 ${Number(cacheStatus.codeFiles ?? 0)} 个源码包${cachedAt}${suffix}`));
     }
     const actions = node("div", undefined, "provider-actions");
     if (["org.figureya.module", "io.github.jarxunlai.personal-figures"].includes(providerId)) {
@@ -544,7 +577,7 @@ async function changeProvider(title: string, args: Record<string, unknown>) {
   const envelope = record(data.envelope);
   if (envelope.outcome === "ok") {
     notify(String(envelope.summary ?? "来源已是最新，无需 Apply。"));
-    await loadStatus();
+    await loadStatus(true);
     return;
   }
   const plan = record(data.plan);
@@ -556,7 +589,7 @@ async function changeProvider(title: string, args: Record<string, unknown>) {
       expectedProviderId: args.expectedProviderId ?? args.providerId,
     }, true);
     notify("来源配置已更新。");
-    await loadStatus();
+    await loadStatus(true);
   });
 }
 async function bindDirectories() {
@@ -770,7 +803,7 @@ form("add-provider-form").addEventListener("submit", (event) => {
   });
 });
 form("import-form").addEventListener("submit", (event) => { event.preventDefault(); void run(importAsset, form("import-form").querySelector<HTMLButtonElement>("button[type=submit]")!); });
-button("cache-selection").onclick = () => void run(() => openReferenceCache([...selected.values()]), button("cache-selection"));
+button("copy-selection").onclick = () => void run(async () => { await copyOrCacheReferences([...selected.values()]); }, button("copy-selection"));
 button("plan-apply").onclick = () => void run(async () => { await planAction?.(); }, button("plan-apply"));
 button("plan-cancel").onclick = () => { planAction = undefined; dialog("plan-dialog").close(); };
 button("materialize-cancel").onclick = () => dialog("materialize-dialog").close();
@@ -803,7 +836,7 @@ async function saveProxy() {
     useSystemProxy: input("use-system-proxy").checked,
     httpsProxy: input("https-proxy").value.trim(),
   });
-  await loadStatus();
+  await loadStatus(true);
   notify(network.useSystemProxy === true
     ? `已启用系统代理${network.activeProxy ? `：${String(network.activeProxy)}` : "，但未检测到本机回环代理"}。`
     : "已关闭系统代理，将直连 GitHub。");
@@ -840,7 +873,7 @@ button("copy-cache-path").onclick = () => void run(async () => {
 button("clear-cache").onclick = () => void run(async () => {
   if (!window.confirm("清除已下载的在线预览图？之后需要重新对某个图库执行「缓存图片」，或再次查看当前页。已确认图片需要重新预览后再保存模板。")) return;
   const cleared = await api<Record<string, unknown>>("preview-cache", { action: "clear" });
-  await loadStatus();
+  await loadStatus(true);
   notify(`已清除 ${Number(cleared.removed ?? 0)} 张缓存图片。`);
 }, button("clear-cache"));
 button("shutdown").onclick = () => void run(async () => {
@@ -862,7 +895,7 @@ async function connect() {
   }
   await loadStatus();
   await showPage(initial);
-  watchCacheTasks(() => loadStatus());
+  watchCacheTasks(() => loadStatus(true));
 }
 void run(connect);
 

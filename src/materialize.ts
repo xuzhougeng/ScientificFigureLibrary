@@ -565,7 +565,9 @@ export async function cacheFigureYaSourceArchive(catalog: FigureYaCatalog, modul
 export async function inspectFigureYaSourcePack(
   catalog: FigureYaCatalog,
   directory = process.env.FIGUREYA_SOURCE_PACK_DIR?.trim(),
+  options: { verifyArchives?: boolean } = {},
 ) {
+  const verifyArchives = options.verifyArchives !== false;
   const expectedCount = catalog.modules.filter((module) => module.archiveAvailable).length;
   if (!directory) {
     return {
@@ -623,9 +625,26 @@ export async function inspectFigureYaSourcePack(
       continue;
     }
     try {
-      const result = await readSourcePackArchive(pack.root, catalog, module);
+      if (verifyArchives) {
+        const result = await readSourcePackArchive(pack.root, catalog, module);
+        availableBytes += result.bytes.byteLength;
+      } else {
+        let found = false;
+        for (const candidate of sourcePackCandidates(pack.root, entry)) {
+          try {
+            const stat = await fs.lstat(candidate);
+            if (stat.isFile() && !stat.isSymbolicLink() && stat.size === entry.bytes) {
+              availableBytes += stat.size;
+              found = true;
+              break;
+            }
+          } catch (error) {
+            if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+          }
+        }
+        if (!found) throw new Error(`${entry.file} is missing or has an unexpected size`);
+      }
       availableTemplates.push(entry.moduleId);
-      availableBytes += result.bytes.byteLength;
     } catch {
       invalidTemplates.push(entry.moduleId);
     }
@@ -642,6 +661,7 @@ export async function inspectFigureYaSourcePack(
     missingCount: expectedCount - availableTemplates.length - invalidTemplates.length,
     availableBytes,
     archiveCommit: catalog.compressed.commit,
+    archiveVerification: verifyArchives ? "verified" as const : "metadata-only" as const,
   };
 }
 

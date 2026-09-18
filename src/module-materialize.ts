@@ -856,7 +856,9 @@ export async function cacheModuleSourceArchive(index: ModuleCatalogIndex, module
 export async function inspectModuleSourcePack(
   index: ModuleCatalogIndex,
   directory?: string,
+  options: { verifyArchives?: boolean } = {},
 ) {
+  const verifyArchives = options.verifyArchives !== false;
   const expectedCount = index.catalog.modules.length;
   if (!directory) {
     return {
@@ -884,7 +886,7 @@ export async function inspectModuleSourcePack(
       JSON.parse(Buffer.from(raw).toString("utf8")) as unknown,
       index.catalog,
     );
-    await assertSourcePackInventory(root, manifest);
+    if (verifyArchives) await assertSourcePackInventory(root, manifest);
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === "ENOENT") {
       return {
@@ -922,9 +924,17 @@ export async function inspectModuleSourcePack(
       continue;
     }
     try {
-      const acquired = await readModuleSourcePackArchive(index, directory, module);
+      if (verifyArchives) {
+        const acquired = await readModuleSourcePackArchive(index, directory, module);
+        availableBytes += acquired.bytes.byteLength;
+      } else {
+        const stat = await fs.lstat(path.resolve(directory, ...item.file.split("/")));
+        if (stat.isSymbolicLink() || !stat.isFile() || stat.size !== item.bytes) {
+          throw new Error(`${item.file} is missing or has an unexpected size`);
+        }
+        availableBytes += stat.size;
+      }
       availableTemplates.push(module.moduleId);
-      availableBytes += acquired.bytes.byteLength;
     } catch {
       invalidTemplates.push(module.moduleId);
     }
@@ -939,6 +949,7 @@ export async function inspectModuleSourcePack(
     missingCount: expectedCount - availableTemplates.length - invalidTemplates.length,
     availableBytes,
     archiveCommits: [...new Set(manifest.entries.map((item) => item.archiveCommit))].sort(),
+    archiveVerification: verifyArchives ? "verified" as const : "metadata-only" as const,
   };
 }
 

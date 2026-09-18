@@ -602,6 +602,23 @@ export async function createLibraryService(options: LibraryServiceOptions = {}) 
       ...(moduleSourcePackDir ? { moduleSourcePackDir } : {}),
     });
 
+  let providerStatusCache: {
+    contextKey: string;
+    statuses: Awaited<ReturnType<ProviderRegistry["status"]>>;
+    cachedAt: number;
+  } | undefined;
+  const currentProviderStatuses = async (options: { sourcePackDir?: string; moduleSourcePackDir?: string } = {}) => {
+    const context = await currentProviderContext(options.sourcePackDir, options.moduleSourcePackDir);
+    const contextKey = `${context.library.snapshot.contextKey}:${context.sourcePackDir ?? ""}:${context.moduleSourcePackDir ?? ""}`;
+    const cached = providerStatusCache;
+    if (cached && cached.contextKey === contextKey && Date.now() - cached.cachedAt < 5_000) {
+      return cached.statuses;
+    }
+    const statuses = await registry.status(context);
+    providerStatusCache = { contextKey, statuses, cachedAt: Date.now() };
+    return statuses;
+  };
+
   const hostIntegrationCapabilities = {
     guidanceTool: "figure_library_get_skill",
     paginationTool: "figure_library_search_page",
@@ -2041,13 +2058,7 @@ export async function createLibraryService(options: LibraryServiceOptions = {}) 
           context.versionedLibrary.status(),
           readLibraryRootMarker(context.snapshot.root),
           countLegacyFlat(context.snapshot.root),
-          registry.status(
-            createProviderContext(context, index, {
-              ...(liveModuleCatalogs() ? { moduleCatalogs: liveModuleCatalogs() } : {}),
-              ...(sourcePackDir ? { sourcePackDir } : {}),
-              ...(moduleSourcePackDir ? { moduleSourcePackDir } : {}),
-            }),
-          ),
+          currentProviderStatuses({ sourcePackDir, moduleSourcePackDir }),
           inspectLibraryWriteLock(path.join(context.snapshot.root, "locks", "write")),
         ]);
         const providerStatusById = Object.fromEntries(
@@ -2305,7 +2316,7 @@ export async function createLibraryService(options: LibraryServiceOptions = {}) 
         );
       let statuses: Awaited<ReturnType<ProviderRegistry["status"]>> = [];
       try {
-        statuses = await registry.status(await currentProviderContext());
+        statuses = await currentProviderStatuses();
       } catch {
         // A broken global locator must not turn this provider-registry listing
         // into a fallback Library binding. Built-in identities remain visible.
@@ -2359,7 +2370,12 @@ export async function createLibraryService(options: LibraryServiceOptions = {}) 
         return adapter.status(undefined as never);
       }));
     },
-    onApplied: providerController?.refreshPersonalProviders,
+    onApplied: providerController
+      ? async () => {
+          providerStatusCache = undefined;
+          await providerController.refreshPersonalProviders?.();
+        }
+      : undefined,
   });
 
   const galleryCache = createGalleryCache({ figureYa: index, modules: () => liveModuleCatalogs()?.get(PERSONAL_MODULE_PROVIDER_ID), library: async () => (await currentLibraries()).snapshot });
@@ -2383,7 +2399,7 @@ export async function createLibraryService(options: LibraryServiceOptions = {}) 
       prefetchPreviewCache: (providerId: string) => operations.run(() => prefetchPreviewCache(providerId, downloadableGalleries())),
       clearPreviewCache: () => operations.run(async () => {
         const cleared = await clearPreviewCache();
-        return { ...await inspectPreviewCache({ galleries: downloadableGalleries() }), removed: cleared.removed, bytesFreed: cleared.bytesFreed };
+        return { ...await inspectPreviewCache({ galleries: downloadableGalleries(), refreshAll: true }), removed: cleared.removed, bytesFreed: cleared.bytesFreed };
       }),
     },
     execute: (name: string, input: unknown = {}) => operations.execute(name, input),

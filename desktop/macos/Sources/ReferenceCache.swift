@@ -3,22 +3,34 @@ import AppKit
 
 func referenceStatusLabel(_ status: JSON, candidate: JSON) -> String {
     if status == .null { return "正在检查本地状态…" }
-    let image = status["image"].string == "local" ? "图片已在本地" : "精确图片待缓存"
-    let reference: String
-    switch status["reference"].string {
-    case "ready": reference = status["cached"]["hasCode"].bool ? "代码已缓存" : "参考已缓存 · 无代码"
-    case "invalid": reference = "参考缓存需重新获取"
-    case "unavailable": reference = "无可获取的参考包"
-    default: reference = candidate["codeStatus"].string == "none" ? "仅图片参考 · 待缓存" : "参考包待缓存"
+    let image: String
+    switch status["image"].string {
+    case "preview_cached": image = "已缓存"
+    case "bundled": image = "可本地读取"
+    default: image = "待缓存"
     }
-    return image + " · " + reference
+    let pack: String
+    switch status["reference"].string {
+    case "ready": pack = status["cached"]["hasCode"].bool ? "已缓存 · 含代码" : "已缓存 · 无代码"
+    case "invalid": pack = "需重新获取"
+    case "unavailable": pack = "不可获取"
+    default: pack = candidate["codeStatus"].string == "none" ? "仅图片 · 待缓存" : "待缓存"
+    }
+    return "预览图：\(image) · 参考包：\(pack)"
 }
 
 struct ReferenceStateIcons: View {
     let status: JSON
     let candidate: JSON
     private var ready: Bool { status["reference"].string == "ready" && status["cached"]["hasCode"].bool }
-    private var color: Color { ready ? libraryGreen : status["image"].string == "local" ? .orange : .secondary }
+    private var color: Color {
+        if ready { return libraryGreen }
+        switch status["image"].string {
+        case "preview_cached": return .orange
+        case "bundled": return Color(red: 0.31, green: 0.47, blue: 0.66)
+        default: return .secondary
+        }
+    }
     var body: some View {
         Circle().fill(color).frame(width: 9, height: 9)
             .padding(4).background(color.opacity(0.08)).clipShape(Circle())
@@ -37,14 +49,41 @@ extension LibraryModel {
         guard result["resultSetId"] == resultSetId else { return }
         for state in response["items"].array { referenceStates[state["candidateId"].string] = state }
     }
-    func copyReference(_ candidate: JSON, resultSetId: String) async throws {
-        let response = try await backend.request("reference-cache/status", object(["resultSetId": text(resultSetId), "candidateIds": .array([candidate["candidateId"]])]))
-        guard let state = response["items"].array.first, state["reference"].string == "ready", !state["cached"]["prompt"].string.isEmpty else {
-            throw LocalError(message: "请先点击「下载代码」，缓存图片与代码后再复制提示词。")
+    func copyReadyPrompts(_ candidates: [JSON], resultSetId: String) async throws {
+        guard !candidates.isEmpty else { throw LocalError(message: "请选择要复制的参考。") }
+        let response = try await backend.request("reference-cache/status", object(["resultSetId": text(resultSetId), "candidateIds": .array(candidates.map { $0["candidateId"] })]))
+        var prompts: [String] = []
+        for candidate in candidates {
+            if let state = response["items"].array.first(where: { $0["candidateId"] == candidate["candidateId"] }),
+               state["reference"].string == "ready",
+               state["cached"]["hasCode"].bool,
+               !state["cached"]["prompt"].string.isEmpty {
+                prompts.append(state["cached"]["prompt"].string)
+            }
         }
-        guard state["cached"]["hasCode"].bool else { throw LocalError(message: "此参考没有配套代码，无法复制含代码的绘图提示词。请选择有代码的参考。") }
-        copyText(state["cached"]["prompt"].string)
-        message = "已复制。AI 无法访问本机文件时，请上传提示词列出的材料。"
+        guard !prompts.isEmpty else { throw LocalError(message: "没有可复制的绘图提示词。请选择有配套代码的参考。") }
+        copyText(prompts.joined(separator: "\n\n————\n\n"))
+        message = "已复制 \(prompts.count) 条绘图提示词。AI 无法访问本机文件时，请上传提示词列出的材料。"
+    }
+    func copyReference(_ candidate: JSON, resultSetId: String) async throws {
+        try await copyReadyPrompts([candidate], resultSetId: resultSetId)
+    }
+    func copyOrCache(_ candidates: [JSON], resultSetId: String) async throws {
+        guard !candidates.isEmpty, candidates.count <= 12 else { throw LocalError(message: "请选择 1–12 个参考。") }
+        let response = try await backend.request("reference-cache/status", object(["resultSetId": text(resultSetId), "candidateIds": .array(candidates.map { $0["candidateId"] })]))
+        var needsCache: [JSON] = []
+        for candidate in candidates {
+            let state = response["items"].array.first(where: { $0["candidateId"] == candidate["candidateId"] }) ?? .null
+            if state["reference"].string == "ready" { continue }
+            if !candidate["materializable"].bool || state["reference"].string == "unavailable" { continue }
+            needsCache.append(candidate)
+        }
+        if !needsCache.isEmpty {
+            pendingCopyAfterCache = candidates
+            sheet = .references(needsCache, resultSetId)
+            return
+        }
+        try await copyReadyPrompts(candidates, resultSetId: resultSetId)
     }
 }
 
@@ -109,6 +148,7 @@ private struct ReferenceReviewItem: Identifiable {
                 }
             }
         }.padding(24).frame(width: 780, height: 720).interactiveDismissDisabled(busy)
+        .onDisappear { if !busy { model.pendingCopyAfterCache = [] } }
         .task { await load() }
     }
     private func load() async {
@@ -156,7 +196,18 @@ private struct ReferenceReviewItem: Identifiable {
                 items[index].message = response["reference"]["hasCode"].bool ? "图片与代码已缓存" : "参考已缓存；此包没有可识别的代码文件"
             } catch { items[index].message = "缓存失败：" + friendlyNetworkError(error) }
         }
-        phase = 2; status = "\(items.filter { $0.cached != .null }.count) 个参考可用。可用参考才能复制绘图提示词。"
+        phase = 2; status = "\(items.filter { $0.cached != .null }.count) 个参考可用。"
         do { try await model.refreshReferenceStates() } catch { status += " 状态刷新失败：" + friendlyNetworkError(error) }
+        if !model.pendingCopyAfterCache.isEmpty {
+            do {
+                try await model.copyReadyPrompts(model.pendingCopyAfterCache, resultSetId: resultSetId)
+                model.pendingCopyAfterCache = []
+                status += " " + model.message
+            } catch {
+                status += " " + friendlyNetworkError(error)
+            }
+        } else {
+            status += "可用参考才能复制绘图提示词。"
+        }
     }
 }

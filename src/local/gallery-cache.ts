@@ -7,6 +7,7 @@ import type { ModuleCatalogIndex } from "../module-catalog.ts";
 import { cacheFigureYaSourceArchive } from "../materialize.ts";
 import { cacheModuleSourceArchive } from "../module-materialize.ts";
 import { FIGUREYA_PROVIDER_ID, PERSONAL_MODULE_PROVIDER_ID } from "../providers.ts";
+import { cacheStateDatabase } from "./cache-state-db.ts";
 
 export function galleryCodeDirectory(root: string, providerId: string) {
   return path.join(root, "source-packs", providerId === FIGUREYA_PROVIDER_ID ? "figureya" : "open-modules");
@@ -34,6 +35,22 @@ async function countCachedPreviewFiles(directory: string, identities: Array<{ sh
   return names.filter(name => expected.has(name)).length;
 }
 
+async function countCachedArchiveFiles(directory: string): Promise<number> {
+  let count = 0;
+  const walk = async (current: string): Promise<void> => {
+    let entries: import("node:fs").Dirent[];
+    try { entries = await fs.readdir(current, { withFileTypes: true }); }
+    catch (error) { if ((error as NodeJS.ErrnoException).code === "ENOENT") return; throw error; }
+    for (const entry of entries) {
+      const file = path.join(current, entry.name);
+      if (entry.isDirectory()) await walk(file);
+      else if (entry.isFile() && entry.name.endsWith(".zip")) count++;
+    }
+  };
+  await walk(directory);
+  return count;
+}
+
 export interface GalleryCacheTask {
   id: string; providerId: string; mode: string; state: "running" | "completed" | "failed";
   total: number; processed: number; currentItem: string; images: number; archives: number;
@@ -54,18 +71,34 @@ export function createGalleryCache(options: {
   const api = {
     status: async () => {
       const library = await options.library();
+      const stateDb = await cacheStateDatabase(library.root);
       const imageDirectory = path.join(library.root, "indexes", "preview-cache", "v1");
       let imageFiles = 0;
       try { imageFiles = (await fs.readdir(imageDirectory)).filter(name => /^[a-f0-9]{64}\.(png|jpe?g|webp|gif)$/u.test(name)).length; } catch (error) { if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error; }
       const providers: Record<string, unknown> = {};
       for (const providerId of [FIGUREYA_PROVIDER_ID, PERSONAL_MODULE_PROVIDER_ID]) {
         const codeDirectory = galleryCodeDirectory(library.root, providerId);
-        let codeFiles = 0;
-        try { codeFiles = (await fs.readdir(codeDirectory)).filter(name => name.endsWith(".zip")).length; } catch (error) { if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error; }
-        const imageFilesForGallery = await countCachedPreviewFiles(imageDirectory, previewFileIdentities(providerId, options.figureYa, options.modules()));
+        const sourceIdentity = identity(providerId) ?? "unknown";
+        const archiveCount = providerId === FIGUREYA_PROVIDER_ID
+          ? options.figureYa.catalog.modules.filter(item => item.archiveAvailable).length
+          : options.modules()?.catalog.modules.length ?? 0;
+        const cachedArchiveState = stateDb.get(providerId, "source-archive", sourceIdentity);
+        let codeFiles = cachedArchiveState?.cacheRoot === codeDirectory ? cachedArchiveState.cachedCount : 0;
+        if (!cachedArchiveState || cachedArchiveState.cacheRoot !== codeDirectory) {
+          codeFiles = await countCachedArchiveFiles(codeDirectory);
+          stateDb.put({ providerId, kind: "source-archive", sourceIdentity, cacheRoot: codeDirectory, declaredCount: archiveCount, cachedCount: codeFiles, missingCount: Math.max(0, archiveCount - codeFiles), bytesDeclared: 0, bytesCached: 0, lastScannedAt: new Date().toISOString() });
+        }
+        const identities = previewFileIdentities(providerId, options.figureYa, options.modules());
+        const imageFilesForGallery = await countCachedPreviewFiles(imageDirectory, identities);
         const task = [...plans.values()].map(item => item.task).reverse().find(item => item?.providerId === providerId);
-        providers[providerId] = { imageFiles: imageFilesForGallery, codeFiles, ...(task ? { task: structuredClone(task) } : {}) };
+        providers[providerId] = {
+          imageFiles: imageFilesForGallery,
+          codeFiles,
+          ...(cachedArchiveState?.lastCachedAt ? { lastCachedAt: cachedArchiveState.lastCachedAt } : {}),
+          ...(task ? { task: structuredClone(task) } : {}),
+        };
       }
+      stateDb.close();
       return { imageFiles, providers };
     },
     tasks: () => ({ tasks: [...plans.values()].flatMap(item => item.task ? [structuredClone(item.task)] : []) }),
@@ -150,6 +183,13 @@ export function createGalleryCache(options: {
             });
           }
         }
+        const stateDb = await cacheStateDatabase(current.root);
+        const cachedAt = new Date().toISOString();
+        const sourceIdentity = prepared.identity;
+        if (plan.mode !== "images") {
+          stateDb.put({ providerId: plan.providerId, kind: "source-archive", sourceIdentity, cacheRoot: plan.codeDirectory, declaredCount: plan.archives, cachedCount: result.archives, missingCount: Math.max(0, plan.archives - result.archives), bytesDeclared: 0, bytesCached: 0, lastScannedAt: cachedAt, lastCachedAt: cachedAt, lastVerifiedAt: cachedAt });
+        }
+        stateDb.close();
         return result;
       })();
       return prepared.result;

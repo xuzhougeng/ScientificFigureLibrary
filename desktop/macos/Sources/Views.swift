@@ -75,16 +75,16 @@ let libraryGreen = Color(red: 0.14, green: 0.42, blue: 0.30)
                     }
                 }.frame(maxWidth: 330); TextField("数据特征（可选）", text: $model.dataProfile).textFieldStyle(.roundedBorder) }
                 HStack { ForEach(["火山图", "热图", "UMAP", "细胞比例", "富集分析"], id: \.self) { label in Button(label) { model.query = ["火山图": "volcano differential expression", "热图": "heatmap expression", "UMAP": "UMAP single cell", "细胞比例": "cell proportion barplot", "富集分析": "GO enrichment"][label]!; model.perform { try await model.search() } }.disabled(model.busy) } }
-                Text("打开图库即浏览图片。在线图库不会在安装时下载；请到「连接外部图库」或设置的「图片缓存」中对某个图库执行「缓存图片」。已缓存的图片可离线查看。").font(.callout).foregroundStyle(.secondary)
+                Text("卡片同时显示预览图和参考包是否已在本地。选择参考后复制绘图提示词；未缓存的会先确认精确图片并缓存，再复制。整库预览图请到「连接外部图库」缓存。").font(.callout).foregroundStyle(.secondary)
                 HStack { Text(model.query.isEmpty && model.result != .null ? "图库" : "候选图片").font(.headline); Spacer(); if model.result != .null { Text("\(model.result["total"].int) 个结果").foregroundStyle(.secondary) } }
                 galleryPager
                 if !model.selectedReferences.isEmpty {
                     HStack {
                         Text("已选择 \(model.selectedReferences.count) 个参考")
                         Spacer()
-                        Button("缓存所选参考") { model.sheet = .references(Array(model.selectedReferences.values).sorted { $0["title"].string < $1["title"].string }, model.result["resultSetId"].string) }.buttonStyle(.borderedProminent)
+                        Button("复制绘图提示词") { model.perform { try await model.copyOrCache(Array(model.selectedReferences.values).sorted { $0["title"].string < $1["title"].string }, resultSetId: model.result["resultSetId"].string) } }.buttonStyle(.borderedProminent)
                     }
-                    Text("批量选择用于缓存图片与代码；缓存后可复制每张参考的文件路径与绘图提示词。").font(.callout).foregroundStyle(.secondary)
+                    Text("先检查本地缓存。未缓存的参考会先确认精确图片并缓存，再复制提示词；已缓存的直接复制。").font(.callout).foregroundStyle(.secondary)
                 }
                 if model.syncingGallery && candidates.isEmpty {
                     VStack(spacing: 16) { ProgressView(); Text("正在同步图库…").foregroundStyle(.secondary) }.frame(maxWidth: .infinity).padding(.vertical, 80)
@@ -108,13 +108,13 @@ let libraryGreen = Color(red: 0.14, green: 0.42, blue: 0.30)
                                 else { model.error = "一次最多选择 12 个参考。" }
                             })).toggleStyle(.checkbox)
                             Spacer()
-                            ReferenceStateIcons(status: model.referenceStates[candidate["candidateId"].string] ?? .null, candidate: candidate)
-                            if model.referenceStates[candidate["candidateId"].string]?["reference"].string == "ready" {
-                                Button { model.perform { try await model.copyReference(candidate, resultSetId: model.result["resultSetId"].string) } } label: { Label("复制绘图提示词", systemImage: "doc.on.doc").labelStyle(.iconOnly) }.help("复制绘图提示词")
-                            } else {
-                                Button { model.sheet = .references([candidate], model.result["resultSetId"].string) } label: { Label("缓存此参考", systemImage: "arrow.down.to.line").labelStyle(.iconOnly) }.help("缓存此参考：按需获取图片与代码").disabled(!candidate["materializable"].bool)
-                            }
+                            let status = model.referenceStates[candidate["candidateId"].string] ?? .null
+                            ReferenceStateIcons(status: status, candidate: candidate)
+                            Button { model.perform { try await model.copyOrCache([candidate], resultSetId: model.result["resultSetId"].string) } } label: { Label("复制绘图提示词", systemImage: "doc.on.doc").labelStyle(.iconOnly) }
+                                .help("复制绘图提示词")
+                                .disabled(status["reference"].string == "unavailable" || !candidate["materializable"].bool)
                         }
+                        Text(referenceStatusLabel(model.referenceStates[candidate["candidateId"].string] ?? .null, candidate: candidate)).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                         }
                     }
                 }
@@ -237,8 +237,11 @@ func candidateValidationLines(_ candidate: JSON) -> [String] {
                 Text(candidate["title"].string).font(.title2).bold()
                 Spacer()
                 ReferenceStateIcons(status: model.referenceStates[candidate["candidateId"].string] ?? .null, candidate: candidate)
-                Button { model.sheet = .references([candidate], model.result["resultSetId"].string) } label: { Image(systemName: "arrow.down.to.line") }.help("下载代码").accessibilityLabel("下载代码").disabled(model.busy || !candidate["materializable"].bool)
-                Button { model.perform { try await model.copyReference(candidate, resultSetId: model.result["resultSetId"].string) } } label: { Image(systemName: "doc.on.doc") }.help("复制提示词").accessibilityLabel("复制提示词")
+                Button {
+                    model.pendingCopyAfterCache = []
+                    model.sheet = .references([candidate], model.result["resultSetId"].string)
+                } label: { Image(systemName: "arrow.down.to.line") }.help("下载代码").accessibilityLabel("下载代码").disabled(model.busy || !candidate["materializable"].bool)
+                Button { model.perform { try await model.copyOrCache([candidate], resultSetId: model.result["resultSetId"].string) } } label: { Image(systemName: "doc.on.doc") }.help("复制提示词").accessibilityLabel("复制提示词")
                 Button {
                     guard let preview = preview, let bytes = bytes, displayed else { return }
                     model.perform { try await model.materialize(candidate, preview: preview, image: bytes, destination: destination, network: allowNetwork) }

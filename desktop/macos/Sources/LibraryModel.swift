@@ -59,6 +59,7 @@ enum Sheet: Identifiable {
     @Published var thumbnails: JSON = .null
     @Published var selectedReferences: [String: JSON] = [:]
     @Published var referenceStates: [String: JSON] = [:]
+    var pendingCopyAfterCache: [JSON] = []
     @Published var library: [JSON] = []
     @Published var libraryDirectory = ""
     @Published var workspaceDirectory = ""

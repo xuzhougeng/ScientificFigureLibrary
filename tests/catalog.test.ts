@@ -564,6 +564,10 @@ test("FigureYa materialization prefers and verifies a Source Pack", async () => 
     assert.equal(status.invalidTemplates.length, 0);
     assert.equal(status.missingCount, 0);
 
+    const metadataStatus = await inspectFigureYaSourcePack(catalog, pack, { verifyArchives: false });
+    assert.equal(metadataStatus.archiveVerification, "metadata-only");
+    assert.equal(metadataStatus.ready, true);
+
     await fs.writeFile(path.join(pack, "archives", `${moduleId}.zip`), new Uint8Array([1, 2, 3]));
     const corrupted = await inspectFigureYaSourcePack(catalog, pack);
     assert.equal(corrupted.ready, false);
