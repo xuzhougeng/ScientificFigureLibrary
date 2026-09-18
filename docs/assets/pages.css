@@ -88,6 +88,7 @@ main { scroll-margin-top: 80px; }
 .install-steps p { font-size: 14px; margin: 0; color: var(--muted); }
 .text-link { display: inline-block; color: var(--accent); font-size: 14px; text-decoration: underline; text-underline-offset: 5px; padding-block: 6px; }
 .text-link:hover { color: var(--text); }
+.install-links { display: flex; flex-direction: column; align-items: start; gap: 6px; }
 .code-card { min-width: 0; background: var(--panel); border: 1px solid var(--line); border-radius: 20px; overflow: hidden; }
 .code-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 22px; background: var(--bg-muted); border-bottom: 1px solid var(--line); font-size: 13px; }
 .copy-button { color: var(--text); background: var(--panel); border: 1px solid var(--line); border-radius: 999px; padding: 8px 12px; font-size: 12px; cursor: pointer; }
@@ -100,8 +101,10 @@ code { font-family: var(--mono); }
 .faq-layout .section-head { margin-bottom: 18px; }
 .faq-list { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
 .faq-item { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; }
-.faq-item summary { padding: 20px 22px; font-size: 15px; font-weight: 500; cursor: pointer; }
-.faq-item summary::marker { color: var(--accent); font-size: 12px; }
+.faq-item summary { list-style: none; display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 20px 22px; font-size: 15px; font-weight: 500; cursor: pointer; }
+.faq-item summary::-webkit-details-marker { display: none; }
+.faq-item summary::after { content: ""; flex: none; width: 7px; height: 7px; margin-right: 4px; border-right: 1.6px solid var(--muted); border-bottom: 1.6px solid var(--muted); transform: rotate(45deg); transition: transform 0.2s ease; }
+.faq-item[open] summary::after { transform: rotate(225deg); margin-top: 4px; }
 .faq-item[open] summary { padding-bottom: 12px; }
 .faq-item p { margin: 0; padding: 0 22px 22px; color: var(--muted); font-size: 14px; line-height: 1.85; }
 .site-footer { padding: 40px 0; border-top: 1px solid var(--line); background: var(--panel); }
