@@ -15,7 +15,7 @@
 
 - `src/`：图库存储、Provider 和材料化逻辑；`library-service.ts` 管理共享业务与会话，`server.ts` 为外部 MCP 适配，`local/` 为本地界面连接；启动入口为 `src/index.ts`。
 - `app/`：MCP App 界面。`tests/`：Node 测试。`scripts/`：构建、目录生成、版本和打包脚本。
-- `skills/`：随插件分发给宿主的绘图指导。`.wisp-plugin/`、`.codex-plugin/`、`.claude-plugin/`、`.cursor-plugin/`：各宿主插件配置。
+- `skills/`：随插件分发给宿主的绘图指导。`.wisp-plugin/`、`.codex-plugin/`、`.claude-plugin/`、`.cursor-plugin/`、`.pi-plugin/`、`.dsh-plugin/`：各宿主插件配置。
 - 修改工具契约前阅读 [PROTOCOL](docs/PROTOCOL.md)；修改存储、身份或 Provider 前阅读 [全局图库架构](docs/GLOBAL_LIBRARY_0.6.md)。
 - 安装与用户流程见 [QUICKSTART](docs/QUICKSTART.md) 和 [用户手册](docs/USER_GUIDE.zh-CN.md)。历史 worktree spec 中的路径、版本和临时授权不作为当前任务的默认指令。
 

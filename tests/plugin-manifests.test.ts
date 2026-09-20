@@ -40,6 +40,28 @@ test("host plugin manifests share version, skill, and MCP identity", () => {
   assert.equal((pkg.files as string[]).includes(".codex-plugin"), true);
   assert.equal((pkg.files as string[]).includes(".claude-plugin"), true);
   assert.equal((pkg.files as string[]).includes(".cursor-plugin"), true);
+  assert.equal((pkg.files as string[]).includes(".pi-plugin"), true);
+  assert.equal((pkg.files as string[]).includes(".dsh-plugin"), true);
+  assert.equal((pkg.keywords as string[]).includes("pi-package"), true);
+  assert.equal((pkg.keywords as string[]).includes("dsh-plugin"), true);
+
+  const pi = pkg.pi as { extensions?: string[]; skills?: string[]; mcp?: unknown };
+  assert.deepEqual(pi.extensions, ["./.pi-plugin/extension.js"]);
+  assert.deepEqual(pi.skills, ["./skills"]);
+  assert.equal("mcp" in pi, false);
+  assert.equal(fs.existsSync(path.join(root, ".pi-plugin/extension.js")), true);
+  assert.equal(fs.existsSync(path.join(root, ".pi-plugin/mcp.json")), false);
+
+  const dsh = pkg.dsh as { bundle?: { patch?: string } };
+  assert.equal(dsh.bundle?.patch, "./.dsh-plugin/cordis.patch.yml");
+  const exportsField = pkg.exports as Record<string, string>;
+  assert.equal(exportsField["./dsh"], "./.dsh-plugin/index.js");
+  assert.equal(exportsField["."], "./dist/index.js");
+  const dshPatch = YAML.parse(fs.readFileSync(path.join(root, ".dsh-plugin/cordis.patch.yml"), "utf8")) as Array<{
+    insert?: Array<{ id?: string; name?: string }>;
+  }>;
+  assert.equal(dshPatch[0]?.insert?.[0]?.id, "figure-library");
+  assert.equal(dshPatch[0]?.insert?.[0]?.name, "scientific-figure-library/dsh");
   assert.equal(codex.skills, "./skills/");
   assert.equal(cursor.skills, "./skills/");
   assert.equal(codex.mcpServers, "./.codex-plugin/mcp.json");
@@ -116,7 +138,10 @@ test("host plugin manifests share version, skill, and MCP identity", () => {
   assert.deepEqual(wispServers[0]?.args, ["${WISP_PLUGIN_ROOT}/dist/index.js"]);
   assert.equal(wispServers[0]?.cwd, ".");
 
-  const hostConfigs = JSON.stringify({ codexMcp, claudeMcp, cursorMcp, wisp });
+  const piExtension = fs.readFileSync(path.join(root, ".pi-plugin/extension.js"), "utf8");
+  const dshAdapter = fs.readFileSync(path.join(root, ".dsh-plugin/index.js"), "utf8");
+  const dshPatchText = fs.readFileSync(path.join(root, ".dsh-plugin/cordis.patch.yml"), "utf8");
+  const hostConfigs = JSON.stringify({ codexMcp, claudeMcp, cursorMcp, wisp, pi, dsh, piExtension, dshAdapter, dshPatchText });
   assert.doesNotMatch(hostConfigs, /[A-Za-z]:[\\/](?:Users|home|scientific-figure-dev)[\\/]/u);
   assert.equal(fs.existsSync(path.join(root, "mcp.json")), false);
 });

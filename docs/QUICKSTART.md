@@ -11,7 +11,7 @@ Library.
 ## Requirements
 
 - Node.js 22 or newer
-- An MCP host: Wisp Science, Claude Science, Codex, Claude Code, Cursor, or any stdio client
+- An MCP host: Wisp Science, Claude Science, Codex, Claude Code, Cursor, Pi, DeepSeek Harness (dsh), or any stdio client
 
 ## From source
 
@@ -60,6 +60,37 @@ Unzip the generated Cursor ZIP from `release/` so this file exists:
 The same folder must also contain plugin-root `mcp.json`, `dist/index.js`, and
 `skills/`. Restart Cursor. Cursor's official marketplace is Git-based; this ZIP
 is the local plugin path.
+
+## Pi
+
+```bash
+pi install npm:pi-mcp-adapter
+pi install npm:scientific-figure-library
+```
+
+Restart Pi. The package loads the `figure-library` Skill and registers the
+stdio MCP server through pi-mcp-adapter. If you already connected the local
+SFL app with a copied MCP config, do not also install the npm package — that
+duplicates tools.
+
+From a local checkout after `npm run build`:
+
+```bash
+pi install npm:pi-mcp-adapter
+pi install /absolute/path/to/ScientificFigureLibrary
+```
+
+## DeepSeek Harness (dsh)
+
+```bash
+dsh plugin --profile web add scientific-figure-library
+```
+
+Restart the profile (`dsh --profile web` or `dsh web`). The bundle registers
+the Skill and mounts `@deepseek-ai/dsh-mcp-client` against this package's
+`dist/index.js`. Swap `web` for another profile if needed. If you already
+connected the local SFL app with a profile patch, do not also add the npm
+package.
 
 ## Ordinary MCP host (App optional)
 

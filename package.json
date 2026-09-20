@@ -11,6 +11,8 @@
     "mcp-app",
     "claude-science",
     "wisp-science",
+    "pi-package",
+    "dsh-plugin",
     "visualization",
     "publication-figures",
     "reproducible-research"
@@ -20,11 +22,31 @@
   "bin": {
     "scientific-figure-library": "dist/index.js"
   },
+  "exports": {
+    ".": "./dist/index.js",
+    "./dsh": "./.dsh-plugin/index.js",
+    "./package.json": "./package.json"
+  },
+  "pi": {
+    "extensions": [
+      "./.pi-plugin/extension.js"
+    ],
+    "skills": [
+      "./skills"
+    ]
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./.dsh-plugin/cordis.patch.yml"
+    }
+  },
   "files": [
     ".wisp-plugin",
     ".codex-plugin",
     ".claude-plugin",
     ".cursor-plugin",
+    ".pi-plugin",
+    ".dsh-plugin",
     "assets",
     "docs/GLOBAL_LIBRARY_0.6.md",
     "docs/PROTOCOL.md",

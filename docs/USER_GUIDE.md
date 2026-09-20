@@ -14,7 +14,7 @@ presented as shipped ones:
 | Marker | Meaning |
 | --- | --- |
 | ✅ Implemented | Shipped in the current version, ready to use |
-| 🤖 Host model | Performed by the model inside Claude/Codex/Cursor etc., usually with your confirmation |
+| 🤖 Host model | Performed by the model inside Claude/Codex/Cursor/Pi/dsh etc., usually with your confirmation |
 | 🕓 Planned | Still an open issue; honestly labeled as such |
 
 ## Table of contents
@@ -48,7 +48,7 @@ Three parties are involved; for every step, ask who does it:
 | Role | Who | Responsibility |
 | --- | --- | --- |
 | You | The researcher | Choose directories, confirm paths and templates, provide data, request plots |
-| Host model | The coding agent in Claude Science / Wisp Science / Codex / Cursor / Claude Code | Inspect files, call SFL tools, edit plotting code, execute inside approved runtimes |
+| Host model | The coding agent in Claude Science / Wisp Science / Codex / Cursor / Claude Code / Pi / dsh | Inspect files, call SFL tools, edit plotting code, execute inside approved runtimes |
 | SFL server | The `figure-library` MCP server | Hash, version, review-gate, publish, and exactly materialize templates |
 
 **What SFL does (✅ implemented):**
@@ -99,7 +99,7 @@ to guide those behaviors; see [section 9](#9-advanced-reference).
 ## 2. Install and first-run setup
 
 **Prerequisites (you):** Node.js 22 or newer; any stdio MCP host (Wisp
-Science, Claude Science, Codex, Claude Code, Cursor, and others).
+Science, Claude Science, Codex, Claude Code, Cursor, Pi, dsh, and others).
 
 ### 2.1 Installation
 
@@ -497,9 +497,9 @@ never uses this Source Pack.
 | figure-organization | Figure Unit organization: traceable inputs/outputs, intake boundaries |
 | figure-style | Plotting style guidance: fonts, colors, sizes, export; R/Python backend checks |
 
-All four plugin packages (Wisp/Codex/Claude/Cursor) bundle one figure-library
-Skill and its references. The other three topics in this table are on-demand
-references, not independent Skills.
+The Wisp/Codex/Claude/Cursor plugin ZIPs and the npm package used by Pi and
+dsh all bundle one figure-library Skill and its references. The other three
+topics in this table are on-demand references, not independent Skills.
 
 Without the App, call `figure_library_get_skill` to read the same guidance.
 Search returns candidate IDs and thumbnail URIs; use

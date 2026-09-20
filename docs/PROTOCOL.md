@@ -6,7 +6,7 @@
 Scientific Figure Library (SFL) is a standard stdio MCP server with an optional MCP App for
 building, reviewing, finding, and materializing reusable scientific-figure
 references. Version 0.6 keeps one **user-selected global Library** as the durable,
-cross-project source of truth. Wisp, Codex, Claude, Cursor, and other MCP hosts can use
+cross-project source of truth. Wisp, Codex, Claude, Cursor, Pi, dsh, and other MCP hosts can use
 the same Library without copying it into every project.
 
 The 0.6 standard core uses one Provider registry. Its built-in retrieval
@@ -75,7 +75,7 @@ materialize an exact result.
 > and the three-part validation state are exposed consistently across review,
 > planning, search, and details.
 >
-> **0.5.5 host plugins and display modes:** the same Skill and MCP server are packaged for Wisp, Codex, Claude, and Cursor. The MCP App may request `fullscreen` or `pip` when the Host advertises those modes; there is no docked-sidebar display mode.
+> **0.5.5 host plugins and display modes:** the same Skill and MCP server are packaged for Wisp, Codex, Claude, and Cursor. Pi and DeepSeek Harness (dsh) install that same npm package (`pi install` / `dsh plugin add`). The MCP App may request `fullscreen` or `pip` when the Host advertises those modes; there is no docked-sidebar display mode.
 >
 > **0.5.4 scientificQuestion:** optional retrieval field for the biological question a figure answers. It is not `description` or `visualProfile`. In that release, ordinary search returned only Local Published heads; 0.6.0 keeps the field while expanding the Provider set.
 
@@ -1000,9 +1000,12 @@ archive/reconcile, or one-step materialize tools in the standard 0.6 server.
 
 ## Distribution
 
-The same standard MCP server and Skill are packaged for four hosts. Do not
-register a raw `mcp_servers.figure-library` entry **and** a host plugin at the
-same time; that duplicates tools.
+The same standard MCP server and Skill are packaged for Wisp, Codex, Claude,
+Cursor, Pi, and DeepSeek Harness (dsh). Do not register a raw
+`mcp_servers.figure-library` entry **and** a host plugin at the same time; that
+duplicates tools. The same rule applies if a local-app MCP config is already
+active: do not also `pi install npm:scientific-figure-library` or
+`dsh plugin add scientific-figure-library`.
 
 ```bash
 npm run package:plugins
@@ -1046,6 +1049,19 @@ npm install --global ./release/scientific-figure-library-0.8.0.tgz
 ```
 
 Use `scientific-figure-library` as the MCP command after installation.
+
+Pi loads Skill and MCP from that npm package:
+
+```bash
+pi install npm:pi-mcp-adapter
+pi install npm:scientific-figure-library
+```
+
+DeepSeek Harness loads the same package as a bundle:
+
+```bash
+dsh plugin --profile web add scientific-figure-library
+```
 
 ## FigureYa Source Pack
 

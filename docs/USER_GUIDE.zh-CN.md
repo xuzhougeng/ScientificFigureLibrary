@@ -11,7 +11,7 @@
 | 标记 | 含义 |
 | --- | --- |
 | ✅ 已实现 | 当前版本已交付,可直接使用 |
-| 🤖 宿主模型执行 | 由 Claude/Codex/Cursor 等宿主里的模型完成,通常需要你确认 |
+| 🤖 宿主模型执行 | 由 Claude/Codex/Cursor/Pi/dsh 等宿主里的模型完成,通常需要你确认 |
 | 🕓 规划中 | 仍在 issue 讨论中,尚未实现;本手册如实标注 |
 
 ## 目录
@@ -43,7 +43,7 @@ SFL 是一个**本机优先**的 stdio MCP 服务器加 MCP App。它把你的�
 | 角色 | 是谁 | 负责什么 |
 | --- | --- | --- |
 | 你 | 科研用户 | 选目录、确认路径与模板、提供数据、要求绘图 |
-| 宿主模型 | Claude Science / Wisp Science / Codex / Cursor / Claude Code 里的编码代理 | 检查文件、调用 SFL 工具、修改绘图代码、在批准的运行时里执行 |
+| 宿主模型 | Claude Science / Wisp Science / Codex / Cursor / Claude Code / Pi / dsh 里的编码代理 | 检查文件、调用 SFL 工具、修改绘图代码、在批准的运行时里执行 |
 | SFL 服务器 | `figure-library` MCP 服务器 | 哈希、版本化、审阅门禁、发布与精确物化(materialize)模板 |
 
 **SFL 做什么(✅ 已实现):**
@@ -77,7 +77,7 @@ SFL 是一个**本机优先**的 stdio MCP 服务器加 MCP App。它把你的�
 ## 2. 安装与首次配置
 
 **准备(你):** Node.js 22 或更新版本;任一 stdio MCP 宿主(Wisp Science、
-Claude Science、Codex、Claude Code、Cursor 等)。
+Claude Science、Codex、Claude Code、Cursor、Pi、dsh 等)。
 
 ### 2.1 安装方式
 
@@ -422,7 +422,7 @@ Local Published 不使用这个 Source Pack。
 | figure-organization | 图形单元组织:输入/输出可追溯,导入边界约定 |
 | figure-style | 绘图风格指导:字体、配色、尺寸、导出;R/Python 后端检查细则 |
 
-四个插件包(Wisp/Codex/Claude/Cursor)均包含一个 figure-library 核心 Skill 及其资料。
+Wisp/Codex/Claude/Cursor 插件 ZIP，以及 Pi 与 dsh 使用的 npm 包，均包含一个 figure-library 核心 Skill 及其资料。
 表中另外三个主题是按需读取的资料，不再作为独立 Skill 分发。
 
 不使用 App 时，调用 `figure_library_get_skill` 读取同源指导。搜索返回候选 ID 和

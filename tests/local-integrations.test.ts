@@ -18,6 +18,13 @@ test("integration instructions use the active runtime and retain exact native pa
     assert.deepEqual(json.mcpServers["figure-library"].args, [server]);
     assert.ok(guide.skillPath.endsWith(platform === "win32" ? "skills\\figure-library\\SKILL.md" : "skills/figure-library/SKILL.md"));
     assert.ok(guide.hosts.every(host => host.snippetIds.every(id => guide.snippets.some(item => item.id === id))));
+    assert.deepEqual(guide.hosts.map(host => host.id), ["codex", "claude-code", "claude-desktop", "pi", "dsh", "other"]);
+    assert.equal(guide.snippets.find(item => item.id === "pi-command")!.content, "pi install npm:pi-mcp-adapter");
+    assert.equal(guide.snippets.find(item => item.id === "dsh-command")!.content, "dsh plugin --profile web add scientific-figure-library");
+    const dshPatch = guide.snippets.find(item => item.id === "dsh-patch")!.content;
+    assert.match(dshPatch, /@deepseek-ai\/dsh-mcp-client/u);
+    assert.equal(dshPatch.includes(JSON.stringify(node)), true);
+    assert.equal(dshPatch.includes(JSON.stringify(server)), true);
     assert.match(guide.verificationPrompt, /figure_library_get_candidate_images/u);
     if (platform === "win32") assert.match(guide.snippets.find(item => item.id === "codex-command")!.content, /Node''s/u);
   }

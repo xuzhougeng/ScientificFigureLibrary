@@ -16,7 +16,7 @@ Scientific Figure Library (SFL) is a **local-first MCP server and MCP App** for
 **your scientific figures**. You import a figure and its code, review them,
 publish an immutable Release to **one global Library on your machine**, then
 reuse that exact template across projects in **Claude Science**, **Wisp Science**,
-**Codex**, **Cursor**, and other stdio MCP hosts.
+**Codex**, **Cursor**, **Pi**, **dsh**, and other stdio MCP hosts.
 
 The Library stays on disk you choose. Nothing is copied into every project
 until you confirm a materialization. The server does **not** execute plotting
@@ -45,7 +45,7 @@ Separate native macOS Apple Silicon and Intel DMGs, plus Windows and Linux ZIPs 
 
 ## Install with a coding agent
 
-Give Claude Code, Codex, Cursor, or another local coding agent with terminal access
+Give Claude Code, Codex, Cursor, Pi, dsh, or another local coding agent with terminal access
 this repository and the following request:
 
 ```text
@@ -56,7 +56,9 @@ Follow docs/QUICKSTART.md. Prefer a GitHub Release ZIP when one is published.
 Node.js 22+ is required. Register the stdio MCP server as figure-library
 pointing at dist/index.js. For Wisp Science, use npm run package:wisp and
 install the generated plugin. For Cursor, use npm run package:cursor and unzip
-into ~/.cursor/plugins/local/figure-library/. Bind one global Library directory on disk.
+into ~/.cursor/plugins/local/figure-library/. For Pi: pi install npm:pi-mcp-adapter
+then pi install npm:scientific-figure-library. For dsh: dsh plugin --profile web add
+scientific-figure-library. Bind one global Library directory on disk.
 Do not execute user plotting code. First test: open or source_status; if
 setup_required, bind the global Library and Local workspace before searching.
 open the workbench, search the local published library.
@@ -83,7 +85,7 @@ Manual steps: [docs/QUICKSTART.md](docs/QUICKSTART.md).
 
 ## Bundled figure workflow
 
-All four plugin packages include one core figure-library Skill with on-demand
+The host plugin ZIPs and the npm package used by Pi and dsh include one core figure-library Skill with on-demand
 description, script-organization and style references. Ordinary MCP hosts can
 read the same guidance with `figure_library_get_skill`, browse thumbnails with
 `figure_library_get_candidate_images` or resource URIs, and paginate with
