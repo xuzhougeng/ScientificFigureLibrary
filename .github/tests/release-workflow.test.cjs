@@ -35,7 +35,11 @@ test("GitHub Release publishes the v0.8.0 asset set only from a stable tag", () 
   assert.equal(release.jobs["local-clients"].uses, "./.github/workflows/local-clients.yml");
   assert.equal(release.jobs["local-clients"].with.ref, "${{ needs.validate.outputs.sha }}");
   assert.deepEqual(release.jobs.publish.needs, ["validate", "plugins", "local-clients"]);
-  assert.deepEqual(release.jobs.publish.permissions, { contents: "write", actions: "read" });
+  assert.deepEqual(release.jobs.publish.permissions, {
+    contents: "write",
+    actions: "read",
+    "id-token": "write",
+  });
   assert.equal(release.jobs.publish.env.GH_TOKEN, "${{ github.token }}");
 
   const plugins = JSON.stringify(release.jobs.plugins);
@@ -49,6 +53,9 @@ test("GitHub Release publishes the v0.8.0 asset set only from a stable tag", () 
   assert.ok(publish.includes("gh api --method POST"));
   assert.ok(publish.includes("gh api --method PATCH"));
   assert.ok(publish.includes("--clobber"));
+  assert.ok(publish.includes("npm publish"));
+  assert.ok(publish.includes("secrets.NPM_TOKEN"));
+  assert.ok(publish.includes("--provenance"));
   assert.ok(!publish.includes("gh release create"));
   assert.ok(!publish.includes("--notes-file"));
   assert.ok(JSON.stringify(release.jobs.validate).includes("SFL / CI required"));

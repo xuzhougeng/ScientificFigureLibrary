@@ -64,7 +64,7 @@ MCP smoke 验证服务协议流程，不代表真实桌面宿主安装/交互验
 | Check tag and release notes | 标签与 `package.json` 版本一致；notes 可解析；`previous_tag` 是已有 git 标签 |
 | Package host plugins and npm tarball | `npm run package:plugins` 与 `npm run package:npm`，含 Wisp 更新 feed |
 | Package local clients | 复用本地客户端工作流，按标签提交打包五个平台的内置 Node / `no-node` 安装包 |
-| Upload GitHub Release | 清单必须正好 31 个文件（15 个安装包/插件/npm + 15 个 `.sha256` + `scientific-figure-library-wisp-update.json`），用 UTF-8 JSON 写双语说明并上传 |
+| Upload GitHub Release | 清单必须正好 31 个文件（15 个安装包/插件/npm + 15 个 `.sha256` + `scientific-figure-library-wisp-update.json`），用 UTF-8 JSON 写双语说明并上传；若仓库配置了 `NPM_TOKEN`，再把已校验 tarball 发到 npm |
 
 缺 notes、缺 Wisp feed、SHA-256 对不上、或目录里多出/缺少文件时，发布作业失败，不会把不完整的资源标成正式版。已有同名 Release 时覆盖资源和说明，便于重跑。说明正文由脚本生成下载表和来源信息，changelog 仍来自人工撰写的 notes，避免只列出本地客户端。
 
