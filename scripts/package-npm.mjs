@@ -69,6 +69,9 @@ try {
   const candidatePath = path.join(packDirectory, expectedName);
   const candidateBytes = new Uint8Array(await fs.readFile(candidatePath));
   const packedFiles = readNpmTarball(candidateBytes);
+  if (!packedFiles.has("dist/index.js")) {
+    throw new Error("npm tarball is missing dist/index.js; pi install and dsh plugin add cannot start MCP");
+  }
   for (const relative of packedFiles.keys()) {
     if (GALLERY_IMAGE.test(relative)) throw new Error(`npm tarball ships a downloadable gallery image: ${relative}`);
   }

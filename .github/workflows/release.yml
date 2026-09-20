@@ -225,7 +225,10 @@ jobs:
             echo "${NPM_PACKAGE}@${RELEASE_VERSION} is already published"
             exit 0
           fi
+          # Absolute path: a relative "dir/file.tgz" is parsed as a GitHub repo shorthand.
+          tarball="$PWD/release-assets/${NPM_PACKAGE}-${RELEASE_VERSION}.tgz"
+          test -f "$tarball"
           # Publish the tarball package:npm already inventory-checked and smoke-tested.
           # Never a bare `npm publish` from the checkout: that can ship without dist/.
-          npm publish "release-assets/${NPM_PACKAGE}-${RELEASE_VERSION}.tgz" --provenance --access public
+          npm publish "$tarball" --provenance --access public
           echo "Published ${NPM_PACKAGE}@${RELEASE_VERSION} to npm"

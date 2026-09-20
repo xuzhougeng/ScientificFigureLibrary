@@ -51,8 +51,8 @@ workspace before searching.
 
 ### Pi
 
-Install the published npm package. Do not clone this repo unless you are
-developing from source.
+Install the published npm package. Do not `pi install` a GitHub URL or git
+clone: the repository does not contain `dist/`, so MCP cannot start.
 
 ```bash
 pi install npm:pi-mcp-adapter

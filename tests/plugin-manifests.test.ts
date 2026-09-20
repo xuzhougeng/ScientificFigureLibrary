@@ -42,6 +42,8 @@ test("host plugin manifests share version, skill, and MCP identity", () => {
   assert.equal((pkg.files as string[]).includes(".cursor-plugin"), true);
   assert.equal((pkg.files as string[]).includes(".pi-plugin"), true);
   assert.equal((pkg.files as string[]).includes(".dsh-plugin"), true);
+  assert.equal((pkg.files as string[]).includes("dist"), true);
+  assert.equal((pkg.bin as { "scientific-figure-library"?: string })["scientific-figure-library"], "dist/index.js");
   for (const keyword of ["pi", "pi-package", "pi-coding-agent", "dsh", "dsh-plugin", "deepseek-harness"]) {
     assert.equal((pkg.keywords as string[]).includes(keyword), true, keyword);
   }

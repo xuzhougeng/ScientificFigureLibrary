@@ -69,11 +69,12 @@ pi install npm:scientific-figure-library
 ```
 
 Restart Pi. The package loads the `figure-library` Skill and registers the
-stdio MCP server through pi-mcp-adapter. If you already connected the local
-SFL app with a copied MCP config, do not also install the npm package — that
-duplicates tools.
+stdio MCP server through pi-mcp-adapter. Install from npm, not from a GitHub
+URL: git checkouts do not include `dist/index.js`. If you already connected
+the local SFL app with a copied MCP config, do not also install the npm
+package — that duplicates tools.
 
-From a local checkout after `npm run build`:
+From a local checkout after `npm run build` (development only):
 
 ```bash
 pi install npm:pi-mcp-adapter
@@ -86,11 +87,12 @@ pi install /absolute/path/to/ScientificFigureLibrary
 dsh plugin --profile web add scientific-figure-library
 ```
 
-Restart the profile (`dsh --profile web` or `dsh web`). The bundle registers
-the Skill and mounts `@deepseek-ai/dsh-mcp-client` against this package's
-`dist/index.js`. Swap `web` for another profile if needed. If you already
-connected the local SFL app with a profile patch, do not also add the npm
-package.
+Restart the profile (`dsh --profile web` or `dsh web`). Install from npm, not
+`github:xuzhougeng/ScientificFigureLibrary`: git checkouts do not include
+`dist/index.js`. The bundle registers the Skill and mounts
+`@deepseek-ai/dsh-mcp-client` against this package. Swap `web` for another
+profile if needed. If you already connected the local SFL app with a profile
+patch, do not also add the npm package.
 
 ## Ordinary MCP host (App optional)
 
