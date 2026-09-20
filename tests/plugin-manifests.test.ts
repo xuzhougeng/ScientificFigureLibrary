@@ -42,18 +42,28 @@ test("host plugin manifests share version, skill, and MCP identity", () => {
   assert.equal((pkg.files as string[]).includes(".cursor-plugin"), true);
   assert.equal((pkg.files as string[]).includes(".pi-plugin"), true);
   assert.equal((pkg.files as string[]).includes(".dsh-plugin"), true);
-  assert.equal((pkg.keywords as string[]).includes("pi-package"), true);
-  assert.equal((pkg.keywords as string[]).includes("dsh-plugin"), true);
+  for (const keyword of ["pi", "pi-package", "pi-coding-agent", "dsh", "dsh-plugin", "deepseek-harness"]) {
+    assert.equal((pkg.keywords as string[]).includes(keyword), true, keyword);
+  }
+  assert.match(String(pkg.description), /Pi/u);
+  assert.match(String(pkg.description), /DeepSeek Harness \(dsh\)/u);
 
-  const pi = pkg.pi as { extensions?: string[]; skills?: string[]; mcp?: unknown };
+  const pi = pkg.pi as { extensions?: string[]; skills?: string[]; mcp?: unknown; image?: string };
   assert.deepEqual(pi.extensions, ["./.pi-plugin/extension.js"]);
   assert.deepEqual(pi.skills, ["./skills"]);
   assert.equal("mcp" in pi, false);
+  assert.match(String(pi.image), /^https:\/\/raw\.githubusercontent\.com\/xuzhougeng\/ScientificFigureLibrary\/main\/docs\/assets\/sfl-gallery\.png$/u);
   assert.equal(fs.existsSync(path.join(root, ".pi-plugin/extension.js")), true);
   assert.equal(fs.existsSync(path.join(root, ".pi-plugin/mcp.json")), false);
 
-  const dsh = pkg.dsh as { bundle?: { patch?: string } };
+  const dsh = pkg.dsh as {
+    bundle?: { patch?: string };
+    plugin?: { displayName?: string; summary?: Record<string, string> };
+  };
   assert.equal(dsh.bundle?.patch, "./.dsh-plugin/cordis.patch.yml");
+  assert.equal(dsh.plugin?.displayName, "Scientific Figure Library");
+  assert.ok(dsh.plugin?.summary?.en?.includes("MCP"));
+  assert.ok(dsh.plugin?.summary?.["zh-CN"]?.includes("Skill"));
   const exportsField = pkg.exports as Record<string, string>;
   assert.equal(exportsField["./dsh"], "./.dsh-plugin/index.js");
   assert.equal(exportsField["."], "./dist/index.js");

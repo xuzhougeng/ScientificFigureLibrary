@@ -45,8 +45,64 @@ Separate native macOS Apple Silicon and Intel DMGs, plus Windows and Linux ZIPs 
 
 ## Install with a coding agent
 
-Give Claude Code, Codex, Cursor, Pi, dsh, or another local coding agent with terminal access
-this repository and the following request:
+Node.js 22+ is required. Do not execute user plotting code. After install, bind
+one global Library directory on disk; if `setup_required`, also bind a Local
+workspace before searching.
+
+### Pi
+
+Install the published npm package. Do not clone this repo unless you are
+developing from source.
+
+```bash
+pi install npm:pi-mcp-adapter
+pi install npm:scientific-figure-library
+```
+
+Restart Pi. The package loads the `figure-library` Skill and registers the
+stdio MCP server through pi-mcp-adapter. If you already copied a local SFL app
+MCP config into `~/.config/mcp/mcp.json` or `.mcp.json`, skip
+`pi install npm:scientific-figure-library` — that duplicates tools.
+
+Paste this request:
+
+```text
+Install Scientific Figure Library for Pi.
+Run: pi install npm:pi-mcp-adapter
+Then: pi install npm:scientific-figure-library
+Restart Pi. Do not clone the GitHub repo and do not add a second
+figure-library MCP entry. First test: figure_library_get_skill, then
+figure_library_source_status. If setup_required, bind the global Library
+and Local workspace. Tell me when I need to restart Pi.
+```
+
+### DeepSeek Harness (dsh)
+
+`--profile` is required. Use `web` unless you run another profile.
+
+```bash
+dsh plugin --profile web add scientific-figure-library
+```
+
+Restart the profile (`dsh --profile web` or `dsh web`). The bundle registers
+the Skill and mounts `@deepseek-ai/dsh-mcp-client` against this package. If you
+already added a dsh MCP client row for a local SFL app, do not also run
+`dsh plugin add scientific-figure-library`.
+
+Paste this request:
+
+```text
+Install Scientific Figure Library for DeepSeek Harness.
+Run: dsh plugin --profile web add scientific-figure-library
+Restart the web profile. Do not clone the GitHub repo and do not add a
+second figure-library MCP row. First test: figure_library_get_skill, then
+figure_library_source_status. If setup_required, bind the global Library
+and Local workspace. Tell me when I need to restart dsh.
+```
+
+### Claude, Codex, Cursor, Wisp, or another stdio host
+
+Give the agent this repository and the following request:
 
 ```text
 Install Scientific Figure Library from
@@ -56,12 +112,9 @@ Follow docs/QUICKSTART.md. Prefer a GitHub Release ZIP when one is published.
 Node.js 22+ is required. Register the stdio MCP server as figure-library
 pointing at dist/index.js. For Wisp Science, use npm run package:wisp and
 install the generated plugin. For Cursor, use npm run package:cursor and unzip
-into ~/.cursor/plugins/local/figure-library/. For Pi: pi install npm:pi-mcp-adapter
-then pi install npm:scientific-figure-library. For dsh: dsh plugin --profile web add
-scientific-figure-library. Bind one global Library directory on disk.
+into ~/.cursor/plugins/local/figure-library/. Bind one global Library directory on disk.
 Do not execute user plotting code. First test: open or source_status; if
 setup_required, bind the global Library and Local workspace before searching.
-open the workbench, search the local published library.
 Tell me when I need to grant folder access or start a new host session.
 ```
 

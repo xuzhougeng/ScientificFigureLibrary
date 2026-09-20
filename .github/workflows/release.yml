@@ -145,6 +145,7 @@ jobs:
     permissions:
       contents: write
       actions: read
+      id-token: write
     env:
       GH_TOKEN: ${{ github.token }}
       RELEASE_TAG: ${{ needs.validate.outputs.tag }}
@@ -166,6 +167,7 @@ jobs:
           node-version: "22"
           cache: npm
           cache-dependency-path: package-lock.json
+          registry-url: https://registry.npmjs.org
       - run: npm ci
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
@@ -193,3 +195,22 @@ jobs:
           gh api --method PATCH "/repos/${GITHUB_REPOSITORY}/releases/${release_id}" \
             --input release-meta/github-release-update.json
           echo "Published https://github.com/${GITHUB_REPOSITORY}/releases/tag/${RELEASE_TAG}"
+      - name: Publish the verified tarball to npm
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_PACKAGE: scientific-figure-library
+        run: |
+          set -euo pipefail
+          if [ -z "${NODE_AUTH_TOKEN:-}" ]; then
+            echo "NPM_TOKEN is unset; skipping npm publish."
+            echo "pi install npm:${NPM_PACKAGE} and dsh plugin add ${NPM_PACKAGE} stay broken until the package is on the registry."
+            exit 0
+          fi
+          if npm view "${NPM_PACKAGE}@${RELEASE_VERSION}" version >/dev/null 2>&1; then
+            echo "${NPM_PACKAGE}@${RELEASE_VERSION} is already published"
+            exit 0
+          fi
+          # Publish the tarball package:npm already inventory-checked and smoke-tested.
+          # Never a bare `npm publish` from the checkout: that can ship without dist/.
+          npm publish "release-assets/${NPM_PACKAGE}-${RELEASE_VERSION}.tgz" --provenance --access public
+          echo "Published ${NPM_PACKAGE}@${RELEASE_VERSION} to npm"

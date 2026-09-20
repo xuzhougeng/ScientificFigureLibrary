@@ -1,7 +1,7 @@
 {
   "name": "scientific-figure-library",
   "version": "0.8.0",
-  "description": "Local image-code knowledge library with native macOS and local Web clients for Windows and Linux, plus MCP and Skill interfaces for external tools.",
+  "description": "Local image-code knowledge library with native macOS and local Web clients, plus MCP and Skill for Pi, DeepSeek Harness (dsh), Claude, Codex, Cursor, and Wisp.",
   "keywords": [
     "scientific-figures",
     "figure-library",
@@ -9,10 +9,15 @@
     "figure-templates",
     "mcp",
     "mcp-app",
+    "mcp-server",
     "claude-science",
     "wisp-science",
+    "pi",
     "pi-package",
+    "pi-coding-agent",
+    "dsh",
     "dsh-plugin",
+    "deepseek-harness",
     "visualization",
     "publication-figures",
     "reproducible-research"
@@ -33,11 +38,19 @@
     ],
     "skills": [
       "./skills"
-    ]
+    ],
+    "image": "https://raw.githubusercontent.com/xuzhougeng/ScientificFigureLibrary/main/docs/assets/sfl-gallery.png"
   },
   "dsh": {
     "bundle": {
       "patch": "./.dsh-plugin/cordis.patch.yml"
+    },
+    "plugin": {
+      "displayName": "Scientific Figure Library",
+      "summary": {
+        "en": "Search and materialize reviewed scientific-figure templates via MCP and one core Skill.",
+        "zh-CN": "通过 MCP 和一个核心 Skill 检索并物化已审阅的科学图模板。"
+      }
     }
   },
   "files": [
