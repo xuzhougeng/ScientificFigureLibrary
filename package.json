@@ -1,6 +1,6 @@
 {
   "name": "scientific-figure-library",
-  "version": "0.8.0",
+  "version": "0.8.1",
   "description": "Local image-code knowledge library with native macOS and local Web clients, plus MCP and Skill for Pi, DeepSeek Harness (dsh), Claude, Codex, Cursor, and Wisp.",
   "keywords": [
     "scientific-figures",

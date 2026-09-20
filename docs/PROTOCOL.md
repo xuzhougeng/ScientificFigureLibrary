@@ -1018,10 +1018,10 @@ and the Wisp update feed, then uploads them to the GitHub Release. See
 
 The four host archives are:
 
-- `scientific-figure-library-wisp-0.8.0.zip` — install from Wisp **Settings → Plugins**
-- `scientific-figure-library-codex-0.8.0.zip` — Codex plugin with `.codex-plugin/plugin.json`, `.codex-plugin/mcp.json`, and `skills/figure-library`
-- `scientific-figure-library-claude-0.8.0.zip` — Claude Code plugin with `.claude-plugin/plugin.json`, `.claude-plugin/mcp.json`, and auto-discovered `skills/`
-- `scientific-figure-library-cursor-0.8.0.zip` — Cursor plugin with `.cursor-plugin/plugin.json`, plugin-root `mcp.json`, and auto-discovered `skills/`
+- `scientific-figure-library-wisp-0.8.1.zip` — install from Wisp **Settings → Plugins**
+- `scientific-figure-library-codex-0.8.1.zip` — Codex plugin with `.codex-plugin/plugin.json`, `.codex-plugin/mcp.json`, and `skills/figure-library`
+- `scientific-figure-library-claude-0.8.1.zip` — Claude Code plugin with `.claude-plugin/plugin.json`, `.claude-plugin/mcp.json`, and auto-discovered `skills/`
+- `scientific-figure-library-cursor-0.8.1.zip` — Cursor plugin with `.cursor-plugin/plugin.json`, plugin-root `mcp.json`, and auto-discovered `skills/`
 
 Each package uses its Host's plugin-root contract. Codex resolves `cwd: "."`
 from the installed plugin root, Claude expands `${CLAUDE_PLUGIN_ROOT}`, Cursor
@@ -1045,7 +1045,7 @@ Build a standalone npm package:
 
 ```bash
 npm run package:npm
-npm install --global ./release/scientific-figure-library-0.8.0.tgz
+npm install --global ./release/scientific-figure-library-0.8.1.tgz
 ```
 
 Use `scientific-figure-library` as the MCP command after installation.
@@ -1103,7 +1103,7 @@ npm run package:source-pack -- \
 
 The helper verifies selected ZIP identities and caps a transport pack at 200
 MiB. Extract the resulting
-`release/figure-library-source-pack-volcano-0.8.0.zip` before use.
+`release/figure-library-source-pack-volcano-0.8.1.zip` before use.
 
 ## Catalog development
 
@@ -1142,7 +1142,7 @@ and exact inventory before atomically replacing `assets/community`. The source
 checkout and target must be separate directory trees. Packaging has an
 additional final-release gate that requires the three reviewed 1.0.0 seed
 releases; the empty bootstrap snapshot is valid for development tests but
-cannot be packaged as the 0.8.0 release.
+cannot be packaged as the 0.8.1 release.
 
 ## Markdown descriptions and bundled Skills
 

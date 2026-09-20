@@ -3,7 +3,7 @@ name: figure-library
 description: Search, browse, select, import, review, publish, and materialize reusable scientific-figure assets through Scientific Figure Library. Use for finding plotting references or managing the shared figure library; the host executes project tasks.
 ---
 
-# Scientific Figure Library 0.8.0
+# Scientific Figure Library 0.8.1
 
 Use the connected SFL tools and one user-selected global Library. The MCP App
 is optional: ordinary MCP tools can supply guidance, candidate thumbnails,
