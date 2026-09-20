@@ -1,8 +1,11 @@
 #!/usr/bin/env node
 
+import { execFile as execFileCallback } from "node:child_process";
 import { createHash } from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
+import { promisify } from "node:util";
+import { previewDownloadManifests } from "./preview-download-manifest.mjs";
 import {
   assertExactInventory,
   assertFinalCommunitySnapshot,
@@ -16,13 +19,28 @@ import {
   temporaryDirectory,
 } from "./package-release-lib.mjs";
 
+const execFile = promisify(execFileCallback);
 const root = path.resolve(import.meta.dirname, "..");
 const packageJson = JSON.parse(await fs.readFile(path.join(root, "package.json"), "utf8"));
 const expectedName = `scientific-figure-library-${packageJson.version}.tgz`;
+const GALLERY_IMAGE = /^assets\/(?!brand\/).*\.(?:png|jpe?g|webp|gif)$/iu;
 
 // Repeat the release-only gate after build so a concurrent snapshot change
 // cannot slip between the npm script's initial preflight and npm pack.
 await assertFinalCommunitySnapshot({ repositoryRoot: root });
+
+// Gallery images stay out of the tarball; the package ships the pinned download
+// manifests instead, exactly like the local clients do. package.json's `!assets/...`
+// entries drop the bytes and PreviewDownloadStore fetches them on demand.
+const commit = (await execFile("git", ["rev-parse", "HEAD"], { cwd: root })).stdout.trim();
+const downloads = await previewDownloadManifests(
+  root,
+  process.env.GITHUB_REPOSITORY ?? "xuzhougeng/ScientificFigureLibrary",
+  commit,
+);
+for (const [relative, bytes] of downloads.manifests) {
+  await fs.writeFile(path.join(root, ...relative.split("/")), bytes);
+}
 
 const temporary = await temporaryDirectory("sfl npm release candidate");
 try {
@@ -51,6 +69,12 @@ try {
   const candidatePath = path.join(packDirectory, expectedName);
   const candidateBytes = new Uint8Array(await fs.readFile(candidatePath));
   const packedFiles = readNpmTarball(candidateBytes);
+  for (const relative of packedFiles.keys()) {
+    if (GALLERY_IMAGE.test(relative)) throw new Error(`npm tarball ships a downloadable gallery image: ${relative}`);
+  }
+  for (const relative of downloads.manifests.keys()) {
+    if (!packedFiles.has(relative)) throw new Error(`npm tarball is missing its preview download manifest: ${relative}`);
+  }
   const authoritative = await authoritativeNpmInventory(root);
   const inventory = assertExactInventory(packedFiles, authoritative, expectedName);
   auditPackageContents(packedFiles, { label: expectedName, repositoryRoot: root });
@@ -82,4 +106,7 @@ try {
   );
 } finally {
   await fs.rm(temporary, { recursive: true, force: true });
+  for (const relative of downloads.manifests.keys()) {
+    await fs.rm(path.join(root, ...relative.split("/")), { force: true });
+  }
 }

@@ -1065,7 +1065,9 @@ dsh plugin --profile web add scientific-figure-library
 
 ## FigureYa Source Pack
 
-The plugin contains the FigureYa catalog and thumbnails, not the roughly 3 GiB
+The plugin contains the FigureYa catalog and thumbnails; the npm package used by
+Pi and dsh contains the catalog and pinned thumbnail identities, downloading the
+image bytes on demand. Neither contains the roughly 3 GiB
 archive collection. A Source Pack is an ordinary directory containing pinned
 per-module ZIPs from FigureYa-compressed:
 
@@ -1193,7 +1195,7 @@ license. See
 
 ## 本地轻量安装包的预览交付
 
-本地 DMG / Windows ZIP 的 FigureYa 与 Open Figure Modules bootstrap 可包含 `preview-downloads.json`，其每个图片身份必须与既有预览 manifest 完全一致。图片来源固定为构建提交中的文件；不改变 Provider、exact selector 或 Published Release 的身份。
+本地 DMG / Windows ZIP 与 npm 包（Pi / dsh 安装路径）的 FigureYa 与 Open Figure Modules bootstrap 可包含 `preview-downloads.json`，其每个图片身份必须与既有预览 manifest 完全一致。图片来源固定为构建提交中的文件；不改变 Provider、exact selector 或 Published Release 的身份。
 
 候选可返回 `previewDelivery: "download"`。此模式下 `previewAvailable` 表示存在可获取的固定身份，并不承诺网络可达或已经缓存；当前页图片传输结果由 `searchPreviewAvailable` / `searchPreviewStatus` 表达。搜索不会下载非当前页候选的图片。精确预览只有取得、校验和传输真实图片后才可确认。缩略图下载失败不改变精确图片身份，可重新请求预览。
 

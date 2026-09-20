@@ -309,6 +309,13 @@ export async function authoritativeNpmInventory(repositoryRoot) {
   const root = path.resolve(repositoryRoot);
   const packageJson = JSON.parse(await fs.readFile(path.join(root, "package.json"), "utf8"));
   assert(Array.isArray(packageJson.files), "package.json files must be an explicit array");
+  // `!path` entries are npm pack exclusions; mirror them so the authoritative
+  // inventory stays byte-exact with the tarball.
+  const excluded = packageJson.files
+    .filter((entry) => typeof entry === "string" && entry.startsWith("!"))
+    .map((entry) => normalizeArchivePath(entry.slice(1), "package.json files exclusion"));
+  const isExcluded = (relative) =>
+    excluded.some((prefix) => relative === prefix || relative.startsWith(`${prefix}/`));
   const output = new Map();
   const addFile = async (absolute, relative) => {
     const safe = normalizeArchivePath(relative, "npm authoritative path");
@@ -317,6 +324,7 @@ export async function authoritativeNpmInventory(repositoryRoot) {
   };
   await addFile(path.join(root, "package.json"), "package.json");
   for (const declared of packageJson.files) {
+    if (typeof declared === "string" && declared.startsWith("!")) continue;
     const relative = normalizeArchivePath(declared, "package.json files entry");
     const absolute = path.join(root, ...relative.split("/"));
     const stat = await fs.lstat(absolute);
@@ -324,6 +332,7 @@ export async function authoritativeNpmInventory(repositoryRoot) {
     if (stat.isFile()) await addFile(absolute, relative);
     else if (stat.isDirectory()) {
       for (const file of await walkRegularFiles(absolute, relative)) {
+        if (isExcluded(file.relative)) continue;
         await addFile(file.absolute, file.relative);
       }
     } else throw new Error(`npm package input is not regular: ${relative}`);

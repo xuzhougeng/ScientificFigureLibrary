@@ -17,6 +17,7 @@ const {
   assertExactInventory,
   assertFinalCommunitySnapshot,
   auditPackageContents,
+  authoritativeNpmInventory,
   readNpmTarball,
 } = releaseLibrary;
 
@@ -340,6 +341,29 @@ test("npm tar parser accepts only exact regular package inventory", () => {
     Buffer.alloc(1024),
   ]);
   assert.throws(() => readNpmTarball(gzipSync(symlinkTar)), /non-regular entry type/u);
+});
+
+test("npm authoritative inventory drops downloadable gallery images and keeps their manifests", async (t) => {
+  const fixture = await fs.mkdtemp(path.join(os.tmpdir(), "sfl npm files exclusion-"));
+  t.after(() => fs.rm(fixture, { recursive: true, force: true }));
+  await fs.mkdir(path.join(fixture, "assets", "thumbs"), { recursive: true });
+  await fs.mkdir(path.join(fixture, "assets", "personal-modules", "previews"), { recursive: true });
+  await fs.writeFile(path.join(fixture, "assets", "catalog.json"), "{}\n", "utf8");
+  await fs.writeFile(path.join(fixture, "assets", "preview-downloads.json"), "{}\n", "utf8");
+  await fs.writeFile(path.join(fixture, "assets", "thumbs", "one.png"), "png", "utf8");
+  await fs.writeFile(path.join(fixture, "assets", "personal-modules", "previews", "two.png"), "png", "utf8");
+  await writeJson(path.join(fixture, "package.json"), {
+    name: "fixture",
+    version: "1.0.0",
+    files: ["assets", "!assets/thumbs", "!assets/personal-modules/previews"],
+  });
+
+  const inventory = await authoritativeNpmInventory(fixture);
+  assert.deepEqual([...inventory.keys()].sort(), [
+    "assets/catalog.json",
+    "assets/preview-downloads.json",
+    "package.json",
+  ]);
 });
 
 test("release smoke inventory remains exactly 56 tools", () => {
