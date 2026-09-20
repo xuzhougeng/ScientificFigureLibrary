@@ -63,6 +63,9 @@ is the local plugin path.
 
 ## Pi
 
+For Pi installation, model setup, and a UMAP walkthrough, see the
+[Chinese Pi tutorial](PI_TUTORIAL.zh-CN.md).
+
 ```bash
 pi install npm:pi-mcp-adapter
 pi install npm:scientific-figure-library
