@@ -58,6 +58,9 @@ test("GitHub Release publishes the v0.8.0 asset set only from a stable tag", () 
   assert.ok(publish.includes("--provenance"));
   assert.ok(publish.includes("expectedReleaseAssets"));
   assert.ok(publish.includes("Keep only GitHub Release assets"));
+  assert.ok(publish.includes("gh release view"));
+  assert.ok(publish.includes("databaseId"));
+  assert.ok(!publish.includes("releases/tags/${RELEASE_TAG}"));
   assert.ok(!publish.includes("gh release create"));
   assert.ok(!publish.includes("--notes-file"));
   assert.ok(JSON.stringify(release.jobs.validate).includes("SFL / CI required"));

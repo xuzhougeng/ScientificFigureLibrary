@@ -205,7 +205,8 @@ jobs:
           fi
           mapfile -t files < release-meta/upload-files.txt
           gh release upload "$RELEASE_TAG" "${files[@]}" --clobber
-          release_id="$(gh api "/repos/${GITHUB_REPOSITORY}/releases/tags/${RELEASE_TAG}" --jq .id)"
+          # Drafts are not returned by GET /releases/tags/{tag}; gh release view includes them.
+          release_id="$(gh release view "$RELEASE_TAG" --json databaseId --jq .databaseId)"
           gh api --method PATCH "/repos/${GITHUB_REPOSITORY}/releases/${release_id}" \
             --input release-meta/github-release-update.json
           echo "Published https://github.com/${GITHUB_REPOSITORY}/releases/tag/${RELEASE_TAG}"

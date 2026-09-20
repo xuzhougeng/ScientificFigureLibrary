@@ -11,20 +11,49 @@ test("DSH adapter exposes the core Skill with a directory resource base", async 
   assert.equal(provider.name, "figure-library");
   const listed = await provider.list();
   assert.equal(listed.length, 1);
-  assert.equal(listed[0]?.name, "figure-library");
-  assert.match(listed[0]?.description ?? "", /Scientific Figure Library/u);
+  const candidate = listed[0]!;
+  assert.equal(candidate.name, "figure-library");
+  assert.match(candidate.description, /Scientific Figure Library/u);
+  assertDshCandidate(candidate, provider.name);
 
-  const skill = await provider.get(listed[0]!);
+  const skill = await provider.get(candidate);
   assert.equal(skill?.name, "figure-library");
   assert.equal(skill?.provider, "figure-library");
+  assert.equal(typeof skill?.source, "string");
   assert.equal(skill?.source, "bundled");
+  assert.deepEqual(skill?.invocation, { modelInvocable: true, userInvocable: true });
   assert.deepEqual(skill?.resourceBase, {
     kind: "directory",
     path: path.join(root, "skills", "figure-library"),
   });
-  assert.match(skill?.content ?? "", /^---\r?\nname: figure-library\r?\n/u);
+  assert.equal(skill?.path, path.join(root, "skills", "figure-library", "SKILL.md"));
+  assert.match(skill?.content ?? "", /^# Scientific Figure Library /u);
+  assert.doesNotMatch(skill?.content ?? "", /^---/u);
   assert.equal(await provider.get({ name: "missing" }), undefined);
 });
+
+function assertDshCandidate(candidate: {
+  name?: unknown;
+  description?: unknown;
+  invocation?: { modelInvocable?: unknown; userInvocable?: unknown };
+  source?: unknown;
+  provider?: unknown;
+  rank?: unknown;
+  path?: unknown;
+}, providerName: string) {
+  assert.equal(typeof candidate.name, "string");
+  assert.equal(typeof candidate.description, "string");
+  assert.ok((candidate.description as string).length > 0);
+  assert.equal(typeof candidate.source, "string", "dsh rejects a missing or non-string source");
+  assert.equal(typeof candidate.provider, "string");
+  assert.equal(candidate.provider, providerName);
+  assert.equal(typeof candidate.rank, "number");
+  assert.equal(Number.isFinite(candidate.rank), true);
+  assert.equal(typeof candidate.invocation, "object");
+  assert.equal(typeof candidate.invocation?.modelInvocable, "boolean");
+  assert.equal(typeof candidate.invocation?.userInvocable, "boolean");
+  if (candidate.path !== undefined) assert.equal(typeof candidate.path, "string");
+}
 
 test("DSH apply mounts the official MCP client against this package", () => {
   const config = mcpClientConfig();

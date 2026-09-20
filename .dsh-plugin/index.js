@@ -26,7 +26,8 @@ export function createSkillProvider() {
     name: "figure-library",
     list: async () => skills.map(candidateOf),
     get: async (candidate) => {
-      const skill = skills.find((entry) => entry.name === candidate?.name);
+      const name = candidate?.name ?? candidate?.locator?.name;
+      const skill = skills.find((entry) => entry.name === name);
       return skill ? definitionOf(skill) : undefined;
     },
   };
@@ -79,7 +80,8 @@ function loadSkills() {
     return [{
       name: skillName,
       description,
-      source,
+      content: stripFrontmatter(source),
+      path: skillFile,
       directory: path.join(skillsRoot, entry.name),
     }];
   });
@@ -89,8 +91,13 @@ function candidateOf(skill) {
   return {
     name: skill.name,
     description: skill.description,
-    modelInvocable: true,
-    userInvocable: true,
+    invocation: { modelInvocable: true, userInvocable: true },
+    source: "bundled",
+    provider: "figure-library",
+    rank: 600,
+    locator: { name: skill.name },
+    path: skill.path,
+    resourceBase: { kind: "directory", path: skill.directory },
   };
 }
 
@@ -98,11 +105,17 @@ function definitionOf(skill) {
   return {
     name: skill.name,
     description: skill.description,
-    content: skill.source,
+    content: skill.content,
+    invocation: { modelInvocable: true, userInvocable: true },
     source: "bundled",
     provider: "figure-library",
+    path: skill.path,
     resourceBase: { kind: "directory", path: skill.directory },
-    modelInvocable: true,
-    userInvocable: true,
   };
+}
+
+function stripFrontmatter(source) {
+  const matched = source.match(/^---\r?\n[\s\S]*?\r?\n---\r?\n?/u);
+  const body = matched ? source.slice(matched[0].length) : source;
+  return body.replace(/^\r?\n/u, "");
 }
