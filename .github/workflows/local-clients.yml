@@ -54,7 +54,9 @@ jobs:
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: windows-local-client
-          path: release/local-client/
+          path: |
+            release/local-client/*.zip
+            release/local-client/*.sha256
           compression-level: 0
           if-no-files-found: error
   linux:
@@ -95,7 +97,9 @@ jobs:
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: linux-${{ matrix.architecture }}-local-client
-          path: release/local-client/
+          path: |
+            release/local-client/*.zip
+            release/local-client/*.sha256
           compression-level: 0
           if-no-files-found: error
   macos:
@@ -133,6 +137,8 @@ jobs:
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: macos-${{ matrix.architecture }}-local-client
-          path: release/local-client/
+          path: |
+            release/local-client/*.dmg
+            release/local-client/*.sha256
           compression-level: 0
           if-no-files-found: error

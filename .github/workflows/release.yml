@@ -173,6 +173,20 @@ jobs:
         with:
           path: release-assets
           merge-multiple: true
+      - name: Keep only GitHub Release assets
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'JS'
+          import fs from "node:fs";
+          import path from "node:path";
+          import { expectedReleaseAssets } from "./scripts/github-release.mjs";
+          const expected = new Set(expectedReleaseAssets(process.env.RELEASE_VERSION));
+          const root = "release-assets";
+          for (const name of fs.readdirSync(root)) {
+            const file = path.join(root, name);
+            if (fs.statSync(file).isFile() && !expected.has(name)) fs.unlinkSync(file);
+          }
+          JS
       - name: Verify inventory and write UTF-8 release payload
         run: |
           node scripts/github-release.mjs prepare \

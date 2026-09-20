@@ -56,6 +56,8 @@ test("GitHub Release publishes the v0.8.0 asset set only from a stable tag", () 
   assert.ok(publish.includes("npm publish"));
   assert.ok(publish.includes("secrets.NPM_TOKEN"));
   assert.ok(publish.includes("--provenance"));
+  assert.ok(publish.includes("expectedReleaseAssets"));
+  assert.ok(publish.includes("Keep only GitHub Release assets"));
   assert.ok(!publish.includes("gh release create"));
   assert.ok(!publish.includes("--notes-file"));
   assert.ok(JSON.stringify(release.jobs.validate).includes("SFL / CI required"));
@@ -86,6 +88,11 @@ test("local-client packaging can be called by the GitHub Release workflow", () =
     const checkout = job.steps.find((step) => step.uses?.startsWith("actions/checkout@"));
     assert.equal(checkout.with.ref, "${{ inputs.ref || github.sha }}");
     assert.equal(checkout.with["persist-credentials"], false);
+    const upload = job.steps.find((step) => step.uses?.startsWith("actions/upload-artifact@"));
+    const uploadPath = String(upload.with.path);
+    assert.equal(uploadPath.includes("release/local-client/"), true);
+    assert.equal(uploadPath.trim() === "release/local-client/", false);
+    assert.equal(uploadPath.includes("smoke"), false);
   }
 });
 
