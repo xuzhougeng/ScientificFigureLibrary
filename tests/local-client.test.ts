@@ -382,3 +382,34 @@ test("closing a shared service ends direct operations and local preview access",
   await assert.rejects(service.local.library(), /closed/u);
   await assert.rejects(service.readResource("figure-library://guidance/figure-library/SKILL.md"), /closed/u);
 });
+
+
+test("favorites endpoints authenticate, persist across sessions and open only the saved exact version", async t => {
+  const { local, service, request, api } = await isolated(t);
+  assert.equal((await fetch(local.origin + "/api/favorites")).status, 401);
+  assert.equal((await request("/api/favorites", { action: "remove", id: "0".repeat(64) }, { Origin: "https://unrelated.example" })).status, 403);
+  assert.deepEqual((await api("/api/favorites")).items, []);
+  const gallery = data(await api("/api/gallery", { providerIds: ["org.figureya.module"], limit: 2 }));
+  const candidate = records(gallery.candidates)[0]!;
+  const add = { action: "add", resultSetId: gallery.resultSetId, candidateId: candidate.candidateId };
+  const saved = records((await api("/api/favorites", add)).items)[0]!;
+  assert.deepEqual(saved.exactSelector, candidate.exactSelector);
+  assert.equal(records((await api("/api/favorites", add)).items).length, 1);
+  await assert.rejects(service.local.changeFavorite({ ...add, candidateId: "unknown" }));
+  const registry = createDefaultProviderRegistry();
+  const restarted = await createLibraryService({ registry });
+  try {
+    assert.equal((await restarted.local.favorites()).items.length, 1);
+    await assert.rejects(restarted.local.changeFavorite(add));
+    const opened = data(await restarted.local.changeFavorite({ action: "open", id: saved.id }));
+    assert.equal(records(opened.candidates).length, 1);
+    assert.deepEqual(records(opened.candidates)[0]!.exactSelector, candidate.exactSelector);
+    assert.notEqual(opened.resultSetId, gallery.resultSetId);
+    assert.equal(opened.previewReceipt, undefined);
+    registry.applyEnabledOverrides(new Map([["org.figureya.module", false]]));
+    await assert.rejects(restarted.local.changeFavorite({ action: "open", id: saved.id }));
+    assert.equal((await restarted.local.favorites()).items.length, 1);
+  } finally { await restarted.close(); }
+  await api("/api/favorites", { action: "remove", id: saved.id });
+  assert.deepEqual((await api("/api/favorites")).items, []);
+});

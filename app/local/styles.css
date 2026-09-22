@@ -257,3 +257,12 @@ html.dialog-open .local-main { overflow: hidden; }
 .cache-task-list strong { font-size: 13px; }
 .cache-task-list progress { display: block; width: 100%; height: 8px; margin-top: 10px; accent-color: #246c4e; }
 .cache-task-list pre { max-height: 100px; overflow: auto; white-space: pre-wrap; font-size: 11px; }
+
+/* Favorites remain separate from task selection. */
+.favorite-toggle { font-size: 1.4rem; min-width: 40px; min-height: 40px; }
+.favorite-toggle[aria-pressed="true"] { color: #956400; background: #fff4cd; }
+.favorites-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr)); gap: 20px; margin-top: 20px; }
+.favorite-card { border: 1px solid #dce3df; border-radius: 12px; padding: 20px; background: white; overflow-wrap: anywhere; }
+.favorite-card h2 { font-size: 1.05rem; }
+.favorite-source { color: #246b4d; }
+.favorite-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }

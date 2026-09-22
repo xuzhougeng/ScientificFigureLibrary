@@ -593,3 +593,10 @@ or plotting success.
 - README entries use online guide URLs, including in unpacked plugins and npm packages, rather than pointing to guides absent from the package. Reading the online guide requires network access.
 - Complete source checkouts can still read the guide offline. Full public catalogs remain with their content sources; this guide does not duplicate or force them into installation packages.
 - If a complete reproducible offline index is needed later, define a pinned official publication snapshot and update workflow separately; do not equate bootstrap with the current collection.
+
+
+## Starred templates in the local client
+
+Use ☆ on a gallery card or template detail to save that exact version; ★ removes it. The macOS and local Web clients include a **Favorites (收藏)** page with search by title, source and application, and an action to reopen the template for preview/use.
+
+Favorites are stored in the machine-local user configuration, survive restarts and are independent of preview/archive caches. Provider identities and exact versions stay separate. If the original version is withdrawn, updated or its source disabled, opening it reports an error and retains the bookmark; remove it or explicitly star a new version from the gallery. Starring does not download archives, execute code, select plotting references or grant preview/materialization approval.

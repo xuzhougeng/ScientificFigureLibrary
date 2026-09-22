@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { FavoriteStore } from "./local/favorites.ts";
 import { createGalleryCache } from "./local/gallery-cache.ts";
 import fs from "node:fs/promises";
 import path from "node:path";
@@ -540,6 +541,7 @@ interface SearchSessionState {
 }
 
 export interface LibraryServiceOptions {
+  favoritesDirectory?: string;
   registry?: ProviderRegistry;
   providerSourceManager?: ProviderSourceManager;
   personalModuleRoot?: string;
@@ -550,6 +552,7 @@ export interface LibraryServiceOptions {
 
 export async function createLibraryService(options: LibraryServiceOptions = {}) {
   const operations = new OperationRegistry();
+  const favorites = new FavoriteStore(options.favoritesDirectory);
   const index = await CatalogIndex.load();
   const providerController = options.registry
     ? undefined
@@ -895,6 +898,7 @@ export async function createLibraryService(options: LibraryServiceOptions = {}) 
     toolName: "figure_library_search" | "figure_library_search_page";
     operationStartedAt: number;
     resultSetId?: string;
+    favoriteSelector?: ExactTemplateSelector;
   }) {
     const { parsedInput, explicitlySelected, correlationId, invocationSource, toolName, operationStartedAt } = options;
     if (options.resultSetId) {
@@ -968,7 +972,12 @@ export async function createLibraryService(options: LibraryServiceOptions = {}) 
     const order = new Map(
       registry.list().map(({ providerId }, index) => [providerId, index]),
     );
-    const ranked = searched.flatMap(({ candidates }) => candidates).sort((left, right) => {
+    const matched = searched.flatMap(({ candidates }) => candidates).filter(candidate =>
+      !options.favoriteSelector || exactSelectorDigest(candidate.exactSelector) === exactSelectorDigest(options.favoriteSelector));
+    if (options.favoriteSelector && !matched.length) {
+      throw new Error("收藏的精确版本暂不可用，来源可能已更新或停用。收藏记录已保留；可在图库中查找并收藏新版本。");
+    }
+    const ranked = matched.sort((left, right) => {
       if (parsedInput.browse) {
         if (left.providerId !== right.providerId) {
           return (order.get(left.providerId) ?? Number.MAX_SAFE_INTEGER) -
@@ -2382,6 +2391,38 @@ export async function createLibraryService(options: LibraryServiceOptions = {}) 
   return {
     operations,
     local: {
+      favorites: () => operations.run(async () => ({ items: await favorites.list() })),
+      changeFavorite: (raw: unknown) => operations.run(async () => {
+        const input = z.discriminatedUnion("action", [
+          z.object({ action: z.literal("add"), resultSetId: z.string().min(1), candidateId: z.string().min(1) }).strict(),
+          z.object({ action: z.literal("remove"), id: z.string().regex(HASH) }).strict(),
+          z.object({ action: z.literal("open"), id: z.string().regex(HASH) }).strict(),
+        ]).parse(raw);
+        if (input.action === "remove") await favorites.remove(input.id);
+        else if (input.action === "add") {
+          const state = searchSessions.get(input.resultSetId);
+          previewConfirmations.getResultSet(input.resultSetId);
+          if (!state || state.libraryBindingDigest !== libraryBindingDigest(await currentLibraries())) {
+            throw new Error("图库已切换，请刷新候选后再收藏。");
+          }
+          const candidate = state.candidates.find(item => scopedCandidateId(input.resultSetId, item) === input.candidateId);
+          if (!candidate) throw new Error("候选已失效，请重新打开图库后收藏。");
+          await favorites.add(candidate);
+        } else {
+          const favorite = await favorites.get(input.id);
+          if (!favorite) throw new Error("这条收藏已被移除。");
+          if (!registry.list().some(source => source.providerId === favorite.providerId && source.enabled !== false)) {
+            throw new Error("收藏的来源暂不可用或已停用。收藏记录已保留，可在连接外部图库中恢复来源。");
+          }
+          return executeUnifiedSearch({
+            parsedInput: { query: "", browse: true, providerIds: [favorite.providerId], limit: 1 },
+            favoriteSelector: favorite.exactSelector, explicitlySelected: true,
+            correlationId: diagnostics.createCorrelationId("favorite"), invocationSource: "app",
+            toolName: "figure_library_search", operationStartedAt: performance.now(),
+          });
+        }
+        return { items: await favorites.list() };
+      }),
       planGalleryCache: (input: unknown) => operations.run(() => galleryCache.plan(input)),
       startGalleryCache: (input: unknown) => operations.run(async () => galleryCache.start(input)),
       galleryCacheTasks: () => operations.run(async () => galleryCache.tasks()),
