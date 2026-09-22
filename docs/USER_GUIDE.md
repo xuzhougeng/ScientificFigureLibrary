@@ -29,6 +29,8 @@ presented as shipped ones:
 8. [FAQ](#8-faq)
 9. [Advanced reference](#9-advanced-reference)
 
+[Client updates](#client-updates)
+
 Appendices:
 
 - [Appendix A: end-to-end example](#appendix-a-end-to-end-example)
@@ -593,3 +595,7 @@ or plotting success.
 - README entries use online guide URLs, including in unpacked plugins and npm packages, rather than pointing to guides absent from the package. Reading the online guide requires network access.
 - Complete source checkouts can still read the guide offline. Full public catalogs remain with their content sources; this guide does not duplicate or force them into installation packages.
 - If a complete reproducible offline index is needed later, define a pinned official publication snapshot and update workflow separately; do not equate bootstrap with the current collection.
+
+## Client updates
+
+The local client checks the latest official stable release in the background after connecting. When an update is available, open the release page from the banner or dismiss it for the current session. In Settings → Client updates, view the running version and check again manually. Network failures appear in settings and can be retried after checking the network or proxy. Choose the appropriate platform and architecture on the release page and install manually; the check does not download packages or migrate your library.

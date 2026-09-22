@@ -5,6 +5,7 @@ import os from "node:os";
 import path from "node:path";
 import { z } from "zod";
 import { integrationGuide, localConnection } from "./integrations.ts";
+import { createClientUpdateChecker } from "./updates.ts";
 import { VERSION } from "../version.ts";
 import { createLibraryService, type LibraryService } from "../library-service.ts";
 import { inspectNetworkAccess, loadNetworkAccess, saveNetworkAccess } from "../network-access.ts";
@@ -61,8 +62,10 @@ export async function startLocalHttp(options: {
   htmlPath?: string;
   port?: number;
   allowShutdown?: boolean;
+  updateChecker?: ReturnType<typeof createClientUpdateChecker>;
 } = {}) {
   const service = options.service ?? await createLibraryService();
+  const checkUpdates = options.updateChecker ?? createClientUpdateChecker();
   const token = randomBytes(32).toString("base64url");
   const cookieName = `sfl_${randomBytes(8).toString("hex")}`;
   const tickets = new Map<string, number>();
@@ -139,6 +142,10 @@ export async function startLocalHttp(options: {
         return json(response, 200, { sourcePath: file, filename, bytes: bytes.length });
       }
       const input: unknown = JSON.parse((await readBody(request, BODY_LIMIT)).toString());
+      if (url.pathname === "/api/updates/check") {
+        const { force } = z.object({ force: z.boolean().optional().default(false) }).strict().parse(input);
+        return json(response, 200, await checkUpdates(force));
+      }
       if (url.pathname === "/api/gallery-cache/start") return json(response, 202, await service.local.startGalleryCache(input));
       if (url.pathname === "/api/gallery-cache/plan") return json(response, 200, await service.local.planGalleryCache(input));
       if (url.pathname === "/api/gallery-cache/apply") {

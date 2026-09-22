@@ -257,3 +257,9 @@ html.dialog-open .local-main { overflow: hidden; }
 .cache-task-list strong { font-size: 13px; }
 .cache-task-list progress { display: block; width: 100%; height: 8px; margin-top: 10px; accent-color: #246c4e; }
 .cache-task-list pre { max-height: 100px; overflow: auto; white-space: pre-wrap; font-size: 11px; }
+
+.update-banner { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; padding: 12px 16px; margin-bottom: 16px; border-radius: 12px; background: #edf6ef; color: #245a3a; }
+.update-banner[hidden] { display: none; }
+.update-banner > span { flex: 1 1 260px; }
+.update-banner a, #update-release { color: #245a3a; text-decoration: underline; }
+#update-release { margin-left: 12px; }

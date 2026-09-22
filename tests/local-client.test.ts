@@ -6,6 +6,7 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 import { createLibraryService } from "../src/library-service.ts";
+import { createClientUpdateChecker } from "../src/local/updates.ts";
 import { startLocalHttp } from "../src/local/http.ts";
 import { browserLaunchSpec } from "../src/local/launch.ts";
 import { createDefaultProviderRegistry } from "../src/provider-registry.ts";
@@ -21,7 +22,7 @@ function records(value: unknown) { return Array.isArray(value) ? value.map(recor
 const data = (value: unknown) => record(record(value).structuredContent);
 const code = (value: unknown) => record(data(value).envelope).code;
 
-async function isolated(t: { after: (fn: () => Promise<void>) => void }) {
+async function isolated(t: { after: (fn: () => Promise<void>) => void }, updateChecker?: ReturnType<typeof createClientUpdateChecker>) {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), "sfl-local-client-test-"));
   const overrides = {
     XDG_CONFIG_HOME: path.join(root, "config"), XDG_DATA_HOME: path.join(root, "data"),
@@ -36,7 +37,7 @@ async function isolated(t: { after: (fn: () => Promise<void>) => void }) {
   const htmlPath = path.join(root, "index.html");
   await fs.writeFile(htmlPath, "<!doctype html><title>SFL local test</title>");
   const service = await createLibraryService({ registry: createDefaultProviderRegistry() });
-  const local = await startLocalHttp({ service, htmlPath });
+  const local = await startLocalHttp({ service, htmlPath, updateChecker });
   t.after(async () => {
     await local.close();
     resetNetworkAccessForTests();
@@ -381,4 +382,26 @@ test("closing a shared service ends direct operations and local preview access",
   await assert.rejects(service.execute("figure_library_source_status"), /closed/u);
   await assert.rejects(service.local.library(), /closed/u);
   await assert.rejects(service.readResource("figure-library://guidance/figure-library/SKILL.md"), /closed/u);
+});
+
+
+test("update checks are authenticated, input-validated and opt-in at the local API", async t => {
+  let calls = 0;
+  const checker = createClientUpdateChecker({ currentVersion: "0.8.1", fetch: async () => {
+    calls++;
+    return Response.json({ tag_name: "v0.9.0", draft: false, prerelease: false });
+  } });
+  const { local, request, api } = await isolated(t, checker);
+  await api("/api/state");
+  assert.equal(calls, 0, "starting a server or reading state must not fetch a release");
+  assert.equal((await fetch(local.origin + "/api/updates/check", { method: "POST", body: "{}" })).status, 401);
+  assert.equal((await request("/api/updates/check", {}, { Origin: "https://example.com" })).status, 403);
+  assert.equal((await request("/api/updates/check", { force: "yes" })).status, 400);
+  assert.equal((await request("/api/updates/check", { url: "https://example.com" })).status, 400);
+  assert.equal(calls, 0);
+  assert.equal((await api("/api/updates/check", {})).status, "available");
+  await api("/api/updates/check", {});
+  assert.equal(calls, 1);
+  await api("/api/updates/check", { force: true });
+  assert.equal(calls, 2);
 });
