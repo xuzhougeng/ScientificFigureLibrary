@@ -7,6 +7,7 @@ import { formatUserNetworkError } from "../../src/process-log.ts";
 import { cacheReferences, planReferenceCopy, referenceStatuses, referenceStatusFacts, referenceStatusIcons, writeReferencePrompts } from "./reference-cache.ts";
 import { setButtonContent } from "../icons.ts";
 import { refreshCacheTasks, watchCacheTasks } from "./cache-tasks.ts";
+import { mountClientUpdates } from "./updates.ts";
 import { PAGE_STORAGE_KEY, PAGE_TITLES, galleryCacheActionLabel, galleryMissingCount, isPageId, pageHash, prefetchButtonLabel, readSavedPage, type PageId } from "./ui-state.ts";
 import "../styles.css";
 import "./styles.css";
@@ -909,6 +910,9 @@ async function connect() {
     await api("connect", { ticket });
     persistPage(initial);
   }
+  const state = await api<{ version: string }>("state");
+  const updates = mountClientUpdates(document, state.version, force => api("updates/check", { force }));
+  void updates.check(false);
   await loadStatus();
   await showPage(initial);
   watchCacheTasks(() => loadStatus(true));

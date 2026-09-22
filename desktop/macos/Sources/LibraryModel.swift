@@ -47,6 +47,24 @@ enum Sheet: Identifiable {
     @Published var section: Section? = Section(rawValue: UserDefaults.standard.string(forKey: "SFLSelectedSection") ?? "") ?? .discover {
         didSet { if let section { UserDefaults.standard.set(section.rawValue, forKey: "SFLSelectedSection") } }
     }
+    @Published var clientVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? ""
+    @Published var clientUpdate: JSON = .null
+    @Published var checkingUpdates = false
+    @Published var updateCheckError = ""
+    @Published var dismissedUpdateVersion = ""
+    var showUpdateBanner: Bool {
+        clientUpdate["status"].string == "available" && clientUpdate["latestVersion"].string != dismissedUpdateVersion
+    }
+    var updateStatusText: String {
+        if checkingUpdates { return "正在检查更新…" }
+        if !updateCheckError.isEmpty { return updateCheckError }
+        switch clientUpdate["status"].string {
+        case "available": return "发现新版本 \(clientUpdate["latestVersion"].string)（当前 \(clientVersion)）。"
+        case "current": return "当前 \(clientVersion) 已是最新版本（最新稳定版 \(clientUpdate["latestVersion"].string)）。"
+        case "error": return clientUpdate["message"].string
+        default: return "尚未检查更新。"
+        }
+    }
     @Published var ready = false
     @Published var busy = false
     @Published var message = ""
@@ -97,6 +115,8 @@ enum Sheet: Identifiable {
             if ProcessInfo.processInfo.environment["SFL_NATIVE_SMOKE"] == "1" {
                 return
             }
+            if let state = try? await backend.request("state") { clientVersion = state["version"].string }
+            Task { await checkForUpdates() }
             try await status()
             if section == .discover {
                 do { try await gallery() } catch { self.error = friendlyNetworkError(error) }
@@ -105,6 +125,24 @@ enum Sheet: Identifiable {
             }
             syncingGallery = false
         } catch { self.error = friendlyNetworkError(error); syncingGallery = false }
+    }
+    func checkForUpdates(manual: Bool = false) async {
+        guard ready, !checkingUpdates else { return }
+        checkingUpdates = true
+        updateCheckError = ""
+        defer { checkingUpdates = false }
+        do {
+            let result = try await backend.request("updates/check", object(["force": .bool(manual)]))
+            clientVersion = result["currentVersion"].string
+            // Keep a previously discovered update visible if a subsequent check fails.
+            if result["status"].string == "error" { updateCheckError = result["message"].string }
+            else {
+                clientUpdate = result
+                if manual { dismissedUpdateVersion = "" }
+            }
+        } catch {
+            updateCheckError = "无法检查更新，请检查本地服务、网络或系统代理后重试。"
+        }
     }
     func status() async throws {
         let value = try await backend.call("figure_library_source_status")

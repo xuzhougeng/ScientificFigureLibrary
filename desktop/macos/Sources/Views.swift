@@ -21,6 +21,15 @@ let libraryGreen = Color(red: 0.14, green: 0.42, blue: 0.30)
                     if model.setupRequired && currentSection != .settings {
                         HStack { Label("先选择图库存储位置和本地工作区", systemImage: "folder.badge.gearshape"); Spacer(); Button("设置目录") { model.section = .settings } }.padding().background(libraryGreen.opacity(0.10))
                     }
+                    if model.showUpdateBanner {
+                        HStack {
+                            Text("SFL \(model.clientUpdate["latestVersion"].string) 已发布，当前版本为 \(model.clientVersion)。")
+                            Spacer()
+                            if let url = URL(string: model.clientUpdate["releaseUrl"].string) { Link("查看更新", destination: url) }
+                            Button("稍后") { model.dismissedUpdateVersion = model.clientUpdate["latestVersion"].string }
+                                .accessibilityLabel("暂时关闭更新提示")
+                        }.padding().background(libraryGreen.opacity(0.10))
+                    }
                     if !model.message.isEmpty { Text(model.message).font(.callout).foregroundStyle(.secondary).padding(.horizontal).padding(.top, 8) }
                     switch currentSection {
                     case .discover: DiscoverView(model: model)
@@ -612,6 +621,18 @@ func prefetchConfirmText(label: String, gallery: JSON) -> String {
     }
     var body: some View {
         Form {
+            SwiftUI.Section("客户端更新") {
+                LabeledContent("当前版本") { Text(model.clientVersion).textSelection(.enabled) }
+                Text("启动时检查官方稳定版本；在发布页面选择适合系统和处理器的安装包。").foregroundStyle(.secondary)
+                Text(model.updateStatusText).foregroundStyle(.secondary)
+                HStack {
+                    Button(model.checkingUpdates ? "检查中…" : "检查更新") { Task { await model.checkForUpdates(manual: true) } }
+                        .disabled(!model.ready || model.checkingUpdates)
+                    if let url = URL(string: model.clientUpdate["releaseUrl"].string.isEmpty
+                        ? "https://github.com/xuzhougeng/ScientificFigureLibrary/releases"
+                        : model.clientUpdate["releaseUrl"].string) { Link("查看发布页面", destination: url) }
+                }
+            }
             SwiftUI.Section("本机目录") {
                 HStack { TextField("图库存储位置", text: $model.libraryDirectory); Button("选择") { if let value = model.chooseDirectory() { model.libraryDirectory = value } } }
                 HStack { TextField("本地工作区", text: $model.workspaceDirectory); Button("选择") { if let value = model.chooseDirectory() { model.workspaceDirectory = value } } }

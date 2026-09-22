@@ -16,6 +16,11 @@
         <button type="button" id="notice-close" class="quiet" aria-label="关闭">×</button>
       </div>
     </div>
+    <section id="update-banner" class="update-banner" role="status" aria-live="polite" hidden>
+      <span id="update-banner-message"></span>
+      <a id="update-banner-release" target="_blank" rel="noopener noreferrer">查看更新</a>
+      <button type="button" id="dismiss-update" class="quiet" aria-label="暂时关闭更新提示">稍后</button>
+    </section>
     <section id="setup-banner" class="setup-banner" hidden><strong>欢迎建立你的本地知识库</strong><p>先选择图库存储位置与工作区，之后可跨项目复用。</p><button data-page="settings">设置本机目录</button></section>
     <section id="discover-page" class="local-page">
       <div class="search-panel">
@@ -71,6 +76,13 @@
       <section class="settings-card"><h2>3. 验证连接</h2><p>在外部工具中发送下面的指令。工具连接成功和图片成功显示需要分别确认。</p><div id="integration-verify"></div><div id="integration-notes"></div></section>
     </section>
     <section id="settings-page" class="local-page" hidden>
+      <section class="settings-card"><h2>客户端更新</h2>
+        <p>当前版本 <code id="client-version"></code></p>
+        <p>启动时检查官方稳定版本；在发布页面选择适合系统和处理器的安装包。</p>
+        <p id="update-status" role="status" aria-live="polite">尚未检查更新。</p>
+        <button type="button" id="check-updates">检查更新</button>
+        <a id="update-release" target="_blank" rel="noopener noreferrer" hidden>查看发布页面</a>
+      </section>
       <div class="settings-grid"><section class="settings-card"><h2>本机目录</h2><p>图片、代码及参考缓存统一保存在图库存储位置下，跨项目复用。请使用绝对路径。</p><form id="binding-form" class="local-form"><label>图库存储位置<input id="library-directory" required placeholder="例如：D:\ScientificFigures"></label><label>本地工作区<input id="workspace-directory" required placeholder="例如：D:\ScientificFigureWorkspace"></label><button type="submit">检查并确认目录</button></form></section>
       <section class="settings-card"><h2>系统代理</h2>
         <p>访问 GitHub 清单和预览图时，可走本机回环 HTTP 代理（CONNECT）。目标仍是 GitHub 的 HTTPS 地址，下载后按 SHA-256 校验。默认不使用系统代理，以免 Clash fake-ip（如 198.18.x）被当成目标地址。</p>
