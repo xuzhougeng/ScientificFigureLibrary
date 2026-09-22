@@ -15,6 +15,7 @@ test("saved page prefers hash, then session storage, then gallery", () => {
   assert.equal(readSavedPage("", "integrations"), "integrations");
   assert.equal(readSavedPage("", "unknown"), "discover");
   assert.equal(readSavedPage("", null), "discover");
+  assert.equal(readSavedPage("#page=favorites", null), "favorites");
 });
 
 test("page hash keeps the tab and drops the one-use connect ticket", () => {

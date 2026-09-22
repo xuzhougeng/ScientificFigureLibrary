@@ -122,6 +122,7 @@ export async function startLocalHttp(options: {
         return json(response, 200, localConnection({ node: process.execPath, server: path.resolve(import.meta.dirname, "index.js") }));
       }
       if (request.method === "GET" && url.pathname === "/api/integrations") return json(response, 200, integrationGuide({ server: path.resolve(import.meta.dirname, "index.js") }));
+      if (request.method === "GET" && url.pathname === "/api/favorites") return json(response, 200, await service.local.favorites());
       if (request.method === "GET" && url.pathname === "/api/library") return json(response, 200, await service.local.library());
       if (request.method === "GET" && url.pathname === "/api/preview-cache") return json(response, 200, await service.local.previewCache());
       if (request.method === "GET" && url.pathname === "/api/gallery-cache/tasks") return json(response, 200, await service.local.galleryCacheTasks());
@@ -177,6 +178,7 @@ export async function startLocalHttp(options: {
       }
       if (url.pathname === "/api/confirm") return json(response, 200, await service.local.confirm(input));
       if (url.pathname === "/api/asset") return json(response, 200, await service.local.asset(input));
+      if (url.pathname === "/api/favorites") return json(response, 200, await service.local.changeFavorite(input));
       if (url.pathname === "/api/gallery") return json(response, 200, await service.local.gallery(input));
       if (url.pathname === "/api/resource") {
         const { uri } = z.object({ uri: z.string().max(2_000) }).strict().parse(input);

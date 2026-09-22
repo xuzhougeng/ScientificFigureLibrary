@@ -4,7 +4,7 @@
 <body class="local-client">
   <aside class="local-sidebar" aria-label="主导航">
     <div class="local-brand"><img id="local-logo" alt=""><div>Scientific Figure Library<small>本地图片 · 代码知识库</small></div></div>
-    <nav><button data-page="discover" class="active">图库</button><button data-page="library">我的图库</button><button data-page="import">创建参考图</button><button data-page="galleries">连接外部图库</button><button data-page="integrations">连接外部工具</button><button data-page="settings">设置</button></nav>
+    <nav><button data-page="discover" class="active">图库</button><button data-page="favorites">☆ 收藏</button><button data-page="library">我的图库</button><button data-page="import">创建参考图</button><button data-page="galleries">连接外部图库</button><button data-page="integrations">连接外部工具</button><button data-page="settings">设置</button></nav>
     <div class="sidebar-bottom"><span class="connection-dot"></span><span id="connection-state">正在连接本地服务</span><p>图片和代码留在你指定的图库中。</p></div>
   </aside>
   <main class="local-main">
@@ -17,6 +17,12 @@
       </div>
     </div>
     <section id="setup-banner" class="setup-banner" hidden><strong>欢迎建立你的本地知识库</strong><p>先选择图库存储位置与工作区，之后可跨项目复用。</p><button data-page="settings">设置本机目录</button></section>
+    <section id="favorites-page" class="local-page" hidden>
+      <p class="gallery-help">在图库中点击星标，保存常用的模板版本。收藏会保留在本机，重启后仍可查看。</p>
+      <label for="favorites-query">搜索收藏</label><input id="favorites-query" type="search" placeholder="按名称、来源或用途搜索收藏">
+      <p id="favorites-count" role="status"></p>
+      <div id="favorites-list" class="favorites-list"></div>
+    </section>
     <section id="discover-page" class="local-page">
       <div class="search-panel">
       <form id="search-form" class="search-form"><label class="sr-only" for="search-query">搜索模板</label><input id="search-query" placeholder="描述你想找的图，例如：单细胞分组比例、火山图…"><button type="submit">搜索图库</button></form>

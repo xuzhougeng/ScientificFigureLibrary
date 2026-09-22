@@ -8,6 +8,7 @@ import { cacheReferences, planReferenceCopy, referenceStatuses, referenceStatusF
 import { setButtonContent } from "../icons.ts";
 import { refreshCacheTasks, watchCacheTasks } from "./cache-tasks.ts";
 import { PAGE_STORAGE_KEY, PAGE_TITLES, galleryCacheActionLabel, galleryMissingCount, isPageId, pageHash, prefetchButtonLabel, readSavedPage, type PageId } from "./ui-state.ts";
+import { canonicalJson } from "../../src/canonical-json.ts";
 import "../styles.css";
 import "./styles.css";
 
@@ -22,6 +23,7 @@ function openLockedModal(target: HTMLDialogElement) {
 }
 const titles = PAGE_TITLES;
 let page: PageId = "discover";
+let favorites: Array<Record<string, unknown>> = [];
 const failedPrefetchIds = new Set<string>();
 let result: SearchResult | undefined;
 let selected = new Map<string, Candidate>();
@@ -95,10 +97,78 @@ async function showPage(next: string) {
   el("page-title").textContent = titles[page];
   document.querySelectorAll<HTMLButtonElement>(".local-sidebar button[data-page]").forEach((item) => item.classList.toggle("active", item.dataset.page === page));
   if (page === "library") await loadLibrary();
+  if (page === "favorites" || page === "discover") await loadFavorites();
   if (page === "settings" || page === "galleries" || page === "discover") await loadStatus();
   if (page === "discover" && !result) await (input("search-query").value.trim() ? search() : loadGallery());
   if (page === "integrations") await loadIntegrations();
 }
+function favoriteFor(candidate: Candidate) {
+  return favorites.find(item => canonicalJson(item.exactSelector) === canonicalJson(candidate.exactSelector));
+}
+function refreshFavoriteButtons() {
+  const selectors = new Set(favorites.map(item => canonicalJson(item.exactSelector)));
+  document.querySelectorAll<HTMLButtonElement>("button[data-favorite-selector]").forEach(control => {
+    const active = selectors.has(control.dataset.favoriteSelector!);
+    control.textContent = active ? "★" : "☆";
+    control.setAttribute("aria-pressed", String(active));
+    control.setAttribute("aria-label", active ? "取消收藏" : "收藏模板");
+    if (control.classList.contains("reference-icon-action")) {
+      control.dataset.tooltip = active ? "取消收藏" : "收藏模板";
+      control.removeAttribute("title");
+    } else control.title = active ? "取消收藏" : "收藏模板";
+  });
+}
+async function loadFavorites() {
+  favorites = records(record(await api("favorites")).items);
+  refreshFavoriteButtons();
+  renderFavorites();
+}
+function favoriteButton(candidate: Candidate, resultSetId: string) {
+  const control = action("☆", async () => {
+    const existing = favoriteFor(candidate);
+    const response = await api("favorites", existing
+      ? { action: "remove", id: existing.id }
+      : { action: "add", resultSetId, candidateId: candidate.candidateId });
+    favorites = records(record(response).items);
+    refreshFavoriteButtons(); renderFavorites();
+  }, true);
+  control.classList.add("favorite-toggle");
+  control.dataset.favoriteSelector = canonicalJson(candidate.exactSelector);
+  control.addEventListener("click", event => event.stopPropagation());
+  const active = Boolean(favoriteFor(candidate));
+  control.textContent = active ? "★" : "☆";
+  control.setAttribute("aria-pressed", String(active));
+  control.setAttribute("aria-label", active ? "取消收藏" : "收藏模板");
+  control.title = active ? "取消收藏" : "收藏模板";
+  return control;
+}
+function renderFavorites() {
+  const query = input("favorites-query").value.trim().toLocaleLowerCase();
+  const matches = favorites.filter(item => [item.title, item.sourceLabel, item.application]
+    .some(value => String(value ?? "").toLocaleLowerCase().includes(query)));
+  const list = el("favorites-list"); list.replaceChildren();
+  el("favorites-count").textContent = `${matches.length} / ${favorites.length} 个收藏`;
+  if (!matches.length) {
+    list.append(node("p", favorites.length ? "没有匹配的收藏。" : "还没有收藏。在图库卡片或详情页点击 ☆ 即可添加。", "local-empty"));
+  }
+  for (const item of matches) {
+    const card = node("article", undefined, "favorite-card");
+    card.append(node("h2", String(item.title)), node("p", String(item.sourceLabel), "favorite-source"), node("p", String(item.application)));
+    const controls = node("div", undefined, "favorite-actions");
+    controls.append(action("查看模板", async () => {
+      const response = await api("favorites", { action: "open", id: item.id });
+      displayResult(response);
+      await showPage("discover");
+    }));
+    controls.append(action("取消收藏", async () => {
+      await api("favorites", { action: "remove", id: item.id });
+      await loadFavorites();
+    }, true));
+    card.append(controls); list.append(card);
+  }
+}
+input("favorites-query").addEventListener("input", renderFavorites);
+
 function setGallerySyncing(syncing: boolean) {
   const hasCards = el("cards").childElementCount > 0;
   el("gallery-loading").hidden = !syncing || hasCards;
@@ -210,7 +280,7 @@ function display(parsed: SearchResult) {
       const light = node("span", undefined, "reference-detail-status");
       light.setAttribute("aria-live", "polite");
       light.textContent = "…";
-      actions.prepend(light, cache, copy);
+      actions.prepend(favoriteButton(candidate, parsed.resultSetId), light, cache, copy);
       actions.insertBefore(copyImage, view.closeButton);
       for (const control of actions.querySelectorAll<HTMLButtonElement>("button")) {
         control.classList.add("reference-icon-action");
@@ -233,6 +303,10 @@ function display(parsed: SearchResult) {
       refreshDetailState();
     },
   });
+  for (const candidate of parsed.candidates) {
+    const card = [...el("cards").children].find(item => (item as HTMLElement).dataset.candidateId === candidate.candidateId);
+    card?.querySelector(".content")?.prepend(favoriteButton(candidate, parsed.resultSetId));
+  }
   el("results-title").textContent = parsed.query ? `“${parsed.query}”的候选图片` : "图库";
   el("results-count").textContent = `${parsed.pagination.total} 个结果`;
   const label = `第 ${parsed.pagination.pageIndex} / ${Math.max(1, Math.ceil(parsed.pagination.total / parsed.pagination.pageSize))} 页`;

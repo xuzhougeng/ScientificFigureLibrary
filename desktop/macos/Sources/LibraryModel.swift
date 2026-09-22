@@ -2,11 +2,12 @@ import SwiftUI
 import AppKit
 
 enum Section: String, CaseIterable, Identifiable, Hashable {
-    case discover = "图库", library = "我的图库", add = "创建参考图", galleries = "连接外部图库", integrations = "连接外部工具", settings = "设置"
+    case discover = "图库", favorites = "收藏", library = "我的图库", add = "创建参考图", galleries = "连接外部图库", integrations = "连接外部工具", settings = "设置"
     var id: String { rawValue }
     var icon: String {
         switch self {
         case .discover: return "square.grid.2x2"
+        case .favorites: return "star"
         case .library: return "books.vertical"
         case .galleries: return "photo.on.rectangle"
         case .add: return "plus.square.on.square"
@@ -60,6 +61,7 @@ enum Sheet: Identifiable {
     @Published var selectedReferences: [String: JSON] = [:]
     @Published var referenceStates: [String: JSON] = [:]
     var pendingCopyAfterCache: [JSON] = []
+    @Published var favorites: [JSON] = []
     @Published var library: [JSON] = []
     @Published var libraryDirectory = ""
     @Published var workspaceDirectory = ""
@@ -98,6 +100,7 @@ enum Sheet: Identifiable {
                 return
             }
             try await status()
+            try await loadFavorites()
             if section == .discover {
                 do { try await gallery() } catch { self.error = friendlyNetworkError(error) }
             } else if section == .library {
@@ -209,6 +212,23 @@ enum Sheet: Identifiable {
         let value = thumbnails[candidate["candidateId"].string]["previewDataUrl"].string
         guard let payload = value.split(separator: ",", maxSplits: 1).last, let data = Data(base64Encoded: String(payload)) else { return nil }
         return NSImage(data: data)
+    }
+    func loadFavorites() async throws { favorites = try await backend.request("favorites")["items"].array }
+    func favorite(_ candidate: JSON) -> JSON? {
+        favorites.first { $0["exactSelector"] == candidate["exactSelector"] }
+    }
+    func toggleFavorite(_ candidate: JSON) async throws {
+        let arguments: [String: JSON]
+        if let existing = favorite(candidate) { arguments = ["action": text("remove"), "id": existing["id"]] }
+        else { arguments = ["action": text("add"), "resultSetId": result["resultSetId"], "candidateId": candidate["candidateId"]] }
+        favorites = try await backend.request("favorites", object(arguments))["items"].array
+    }
+    func removeFavorite(_ entry: JSON) async throws {
+        favorites = try await backend.request("favorites", object(["action": text("remove"), "id": entry["id"]]))["items"].array
+    }
+    func openFavorite(_ entry: JSON) async throws {
+        try display(await backend.request("favorites", object(["action": text("open"), "id": entry["id"]])))
+        if let candidate = result["candidates"].array.first { sheet = .candidate(candidate) }
     }
     func loadLibrary() async throws { library = try backend.check(await backend.request("library"))["items"].array }
     func inspect(_ templateID: String) async throws { sheet = .library(try await backend.call("figure_library_review_open", ["templateId": text(templateID)])) }

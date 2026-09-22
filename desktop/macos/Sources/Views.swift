@@ -24,6 +24,7 @@ let libraryGreen = Color(red: 0.14, green: 0.42, blue: 0.30)
                     if !model.message.isEmpty { Text(model.message).font(.callout).foregroundStyle(.secondary).padding(.horizontal).padding(.top, 8) }
                     switch currentSection {
                     case .discover: DiscoverView(model: model)
+                    case .favorites: FavoritesView(model: model)
                     case .library: KnowledgeView(model: model)
                     case .galleries: GalleriesView(model: model)
                     case .add: ImportView(model: model)
@@ -34,7 +35,7 @@ let libraryGreen = Color(red: 0.14, green: 0.42, blue: 0.30)
             }
             .background(Color(NSColor.windowBackgroundColor))
             .navigationTitle(currentSection.rawValue)
-            .toolbar { if model.busy { ProgressView().controlSize(.small) }; Button { model.perform { try await model.status(); if currentSection == .library { try await model.loadLibrary() } else if currentSection == .discover { try await model.gallery() } } } label: { Image(systemName: "arrow.clockwise") }.help("刷新").disabled(!model.ready || model.busy) }
+            .toolbar { if model.busy { ProgressView().controlSize(.small) }; Button { model.perform { try await model.status(); try await model.loadFavorites(); if currentSection == .library { try await model.loadLibrary() } else if currentSection == .discover { try await model.gallery() } } } label: { Image(systemName: "arrow.clockwise") }.help("刷新").disabled(!model.ready || model.busy) }
         }
         .tint(libraryGreen)
         .frame(minWidth: 850, minHeight: 620)
@@ -57,6 +58,60 @@ let libraryGreen = Color(red: 0.14, green: 0.42, blue: 0.30)
             }
         }
         .alert("操作未完成", isPresented: Binding(get: { model.error != nil }, set: { if !$0 { model.error = nil } })) { Button("知道了") { model.error = nil } } message: { Text(model.error ?? "") }
+    }
+}
+
+@MainActor struct FavoriteButton: View {
+    @ObservedObject var model: LibraryModel
+    let candidate: JSON
+    var active: Bool { model.favorite(candidate) != nil }
+    var body: some View {
+        Button { model.perform { try await model.toggleFavorite(candidate) } } label: {
+            Image(systemName: active ? "star.fill" : "star").foregroundStyle(active ? Color.orange : Color.secondary)
+        }
+        .help(active ? "取消收藏" : "收藏模板")
+        .accessibilityLabel(active ? "取消收藏" : "收藏模板")
+        .accessibilityValue(active ? "已收藏" : "未收藏")
+        .disabled(model.busy)
+    }
+}
+
+@MainActor struct FavoritesView: View {
+    @ObservedObject var model: LibraryModel
+    @State private var query = ""
+    var entries: [JSON] {
+        model.favorites.filter { entry in
+            query.isEmpty || ["title", "sourceLabel", "application"].contains { entry[$0].string.localizedCaseInsensitiveContains(query) }
+        }
+    }
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 20) {
+                Text("在图库中点击星标，保存常用的模板版本。收藏会保留在本机，重启后仍可查看。").foregroundStyle(.secondary)
+                TextField("按名称、来源或用途搜索收藏", text: $query).textFieldStyle(.roundedBorder)
+                Text("\(entries.count) / \(model.favorites.count) 个收藏").foregroundStyle(.secondary)
+                if entries.isEmpty {
+                    Text(model.favorites.isEmpty ? "还没有收藏。在图库卡片或详情页点击 ☆ 即可添加。" : "没有匹配的收藏。")
+                        .frame(maxWidth: .infinity).padding(.vertical, 60)
+                }
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 260, maximum: 400))], spacing: 20) {
+                    ForEach(entries.indices, id: \.self) { index in
+                        let entry = entries[index]
+                        VStack(alignment: .leading, spacing: 12) {
+                            Text(entry["title"].string).font(.headline)
+                            Text(entry["sourceLabel"].string).font(.caption).foregroundStyle(libraryGreen)
+                            Text(entry["application"].string).font(.callout).lineLimit(4)
+                            HStack {
+                                Button("查看预览") { model.perform { try await model.openFavorite(entry) } }
+                                Spacer()
+                                Button { model.perform { try await model.removeFavorite(entry) } } label: { Image(systemName: "star.fill").foregroundStyle(.orange) }.help("取消收藏").accessibilityLabel("取消收藏")
+                            }.disabled(model.busy)
+                        }.padding(18).frame(maxWidth: .infinity, alignment: .leading)
+                            .background(Color(NSColor.controlBackgroundColor)).clipShape(RoundedRectangle(cornerRadius: 12))
+                    }
+                }
+            }.padding(28)
+        }.task { do { try await model.loadFavorites() } catch { model.error = friendlyNetworkError(error) } }
     }
 }
 
@@ -119,6 +174,7 @@ let libraryGreen = Color(red: 0.14, green: 0.42, blue: 0.30)
                             .overlay(RoundedRectangle(cornerRadius: 12).stroke(selected ? libraryGreen : Color.clear, lineWidth: 2))
                             .contextMenu { Button("复制精确引用") { copyText(object(["title": candidate["title"], "providerId": candidate["providerId"], "exactSelector": candidate["exactSelector"]]).pretty) } }
                             HStack {
+                                FavoriteButton(model: model, candidate: candidate)
                                 Spacer()
                                 let status = model.referenceStates[candidate["candidateId"].string] ?? .null
                                 ReferenceStateIcons(status: status, candidate: candidate)
@@ -135,7 +191,7 @@ let libraryGreen = Color(red: 0.14, green: 0.42, blue: 0.30)
         }
         .onChange(of: model.provider) { _ in model.perform { try await model.search() } }
         .task(id: model.result["resultSetId"].string + String(model.result["pageIndex"].int)) {
-            do { try await model.refreshReferenceStates() } catch { model.error = friendlyNetworkError(error) }
+            do { try await model.loadFavorites(); try await model.refreshReferenceStates() } catch { model.error = friendlyNetworkError(error) }
         }
     }
     var galleryPager: some View {
@@ -247,6 +303,7 @@ func candidateValidationLines(_ candidate: JSON) -> [String] {
         VStack(alignment: .leading, spacing: 16) {
             HStack {
                 Text(candidate["title"].string).font(.title2).bold()
+                FavoriteButton(model: model, candidate: candidate)
                 Spacer()
                 ReferenceStateIcons(status: model.referenceStates[candidate["candidateId"].string] ?? .null, candidate: candidate)
                 Button {

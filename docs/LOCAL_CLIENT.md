@@ -130,3 +130,12 @@ Windows 网页连接本机服务，需要限定本机监听、来源和会话访
 
 预览版已提供 DMG、Windows ZIP 和 Linux ZIP 的构建与平台 smoke。正式签名分发、完整人工体验验收及
 更丰富的知识库编辑交互仍需继续完善；以每次发布附带的验证报告为准。
+
+
+## 模板收藏
+
+macOS 与本地 Web 客户端提供卡片/详情星标和独立「收藏」页（名称、来源、用途搜索）。收藏属于机器本地用户偏好，与 Published/Working 资产及可重建缓存分开。数据位于 `providerSourcePaths().configRoot/favorites/<exact-selector-sha256>.json`；以来源限定的精确选择器区分版本，每条记录原子写入，避免两个客户端收藏不同模板时互相覆盖。此目录不属于 Library bundle 备份；迁移本机偏好时需另外保留该目录。
+
+`GET /api/favorites` 返回记录；`POST /api/favorites` 支持 `add`（本会话 `resultSetId`、`candidateId`）、`remove`（收藏 `id`）和 `open`（收藏 `id`）。这些私有接口继续使用本地 HTTP 的来源和会话认证，不新增 MCP 工具。收藏只保存服务端候选的名称、用途、来源与精确身份，不保存搜索会话、challenge 或 receipt。
+
+打开收藏会从当前启用来源查找相同精确选择器，创建新的本会话结果集；不自动追踪新版。版本不再可用时保留记录并提示，取消收藏始终可用。正常预览、确认和材料化契约继续生效，星标不产生预览确认或执行授权。
