@@ -47,6 +47,16 @@ enum Sheet: Identifiable {
     @Published var section: Section? = Section(rawValue: UserDefaults.standard.string(forKey: "SFLSelectedSection") ?? "") ?? .discover {
         didSet { if let section { UserDefaults.standard.set(section.rawValue, forKey: "SFLSelectedSection") } }
     }
+    @Published var customTagState: JSON = .null
+    @Published var customTagFilter = ""
+    @Published var libraryTagFilter = ""
+    var allCustomTags: [String] {
+        Array(Set(jsonStrings(customTagState["tags"]) + [customTagFilter, libraryTagFilter].filter { !$0.isEmpty })).sorted()
+    }
+    func customTags(providerId: String, templateId: String) -> [String] {
+        jsonStrings(customTagState["entries"].array.first { $0["providerId"].string == providerId && $0["templateId"].string == templateId }?["tags"] ?? .null)
+    }
+    func refreshCustomTags() async throws { customTagState = try await backend.request("custom-tags") }
     @Published var ready = false
     @Published var busy = false
     @Published var message = ""
@@ -107,6 +117,7 @@ enum Sheet: Identifiable {
         } catch { self.error = friendlyNetworkError(error); syncingGallery = false }
     }
     func status() async throws {
+        try? await refreshCustomTags()
         let value = try await backend.call("figure_library_source_status")
         setupRequired = value["setup"]["required"].bool
         if value["library"]["directorySource"].string != "legacy-default" { libraryDirectory = value["library"]["root"].string }
@@ -184,6 +195,7 @@ enum Sheet: Identifiable {
         if showSync { syncingGallery = true }
         defer { if showSync { syncingGallery = false } }
         var arguments: [String: JSON] = ["limit": .integer(12)]
+        if !customTagFilter.isEmpty { arguments["customTag"] = text(customTagFilter) }
         if !provider.isEmpty { arguments["providerIds"] = .array([text(provider)]) }
         try display(await backend.request("gallery", object(arguments)))
     }
@@ -193,9 +205,10 @@ enum Sheet: Identifiable {
         if showSync { syncingGallery = true }
         defer { if showSync { syncingGallery = false } }
         var arguments: [String: JSON] = ["query": text(query), "limit": .integer(12)]
+        if !customTagFilter.isEmpty { arguments["customTag"] = text(customTagFilter) }
         if !provider.isEmpty { arguments["providerIds"] = .array([text(provider)]) }
         if !dataProfile.isEmpty { arguments["dataProfile"] = text(dataProfile) }
-        try display(await backend.request("call", object(["name": text("figure_library_search"), "arguments": object(arguments)])))
+        try display(await backend.request("gallery", object(arguments)))
     }
     func nextPage() async throws {
         let cursor = result["pagination"]["nextCursor"]
@@ -210,7 +223,7 @@ enum Sheet: Identifiable {
         guard let payload = value.split(separator: ",", maxSplits: 1).last, let data = Data(base64Encoded: String(payload)) else { return nil }
         return NSImage(data: data)
     }
-    func loadLibrary() async throws { library = try backend.check(await backend.request("library"))["items"].array }
+    func loadLibrary() async throws { try? await refreshCustomTags(); library = try backend.check(await backend.request("library"))["items"].array }
     func inspect(_ templateID: String) async throws { sheet = .library(try await backend.call("figure_library_review_open", ["templateId": text(templateID)])) }
     func chooseDirectory() -> String? {
         let panel = NSOpenPanel(); panel.canChooseDirectories = true; panel.canChooseFiles = false; panel.canCreateDirectories = true

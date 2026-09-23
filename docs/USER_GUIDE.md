@@ -29,6 +29,8 @@ presented as shipped ones:
 8. [FAQ](#8-faq)
 9. [Advanced reference](#9-advanced-reference)
 
+[Custom image tags](#custom-image-tags)
+
 Appendices:
 
 - [Appendix A: end-to-end example](#appendix-a-end-to-end-example)
@@ -593,3 +595,7 @@ or plotting success.
 - README entries use online guide URLs, including in unpacked plugins and npm packages, rather than pointing to guides absent from the package. Reading the online guide requires network access.
 - Complete source checkouts can still read the guide offline. Full public catalogs remain with their content sources; this guide does not duplicate or force them into installation packages.
 - If a complete reproducible offline index is needed later, define a pinned official publication snapshot and update workflow separately; do not equate bootstrap with the current collection.
+
+## Custom image tags
+
+Use “编辑标签” (Edit tags) on a gallery card or image detail, including My Library. Enter comma-separated personal tags and save; clear the field to remove them. Choose a complete tag in the custom-tag filter, optionally combining it with a gallery search and source. Each image entry supports up to 20 tags of 40 characters each. Source tags and published content stay unchanged. Personal tags are scoped to the bound library and follow a provider-qualified entry across revisions. They survive application upgrades but live in local configuration, outside existing library backups and template exports. Reopen the editor after an editing conflict. See [local client storage details](LOCAL_CLIENT.md#图片自定义标签).

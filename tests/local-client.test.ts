@@ -309,6 +309,9 @@ test("local client binds, uploads, imports, reviews, publishes, previews and mat
   const review = await call("figure_library_review_open", { templateId: plan.templateId });
   assert.ok(data(review).workingContent);
   const content = record(data(review).workingContent);
+  const annotations = await api("/api/custom-tags");
+  await api("/api/custom-tags", { target: { templateId: plan.templateId }, tags: ["个人分类"], expectedTags: [], libraryContext: annotations.libraryContext });
+  assert.deepEqual(data(await call("figure_library_review_open", { templateId: plan.templateId })).workingContent, content, "tag edits do not create revisions or change source metadata");
   const file = await api("/api/asset", { templateId: plan.templateId, revisionId: content.revisionId, contentDigest: content.contentDigest, logicalPath: (content.assets as Array<Record<string, unknown>>).find((asset) => asset.role === "code")!.logicalPath });
   assert.equal(Buffer.from(String(data(file).data), "base64").toString(), "stop('must not execute')\n");
   const publication = record(data(await call("figure_library_plan_publish_working_revision", { templateId: plan.templateId })).plan);
@@ -381,4 +384,43 @@ test("closing a shared service ends direct operations and local preview access",
   await assert.rejects(service.execute("figure_library_source_status"), /closed/u);
   await assert.rejects(service.local.library(), /closed/u);
   await assert.rejects(service.readResource("figure-library://guidance/figure-library/SKILL.md"), /closed/u);
+});
+
+test("custom tags validate targets, preserve originals and filter before pagination", async t => {
+  const { local, api, request, call, overrides } = await isolated(t);
+  assert.equal((await fetch(local.origin + "/api/custom-tags")).status, 401);
+  assert.equal((await request("/api/custom-tags", {}, { Origin: "https://example.com" })).status, 403);
+  const binding = record(data(await call("figure_library_plan_bind_global", { libraryDirectory: overrides.FIGURE_LIBRARY_DIR, migrationMode: "none" })).plan);
+  await call("figure_library_apply_bind_global", { planDigest: binding.planDigest, operationId: "bind-custom-tags" }, true);
+  const listed = record((await api("/api/gallery", { limit: 3, providerIds: ["org.figureya.module"] })).structuredContent);
+  const candidates = records(listed.candidates);
+  assert.equal(candidates.length, 3);
+  const snapshot = await api("/api/custom-tags");
+  const candidate = candidates[2]!;
+  const target = { resultSetId: listed.resultSetId, candidateId: candidate.candidateId };
+  const update = { target, tags: ["待使用", "单细胞"], expectedTags: [], libraryContext: snapshot.libraryContext };
+  const saved = await api("/api/custom-tags", update);
+  assert.equal(records(saved.entries).length, 1);
+  assert.equal((await request("/api/custom-tags", { ...update, tags: ["冲突"] })).status, 400);
+  assert.equal((await request("/api/custom-tags", { ...update, target: { ...target, candidateId: "missing" } })).status, 400);
+  assert.equal((await request("/api/custom-tags", { ...update, target: { templateId: "missing" } })).status, 400);
+  assert.equal((await request("/api/custom-tags", { ...update, libraryContext: "old-library" })).status, 400);
+  // A tagged item outside the original first page must become the first filtered result.
+  const filtered = record((await api("/api/gallery", { limit: 1, customTag: "待使用", providerIds: ["org.figureya.module"] })).structuredContent);
+  assert.equal(filtered.total, 1);
+  assert.deepEqual(records(filtered.candidates)[0]!.exactSelector, candidate.exactSelector);
+  assert.deepEqual(records(filtered.candidates)[0]!.tags, candidate.tags, "personal tags must not overwrite source tags");
+  const keywordFiltered = record((await api("/api/gallery", { limit: 1, customTag: "待使用", providerIds: ["org.figureya.module"], query: String(candidate.title) })).structuredContent);
+  assert.ok(Number(keywordFiltered.total) <= 1);
+  const none = record((await api("/api/gallery", { customTag: "不存在", limit: 1 })).structuredContent);
+  assert.equal(none.total, 0);
+  // Pagination must use the filtered candidate list, not filter a previously paginated page.
+  await api("/api/custom-tags", { ...update, target: { resultSetId: listed.resultSetId, candidateId: candidates[0]!.candidateId } });
+  const two = record((await api("/api/gallery", { limit: 1, customTag: "待使用", providerIds: ["org.figureya.module"] })).structuredContent);
+  assert.equal(two.total, 2);
+  const next = data(await call("figure_library_search_page", { resultSetId: two.resultSetId, cursor: record(two.pagination).nextCursor }));
+  assert.equal(next.total, 2);
+  assert.deepEqual(records(next.candidates)[0]!.exactSelector, candidate.exactSelector);
+  await api("/api/custom-tags", { ...update, tags: [], expectedTags: ["待使用", "单细胞"] });
+  assert.equal(records((await api("/api/custom-tags")).entries).length, 1);
 });

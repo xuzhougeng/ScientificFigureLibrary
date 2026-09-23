@@ -20,7 +20,7 @@
     <section id="discover-page" class="local-page">
       <div class="search-panel">
       <form id="search-form" class="search-form"><label class="sr-only" for="search-query">搜索模板</label><input id="search-query" placeholder="描述你想找的图，例如：单细胞分组比例、火山图…"><button type="submit">搜索图库</button></form>
-      <div class="search-filters"><label>图片来源<select id="search-provider"><option value="">全部默认来源</option></select></label><label>数据特征<input id="search-data" placeholder="可选：gene、log2FC、padj"></label></div>
+      <div class="search-filters"><label>图片来源<select id="search-provider"><option value="">全部默认来源</option></select></label><label>自定义标签<select id="search-custom-tag"><option value="">全部自定义标签</option></select></label><label>数据特征<input id="search-data" placeholder="可选：gene、log2FC、padj"></label></div>
 
       <div id="suggestions" class="suggestions"><span>从常见图形开始</span><button data-query="volcano differential expression">火山图</button><button data-query="heatmap expression matrix">热图</button><button data-query="UMAP single cell">UMAP</button><button data-query="barplot proportion cell type">细胞比例</button><button data-query="GO enrichment pathway">富集分析</button></div>
       </div>
@@ -33,7 +33,7 @@
       <div id="selection-bar" class="local-selection" hidden><div><span id="selection-count"></span></div><button type="button" id="copy-selection">复制绘图提示词</button></div>
       <nav class="pagination gallery-pagination" id="local-pagination" hidden aria-label="图库分页"><button type="button" class="page-previous" disabled>上一页</button><span class="page-label"></span><button type="button" class="page-next" disabled>下一页</button></nav>
     </section>
-    <section id="library-page" class="local-page" hidden><div class="section-heading"><p>这里是你自己的图片与代码。草稿与已发布版本分别管理，与外部图库分开。</p><div class="library-toolbar"><div class="library-view-switch" role="group" aria-label="我的图库显示方式"><button type="button" id="library-gallery" aria-pressed="true">Gallery</button><button type="button" id="library-list" aria-pressed="false">List</button></div><button data-page="import">创建参考图</button></div></div><div id="library-items" class="library-items"></div></section>
+    <section id="library-page" class="local-page" hidden><div class="section-heading"><p>这里是你自己的图片与代码。草稿与已发布版本分别管理，与外部图库分开。</p><div class="library-toolbar"><div class="library-view-switch" role="group" aria-label="我的图库显示方式"><button type="button" id="library-gallery" aria-pressed="true">Gallery</button><button type="button" id="library-list" aria-pressed="false">List</button></div><button data-page="import">创建参考图</button></div></div><label>自定义标签<select id="library-custom-tag"><option value="">全部自定义标签</option></select></label><div id="library-items" class="library-items"></div></section>
     <section id="import-page" class="local-page" hidden>
       <form id="import-form" class="local-form">
         <p>将一张参考图及相关代码收入「我的图库」。文件只会保存和校验，不会执行。</p>

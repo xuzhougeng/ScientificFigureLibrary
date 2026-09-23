@@ -257,3 +257,11 @@ html.dialog-open .local-main { overflow: hidden; }
 .cache-task-list strong { font-size: 13px; }
 .cache-task-list progress { display: block; width: 100%; height: 8px; margin-top: 10px; accent-color: #246c4e; }
 .cache-task-list pre { max-height: 100px; overflow: auto; white-space: pre-wrap; font-size: 11px; }
+
+.custom-tags { padding: 8px 0; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+#cards > * > .custom-tags { padding: 8px 14px; }
+.custom-tag-labels { display: flex; flex-wrap: wrap; gap: 4px; }
+.custom-tag-chip { display: inline-block; padding: 3px 8px; background: #e8f2eb; color: #245a3a; border-radius: 12px; font-size: 12px; overflow-wrap: anywhere; }
+.custom-tag-editor label { display: grid; gap: 8px; }
+.custom-tag-editor input { width: 100%; }
+.custom-tag-editor > button { margin-right: 8px; }

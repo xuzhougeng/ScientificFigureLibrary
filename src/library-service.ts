@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { CustomTagStore, customTagKey } from "./local/custom-tags.ts";
 import { createGalleryCache } from "./local/gallery-cache.ts";
 import fs from "node:fs/promises";
 import path from "node:path";
@@ -589,6 +590,7 @@ export async function createLibraryService(options: LibraryServiceOptions = {}) 
     if (contexts.size > 8) contexts.delete(contexts.keys().next().value as string);
     return context;
   };
+  const customTags = new CustomTagStore(async () => (await currentLibraries()).snapshot);
   const currentProviderContext = async (
     sourcePackDir?: string,
     moduleSourcePackDir?: string,
@@ -895,6 +897,7 @@ export async function createLibraryService(options: LibraryServiceOptions = {}) 
     toolName: "figure_library_search" | "figure_library_search_page";
     operationStartedAt: number;
     resultSetId?: string;
+    customTag?: string;
   }) {
     const { parsedInput, explicitlySelected, correlationId, invocationSource, toolName, operationStartedAt } = options;
     if (options.resultSetId) {
@@ -961,6 +964,12 @@ export async function createLibraryService(options: LibraryServiceOptions = {}) 
     ) {
       const failure = providerFailures[parsedInput.providerIds[0]!]!;
       throw new Error(`${failure.errorCode}: ${failure.safeMessage}`);
+    }
+    if (options.customTag) {
+      const annotations = await customTags.list();
+      if (annotations.libraryContext !== context.snapshot.contextKey) throw new Error("图库绑定已变化，请重新筛选。");
+      const matching = new Set(annotations.entries.filter(entry => entry.tags.includes(options.customTag!)).map(customTagKey));
+      for (const result of searched) result.candidates = result.candidates.filter(candidate => matching.has(customTagKey(candidate)));
     }
     const providerMatches = Object.fromEntries(
       searched.map(({ providerId, candidates }) => [providerId, candidates.length]),
@@ -1559,17 +1568,22 @@ export async function createLibraryService(options: LibraryServiceOptions = {}) 
       const input = z.object({
         providerIds: z.array(z.string().min(1).max(200)).min(1).max(16).optional(),
         limit: z.number().int().min(1).max(12).optional(),
+        query: z.string().max(2000).optional(),
+        dataProfile: z.string().max(2000).optional(),
+        customTag: z.string().trim().min(1).max(40).optional(),
       }).strict().parse(raw ?? {});
       const operationStartedAt = performance.now();
       const correlationId = diagnostics.createCorrelationId("gallery");
       try {
         return await executeUnifiedSearch({
           parsedInput: {
-            query: "",
-            browse: true,
+            query: input.query ?? "",
+            browse: !input.query?.trim(),
+            dataProfile: input.dataProfile,
             providerIds: input.providerIds ?? registry.defaultProviderIds(),
             limit: input.limit ?? 12,
           },
+          customTag: input.customTag?.normalize("NFC"),
           explicitlySelected: input.providerIds !== undefined,
           correlationId,
           invocationSource: "app",
@@ -2382,6 +2396,31 @@ export async function createLibraryService(options: LibraryServiceOptions = {}) 
   return {
     operations,
     local: {
+      customTags: () => operations.run(() => customTags.list()),
+      setCustomTags: (raw: unknown) => operations.run(async () => {
+        const input = z.object({
+          target: z.union([
+            z.object({ resultSetId: z.string().min(1).max(256), candidateId: z.string().min(1).max(256) }).strict(),
+            z.object({ templateId: z.string().min(1).max(500) }).strict(),
+          ]),
+          tags: z.array(z.string()).max(20), expectedTags: z.array(z.string()).max(20),
+          libraryContext: z.string().min(1).max(4000),
+        }).strict().parse(raw);
+        let identity: { providerId: string; templateId: string };
+        if ("resultSetId" in input.target) {
+          const { state } = await requireSearchState(input.target.resultSetId);
+          const { candidateId, resultSetId } = input.target;
+          const candidate = state.candidates.find(item => scopedCandidateId(resultSetId, item) === candidateId);
+          if (!candidate) throw new Error("图片不属于当前结果集，请重新搜索。");
+          identity = { providerId: candidate.providerId, templateId: candidate.templateId };
+        } else {
+          const { versionedLibrary } = await currentLibraries();
+          const series = await versionedLibrary.getSeries(input.target.templateId);
+          if (!series || (!series.workingHead && !series.publishedHead)) throw new Error("图片条目不存在，请刷新我的图库。");
+          identity = { providerId: LOCAL_LIBRARY_PROVIDER_ID, templateId: series.templateId };
+        }
+        return customTags.set(identity, input);
+      }),
       planGalleryCache: (input: unknown) => operations.run(() => galleryCache.plan(input)),
       startGalleryCache: (input: unknown) => operations.run(async () => galleryCache.start(input)),
       galleryCacheTasks: () => operations.run(async () => galleryCache.tasks()),
