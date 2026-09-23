@@ -6,6 +6,7 @@ import { api, call, details, imageData, imageHash, record, records, requireResul
 import { formatUserNetworkError } from "../../src/process-log.ts";
 import { cacheReferences, planReferenceCopy, referenceStatuses, referenceStatusFacts, referenceStatusIcons, writeReferencePrompts } from "./reference-cache.ts";
 import { setButtonContent } from "../icons.ts";
+import { createCustomTagUI, LOCAL_TAG_PROVIDER } from "./custom-tags.ts";
 import { refreshCacheTasks, watchCacheTasks } from "./cache-tasks.ts";
 import { PAGE_STORAGE_KEY, PAGE_TITLES, galleryCacheActionLabel, galleryMissingCount, isPageId, pageHash, prefetchButtonLabel, readSavedPage, type PageId } from "./ui-state.ts";
 import "../styles.css";
@@ -37,6 +38,19 @@ let statusLoaded = false;
 let statusPromise: Promise<void> | undefined;
 let noticeTimer = 0;
 (el<HTMLImageElement>("local-logo")).src = SFL_BRAND_ICON_DATA_URI;
+
+const tagUI = createCustomTagUI(document, api, async () => {
+  notify("自定义标签已保存。");
+  try {
+    if (page === "library") await loadLibrary();
+    else if (page === "discover" && el<HTMLSelectElement>("search-custom-tag").value) await search();
+  } catch (error) { notify(`标签已保存，但刷新失败：${String(error)}`, true); }
+});
+async function refreshCustomTags() {
+  try { await tagUI.refresh(); } catch (error) { notify(String(error), true); }
+}
+el("search-custom-tag").onchange = () => void run(search);
+el("library-custom-tag").onchange = () => void run(loadLibrary);
 
 function hideNotice() {
   window.clearTimeout(noticeTimer);
@@ -176,6 +190,7 @@ function display(parsed: SearchResult) {
         onRequestExactPreview: (view) => void run(() => exactPreview(candidate, view, refreshDetailState), view.confirmButton),
         onRequestAgentReview: () => {},
       });
+      view.dialog.append(tagUI.widget(candidate, { resultSetId: parsed.resultSetId, candidateId: candidate.candidateId }, candidate.title));
       const actions = view.dialog.querySelector(".detail-toolbar-actions")!;
       const cache = action("下载代码", async () => { await openReferenceCache([candidate], parsed.resultSetId, refreshDetailState); }, true);
       setButtonContent(cache, "download", "下载代码", { iconOnly: true });
@@ -249,6 +264,10 @@ function display(parsed: SearchResult) {
   });
   el("gallery-loading").hidden = true;
   refreshSelection();
+  for (const candidate of parsed.candidates) {
+    const card = [...el("cards").children].find(item => (item as HTMLElement).dataset.candidateId === candidate.candidateId);
+    card?.append(tagUI.widget(candidate, { resultSetId: parsed.resultSetId, candidateId: candidate.candidateId }, candidate.title));
+  }
   void run(() => refreshReferenceCards(parsed));
 }
 function displayResult(value: CallToolResult) {
@@ -259,7 +278,8 @@ function displayResult(value: CallToolResult) {
 }
 function galleryArgs() {
   const provider = el<HTMLSelectElement>("search-provider").value;
-  return { limit: 12, ...(provider ? { providerIds: [provider] } : {}) };
+  const customTag = el<HTMLSelectElement>("search-custom-tag").value;
+  return { limit: 12, ...(provider ? { providerIds: [provider] } : {}), ...(customTag ? { customTag } : {}) };
 }
 async function loadGallery() {
   input("search-query").value = "";
@@ -270,10 +290,9 @@ async function loadGallery() {
 async function search() {
   const query = input("search-query").value.trim();
   if (!query) return loadGallery();
-  const provider = el<HTMLSelectElement>("search-provider").value;
   setGallerySyncing(true);
   try {
-    displayResult(await call("figure_library_search", { query, limit: 6, ...(provider ? { providerIds: [provider] } : {}), ...(input("search-data").value.trim() ? { dataProfile: input("search-data").value.trim() } : {}) }));
+    displayResult(await api("gallery", { ...galleryArgs(), query, ...(input("search-data").value.trim() ? { dataProfile: input("search-data").value.trim() } : {}) }));
   } finally { if (!result) setGallerySyncing(false); }
 }
 async function exactPreview(candidate: Candidate, view: DetailViewElements, onLoaded?: () => void) {
@@ -376,6 +395,7 @@ async function refreshStatus() {
   renderPreviewCacheGalleries(cacheGalleries);
   renderProviderSources(sourceRows);
   refreshSelection();
+  await refreshCustomTags();
   statusLoaded = true;
 }
 function formatBytes(bytes: number) {
@@ -641,7 +661,9 @@ for (const layout of ["gallery", "list"]) button(`library-${layout}`).onclick = 
   applyLibraryLayout();
 };
 async function loadLibrary() {
-  const items = records(details(requireResult(await api("library"))).items);
+  await refreshCustomTags();
+  const customTag = el<HTMLSelectElement>("library-custom-tag").value;
+  const items = records(details(requireResult(await api("library"))).items).filter(item => !customTag || tagUI.tagsFor({ providerId: LOCAL_TAG_PROVIDER, templateId: String(item.templateId) }).includes(customTag));
   const target = el("library-items");
   libraryObserver?.disconnect();
   libraryObserver = new IntersectionObserver((entries) => {
@@ -672,7 +694,7 @@ async function loadLibrary() {
   }, { rootMargin: "200px" });
   target.replaceChildren();
   applyLibraryLayout();
-  if (!items.length) { target.append(node("div", "我的图库还没有资产。用「创建参考图」收入图片和代码。", "local-empty")); return; }
+  if (!items.length) { target.append(node("div", customTag ? "没有符合此自定义标签的图片。" : "我的图库还没有资产。用「创建参考图」收入图片和代码。", "local-empty")); return; }
   for (const item of items) {
     const row = node("article", undefined, "library-row");
     const info = node("div");
@@ -682,6 +704,7 @@ async function loadLibrary() {
     preview.classList.add("library-preview");
     preview.setAttribute("aria-label", `查看 ${String(item.title)}`);
     preview.dataset.templateId = String(item.templateId); preview.dataset.pending = "true";
+    info.append(tagUI.widget({ providerId: LOCAL_TAG_PROVIDER, templateId: String(item.templateId) }, { templateId: String(item.templateId) }, String(item.title)));
     row.append(preview, info, action("查看与管理", () => showLibraryDetail(String(item.templateId))));
     target.append(row);
     if (libraryLayout === "gallery") libraryObserver.observe(preview);
@@ -703,6 +726,7 @@ async function showLibraryDetail(templateId: string) {
     image.style.maxWidth = "100%";
     modal.append(image);
   }
+  modal.append(tagUI.widget({ providerId: LOCAL_TAG_PROVIDER, templateId }, { templateId }, String(content.title)));
   const review = record(data.workingReview ?? data.publishedReview);
   for (const finding of [...records(review.validationErrors), ...records(review.blockingGates), ...records(review.warnings)]) modal.append(node("p", String(finding.message)));
   for (const asset of records(content.assets).filter((item) => item.role === "code")) {

@@ -74,6 +74,10 @@ let libraryGreen = Color(red: 0.14, green: 0.42, blue: 0.30)
                         if source["enabled"] != .bool(false) { Text(source["sourceLabel"].string.isEmpty ? source["providerId"].string : source["sourceLabel"].string).tag(source["providerId"].string) }
                     }
                 }.frame(maxWidth: 330); TextField("数据特征（可选）", text: $model.dataProfile).textFieldStyle(.roundedBorder) }
+                Picker("自定义标签", selection: $model.customTagFilter) {
+                    Text("全部自定义标签").tag("")
+                    ForEach(model.allCustomTags, id: \.self) { Text($0).tag($0) }
+                }
                 HStack { ForEach(["火山图", "热图", "UMAP", "细胞比例", "富集分析"], id: \.self) { label in Button(label) { model.query = ["火山图": "volcano differential expression", "热图": "heatmap expression", "UMAP": "UMAP single cell", "细胞比例": "cell proportion barplot", "富集分析": "GO enrichment"][label]!; model.perform { try await model.search() } }.disabled(model.busy) } }
                 Text("卡片同时显示预览图和参考包是否已在本地。本地只缓存这两类：图片和参考包。选择参考后复制绘图提示词；参考包未缓存时会先下载固定版本再复制。整库预览图请到「连接外部图库」缓存。").font(.callout).foregroundStyle(.secondary)
                 HStack { Text(model.query.isEmpty && model.result != .null ? "图库" : "候选图片").font(.headline); Spacer(); if model.result != .null { Text("\(model.result["total"].int) 个结果").foregroundStyle(.secondary) } }
@@ -118,6 +122,7 @@ let libraryGreen = Color(red: 0.14, green: 0.42, blue: 0.30)
                             .clipShape(RoundedRectangle(cornerRadius: 12))
                             .overlay(RoundedRectangle(cornerRadius: 12).stroke(selected ? libraryGreen : Color.clear, lineWidth: 2))
                             .contextMenu { Button("复制精确引用") { copyText(object(["title": candidate["title"], "providerId": candidate["providerId"], "exactSelector": candidate["exactSelector"]]).pretty) } }
+                            CustomTagControl(model: model, providerId: candidate["providerId"].string, templateId: candidate["templateId"].string, title: candidate["title"].string, target: object(["resultSetId": model.result["resultSetId"], "candidateId": candidate["candidateId"]]))
                             HStack {
                                 Spacer()
                                 let status = model.referenceStates[candidate["candidateId"].string] ?? .null
@@ -133,6 +138,7 @@ let libraryGreen = Color(red: 0.14, green: 0.42, blue: 0.30)
                 galleryPager
             }.padding(28)
         }
+        .onChange(of: model.customTagFilter) { _ in model.perform { try await model.search() } }
         .onChange(of: model.provider) { _ in model.perform { try await model.search() } }
         .task(id: model.result["resultSetId"].string + String(model.result["pageIndex"].int)) {
             do { try await model.refreshReferenceStates() } catch { model.error = friendlyNetworkError(error) }
@@ -266,6 +272,7 @@ func candidateValidationLines(_ candidate: JSON) -> [String] {
                 } label: { Image(systemName: "photo") }.help("复制图片").accessibilityLabel("复制图片").disabled(!displayed)
                 Button { model.sheet = nil } label: { Image(systemName: "xmark") }.help("关闭").accessibilityLabel("关闭")
             }
+            CustomTagControl(model: model, providerId: candidate["providerId"].string, templateId: candidate["templateId"].string, title: candidate["title"].string, target: object(["resultSetId": model.result["resultSetId"], "candidateId": candidate["candidateId"]]))
             HStack { TextField("保存到项目的目标父目录", text: $destination).textFieldStyle(.roundedBorder); Button("选择目录") { if let path = model.chooseDirectory() { destination = path } } }
             Toggle("从 GitHub 下载该模板的固定版本（不会下载整个图库）", isOn: $allowNetwork).font(.callout)
             HStack(alignment: .top, spacing: 18) {
@@ -339,20 +346,27 @@ func candidateValidationLines(_ candidate: JSON) -> [String] {
 @MainActor struct KnowledgeView: View {
     @ObservedObject var model: LibraryModel
     @AppStorage("sfl-library-layout") private var layout = "gallery"
+    var filteredLibrary: [JSON] {
+        model.library.filter { model.libraryTagFilter.isEmpty || model.customTags(providerId: localTagProvider, templateId: $0["templateId"].string).contains(model.libraryTagFilter) }
+    }
     var body: some View {
         VStack {
             HStack {
                 Picker("显示方式", selection: $layout) { Text("Gallery").tag("gallery"); Text("List").tag("list") }.pickerStyle(.segmented).frame(width: 180)
+                Picker("自定义标签", selection: $model.libraryTagFilter) {
+                    Text("全部自定义标签").tag("")
+                    ForEach(model.allCustomTags, id: \.self) { Text($0).tag($0) }
+                }
                 Spacer()
                 Button("创建参考图") { model.section = .add }
             }
-            if model.library.isEmpty { VStack(spacing: 16) { Image(systemName: "books.vertical").font(.system(size: 40)).foregroundStyle(.secondary); Text("我的图库还没有资产").font(.title3); Button("创建参考图") { model.section = .add } }.frame(maxWidth: .infinity, maxHeight: .infinity) }
+            if filteredLibrary.isEmpty { VStack(spacing: 16) { Image(systemName: "books.vertical").font(.system(size: 40)).foregroundStyle(.secondary); Text(model.libraryTagFilter.isEmpty ? "我的图库还没有资产" : "没有符合此自定义标签的图片").font(.title3); Button("创建参考图") { model.section = .add } }.frame(maxWidth: .infinity, maxHeight: .infinity) }
             else if layout == "gallery" {
                 ScrollView { LazyVGrid(columns: [GridItem(.adaptive(minimum: 240))], spacing: 18) {
-                    ForEach(model.library.indices, id: \.self) { index in KnowledgeGalleryCard(model: model, value: model.library[index]) }
+                    ForEach(filteredLibrary.indices, id: \.self) { index in KnowledgeGalleryCard(model: model, value: filteredLibrary[index]) }
                 }.padding(.vertical, 12) }
             }
-            else { List(model.library.indices, id: \.self) { index in let value = model.library[index]; HStack { VStack(alignment: .leading, spacing: 7) { Text(value["title"].string).font(.headline); Text(value["workingHead"] == .null ? "已发布" : "有待审阅草稿").font(.caption).foregroundStyle(.secondary) }; Spacer(); Button("查看与管理") { model.perform { try await model.inspect(value["templateId"].string) } }.disabled(model.busy) }.padding(.vertical, 8) } }
+            else { List(filteredLibrary.indices, id: \.self) { index in let value = filteredLibrary[index]; HStack { VStack(alignment: .leading, spacing: 7) { Text(value["title"].string).font(.headline); CustomTagControl(model: model, providerId: localTagProvider, templateId: value["templateId"].string, title: value["title"].string, target: object(["templateId": value["templateId"]])); Text(value["workingHead"] == .null ? "已发布" : "有待审阅草稿").font(.caption).foregroundStyle(.secondary) }; Spacer(); Button("查看与管理") { model.perform { try await model.inspect(value["templateId"].string) } }.disabled(model.busy) }.padding(.vertical, 8) } }
         }.padding(16)
     }
 }
@@ -371,6 +385,7 @@ func candidateValidationLines(_ candidate: JSON) -> [String] {
                 }.frame(maxWidth: .infinity).frame(height: 180)
             }.buttonStyle(.plain).accessibilityLabel("查看 " + value["title"].string)
             Text(value["title"].string).font(.headline)
+            CustomTagControl(model: model, providerId: localTagProvider, templateId: value["templateId"].string, title: value["title"].string, target: object(["templateId": value["templateId"]]))
             Text(value["workingHead"] == .null ? "已发布" : "有待审阅草稿").font(.caption).foregroundStyle(.secondary)
             Button("查看与管理") { model.perform { try await model.inspect(value["templateId"].string) } }.disabled(model.busy)
         }.padding(14).frame(maxWidth: .infinity, alignment: .leading).background(Color(NSColor.controlBackgroundColor)).clipShape(RoundedRectangle(cornerRadius: 12))
@@ -399,6 +414,7 @@ func candidateValidationLines(_ candidate: JSON) -> [String] {
             ScrollView {
                 VStack(alignment: .leading, spacing: 14) {
                     if let image = image { Image(nsImage: image).resizable().scaledToFit().frame(maxWidth: .infinity, maxHeight: 320) }
+                    CustomTagControl(model: model, providerId: localTagProvider, templateId: detail["templateId"].string, title: content["title"].string, target: object(["templateId": detail["templateId"]]))
                     Text(content["description"].string).textSelection(.enabled)
                     Text(content["application"].string).foregroundStyle(.secondary).textSelection(.enabled)
                     let assets = content["assets"].array.filter { $0["role"].string == "code" }
