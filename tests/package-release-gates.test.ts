@@ -366,9 +366,9 @@ test("npm authoritative inventory drops downloadable gallery images and keeps th
   ]);
 });
 
-test("release smoke inventory includes unified publication (58 tools)", () => {
-  assert.equal(STANDARD_TOOL_NAMES.length, 58);
-  assert.equal(new Set(STANDARD_TOOL_NAMES).size, 58);
+test("release smoke inventory includes network and update status (61 tools)", () => {
+  assert.equal(STANDARD_TOOL_NAMES.length, 61);
+  assert.equal(new Set(STANDARD_TOOL_NAMES).size, 61);
   assert.ok(STANDARD_TOOL_NAMES.includes("figure_library_plan_publish"));
   assert.ok(STANDARD_TOOL_NAMES.includes("figure_library_apply_publish"));
 });

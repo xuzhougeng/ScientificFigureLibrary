@@ -9,6 +9,16 @@ Use the connected SFL tools and one user-selected global Library. The MCP App
 is optional: ordinary MCP tools can supply guidance, candidate thumbnails,
 pagination, exact previews, and materialization without loading App HTML.
 
+For network problems, use `figure_library_network_status` to inspect this MCP
+process's same-user/machine loopback HTTP proxy setting and
+`figure_library_network_test` for a bounded check of the fixed SFL GitHub
+Release endpoint. Remote or container MCP processes have separate settings.
+`figure_library_update_status` reports the running version, latest stable
+Release cache, freshness, and exact Release link; `{ "refresh": true }` checks
+manually. A new-version notice may appear as one additional text item on a
+successful tool result; keep the structured result authoritative. Updating is
+manual and requires restarting the MCP process.
+
 ## Load only the guidance needed
 
 This is the single Skill entrypoint. Read supporting files locally, or call

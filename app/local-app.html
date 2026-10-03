@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="zh-CN" data-theme="light">
-<head><meta charset="UTF-8"><link rel="icon" href="data:,"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Scientific Figure Library · 本地知识库</title></head>
+<head><meta charset="UTF-8"><link rel="icon" type="image/svg+xml" href="/favicon.svg"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Scientific Figure Library · 本地知识库</title></head>
 <body class="local-client">
   <aside class="local-sidebar" aria-label="主导航">
     <div class="local-brand"><img id="local-logo" alt=""><div>Scientific Figure Library<small>本地图片 · 代码知识库</small></div></div>
@@ -94,7 +94,8 @@
         <p>访问 GitHub 清单和预览图时，可走本机回环 HTTP 代理（CONNECT）。目标仍是 GitHub 的 HTTPS 地址，下载后按 SHA-256 校验。默认不使用系统代理，以免 Clash fake-ip（如 198.18.x）被当成目标地址。</p>
         <label class="checkbox"><input id="use-system-proxy" type="checkbox">使用系统代理</label>
         <label>本地 HTTPS 代理<input id="https-proxy" placeholder="http://127.0.0.1:7897"></label>
-        <p id="network-access-summary"></p>
+        <p id="network-access-summary"></p><p id="network-access-test" role="status" aria-live="polite"></p>
+        <button id="test-proxy" class="quiet" type="button">测试 GitHub 连接</button>
         <button id="save-proxy" class="quiet">保存代理</button>
       </section></div>
       <section class="settings-card"><h2>图片缓存</h2>

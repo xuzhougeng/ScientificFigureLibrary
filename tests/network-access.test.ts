@@ -25,13 +25,17 @@ test("loopback HTTP CONNECT proxy URLs are accepted and public or private LAN pr
 test("system proxy is off by default even when HTTPS_PROXY is set", async (t) => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), "sfl-network-access-"));
   const previousHome = process.env.XDG_CONFIG_HOME;
+  const previousAppData = process.env.APPDATA;
   const previousProxy = process.env.HTTPS_PROXY;
   process.env.XDG_CONFIG_HOME = root;
+  process.env.APPDATA = root;
   process.env.HTTPS_PROXY = "http://127.0.0.1:7897";
   t.after(() => {
     resetNetworkAccessForTests();
     if (previousHome === undefined) delete process.env.XDG_CONFIG_HOME;
     else process.env.XDG_CONFIG_HOME = previousHome;
+    if (previousAppData === undefined) delete process.env.APPDATA;
+    else process.env.APPDATA = previousAppData;
     if (previousProxy === undefined) delete process.env.HTTPS_PROXY;
     else process.env.HTTPS_PROXY = previousProxy;
   });

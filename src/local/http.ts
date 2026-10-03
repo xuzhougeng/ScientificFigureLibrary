@@ -8,7 +8,7 @@ import { integrationGuide, localConnection } from "./integrations.ts";
 import { createClientUpdateChecker } from "./updates.ts";
 import { VERSION } from "../version.ts";
 import { createLibraryService, type LibraryService } from "../library-service.ts";
-import { inspectNetworkAccess, loadNetworkAccess, saveNetworkAccess } from "../network-access.ts";
+import { inspectNetworkAccess, loadNetworkAccess, saveNetworkAccess, testNetworkAccess } from "../network-access.ts";
 import { pickLocalDirectory } from "./pick-directory.ts";
 
 const BODY_LIMIT = 1024 * 1024;
@@ -109,6 +109,12 @@ export async function startLocalHttp(options: {
         response.end(html);
         return;
       }
+      if (url.pathname === "/favicon.svg" && request.method === "GET") {
+        const icon = await fs.readFile(path.resolve(import.meta.dirname, "../assets/brand/sfl-logo.svg"));
+        response.writeHead(200, { "Content-Type": "image/svg+xml; charset=utf-8" });
+        response.end(icon);
+        return;
+      }
       if (url.pathname === "/api/connect" && request.method === "POST") {
         const { ticket } = z.object({ ticket: z.string().max(100) }).strict().parse(JSON.parse((await readBody(request, BODY_LIMIT)).toString()));
         const expires = tickets.get(ticket);
@@ -176,9 +182,11 @@ export async function startLocalHttp(options: {
         const body = z.object({
           useSystemProxy: z.boolean(),
           httpsProxy: z.string().max(200).optional(),
+          revision: z.string().length(64).optional(),
         }).strict().parse(input);
         return json(response, 200, await saveNetworkAccess(body));
       }
+      if (url.pathname === "/api/network-access/test") return json(response, 200, await testNetworkAccess());
       if (url.pathname === "/api/preview") return json(response, 200, await service.local.preview(input));
       if (url.pathname === "/api/reference-cache/status") return json(response, 200, await service.local.referenceStatus(input));
       if (url.pathname === "/api/reference-cache/ensure") {

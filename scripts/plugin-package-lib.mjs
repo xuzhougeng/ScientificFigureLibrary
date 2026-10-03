@@ -440,10 +440,18 @@ export async function smokePackagedPlugin({ host, unpacked, version }) {
       Object.entries(process.env).filter((entry) => typeof entry[1] === "string"),
     );
     delete environment.FIGURE_LIBRARY_DIR;
+    delete environment.FIGURE_WORKSPACE_DIR;
+    environment.HOME = isolatedUserState;
+    environment.USERPROFILE = isolatedUserState;
     environment.APPDATA = isolatedUserState;
     environment.LOCALAPPDATA = isolatedUserState;
     environment.XDG_CONFIG_HOME = isolatedUserState;
+    environment.XDG_CACHE_HOME = isolatedUserState;
     environment.XDG_DATA_HOME = isolatedUserState;
+    environment.SFL_DIAGNOSTICS_DIR = path.join(smokeDirectory, "diagnostics");
+    environment.SFL_WORKSPACE_LOCATOR_PATH = path.join(isolatedUserState, "workspace.json");
+    environment.SFL_OPEN_FIGURE_AUTO_REFRESH = "0";
+    environment.SFL_MCP_UPDATE_NOTICES = "0";
 
     client = new Client({ name: `sfl-${host}-foreign-cwd-smoke`, version });
     const transport = new StdioClientTransport({

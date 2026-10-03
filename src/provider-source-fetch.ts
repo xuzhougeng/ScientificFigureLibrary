@@ -6,7 +6,7 @@ import https from "node:https";
 import net from "node:net";
 import tls from "node:tls";
 import path from "node:path";
-import { getActiveHttpsProxy, parseLoopbackHttpProxy } from "./network-access.ts";
+import { networkProxySnapshot, parseLoopbackHttpProxy } from "./network-access.ts";
 import { unzipSync, type UnzipFileInfo } from "fflate";
 import { PNG } from "pngjs";
 import { canonicalJson } from "./canonical-json.ts";
@@ -501,6 +501,7 @@ export class SecureProviderSourceFetcher {
     rawUrl: string,
     options: { maxBytes: number; mediaTypes: string[] },
   ): Promise<{ url: string; bytes: Uint8Array; mediaType: string; accessUrls: string[] }> {
+    const proxy = await networkProxySnapshot();
     const visited = new Set<string>();
     const accessUrls: string[] = [];
     let current = assertSafeHttpsUrl(rawUrl);
@@ -508,7 +509,6 @@ export class SecureProviderSourceFetcher {
       if (visited.has(current.href)) throw new Error("provider source redirect loop detected");
       visited.add(current.href);
       accessUrls.push(current.href);
-      const proxy = getActiveHttpsProxy();
       let addresses: PinnedAddress[] = [];
       if (!proxy) {
         addresses = await promiseWithTimeout(

@@ -4,6 +4,7 @@ import { createServer } from "../server.ts";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { enableProcessLog } from "../process-log.ts";
 import { VERSION } from "../version.ts";
+import { createMcpUpdateMonitor } from "../mcp-updates.ts";
 
 export function browserLaunchSpec(url: string, platform = process.platform): {
   command: string;
@@ -49,7 +50,7 @@ export async function launchLocalClient(args: string[]) {
   process.once("SIGTERM", () => { void local.close(); });
   const open = process.env.SFL_NO_BROWSER === "1" ? async (_url: string) => {} : openBrowser;
   if (stdio) {
-    const server = await createServer({ service: local.service });
+    const server = await createServer({ service: local.service, updateMonitor: createMcpUpdateMonitor() });
     await server.connect(new StdioServerTransport());
   } else {
     const url = local.openUrl();
