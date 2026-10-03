@@ -6,7 +6,7 @@ import { resetNetworkAccessForTests, setNetworkAccessForTests } from "../src/net
 import { fetchWithOptionalProxy } from "../src/proxy-fetch.ts";
 
 test("proxy fetch uses global fetch when the system proxy is off", async (t) => {
-  resetNetworkAccessForTests();
+  setNetworkAccessForTests({ useSystemProxy: false });
   const previous = globalThis.fetch;
   let called = "";
   globalThis.fetch = (async (input: string | URL | Request) => {
@@ -15,6 +15,7 @@ test("proxy fetch uses global fetch when the system proxy is off", async (t) => 
   }) as typeof fetch;
   t.after(() => {
     globalThis.fetch = previous;
+    resetNetworkAccessForTests();
   });
   const response = await fetchWithOptionalProxy("https://example.com/archive.zip", { redirect: "error" });
   assert.equal(called, "https://example.com/archive.zip");

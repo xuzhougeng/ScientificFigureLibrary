@@ -166,7 +166,7 @@ test("generated GitHub notes keep the v0.8.0 bilingual download tables and prove
     const body = prepared.body as string;
     assert.match(body, /# Scientific Figure Library v0.9.0/);
     assert.match(body, /compare\/v0\.8\.0\.\.\.v0\.9\.0/);
-    assert.match(body, /\*\*58 tools\*\* \(56 in v0\.8\.0\)/);
+    assert.match(body, /\*\*61 tools\*\* \(56 in v0\.8\.0\)/);
     assert.match(body, /\[`macos-arm64\.dmg`\]\(https:\/\/github.com\/xuzhougeng\/ScientificFigureLibrary\/releases\/download\/v0\.9\.0\/ScientificFigureLibrary-0\.9\.0-macos-arm64\.dmg\)/);
     assert.match(body, /scientific-figure-library-wisp-update\.json/);
     assert.ok(body.includes(`Tag \`v0.9.0\` points to \`${tagSha}\``));

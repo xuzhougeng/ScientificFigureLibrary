@@ -2,7 +2,10 @@ import { execFile as execFileCallback } from "node:child_process";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import net from "node:net";
+import { randomUUID, createHash } from "node:crypto";
 import { promisify } from "node:util";
+import { fetchWithOptionalProxy } from "./proxy-fetch.ts";
 
 const execFile = promisify(execFileCallback);
 export const NETWORK_ACCESS_SCHEMA = "figure-library.network-access.v1" as const;
@@ -14,13 +17,22 @@ export interface NetworkAccessSettings {
 }
 
 export interface NetworkAccessStatus extends NetworkAccessSettings {
+  revision: string;
   detectedProxy: string | null;
   activeProxy: string | null;
   source: "off" | "saved" | "system";
+  configured: boolean;
+  reachable: boolean | null;
+  forwardingTested: boolean | null;
+  scope: "same-user-and-machine";
+  configurationError?: string;
 }
 
 let loaded: NetworkAccessSettings = { schema: NETWORK_ACCESS_SCHEMA, useSystemProxy: false, httpsProxy: "" };
 let detectedCache = "";
+let testOverride = false;
+const defaults: NetworkAccessSettings = { schema: NETWORK_ACCESS_SCHEMA, useSystemProxy: false, httpsProxy: "" };
+const revisionOf = (value: NetworkAccessSettings) => createHash("sha256").update(JSON.stringify(value)).digest("hex");
 
 function configRoot() {
   if (process.platform === "win32") {
@@ -84,11 +96,33 @@ export async function detectSystemHttpProxy(env: NodeJS.ProcessEnv = process.env
 
 export function getActiveHttpsProxy() {
   if (!loaded.useSystemProxy) return undefined;
-  try {
-    return parseLoopbackHttpProxy(loaded.httpsProxy) || detectedCache || undefined;
-  } catch {
-    return detectedCache || undefined;
+  return (loaded.httpsProxy ? parseLoopbackHttpProxy(loaded.httpsProxy) : detectedCache) || undefined;
+}
+
+async function readSettings(): Promise<NetworkAccessSettings> {
+  if (testOverride) return { ...loaded };
+  let raw: Partial<NetworkAccessSettings>;
+  try { raw = JSON.parse(await fs.readFile(networkAccessFile(), "utf8")) as Partial<NetworkAccessSettings>; }
+  catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return { ...defaults };
+    throw error;
   }
+  return {
+    schema: NETWORK_ACCESS_SCHEMA,
+    useSystemProxy: raw.useSystemProxy === true,
+    httpsProxy: raw.httpsProxy === undefined || raw.httpsProxy === null ? "" : String(raw.httpsProxy),
+  };
+}
+
+/** Resolve once at an operation boundary; callers retain this value across redirects. */
+export async function networkProxySnapshot(): Promise<string | undefined> {
+  const settings = await readSettings();
+  loaded = settings;
+  if (!settings.useSystemProxy) return undefined;
+  const proxy = settings.httpsProxy ? parseLoopbackHttpProxy(settings.httpsProxy) : await detectSystemHttpProxy();
+  if (!proxy) throw new Error("Proxy is enabled, but no supported loopback HTTP proxy is configured on this machine");
+  detectedCache = proxy;
+  return proxy;
 }
 
 export function currentNetworkAccess(): NetworkAccessSettings {
@@ -98,57 +132,103 @@ export function currentNetworkAccess(): NetworkAccessSettings {
 async function persist(settings: NetworkAccessSettings) {
   const file = networkAccessFile();
   await fs.mkdir(path.dirname(file), { recursive: true });
-  const staging = `${file}.${Date.now()}.tmp`;
-  await fs.writeFile(staging, `${JSON.stringify(settings, null, 2)}\n`, { flag: "wx" });
-  await fs.rename(staging, file);
+  const staging = `${file}.${randomUUID()}.tmp`;
+  try {
+    await fs.writeFile(staging, `${JSON.stringify(settings, null, 2)}\n`, { flag: "wx", mode: 0o600 });
+    await fs.rename(staging, file);
+  } finally { await fs.rm(staging, { force: true }); }
   loaded = settings;
 }
 
-export async function loadNetworkAccess() {
-  try {
-    const raw = JSON.parse(await fs.readFile(networkAccessFile(), "utf8")) as Partial<NetworkAccessSettings>;
-    loaded = {
-      schema: NETWORK_ACCESS_SCHEMA,
-      useSystemProxy: raw.useSystemProxy === true,
-      httpsProxy: raw.httpsProxy ? parseLoopbackHttpProxy(String(raw.httpsProxy)) : "",
-    };
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
-    loaded = { schema: NETWORK_ACCESS_SCHEMA, useSystemProxy: false, httpsProxy: "" };
+export async function withConfigLock<T>(file: string, action: () => Promise<T>): Promise<T> {
+  await fs.mkdir(path.dirname(file), { recursive: true });
+  const lock = `${file}.lock`;
+  for (let attempt = 0; attempt < 100; attempt++) {
+    try {
+      const handle = await fs.open(lock, "wx", 0o600);
+      try { return await action(); }
+      finally { await handle.close(); await fs.rm(lock, { force: true }); }
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
+      const stat = await fs.stat(lock).catch(() => undefined);
+      if (stat && Date.now() - stat.mtimeMs > 30_000) await fs.rm(lock, { force: true });
+      await new Promise(resolve => setTimeout(resolve, 25 + Math.random() * 25));
+    }
   }
+  throw new Error("Network settings are busy; retry the save");
+}
+
+export async function loadNetworkAccess() {
+  loaded = await readSettings();
   return inspectNetworkAccess();
 }
 
 export async function inspectNetworkAccess(): Promise<NetworkAccessStatus> {
+  loaded = await readSettings();
   const detected = await detectSystemHttpProxy();
   detectedCache = detected;
-  const saved = loaded.httpsProxy ? parseLoopbackHttpProxy(loaded.httpsProxy) : "";
-  const active = !loaded.useSystemProxy ? null : saved || detected || null;
+  let saved = "", configurationError: string | undefined;
+  try { saved = loaded.httpsProxy ? parseLoopbackHttpProxy(loaded.httpsProxy) : ""; }
+  catch (error) { configurationError = error instanceof Error ? error.message : String(error); }
+  const active = !loaded.useSystemProxy || configurationError ? null : saved || detected || null;
   return {
     ...loaded,
+    revision: revisionOf(loaded),
     detectedProxy: detected || null,
     activeProxy: active,
     source: !loaded.useSystemProxy ? "off" : saved ? "saved" : detected ? "system" : "off",
+    configured: loaded.useSystemProxy && Boolean(active),
+    reachable: null,
+    forwardingTested: null,
+    scope: "same-user-and-machine",
+    ...(configurationError ? { configurationError } : {}),
   };
 }
 
-export async function saveNetworkAccess(input: { useSystemProxy?: boolean; httpsProxy?: string }) {
-  const httpsProxy = input.httpsProxy === undefined ? loaded.httpsProxy : parseLoopbackHttpProxy(input.httpsProxy);
-  const useSystemProxy = input.useSystemProxy === true;
-  await persist({ schema: NETWORK_ACCESS_SCHEMA, useSystemProxy, httpsProxy: useSystemProxy ? httpsProxy : httpsProxy });
-  if (useSystemProxy && !httpsProxy) {
-    const detected = await detectSystemHttpProxy();
-    if (detected) await persist({ schema: NETWORK_ACCESS_SCHEMA, useSystemProxy: true, httpsProxy: detected });
-  }
+export async function saveNetworkAccess(input: { useSystemProxy?: boolean; httpsProxy?: string; revision?: string }) {
+  await withConfigLock(networkAccessFile(), async () => {
+    const current = await readSettings();
+    if (input.revision !== undefined && input.revision !== revisionOf(current)) throw new Error("Network settings changed in another process; reload and retry");
+    const httpsProxy = input.httpsProxy === undefined ? current.httpsProxy : parseLoopbackHttpProxy(input.httpsProxy);
+    await persist({ schema: NETWORK_ACCESS_SCHEMA, useSystemProxy: input.useSystemProxy === true, httpsProxy });
+  });
   return inspectNetworkAccess();
 }
 
+/** One bounded, explicit probe to a fixed SFL endpoint; never takes a user URL. */
+export async function testNetworkAccess(): Promise<NetworkAccessStatus & { message: string }> {
+  const status = await inspectNetworkAccess();
+  if (status.useSystemProxy && !status.activeProxy) return { ...status, reachable: false, forwardingTested: false, message: "Enabled proxy has no usable local address" };
+  if (status.activeProxy) {
+    const proxy = new URL(status.activeProxy);
+    status.reachable = await new Promise<boolean>(resolve => {
+      const socket = net.connect({ host: "127.0.0.1", port: Number(proxy.port) || 80 });
+      socket.setTimeout(1500);
+      socket.once("connect", () => { socket.destroy(); resolve(true); });
+      socket.once("timeout", () => { socket.destroy(); resolve(false); });
+      socket.once("error", () => { socket.destroy(); resolve(false); });
+    });
+    if (!status.reachable) return { ...status, forwardingTested: false, message: "Configured local proxy is unreachable" };
+  }
+  try {
+    const response = await fetchWithOptionalProxy("https://api.github.com/repos/xuzhougeng/ScientificFigureLibrary/releases/latest", {
+      redirect: "error", signal: AbortSignal.timeout(8000), headers: { Accept: "application/vnd.github+json", "User-Agent": "ScientificFigureLibrary-network-test" },
+    });
+    status.forwardingTested = response.ok;
+    return { ...status, message: response.ok ? "GitHub release endpoint responded" : `GitHub release endpoint returned HTTP ${response.status}` };
+  } catch (error) {
+    return { ...status, forwardingTested: false, message: error instanceof Error ? error.message : String(error) };
+  }
+}
+
 export function resetNetworkAccessForTests() {
+  testOverride = false;
   loaded = { schema: NETWORK_ACCESS_SCHEMA, useSystemProxy: false, httpsProxy: "" };
   detectedCache = "";
 }
 
 export function setNetworkAccessForTests(settings: { useSystemProxy: boolean; httpsProxy?: string }) {
+  testOverride = true;
   loaded = {
     schema: NETWORK_ACCESS_SCHEMA,
     useSystemProxy: settings.useSystemProxy,

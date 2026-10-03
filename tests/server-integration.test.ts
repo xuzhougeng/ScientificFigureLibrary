@@ -73,6 +73,9 @@ const STANDARD_TOOLS = [
   "figure_library_github_auth_instructions",
   "figure_library_github_auth_status",
   "figure_library_list_provider_sources",
+  "figure_library_network_status",
+  "figure_library_network_test",
+  "figure_library_update_status",
   "figure_library_open",
   "figure_library_plan_adopt_versioning",
   "figure_library_plan_bind_global",
@@ -1014,7 +1017,7 @@ test("standard server unifies Local Published and FigureYa while hiding Working/
       ]);
       assert.deepEqual(
         [...new Set([...alreadyAudited, ...Object.keys(auditArguments)])].sort(),
-        [...STANDARD_TOOLS].sort(),
+        [...STANDARD_TOOLS].filter(name => !["figure_library_network_status", "figure_library_network_test", "figure_library_update_status"].includes(name)).sort(),
       );
       for (const [toolName, arguments_] of Object.entries(auditArguments)) {
         const result = await client.callTool({ name: toolName, arguments: arguments_ });

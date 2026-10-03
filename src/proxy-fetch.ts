@@ -2,7 +2,7 @@ import http from "node:http";
 import https from "node:https";
 import type { IncomingHttpHeaders } from "node:http";
 import tls from "node:tls";
-import { getActiveHttpsProxy, parseLoopbackHttpProxy } from "./network-access.ts";
+import { networkProxySnapshot, parseLoopbackHttpProxy } from "./network-access.ts";
 
 const DEFAULT_TIMEOUT_MS = 60_000;
 const MAX_BYTES = 100 * 1024 * 1024;
@@ -145,7 +145,7 @@ export async function fetchWithOptionalProxy(
   input: string | URL | Request,
   init: RequestInit = {},
 ): Promise<Response> {
-  const proxy = getActiveHttpsProxy();
+  const proxy = await networkProxySnapshot();
   if (!proxy) return fetch(input, init);
   const url = input instanceof Request ? input.url : String(input);
   return fetchViaLoopbackProxy(url, proxy, init);
