@@ -430,6 +430,7 @@ async function loadStatus(force = false) {
   try { await statusPromise; }
   finally { statusPromise = undefined; }
 }
+let networkRevision = "";
 async function refreshStatus() {
   const response = await call("figure_library_source_status");
   if (stopped) return;
@@ -447,6 +448,7 @@ async function refreshStatus() {
   const sourceRows = listedSources(details(await call("figure_library_list_provider_sources")));
   renderSearchProviders(sourceRows);
   const network = await api<Record<string, unknown>>("network-access");
+  networkRevision = String(network.revision ?? "");
   input("use-system-proxy").checked = network.useSystemProxy === true;
   input("https-proxy").value = String(network.httpsProxy || network.detectedProxy || "");
   const source = String(network.source ?? "off");
@@ -455,6 +457,11 @@ async function refreshStatus() {
     : source === "saved"
       ? `当前使用已保存的本机代理 ${String(network.activeProxy ?? "")}。`
       : `当前来自系统设置或环境变量 ${String(network.activeProxy ?? "")}。`;
+  el("network-access-test").textContent = network.configurationError
+    ? `保存的代理地址无效：${String(network.configurationError)}。修正前联网操作会报错。`
+    : network.useSystemProxy === true && !network.activeProxy
+    ? "代理已启用，但没有可用的本地 HTTP 地址；联网操作会报错。"
+    : "已配置不代表连接可用。此用户、此机器上的独立 MCP 进程会在下一次联网操作读取设置；远端或容器进程需单独配置。";
   const cache = await api<Record<string, unknown>>("preview-cache");
   const cacheStatus = await api<{ providers: Record<string, Record<string, unknown>> }>("gallery-cache/status");
   galleryCacheStatuses = cacheStatus.providers ?? {};
@@ -950,6 +957,7 @@ async function saveProxy() {
   const network = await api<Record<string, unknown>>("network-access", {
     useSystemProxy: input("use-system-proxy").checked,
     httpsProxy: input("https-proxy").value.trim(),
+    revision: networkRevision,
   });
   await loadStatus(true);
   notify(network.useSystemProxy === true
@@ -957,6 +965,10 @@ async function saveProxy() {
     : "已关闭系统代理，将直连 GitHub。");
 }
 button("save-proxy").onclick = () => void run(saveProxy, button("save-proxy"));
+button("test-proxy").onclick = () => void run(async () => {
+  const result = await api<Record<string, unknown>>("network-access/test", {});
+  el("network-access-test").textContent = `已配置：${result.configured === true ? "是" : "否"}；本地端口可达：${result.reachable === null ? "未测试" : result.reachable === true ? "是" : "否"}；GitHub 转发：${result.forwardingTested === true ? "通过" : "未通过"}。${result.forwardingTested === true ? "" : String(result.message ?? "")}`;
+}, button("test-proxy"));
 for (const control of [input("use-system-proxy"), input("https-proxy")]) {
   control.addEventListener("input", () => { button("save-proxy").disabled = false; });
   control.addEventListener("change", () => { button("save-proxy").disabled = false; });

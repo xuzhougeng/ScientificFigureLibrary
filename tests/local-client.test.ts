@@ -117,6 +117,13 @@ test("local app HTML exposes dual gallery pagination without a browse-gallery bu
   assert.doesNotMatch(main, /批量缓存参考|缓存所选参考/u);
 });
 
+test("packaged Windows smoke waits for runtime exit before deleting its verified temporary directory", async () => {
+  const source = await fs.readFile(path.resolve(import.meta.dirname, "../scripts/smoke-packaged-local.mjs"), "utf8");
+  assert.match(source, /child\.once\("exit", resolve\)/u);
+  assert.match(source, /child\.once\("error", reject\)/u);
+  assert.match(source, /finally\s*\{[\s\S]*await childExited;[\s\S]*path\.dirname\(await fs\.realpath\(scratch\)\) !== temporaryRoot[\s\S]*await fs\.rm\(scratch/u);
+});
+
 test("bundled runtime lock pins official Linux Node archives", async () => {
   const lock = JSON.parse(await fs.readFile(path.resolve(import.meta.dirname, "../scripts/runtime/node-runtime.json"), "utf8"));
   assert.equal(lock.archives["linux-x64"].file, `node-${lock.version}-linux-x64.tar.gz`);

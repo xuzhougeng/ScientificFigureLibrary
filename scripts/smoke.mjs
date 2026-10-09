@@ -36,6 +36,13 @@ const childEnvironment = Object.fromEntries(
   Object.entries(process.env).filter((entry) => typeof entry[1] === "string"),
 );
 childEnvironment.FIGURE_LIBRARY_DIR = libraryDirectory;
+for (const key of ["HOME", "USERPROFILE", "APPDATA", "LOCALAPPDATA", "XDG_CONFIG_HOME", "XDG_CACHE_HOME", "XDG_DATA_HOME"]) childEnvironment[key] = path.join(smokeRoot, "user-state");
+childEnvironment.SFL_DIAGNOSTICS_DIR = path.join(smokeRoot, "diagnostics");
+childEnvironment.SFL_WORKSPACE_LOCATOR_PATH = path.join(smokeRoot, "user-state", "workspace.json");
+childEnvironment.SFL_PREVIEW_CACHE_DIR = path.join(smokeRoot, "library", "indexes", "preview-cache", "v1");
+childEnvironment.SFL_OPEN_FIGURE_AUTO_REFRESH = "0";
+childEnvironment.SFL_MCP_UPDATE_NOTICES = "0";
+delete childEnvironment.FIGURE_WORKSPACE_DIR;
 
 const client = new Client({ name: "scientific-figure-library-smoke", version: VERSION });
 const transport = new StdioClientTransport({
@@ -84,6 +91,16 @@ try {
   smokeStep = "list-tools";
   const listed = await client.listTools();
   const names = listed.tools.map((tool) => tool.name).sort();
+  const networkResult = await client.callTool({ name: "figure_library_network_status", arguments: {} });
+  const networkStatus = networkResult.structuredContent;
+  assertTextFields(networkResult, ["OUTCOME: ok", "TERMINAL: true", "RETRY_SAME_CALL: false", "CODE: network_status"], "network status");
+  if (networkStatus?.envelope?.schema !== "figure-library.tool-outcome.v1") throw new Error("MCP network status omitted its envelope");
+  if (networkStatus.scope !== "same-user-and-machine" || typeof networkStatus.revision !== "string") throw new Error("MCP network status is incomplete");
+  const updateResult = await client.callTool({ name: "figure_library_update_status", arguments: {} });
+  const updateStatus = updateResult.structuredContent;
+  assertTextFields(updateResult, ["TERMINAL: true", "RETRY_SAME_CALL: false"], "update status");
+  if (updateStatus?.envelope?.schema !== "figure-library.tool-outcome.v1") throw new Error("MCP update status omitted its envelope");
+  if (updateStatus.currentVersion !== VERSION || typeof updateStatus.stale !== "boolean") throw new Error("MCP update status is incomplete");
   const required = [
     "figure_library_open",
     "figure_library_search",
@@ -133,6 +150,9 @@ try {
     "figure_library_plan_template_bundle_import",
     "figure_library_apply_template_bundle_import",
     "figure_library_list_provider_sources",
+    "figure_library_network_status",
+    "figure_library_network_test",
+    "figure_library_update_status",
     "figure_library_plan_provider_source_change",
     "figure_library_apply_provider_source_change",
     "figure_library_plan_publication_export",

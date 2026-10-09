@@ -1,5 +1,64 @@
 # Scientific Figure Library protocol
 
+## 0.9.1 network and MCP update status
+
+The local Settings page saves one machine/user `network-access.json`. An already-running
+stdio MCP process reloads it before each HTTPS operation; one operation retains its
+proxy choice through redirects. Supported proxies remain opt-in, loopback HTTP CONNECT
+only (`127.0.0.1`, `localhost`, or `::1`). A saved address takes precedence over a
+valid environment address and supported system detection. An enabled but invalid,
+missing, or unreachable proxy fails the operation; it does not switch to direct access.
+The page and MCP tools distinguish configuration from a reachable local port and a
+successful request to the fixed GitHub release endpoint. The configuration is shared
+only by processes running as the same user on the same machine; remote and container
+MCP servers have their own configuration. Saves use an atomic file replacement and
+`revision` conflict check. A stale page must reload before retrying a save.
+
+`figure_library_network_status` returns the current configuration and revision;
+`figure_library_network_test` runs a bounded request only to SFL's GitHub releases
+endpoint. Neither accepts a URL. The local HTTP API exposes the same operations at
+`GET /api/network-access` and `POST /api/network-access/test` after session
+authentication. The save endpoint accepts the returned `revision`.
+
+All three MCP diagnostic tools use the standard terminal outcome envelope below.
+Status fields are exposed alongside `structuredContent.envelope`, and the first text
+item includes the terminal fields followed by the status data. Operational failures
+retain that envelope and set `isError: true`; failed diagnostics never consume or
+append an update notice. Inspect `code` once rather than repeating an identical call:
+
+- `network_status` / `network_configuration_invalid` / `network_status_failed`;
+- `network_test_passed` / `network_test_failed`;
+- `update_status` / `update_check_failed` / `update_status_failed`.
+
+The connectivity probe keeps its inspected proxy through the TCP probe and HTTPS
+request. After the optional 1.5-second local-port probe, its 8-second request deadline
+covers CONNECT, TLS, HTTPS headers and the proxied response body. Cancellation closes
+the active sockets in every phase. Other proxy fetches have a 60-second whole-request
+deadline shared across automatic redirects. Gitee's explicit archive redirect shares
+the initial download's proxy snapshot (including direct access) and deadline; changes
+to settings take effect only on the next download operation.
+
+The stdio MCP adapter reads a shared stable GitHub Release cache on startup and may
+append one extra **text content item** to the first successful tool result in a
+session when a fresh cache proves a newer version. It leaves structured content,
+receipts, plans, operation IDs, and authoritative stored results unchanged. Cold or
+stale caches refresh in the background with a bounded timeout; initialization and
+ordinary tool results never wait for GitHub. Successful remote checks expire after
+24 hours and failed checks cool down for one hour. A failed check means unknown,
+not current. The notice includes the running version, latest stable version, verified
+version-specific Release link, and restart guidance. Hosts may choose how to display
+tool text; no popup, automatic install, or stdout log is implied.
+
+`figure_library_update_status` reports the current/latest versions, check time,
+freshness, and Release link. Pass `{ "refresh": true }` for an explicit bounded
+check, including when unsolicited notices are disabled. Set
+`SFL_MCP_UPDATE_NOTICES=0` in the MCP process environment to disable background
+checks and unsolicited notices. The local Web client retains its own update banner.
+If a remote check succeeds but saving its cache fails, the fresh result remains
+available in memory with `cachePersisted: false` and `cachePersistenceError`. This is
+not a failed remote check. Reading status does not discard that result or trigger an
+automatic retry; after restart, a process without the persisted cache may check again.
+
 > Landing page and install: [README.md](../README.md). This file is the full tool contract, safety rules, and Library layout.
 
 
@@ -1017,10 +1076,10 @@ and the Wisp update feed, then uploads them to the GitHub Release. See
 
 The four host archives are:
 
-- `scientific-figure-library-wisp-0.9.0.zip` — install from Wisp **Settings → Plugins**
-- `scientific-figure-library-codex-0.9.0.zip` — Codex plugin with `.codex-plugin/plugin.json`, `.codex-plugin/mcp.json`, and `skills/figure-library`
-- `scientific-figure-library-claude-0.9.0.zip` — Claude Code plugin with `.claude-plugin/plugin.json`, `.claude-plugin/mcp.json`, and auto-discovered `skills/`
-- `scientific-figure-library-cursor-0.9.0.zip` — Cursor plugin with `.cursor-plugin/plugin.json`, plugin-root `mcp.json`, and auto-discovered `skills/`
+- `scientific-figure-library-wisp-0.9.1.zip` — install from Wisp **Settings → Plugins**
+- `scientific-figure-library-codex-0.9.1.zip` — Codex plugin with `.codex-plugin/plugin.json`, `.codex-plugin/mcp.json`, and `skills/figure-library`
+- `scientific-figure-library-claude-0.9.1.zip` — Claude Code plugin with `.claude-plugin/plugin.json`, `.claude-plugin/mcp.json`, and auto-discovered `skills/`
+- `scientific-figure-library-cursor-0.9.1.zip` — Cursor plugin with `.cursor-plugin/plugin.json`, plugin-root `mcp.json`, and auto-discovered `skills/`
 
 Each package uses its Host's plugin-root contract. Codex resolves `cwd: "."`
 from the installed plugin root, Claude expands `${CLAUDE_PLUGIN_ROOT}`, Cursor
@@ -1044,7 +1103,7 @@ Build a standalone npm package:
 
 ```bash
 npm run package:npm
-npm install --global ./release/scientific-figure-library-0.9.0.tgz
+npm install --global ./release/scientific-figure-library-0.9.1.tgz
 ```
 
 Use `scientific-figure-library` as the MCP command after installation.
@@ -1102,7 +1161,7 @@ npm run package:source-pack -- \
 
 The helper verifies selected ZIP identities and caps a transport pack at 200
 MiB. Extract the resulting
-`release/figure-library-source-pack-volcano-0.9.0.zip` before use.
+`release/figure-library-source-pack-volcano-0.9.1.zip` before use.
 
 ## Catalog development
 
@@ -1141,7 +1200,7 @@ and exact inventory before atomically replacing `assets/community`. The source
 checkout and target must be separate directory trees. Packaging has an
 additional final-release gate that requires the three reviewed 1.0.0 seed
 releases; the empty bootstrap snapshot is valid for development tests but
-cannot be packaged as the 0.9.0 release.
+cannot be packaged as the 0.9.1 release.
 
 ## Markdown descriptions and bundled Skills
 

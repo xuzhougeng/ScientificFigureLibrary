@@ -8,6 +8,11 @@ on:
   merge_group:
     types: [checks_requested]
   workflow_dispatch:
+    inputs:
+      package_release:
+        description: Build and verify every release package without publishing
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -112,3 +117,11 @@ jobs:
             Write-Error "Test/build matrix: $env:TEST_BUILD_RESULT"
             exit 1
           }
+
+  package-release:
+    name: Validate release packages (no publish)
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.package_release }}
+    needs: [ci-required]
+    uses: ./.github/workflows/package-validation.yml
+    permissions:
+      contents: read

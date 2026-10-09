@@ -30,6 +30,10 @@ const digest = (value: Uint8Array | string) => createHash("sha256").update(value
 const sourceCommit = "1".repeat(40);
 const archiveCommit = "2".repeat(40);
 
+// Standalone targeted runs must not resolve the real user's saved proxy.
+test.beforeEach(() => setNetworkAccessForTests({ useSystemProxy: false }));
+test.afterEach(() => resetNetworkAccessForTests());
+
 function fixtureArchive() {
   const files: Record<string, Uint8Array> = {
     "README.md": strToU8("# Fixture\n"),
@@ -394,7 +398,7 @@ test("Open Modules prefers the global Gitee mirror, persists the archive, and re
   assert.equal(observed.length, 1);
 });
 
-test("Open Modules accepts Gitee's signed raw.giteeusercontent redirect without weakening GitHub policy", async (t) => {
+test("Open Modules retains its direct proxy snapshot across Gitee's signed redirect when settings change", async (t) => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), "sfl-open-modules-redirect-"));
   t.after(() => fs.rm(root, { recursive: true, force: true }));
   const assets = path.join(root, "assets");
@@ -415,12 +419,26 @@ test("Open Modules accepts Gitee's signed raw.giteeusercontent redirect without 
   );
   const index = await ModuleCatalogIndex.load(assets, { expectedProviderId: PERSONAL_MODULE_PROVIDER_ID });
   const previousFetch = globalThis.fetch;
-  const observed: Array<{ url: string; redirect: RequestRedirect | undefined }> = [];
+  const observed: Array<{ url: string; redirect: RequestRedirect | undefined; signal: AbortSignal | null | undefined }> = [];
+  let proxyCalls = 0;
+  const proxy = http.createServer();
+  proxy.on("connect", (_request, socket) => {
+    proxyCalls++;
+    socket.end("HTTP/1.1 502 Bad Gateway\r\nConnection: close\r\n\r\n");
+  });
+  await new Promise<void>(resolve => proxy.listen(0, "127.0.0.1", resolve));
+  const proxyUrl = `http://127.0.0.1:${(proxy.address() as AddressInfo).port}`;
+  setNetworkAccessForTests({ useSystemProxy: false });
+  t.after(async () => {
+    resetNetworkAccessForTests();
+    await new Promise<void>(resolve => proxy.close(() => resolve()));
+  });
   const signedUrl = `https://raw.giteeusercontent.com/example/ScientificFigureLibrary-personal/raw/${archiveCommit}/archives/materialize-module-fixture.zip?metadata=signed&signature=test`;
   globalThis.fetch = (async (input: string | URL | Request, init?: RequestInit) => {
     const url = String(input);
-    observed.push({ url, redirect: init?.redirect });
+    observed.push({ url, redirect: init?.redirect, signal: init?.signal });
     if (url.startsWith("https://gitee.com/")) {
+      setNetworkAccessForTests({ useSystemProxy: true, httpsProxy: proxyUrl });
       return new Response(null, { status: 302, headers: { location: signedUrl } });
     }
     assert.equal(url, signedUrl);
@@ -444,6 +462,16 @@ test("Open Modules accepts Gitee's signed raw.giteeusercontent redirect without 
   });
   assert.equal(result.transportSource, "gitee-mirror");
   assert.deepEqual(observed.map((item) => item.redirect), ["manual", "error"]);
+  assert.ok(observed[0]?.signal);
+  assert.equal(observed[0]?.signal, observed[1]?.signal, "manual redirect must share the original download deadline");
+  assert.equal(proxyCalls, 0, "the redirect must keep the operation's explicit direct snapshot");
+  // A separate download, unlike the redirect, must see the newly enabled proxy.
+  await assert.rejects(materializeModuleTemplate({
+    providerId: PERSONAL_MODULE_PROVIDER_ID, index, module: fixture.module,
+    destination: path.join(root, "next-output"), mode: "template",
+    sourcePackDir: path.join(root, "next-source-pack"), allowNetwork: true,
+  }), /proxy CONNECT failed with status 502/u);
+  assert.ok(proxyCalls > 0);
 });
 
 test("Open Modules falls back from a mismatched Gitee archive to the canonical GitHub archive", async (t) => {

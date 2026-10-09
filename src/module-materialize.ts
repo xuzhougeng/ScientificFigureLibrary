@@ -30,6 +30,7 @@ import type {
   StoredFile,
 } from "./types.ts";
 import { fetchWithOptionalProxy } from "./proxy-fetch.ts";
+import { networkProxySnapshot } from "./network-access.ts";
 import { VERSION } from "./version.ts";
 
 export type ModuleMaterializationMode = "template" | "full";
@@ -753,8 +754,11 @@ async function download(source: ArchiveTransportSource, module: ModuleCatalogEnt
   const url = renderArchiveTransportUrl(source, module);
   const requestedUrl = new URL(url);
   const redirectPolicy = source.kind === "gitee-mirror" ? "manual" : "error";
+  const signal = AbortSignal.timeout(60_000);
+  let proxySnapshot: { proxy: string | undefined };
   let response: Response;
   try {
+    proxySnapshot = { proxy: await networkProxySnapshot() };
     response = await fetchWithOptionalProxy(url, {
       // GitHub must serve the fixed raw URL directly. Gitee's raw endpoint
       // intentionally redirects once to its signed raw.giteeusercontent.com
@@ -762,9 +766,9 @@ async function download(source: ArchiveTransportSource, module: ModuleCatalogEnt
       // allow-list rather than delegated to fetch. When a loopback proxy is
       // saved in Settings, this path uses HTTP CONNECT instead of direct fetch.
       redirect: redirectPolicy,
-      signal: AbortSignal.timeout(60_000),
+      signal,
       headers: { "user-agent": `Scientific-Figure-Library/${VERSION}` },
-    });
+    }, proxySnapshot);
   } catch (error) {
     const cause =
       error instanceof Error && error.cause instanceof Error ? `: ${error.cause.message}` : "";
@@ -797,9 +801,9 @@ async function download(source: ArchiveTransportSource, module: ModuleCatalogEnt
     try {
       response = await fetchWithOptionalProxy(redirectUrl.href, {
         redirect: "error",
-        signal: AbortSignal.timeout(60_000),
+        signal,
         headers: { "user-agent": `Scientific-Figure-Library/${VERSION}` },
-      });
+      }, proxySnapshot);
     } catch (error) {
       const cause =
         error instanceof Error && error.cause instanceof Error ? `: ${error.cause.message}` : "";

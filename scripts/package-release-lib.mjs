@@ -51,6 +51,9 @@ export const STANDARD_TOOL_NAMES = Object.freeze([
   "figure_library_github_auth_instructions",
   "figure_library_github_auth_status",
   "figure_library_list_provider_sources",
+  "figure_library_network_status",
+  "figure_library_network_test",
+  "figure_library_update_status",
   "figure_library_open",
   "figure_library_plan_adopt_versioning",
   "figure_library_plan_bind_global",
@@ -89,6 +92,7 @@ const PRIVATE_KEY_PEM = /-----BEGIN (?:OPENSSH |EC |RSA )?PRIVATE KEY-----/u;
 const GITHUB_TOKEN = /(?:^|[^A-Za-z0-9_])(?:gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,})/u;
 const FORBIDDEN_STATE_PATHS = [
   /(?:^|\/)(?:locator|workspace-locator)\.json$/iu,
+  /(?:^|\/)(?:network-access|mcp-update-cache)\.json$/iu,
   /(?:^|\/)provider-sources\.json$/iu,
   /(?:^|\/)provider-sources(?:\/|$)/iu,
   /(?:^|\/)github-publication-receipts(?:\/|$)/iu,
