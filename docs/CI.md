@@ -43,6 +43,23 @@ checkout 单独固定 LF，避免改变已提交快照的字节；临时目录�
 Dependabot 和依赖安全审计不在该工作流中。面向 `main` 的 [本地客户端打包](../.github/workflows/local-clients.yml) 只上传 Actions artifacts，不创建 GitHub Release。
 MCP smoke 验证服务协议流程，不代表真实桌面宿主安装/交互验收，也不执行用户绘图代码。
 
+## 发布前全量打包验证（不发布）
+
+手动运行 **SFL CI** 时，可将 `package_release` 设为 `true`。默认关闭，普通 PR、
+main 推送和合并队列检查不会因此额外打包。四个测试矩阵全部通过后，调用
+[打包验证工作流](../.github/workflows/package-validation.yml)，在同一精确提交上运行：
+
+- `package:plugins` 和 `package:npm`，包括四种宿主插件的解包、清单及 MCP smoke。
+- 正式发布使用的本地客户端工作流：Windows x64、Linux x64/arm64、macOS arm64/x64，
+  每个平台均构建内置 Node / `no-node` 两种包，并运行对应平台的安装包或原生 smoke。
+- 正式发布使用的 `prepareGitHubRelease`：严格检查完整的 31 个文件、SHA-256 sidecar、
+  Wisp 更新 feed 和双语 Release notes，并生成来源提交与文件清单报告。
+
+结果仅保存为 `validated-release-candidate` 与 `release-validation-report` Actions artifacts。
+此流程只有仓库读取权限，不创建标签、不创建或更新 GitHub Release，也不发布 npm。
+候选包沿用源码版本号；若尚未升版，不能将它覆盖到同版本的正式 Release。
+它不替代发布前的版本/标签一致性检查，也不代表真实用户设备或宿主界面已人工验收。
+
 ## GitHub Release
 
 推送稳定标签 `vX.Y.Z`（或对已有标签手动运行）会触发

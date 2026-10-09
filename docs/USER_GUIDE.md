@@ -610,4 +610,18 @@ Favorites are stored in the machine-local user configuration, survive restarts a
 
 ## Client updates
 
+External MCP clients can inspect shared same-user/machine proxy settings with
+`figure_library_network_status`, probe the fixed SFL GitHub release endpoint with
+`figure_library_network_test`, and read or explicitly refresh the stable release
+cache with `figure_library_update_status` (`{ "refresh": true }`). All three return
+the standard terminal envelope and structured status even on operational failures;
+inspect the error code rather than repeating an unchanged failed call. The HTTPS
+probe has an eight-second deadline across CONNECT, TLS and the proxied response
+body, after an optional local-port probe of up to 1.5 seconds. Gitee archive redirects
+retain one proxy snapshot and download deadline. A fresh release check remains
+available in memory if cache persistence fails (`cachePersisted: false`); that warning
+is separate from a network failure. `SFL_MCP_UPDATE_NOTICES=0` disables background
+checks and unsolicited notices, but not explicit checks. Updates remain manual and
+require restarting the MCP process.
+
 The local client checks the latest official stable release in the background after connecting. When an update is available, open the release page from the banner or dismiss it for the current session. In Settings → Client updates, view the running version and check again manually. Network failures appear in settings and can be retried after checking the network or proxy. Choose the appropriate platform and architecture on the release page and install manually; the check does not download packages or migrate your library.

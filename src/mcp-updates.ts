@@ -13,6 +13,7 @@ export type McpUpdateStatus = {
   currentVersion: string; latestVersion: string | null; releaseUrl: string | null;
   checkedAt: string | null; checkStatus: "fresh" | "stale" | "error" | "unchecked";
   stale: boolean; noticesEnabled: boolean; message?: string;
+  cachePersisted?: boolean; cachePersistenceError?: string;
 };
 
 function cacheFile() { return path.join(path.dirname(networkAccessFile()), "mcp-update-cache.json"); }
@@ -58,10 +59,16 @@ export function createMcpUpdateMonitor(options: {
   let cached: Cache | undefined;
   let pending: Promise<McpUpdateStatus> | undefined;
   let announcedVersion = "";
+  let cachePersisted: boolean | undefined;
+  let cachePersistenceError: string | undefined;
   const file = options.cachePath ?? cacheFile();
   async function load() {
-    try { cached = parseCache(JSON.parse(await fs.readFile(file, "utf8")) as unknown); }
-    catch { cached = undefined; }
+    try {
+      const disk = parseCache(JSON.parse(await fs.readFile(file, "utf8")) as unknown);
+      if (disk && (!cached || Date.parse(disk.checkedAt) > Date.parse(cached.checkedAt))) {
+        cached = disk; cachePersisted = true; cachePersistenceError = undefined;
+      }
+    } catch { /* Keep a fresh in-memory result when persistence is unavailable. */ }
   }
   function status(): McpUpdateStatus {
     const age = cached ? now() - Date.parse(cached.checkedAt) : Infinity;
@@ -71,6 +78,8 @@ export function createMcpUpdateMonitor(options: {
       checkedAt: cached?.checkedAt ?? null,
       checkStatus: !cached ? "unchecked" : cached.error ? "error" : stale ? "stale" : "fresh",
       stale, noticesEnabled, ...(cached?.error ? { message: cached.error } : {}),
+      ...(cachePersisted === undefined ? {} : { cachePersisted }),
+      ...(cachePersistenceError ? { cachePersistenceError } : {}),
     };
   }
   function refresh(force = false): Promise<McpUpdateStatus> {
@@ -82,13 +91,19 @@ export function createMcpUpdateMonitor(options: {
         ? { source: SOURCE, checkedAt: result.checkedAt, error: result.message }
         : { source: SOURCE, checkedAt: result.checkedAt, latestVersion: result.latestVersion, releaseUrl: result.releaseUrl };
       cached = value;
-      if (file === cacheFile()) await writeCache(value);
-      else {
-        await withConfigLock(file, async () => {
-          const stage = `${file}.${randomUUID()}.tmp`;
-          try { await fs.writeFile(stage, `${JSON.stringify(value)}\n`, { flag: "wx", mode: 0o600 }); await fs.rename(stage, file); }
-          finally { await fs.rm(stage, { force: true }); }
-        });
+      try {
+        if (file === cacheFile()) await writeCache(value);
+        else {
+          await withConfigLock(file, async () => {
+            const stage = `${file}.${randomUUID()}.tmp`;
+            try { await fs.writeFile(stage, `${JSON.stringify(value)}\n`, { flag: "wx", mode: 0o600 }); await fs.rename(stage, file); }
+            finally { await fs.rm(stage, { force: true }); }
+          });
+        }
+        cachePersisted = true; cachePersistenceError = undefined;
+      } catch (error) {
+        cachePersisted = false;
+        cachePersistenceError = error instanceof Error ? error.message : String(error);
       }
       return status();
     })().finally(() => { pending = undefined; });

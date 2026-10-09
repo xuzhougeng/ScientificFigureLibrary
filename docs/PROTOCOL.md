@@ -20,6 +20,24 @@ endpoint. Neither accepts a URL. The local HTTP API exposes the same operations 
 `GET /api/network-access` and `POST /api/network-access/test` after session
 authentication. The save endpoint accepts the returned `revision`.
 
+All three MCP diagnostic tools use the standard terminal outcome envelope below.
+Status fields are exposed alongside `structuredContent.envelope`, and the first text
+item includes the terminal fields followed by the status data. Operational failures
+retain that envelope and set `isError: true`; failed diagnostics never consume or
+append an update notice. Inspect `code` once rather than repeating an identical call:
+
+- `network_status` / `network_configuration_invalid` / `network_status_failed`;
+- `network_test_passed` / `network_test_failed`;
+- `update_status` / `update_check_failed` / `update_status_failed`.
+
+The connectivity probe keeps its inspected proxy through the TCP probe and HTTPS
+request. After the optional 1.5-second local-port probe, its 8-second request deadline
+covers CONNECT, TLS, HTTPS headers and the proxied response body. Cancellation closes
+the active sockets in every phase. Other proxy fetches have a 60-second whole-request
+deadline shared across automatic redirects. Gitee's explicit archive redirect shares
+the initial download's proxy snapshot (including direct access) and deadline; changes
+to settings take effect only on the next download operation.
+
 The stdio MCP adapter reads a shared stable GitHub Release cache on startup and may
 append one extra **text content item** to the first successful tool result in a
 session when a fresh cache proves a newer version. It leaves structured content,
@@ -36,6 +54,10 @@ freshness, and Release link. Pass `{ "refresh": true }` for an explicit bounded
 check, including when unsolicited notices are disabled. Set
 `SFL_MCP_UPDATE_NOTICES=0` in the MCP process environment to disable background
 checks and unsolicited notices. The local Web client retains its own update banner.
+If a remote check succeeds but saving its cache fails, the fresh result remains
+available in memory with `cachePersisted: false` and `cachePersistenceError`. This is
+not a failed remote check. Reading status does not discard that result or trigger an
+automatic retry; after restart, a process without the persisted cache may check again.
 
 > Landing page and install: [README.md](../README.md). This file is the full tool contract, safety rules, and Library layout.
 

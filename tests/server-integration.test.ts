@@ -14,6 +14,7 @@ import {
 } from "../src/providers.ts";
 import { COMMUNITY_PROVIDER_ID } from "../src/public-catalog-provider.ts";
 import { createServer } from "../src/server.ts";
+import { createMcpUpdateMonitor } from "../src/mcp-updates.ts";
 import { VERSION } from "../src/version.ts";
 import { SFL_WEBSITE_URL } from "../src/brand.ts";
 import {
@@ -224,7 +225,7 @@ test("standard server unifies Local Published and FigureYa while hiding Working/
     );
 
     process.env.FIGURE_LIBRARY_DIR = libraryRoot;
-    const server = await createServer();
+    const server = await createServer({ updateMonitor: createMcpUpdateMonitor({ noticesEnabled: false }) });
     // Simulate an Apps-capable Host such as Wisp. The iframe-level Host may
     // still omit serverTools, so updateModelContext must be able to hand the
     // selected candidate to the model-visible headless preview/confirm tools.
@@ -873,6 +874,9 @@ test("standard server unifies Local Published and FigureYa while hiding Working/
         operationId: "anti-loop-audit",
       };
       const auditArguments: Record<string, Record<string, unknown>> = {
+        figure_library_network_status: {},
+        figure_library_network_test: {},
+        figure_library_update_status: {},
         figure_library_plan_publish: { working: { templateId: "missing-template", revisionId: "missing-revision", contentDigest: hash, reviewDigest: hash } },
         figure_library_apply_publish: { planDigest: hash, operationId: "anti-loop-unified" },
         figure_library_get_skill: { document: "missing.md" },
@@ -1017,11 +1021,15 @@ test("standard server unifies Local Published and FigureYa while hiding Working/
       ]);
       assert.deepEqual(
         [...new Set([...alreadyAudited, ...Object.keys(auditArguments)])].sort(),
-        [...STANDARD_TOOLS].filter(name => !["figure_library_network_status", "figure_library_network_test", "figure_library_update_status"].includes(name)).sort(),
+        [...STANDARD_TOOLS].sort(),
       );
       for (const [toolName, arguments_] of Object.entries(auditArguments)) {
-        const result = await client.callTool({ name: toolName, arguments: arguments_ });
-        assertTerminalEnvelope(result, toolName);
+        const previousFetch = globalThis.fetch;
+        try {
+          if (toolName === "figure_library_network_test") globalThis.fetch = async () => new Response("fixture");
+          const result = await client.callTool({ name: toolName, arguments: arguments_ });
+          assertTerminalEnvelope(result, toolName);
+        } finally { globalThis.fetch = previousFetch; }
       }
       for (const [toolName, result] of [
         ["figure_library_confirm_selection", appConfirmation],

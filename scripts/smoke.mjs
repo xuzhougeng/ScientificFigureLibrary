@@ -91,9 +91,15 @@ try {
   smokeStep = "list-tools";
   const listed = await client.listTools();
   const names = listed.tools.map((tool) => tool.name).sort();
-  const networkStatus = JSON.parse(text(await client.callTool({ name: "figure_library_network_status", arguments: {} })));
+  const networkResult = await client.callTool({ name: "figure_library_network_status", arguments: {} });
+  const networkStatus = networkResult.structuredContent;
+  assertTextFields(networkResult, ["OUTCOME: ok", "TERMINAL: true", "RETRY_SAME_CALL: false", "CODE: network_status"], "network status");
+  if (networkStatus?.envelope?.schema !== "figure-library.tool-outcome.v1") throw new Error("MCP network status omitted its envelope");
   if (networkStatus.scope !== "same-user-and-machine" || typeof networkStatus.revision !== "string") throw new Error("MCP network status is incomplete");
-  const updateStatus = JSON.parse(text(await client.callTool({ name: "figure_library_update_status", arguments: {} })));
+  const updateResult = await client.callTool({ name: "figure_library_update_status", arguments: {} });
+  const updateStatus = updateResult.structuredContent;
+  assertTextFields(updateResult, ["TERMINAL: true", "RETRY_SAME_CALL: false"], "update status");
+  if (updateStatus?.envelope?.schema !== "figure-library.tool-outcome.v1") throw new Error("MCP update status omitted its envelope");
   if (updateStatus.currentVersion !== VERSION || typeof updateStatus.stale !== "boolean") throw new Error("MCP update status is incomplete");
   const required = [
     "figure_library_open",

@@ -57,7 +57,7 @@ test("concurrent MCP results append exactly one additional text item without cha
   const root = await fs.mkdtemp(path.join(os.tmpdir(), "sfl-mcp-notice-"));
   t.after(() => fs.rm(root, { recursive: true, force: true }));
   const monitor = createMcpUpdateMonitor({
-    currentVersion: "0.9.0", cachePath: path.join(root, "cache.json"),
+    currentVersion: "0.9.0", cachePath: path.join(root, "cache.json"), noticesEnabled: true,
     checker: createClientUpdateChecker({ currentVersion: "0.9.0", fetch: async () => release() }),
   });
   await monitor.load(); await monitor.refresh(true);

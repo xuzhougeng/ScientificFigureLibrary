@@ -18,6 +18,11 @@ Release cache, freshness, and exact Release link; `{ "refresh": true }` checks
 manually. A new-version notice may appear as one additional text item on a
 successful tool result; keep the structured result authoritative. Updating is
 manual and requires restarting the MCP process.
+These three tools return the standard terminal envelope and status fields in
+`structuredContent`. Read `envelope.code`, `terminal`, and `retrySameCall` before
+acting; do not repeat a failed diagnostic unchanged. A fresh update result with
+`cachePersisted: false` is still valid for this process; report its cache warning
+separately instead of treating the network check as failed.
 
 ## Load only the guidance needed
 

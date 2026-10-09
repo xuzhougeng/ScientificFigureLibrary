@@ -1,0 +1,122 @@
+name: Release package validation (no publish)
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+env:
+  CI: "true"
+  SFL_OPEN_FIGURE_AUTO_REFRESH: "0"
+  SFL_MCP_UPDATE_NOTICES: "0"
+
+jobs:
+  plugins:
+    name: Package four host plugins and npm
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        env:
+          GIT_CONFIG_COUNT: "2"
+          GIT_CONFIG_KEY_0: core.autocrlf
+          GIT_CONFIG_VALUE_0: "false"
+          GIT_CONFIG_KEY_1: core.eol
+          GIT_CONFIG_VALUE_1: lf
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: "22"
+          cache: npm
+      - name: Isolate application state
+        run: |
+          root="$RUNNER_TEMP/sfl-package-validation"
+          mkdir -p "$root/config" "$root/cache" "$root/data" "$root/tmp"
+          {
+            echo "XDG_CONFIG_HOME=$root/config"
+            echo "XDG_CACHE_HOME=$root/cache"
+            echo "XDG_DATA_HOME=$root/data"
+            echo "TMPDIR=$root/tmp"
+          } >> "$GITHUB_ENV"
+      - run: npm ci
+      - run: npm run package:plugins
+      - run: npm run package:npm
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: package-validation-plugins-and-npm
+          path: |
+            release/scientific-figure-library-*.zip
+            release/scientific-figure-library-*.tgz
+            release/scientific-figure-library-*.sha256
+            release/scientific-figure-library-wisp-update.json
+          compression-level: 0
+          if-no-files-found: error
+
+  local-clients:
+    name: Package and smoke all local clients
+    uses: ./.github/workflows/local-clients.yml
+    with:
+      ref: ${{ github.sha }}
+    permissions:
+      contents: read
+
+  verify:
+    name: Verify complete release inventory without publishing
+    needs: [plugins, local-clients]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        env:
+          GIT_CONFIG_COUNT: "2"
+          GIT_CONFIG_KEY_0: core.autocrlf
+          GIT_CONFIG_VALUE_0: "false"
+          GIT_CONFIG_KEY_1: core.eol
+          GIT_CONFIG_VALUE_1: lf
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          path: release-assets
+          merge-multiple: true
+      - name: Rehearse the release inventory, checksums, Wisp feed and notes
+        run: |
+          node --input-type=module <<'JS'
+          import fs from "node:fs/promises";
+          import { prepareGitHubRelease, releaseNotesPath } from "./scripts/github-release.mjs";
+          const { version } = JSON.parse(await fs.readFile("package.json", "utf8"));
+          const verified = await prepareGitHubRelease({
+            directory: "release-assets", version, tagSha: process.env.GITHUB_SHA,
+            repository: process.env.GITHUB_REPOSITORY,
+            notesFile: releaseNotesPath(version), outDir: "release-validation",
+          });
+          const report = {
+            schema: "figure-library.package-validation.v1",
+            sourceCommit: process.env.GITHUB_SHA, ref: process.env.GITHUB_REF,
+            runId: process.env.GITHUB_RUN_ID, version,
+            packagingOnly: true, tagCreated: false, releasePublished: false, npmPublished: false,
+            files: verified.files, sizes: verified.sizes,
+          };
+          await fs.writeFile("release-validation/verification.json", JSON.stringify(report, null, 2) + "\n");
+          console.log(`Verified ${verified.files.length} release files for ${report.sourceCommit}; no publication performed.`);
+          JS
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: validated-release-candidate
+          path: release-assets/
+          compression-level: 0
+          if-no-files-found: error
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: release-validation-report
+          path: release-validation/
+          if-no-files-found: error

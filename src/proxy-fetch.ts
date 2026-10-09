@@ -1,6 +1,7 @@
 import http from "node:http";
 import https from "node:https";
 import type { IncomingHttpHeaders } from "node:http";
+import type { Duplex } from "node:stream";
 import tls from "node:tls";
 import { networkProxySnapshot, parseLoopbackHttpProxy } from "./network-access.ts";
 
@@ -31,44 +32,58 @@ function httpsGetViaConnect(url: string, proxyHref: string, init: RequestInit): 
   const target = new URL(url);
   if (target.protocol !== "https:") throw new Error("proxy fetch only supports https:// URLs");
   const proxy = new URL(parseLoopbackHttpProxy(proxyHref));
-  const timeoutMs = DEFAULT_TIMEOUT_MS;
   const headers = headerRecord(init);
   const port = target.port ? Number(target.port) : 443;
   const connectAuthority = `${target.hostname}:${port}`;
 
   return new Promise((resolve, reject) => {
     let settled = false;
-    const finish = (callback: () => void) => {
+    let connect: http.ClientRequest | undefined;
+    let tunnel: Duplex | undefined;
+    let tlsSocket: tls.TLSSocket | undefined;
+    let request: http.ClientRequest | undefined;
+    let incoming: http.IncomingMessage | undefined;
+    // CONNECT hands its socket to TLS. Destroying only the original HTTP
+    // request cannot cancel a stalled TLS handshake after that hand-off.
+    const finish = (error?: Error, response?: Response) => {
       if (settled) return;
       settled = true;
-      init.signal?.removeEventListener("abort", abortConnect);
-      callback();
+      init.signal?.removeEventListener("abort", abort);
+      incoming?.destroy();
+      request?.destroy();
+      tlsSocket?.destroy();
+      tunnel?.destroy();
+      connect?.destroy();
+      if (error) reject(error); else resolve(response!);
     };
-    const connect = http.request({
+    const abort = () => finish(new Error("proxy fetch was aborted", { cause: init.signal?.reason }));
+    if (init.signal?.aborted) { abort(); return; }
+    init.signal?.addEventListener("abort", abort, { once: true });
+    connect = http.request({
       host: "127.0.0.1",
       port: Number(proxy.port) || 80,
       method: "CONNECT",
       path: connectAuthority,
       headers: { Host: connectAuthority },
-      timeout: timeoutMs,
     });
-    const abortConnect = () => connect.destroy(new Error("proxy fetch was aborted"));
-    init.signal?.addEventListener("abort", abortConnect, { once: true });
-    if (init.signal?.aborted) abortConnect();
 
     connect.on("connect", (response, socket, head) => {
+      if (settled) { socket.destroy(); return; }
+      tunnel = socket;
+      socket.on("error", error => finish(error));
+      socket.once("close", () => finish(new Error("proxy tunnel closed before completion")));
       if ((response.statusCode ?? 0) !== 200) {
-        socket.destroy();
-        finish(() => reject(new Error(`proxy CONNECT failed with status ${response.statusCode}`)));
+        finish(new Error(`proxy CONNECT failed with status ${response.statusCode}`));
         return;
       }
       if (head.length) socket.unshift(head);
-      const tlsSocket = tls.connect({ socket, servername: target.hostname }, () => {
-        const request = https.request(
+      tlsSocket = tls.connect({ socket, servername: target.hostname }, () => {
+        if (settled) return;
+        request = https.request(
           target,
           {
             method: "GET",
-            createConnection: () => tlsSocket,
+            createConnection: () => tlsSocket!,
             headers: {
               Accept: "application/octet-stream, */*",
               "Accept-Encoding": "identity",
@@ -76,49 +91,53 @@ function httpsGetViaConnect(url: string, proxyHref: string, init: RequestInit): 
               ...headers,
             },
           },
-          (incoming) => {
+          (response) => {
+            if (settled) { response.destroy(); return; }
+            incoming = response;
             const chunks: Buffer[] = [];
             let bytes = 0;
             let ended = false;
             incoming.on("data", (chunk: Buffer) => {
               bytes += chunk.byteLength;
               if (bytes > MAX_BYTES) {
-                request.destroy(new Error("downloaded archive exceeds 100 MiB"));
+                finish(new Error("downloaded archive exceeds 100 MiB"));
                 return;
               }
               chunks.push(Buffer.from(chunk));
             });
             incoming.on("end", () => {
               ended = true;
-              finish(() => resolve(nodeResponse(
-                incoming.statusCode ?? 0,
-                incoming.headers,
-                new Uint8Array(Buffer.concat(chunks)),
-              )));
+              try {
+                finish(undefined, nodeResponse(response.statusCode ?? 0, response.headers, new Uint8Array(Buffer.concat(chunks))));
+              } catch (error) { finish(error instanceof Error ? error : new Error(String(error))); }
             });
-            incoming.on("error", (error) => finish(() => reject(error)));
+            incoming.on("error", (error) => finish(error));
             incoming.on("close", () => {
-              if (!ended) finish(() => reject(new Error("proxy fetch response closed before completion")));
+              if (!ended) finish(new Error("proxy fetch response closed before completion"));
             });
           },
         );
-        const abortRequest = () => request.destroy(new Error("proxy fetch was aborted"));
-        init.signal?.addEventListener("abort", abortRequest, { once: true });
-        request.setTimeout(timeoutMs, () => {
-          request.destroy(new Error(`proxy fetch timed out after ${timeoutMs}ms`));
-        });
-        request.on("error", (error) => finish(() => reject(error)));
+        request.on("error", (error) => finish(error));
         request.end();
       });
-      tlsSocket.on("error", (error) => finish(() => reject(error)));
+      tlsSocket.on("error", (error) => finish(error));
+      tlsSocket.once("close", () => finish(new Error("proxy TLS connection closed before completion")));
     });
-    connect.on("timeout", () => connect.destroy(new Error(`proxy fetch timed out after ${timeoutMs}ms`)));
-    connect.on("error", (error) => finish(() => reject(error)));
+    connect.on("error", (error) => finish(error));
     connect.end();
   });
 }
 
 async function fetchViaLoopbackProxy(url: string, proxyHref: string, init: RequestInit): Promise<Response> {
+  const deadline = new AbortController();
+  const timer = setTimeout(() => deadline.abort(new Error(`proxy fetch timed out after ${DEFAULT_TIMEOUT_MS}ms`)), DEFAULT_TIMEOUT_MS);
+  const signal = init.signal ? AbortSignal.any([init.signal, deadline.signal]) : deadline.signal;
+  try {
+    return await followProxyRedirects(url, proxyHref, { ...init, signal });
+  } finally { clearTimeout(timer); }
+}
+
+async function followProxyRedirects(url: string, proxyHref: string, init: RequestInit): Promise<Response> {
   const redirect = init.redirect ?? "follow";
   const visited = new Set<string>();
   let current = url;
@@ -144,9 +163,13 @@ async function fetchViaLoopbackProxy(url: string, proxyHref: string, init: Reque
 export async function fetchWithOptionalProxy(
   input: string | URL | Request,
   init: RequestInit = {},
+  snapshot?: { proxy: string | undefined },
 ): Promise<Response> {
-  const proxy = await networkProxySnapshot();
+  // An explicit undefined proxy means the operation selected direct access;
+  // it must not be confused with a missing snapshot and re-read mid-redirect.
+  const proxy = snapshot ? snapshot.proxy : await networkProxySnapshot();
   if (!proxy) return fetch(input, init);
   const url = input instanceof Request ? input.url : String(input);
-  return fetchViaLoopbackProxy(url, proxy, init);
+  const signal = init.signal === undefined && input instanceof Request ? input.signal : init.signal;
+  return fetchViaLoopbackProxy(url, proxy, { ...init, signal });
 }

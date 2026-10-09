@@ -213,8 +213,9 @@ export async function testNetworkAccess(): Promise<NetworkAccessStatus & { messa
   try {
     const response = await fetchWithOptionalProxy("https://api.github.com/repos/xuzhougeng/ScientificFigureLibrary/releases/latest", {
       redirect: "error", signal: AbortSignal.timeout(8000), headers: { Accept: "application/vnd.github+json", "User-Agent": "ScientificFigureLibrary-network-test" },
-    });
+    }, { proxy: status.activeProxy ?? undefined });
     status.forwardingTested = response.ok;
+    await response.body?.cancel();
     return { ...status, message: response.ok ? "GitHub release endpoint responded" : `GitHub release endpoint returned HTTP ${response.status}` };
   } catch (error) {
     return { ...status, forwardingTested: false, message: error instanceof Error ? error.message : String(error) };
