@@ -23,6 +23,10 @@ test("full release packaging is opt-in after successful quality CI", () => {
   assert.equal(job.uses, "./.github/workflows/package-validation.yml");
   assert.deepEqual(job.permissions, { contents: "read" });
   assert.equal(job.secrets, undefined);
+  const windows = workflow("local-clients.yml").jobs.windows;
+  const smoke = windows.steps.find(step => step.name === "Verify ZIPs and both runtime modes").run;
+  assert.ok(smoke.includes("smoke-local-package.mjs"));
+  assert.ok(smoke.includes("smoke-packaged-local.mjs"));
 });
 
 test("package validation uses the release packagers and exact source commit without publication privileges", () => {

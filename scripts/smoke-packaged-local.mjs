@@ -8,8 +8,10 @@ import { unzipSync } from "fflate";
 
 const archive = process.argv[2];
 if (!archive) throw new Error("Usage: node scripts/smoke-packaged-local.mjs <windows-client.zip>");
-const scratch = await fs.mkdtemp(path.join(os.tmpdir(), "sfl-packaged-local-smoke-"));
+const temporaryRoot = await fs.realpath(os.tmpdir());
+const scratch = await fs.mkdtemp(path.join(temporaryRoot, "sfl-packaged-local-smoke-"));
 let child;
+let childExited;
 try {
   const entries = unzipSync(new Uint8Array(await fs.readFile(archive)));
   let packageRoot = "";
@@ -36,6 +38,10 @@ try {
   const bundledNode = path.join(root, "runtime/node.exe");
   const executable = await fs.access(bundledNode).then(() => bundledNode, () => process.execPath);
   child = spawn(executable, [path.join(root, "dist/index.js"), "--local", "--no-open"], { cwd: root, env, stdio: ["ignore", "pipe", "pipe"], windowsHide: true });
+  childExited = new Promise(resolve => {
+    child.once("exit", resolve);
+    child.once("error", resolve);
+  });
   const launched = await Promise.race([
     new Promise((resolve, reject) => {
       let stdout = "", stderr = "";
@@ -43,6 +49,7 @@ try {
         try { resolve(JSON.parse(stdout.split("\n")[0])); } catch (error) { reject(error); }
       } });
       child.stderr.on("data", chunk => { stderr += chunk; });
+      child.once("error", reject);
       child.once("exit", code => reject(new Error(`Packaged local client exited ${code}: ${stderr}`)));
     }),
     new Promise((_, reject) => { const timer = setTimeout(() => reject(new Error("Packaged local client launch timed out")), 25_000); timer.unref(); }),
@@ -80,6 +87,10 @@ try {
   await api("shutdown", {});
   console.log(`PACKAGED_LOCAL_OK ${path.basename(archive)} (${executable === bundledNode ? "bundled" : "system"} Node): HTML, favicon bytes, save conflict, and bounded proxy test`);
 } finally {
-  child?.kill();
-  await fs.rm(scratch, { recursive: true, force: true });
+  if (child && child.exitCode === null && child.signalCode === null) child.kill();
+  // Windows keeps an executing node.exe locked until the process has exited.
+  // Sending kill alone does not mean its image can already be removed.
+  await childExited;
+  if (path.dirname(await fs.realpath(scratch)) !== temporaryRoot) throw new Error("Smoke cleanup escaped its temporary root");
+  await fs.rm(scratch, { recursive: true, force: true, maxRetries: 3, retryDelay: 100 });
 }

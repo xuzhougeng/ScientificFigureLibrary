@@ -50,6 +50,8 @@ jobs:
           foreach ($archive in Get-ChildItem release/local-client/*windows-x64*.zip) {
             node scripts/smoke-local-package.mjs $archive.FullName
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            node scripts/smoke-packaged-local.mjs $archive.FullName
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           }
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
