@@ -658,6 +658,118 @@ export async function prepareTransportImage(input: {
   return work;
 }
 
+/**
+ * Local-client card thumbnail: a downscaled SearchCard rendition served by URL
+ * instead of inlined as a data URL. Never used for exact preview/confirmation.
+ */
+export const THUMBNAIL_POLICY_VERSION = "local-thumbnail-v1";
+export const THUMBNAIL_MAX_WIDTH = 480;
+export const THUMBNAIL_MAX_HEIGHT = 960;
+export const THUMBNAIL_MAX_BYTES = 160 * 1024;
+const THUMBNAIL_WIDTH_RUNGS = [THUMBNAIL_MAX_WIDTH, 384, 320] as const;
+
+function thumbnailSize(width: number, height: number, maxWidth: number) {
+  const scale = Math.min(1, maxWidth / width, (maxWidth * 2) / height);
+  return {
+    width: Math.max(1, Math.round(width * scale)),
+    height: Math.max(1, Math.round(height * scale)),
+  };
+}
+
+async function generateThumbnail(input: { sourceBytes: Uint8Array; timeoutMs: number }): Promise<TransportImageResult> {
+  const startedAt = performance.now();
+  const deadline = startedAt + input.timeoutMs;
+  const purpose = "SearchCard" as const;
+  const budgetBytes = THUMBNAIL_MAX_BYTES;
+  let attemptCount = 0;
+  const header = inspectImageHeader(input.sourceBytes);
+  if (!header) return fail("unreadable", { attemptCount, startedAt, budgetBytes, purpose });
+  if (!header.pixelsSafe || header.width * header.height > MAX_SAFE_IMAGE_PIXELS) {
+    return fail("unsafe_pixels", { attemptCount, startedAt, budgetBytes, purpose });
+  }
+  if (header.mimeType !== "image/png" && header.mimeType !== "image/jpeg") {
+    return fail("unsupported", { attemptCount, startedAt, budgetBytes, purpose });
+  }
+  let raster: RasterImage;
+  try {
+    raster = decodeRaster(input.sourceBytes, header.mimeType);
+  } catch {
+    return fail("unreadable", { attemptCount, startedAt, budgetBytes, purpose });
+  }
+  for (const maxWidth of THUMBNAIL_WIDTH_RUNGS) {
+    if (performance.now() > deadline) return fail("timeout", { attemptCount, startedAt, budgetBytes, purpose });
+    const sized = thumbnailSize(raster.width, raster.height, maxWidth);
+    const resized = resizeRaster(raster, sized.width, sized.height);
+    const done = (bytes: Uint8Array, mime: "image/png" | "image/jpeg") => success({
+      bytes, mime, width: resized.width, height: resized.height, cacheHit: false, passthrough: false,
+      attemptCount, startedAt, budgetBytes, purpose,
+    });
+    try {
+      attemptCount += 1;
+      const png = encodePng(resized);
+      if (png.byteLength <= budgetBytes) return done(png, "image/png");
+      if (resized.alpha) continue;
+      for (const quality of JPEG_QUALITIES) {
+        attemptCount += 1;
+        const jpeg = encodeJpegRaster(resized, quality);
+        if (jpeg.byteLength <= budgetBytes) return done(jpeg, "image/jpeg");
+      }
+    } catch {
+      return fail("encode_failed", { attemptCount, startedAt, budgetBytes, purpose });
+    }
+  }
+  return fail("too_large", { attemptCount, startedAt, budgetBytes, purpose });
+}
+
+/**
+ * Prepare a bounded card thumbnail (at most 480 px wide) for the local web client.
+ * Results are cached under the Library's transport-image cache, keyed by source hash
+ * and thumbnail policy, so repeated pages do not decode or encode again.
+ */
+export async function prepareThumbnailImage(input: {
+  sourceBytes: Uint8Array;
+  sourceSha256: string;
+  libraryRoot: string;
+  timeoutMs?: number;
+}): Promise<TransportImageResult> {
+  const startedAt = performance.now();
+  const purpose = "SearchCard" as const;
+  const header = inspectImageHeader(input.sourceBytes);
+  if (!header) return fail("unreadable", { attemptCount: 0, startedAt, budgetBytes: THUMBNAIL_MAX_BYTES, purpose });
+  if (!header.pixelsSafe) return fail("unsafe_pixels", { attemptCount: 0, startedAt, budgetBytes: THUMBNAIL_MAX_BYTES, purpose });
+  const fits = thumbnailSize(header.width, header.height, THUMBNAIL_MAX_WIDTH);
+  if (
+    fits.width === header.width && fits.height === header.height &&
+    input.sourceBytes.byteLength <= THUMBNAIL_MAX_BYTES &&
+    (header.mimeType === "image/png" || header.mimeType === "image/jpeg" || header.mimeType === "image/webp")
+  ) {
+    return success({
+      bytes: input.sourceBytes, mime: header.mimeType, width: header.width, height: header.height,
+      cacheHit: false, passthrough: true, attemptCount: 0, startedAt, budgetBytes: THUMBNAIL_MAX_BYTES, purpose,
+    });
+  }
+  if (header.mimeType !== "image/png" && header.mimeType !== "image/jpeg") {
+    return fail("unsupported", { attemptCount: 0, startedAt, budgetBytes: THUMBNAIL_MAX_BYTES, purpose });
+  }
+  const key = sha256Hex(`${input.sourceSha256}\0thumbnail\0${THUMBNAIL_MAX_WIDTH}\0${THUMBNAIL_POLICY_VERSION}\0${ENCODER_POLICY_VERSION}`);
+  const existing = inflight.get(key);
+  if (existing) return existing;
+  const work = (async () => {
+    const directory = cacheDirectory(input.libraryRoot);
+    const cached = await readCache(directory, key);
+    if (cached && cached.transportBytes.byteLength <= THUMBNAIL_MAX_BYTES) {
+      return { ...cached, elapsedMs: performance.now() - startedAt, budgetBytes: THUMBNAIL_MAX_BYTES, purpose };
+    }
+    const generated = await generateThumbnail({ sourceBytes: input.sourceBytes, timeoutMs: input.timeoutMs ?? DEFAULT_ENCODE_TIMEOUT_MS });
+    if (generated.ok) await writeCache(directory, key, generated, input.sourceSha256);
+    return generated;
+  })().finally(() => {
+    inflight.delete(key);
+  });
+  inflight.set(key, work);
+  return work;
+}
+
 export async function mapPool<T, R>(
   items: readonly T[],
   limit: number,

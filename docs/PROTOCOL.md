@@ -478,6 +478,10 @@ only for transport. The
 model-visible `structuredContent` contains only compact candidate summaries;
 thumbnail Data URLs are keyed by result-scoped `candidateId` under result
 `_meta.candidatePreviews`, which MCP Apps expose only to the component.
+MCP tools and the MCP App always receive inline Data URLs. Only the private
+local web client may opt in to URL thumbnails (`previewUrl` under the same
+`_meta` key, served by its authenticated local HTTP endpoint); see
+[本地客户端](LOCAL_CLIENT.md#卡片缩略图).
 
 Each candidate includes `providerId` and `exactSelector`:
 

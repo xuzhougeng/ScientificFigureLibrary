@@ -10,8 +10,11 @@ import {
   ENCODER_POLICY_VERSION,
   budgetBucket,
   estimateDataUrlLength,
+  prepareThumbnailImage,
   prepareTransportImage,
   SEARCH_PREVIEW_PAGE_BUDGET_MS,
+  THUMBNAIL_MAX_BYTES,
+  THUMBNAIL_MAX_WIDTH,
   searchPerImageBudget,
   searchPreviewPageRemainingMs,
   singlePreviewBudget,
@@ -245,6 +248,34 @@ test("broken images and decode bombs fail closed", async () => {
     assert.equal(bomb.ok, false);
     if (bomb.ok) return;
     assert.equal(bomb.reason, "unsafe_pixels");
+  } finally {
+    await fs.rm(root, { recursive: true, force: true });
+  }
+});
+
+test("local thumbnails downscale wide figures to 480 px, cache them and pass small images through", async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "sfl-thumbnail-test-"));
+  try {
+    const wide = patternedPng(2250, 900);
+    const first = await prepareThumbnailImage({ sourceBytes: wide, sourceSha256: sha256(wide), libraryRoot: root });
+    assert.equal(first.ok, true);
+    if (!first.ok) return;
+    assert.equal(first.purpose, "SearchCard");
+    assert.equal(first.width, THUMBNAIL_MAX_WIDTH);
+    assert.equal(first.height, 192);
+    assert.ok(first.transportBytes.byteLength <= THUMBNAIL_MAX_BYTES);
+    assert.equal(first.cacheHit, false);
+    const header = inspectImageHeader(first.transportBytes);
+    assert.equal(header?.width, THUMBNAIL_MAX_WIDTH);
+    const second = await prepareThumbnailImage({ sourceBytes: wide, sourceSha256: sha256(wide), libraryRoot: root });
+    assert.equal(second.ok && second.cacheHit, true);
+    assert.equal(second.ok && second.transportSha256, first.transportSha256);
+    const tall = patternedPng(300, 1500);
+    const narrow = await prepareThumbnailImage({ sourceBytes: tall, sourceSha256: sha256(tall), libraryRoot: root });
+    assert.equal(narrow.ok && narrow.height, 2 * THUMBNAIL_MAX_WIDTH);
+    const small = await prepareThumbnailImage({ sourceBytes: ONE_PIXEL_PNG, sourceSha256: sha256(ONE_PIXEL_PNG), libraryRoot: root });
+    assert.equal(small.ok && small.passthrough, true);
+    assert.equal(small.ok && small.transportSha256, sha256(ONE_PIXEL_PNG));
   } finally {
     await fs.rm(root, { recursive: true, force: true });
   }

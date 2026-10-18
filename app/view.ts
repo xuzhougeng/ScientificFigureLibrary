@@ -8,7 +8,9 @@ import type {
 import { createIcon, setButtonContent, type SflIconName } from "./icons.ts";
 
 export interface CandidatePreviewMeta {
-  previewDataUrl: string;
+  previewDataUrl?: string;
+  /** Local web client only: same-origin content-addressed thumbnail URL. */
+  previewUrl?: string;
   previewMimeType?: "image/png" | "image/jpeg" | "image/webp";
   previewByteLength?: number;
   previewSha256?: string;
@@ -47,6 +49,7 @@ export interface Candidate {
   previewStatus?: "ready" | "missing" | "unreadable" | "unsupported" | "too_large";
   searchPreviewStatus?: "ready" | "missing" | "unreadable" | "unsupported" | "too_large";
   previewDataUrl?: string;
+  previewUrl?: string;
   previewMimeType?: "image/png" | "image/jpeg" | "image/webp";
   previewByteLength?: number;
   previewSha256?: string;
@@ -284,6 +287,8 @@ function moduleIdentityLines(candidate: Candidate) {
   ];
 }
 
+const LOCAL_THUMBNAIL_URL = /^\/api\/thumb\/[a-f0-9]{64}$/u;
+
 function appendPreviewImage(
   document: Document,
   container: HTMLElement,
@@ -291,9 +296,11 @@ function appendPreviewImage(
   size: "thumbnail" | "detail",
 ) {
   const status = candidate.searchPreviewStatus ?? candidate.previewStatus;
-  if (status === "ready" && candidate.previewDataUrl) {
+  const source = candidate.previewDataUrl ??
+    (candidate.previewUrl && LOCAL_THUMBNAIL_URL.test(candidate.previewUrl) ? candidate.previewUrl : undefined);
+  if (status === "ready" && source) {
     const image = element(document, "img");
-    image.src = candidate.previewDataUrl;
+    image.src = source;
     image.alt = `${candidate.title} ${size === "thumbnail" ? "候选缩略图" : "候选详情图"}`;
     image.decoding = "async";
     if (size === "thumbnail") image.loading = "lazy";

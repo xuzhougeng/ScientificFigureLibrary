@@ -123,6 +123,16 @@ macOS 与本地网页的图库卡片、图片详情以及「我的图库」提�
 
 本地参考使用流程为：检索/浏览 → 选择参考并复制绘图提示词。卡片只显示两类缓存：预览图和参考包，均为「已缓存」或「待缓存」。整库「缓存参考包」下载固定版本压缩包；卡片「参考包 · 已缓存」表示该压缩包已在本地，复制提示词读取同一份参考包，不再另存展开副本。参考包未缓存时先下载固定版本再复制。多选表示一次复制多份参考提示词，不是为每个参考下达绘图任务。提示词列出真实缓存文件路径；不能读取本机文件的 AI 需要用户上传材料。原有「保存到项目」保留为独立导出流程，仍需精确预览确认。整库预览图或参考包仍在「连接外部图库」中按图库缓存。
 
+### 卡片缩略图
+
+Windows / Linux 本地网页的图库卡片、收藏打开结果和「我的图库」使用宽度不超过 480 px 的缩略图，以 `<img loading="lazy">` 从同源 URL 加载，不再把原图以 base64 内嵌在列表 JSON 中：
+
+- 图库与收藏：`/api/gallery`、`/api/gallery-page` 和收藏 `open` 传入 `thumbnailDelivery: "url"` 时，`_meta.candidatePreviews[candidateId].previewUrl` 为 `/api/thumb/<sha256>`，其中 SHA-256 是缩略图字节本身的哈希。只有本服务会话生成过的缩略图可取，服务重启后需重新检索。
+- 我的图库：`/api/library` 条目附带 `revisionId`、`contentDigest` 和 `previewAvailable`；卡片直接请求 `/api/library-thumb?templateId=…&revisionId=…&contentDigest=…`，由精确内容摘要定位主预览图，不再为每张卡片调用 `review_open` 和 `asset`。
+- 两个端点都需要本地会话认证（Cookie 或 Bearer），成功响应使用 `Cache-Control: private, max-age=31536000, immutable`，翻页和重新打开页面时由浏览器缓存复用；错误响应保持 `no-store`。缩略图在全局 Library 的 `indexes/transport-images/v1/` 下按源图哈希缓存，可删除重建。
+- 缩略图只用于浏览。详情中的精确预览、复制图片和「保存到项目」确认仍使用精确预览返回的图片字节及其 `transportSha256`。
+- 未传 `thumbnailDelivery: "url"` 的调用方（macOS 原生客户端）和 MCP 工具/App 继续使用内嵌 Data URL，契约不变。
+
 ## 客户端更新
 
 macOS 原生 App 和 Windows / Linux 本地网页在连接本地服务后，后台检查官方 GitHub

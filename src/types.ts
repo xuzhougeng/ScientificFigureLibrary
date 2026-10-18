@@ -423,6 +423,8 @@ export interface TemplateCandidate {
   previewRef?: ProviderPreviewRef;
   previewStatus?: PreviewStatus;
   previewDataUrl?: string;
+  /** Local web client only: same-origin content-addressed thumbnail URL (`/api/thumb/<sha256>`). */
+  previewUrl?: string;
   previewMimeType?: "image/png" | "image/jpeg" | "image/webp";
   previewByteLength?: number;
   previewSha256?: string;

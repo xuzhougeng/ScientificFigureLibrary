@@ -496,3 +496,80 @@ test("favorites endpoints authenticate, persist across sessions and open only th
   await api("/api/favorites", { action: "remove", id: saved.id });
   assert.deepEqual((await api("/api/favorites")).items, []);
 });
+
+test("local gallery and library cards use cached, authenticated thumbnail URLs instead of inline images", async (t) => {
+  const { local, api, call, request, overrides } = await isolated(t);
+  const binding = record(data(await call("figure_library_plan_bind_global", { libraryDirectory: overrides.FIGURE_LIBRARY_DIR, migrationMode: "none" })).plan);
+  await call("figure_library_apply_bind_global", { planDigest: binding.planDigest, operationId: "bind-thumb-test" }, true);
+  const workspace = record(data(await call("figure_library_plan_bind_workspace", { workspaceDirectory: overrides.FIGURE_WORKSPACE_DIR })).plan);
+  await call("figure_library_apply_bind_workspace", { planDigest: workspace.planDigest, operationId: "workspace-thumb-test" }, true);
+  const { PNG } = await import("pngjs");
+  const wide = new PNG({ width: 2250, height: 900, colorType: 2 });
+  for (let index = 0; index < wide.data.length; index += 4) {
+    const pixel = index >> 2;
+    wide.data[index] = pixel % 251; wide.data[index + 1] = (pixel >> 3) % 241; wide.data[index + 2] = (pixel * 7) % 239; wide.data[index + 3] = 255;
+  }
+  const upload = await fetch(local.origin + "/api/upload", { method: "POST", headers: { Authorization: `Bearer ${local.token}`, "x-sfl-filename": "wide.png" }, body: new Uint8Array(PNG.sync.write(wide)) });
+  const imagePath = String(record(await upload.json()).sourcePath);
+  const planned = record(data(await call("figure_library_plan_working_revision", {
+    mode: "create", templateId: "template-223d4567-1234-1234-1234-123456789abc", title: "thumbfixture wide reference", description: "Wide reference", application: "Reusable visual reference for thumbfixture", dataProfile: "x y",
+    language: "R", license: "MIT", tags: ["thumbfixture"], assetKind: "visual_reference", codeStatus: "none", executionStatus: "not_run",
+    visualAssets: [{ assetId: "reference", sourcePath: imagePath, visualRole: "source_reference" }], codeAssets: [],
+    confirmations: { createOrUpdate: true, figureUnitBoundary: true, multiImageGrouping: true, primaryPreview: true, assetKind: true, canonicalImplementation: true, codeRelationships: true, codeOrigin: true, executionClaim: true, duplicateDecision: "create_new" },
+  })).plan);
+  const applied = await call("figure_library_apply_working_revision", { planDigest: planned.planDigest, operationId: "thumb-import", expectedAction: planned.action, expectedTemplateId: planned.templateId, expectedSeriesDigest: planned.expectedSeriesDigest }, true);
+  assert.equal(record(data(applied).envelope).outcome, "applied", JSON.stringify(applied));
+  const publication = record(data(await call("figure_library_plan_publish_working_revision", { templateId: planned.templateId })).plan);
+  await call("figure_library_apply_publish_working_revision", { planDigest: publication.planDigest, operationId: "thumb-publish", expectedTemplateId: planned.templateId, expectedSeriesDigest: publication.expectedSeriesDigest }, true);
+
+  const decode = async (response: Response) => PNG.sync.read(Buffer.from(await response.arrayBuffer()));
+  const gallery = await api("/api/gallery", { query: "thumbfixture", providerIds: ["org.scientificfigurelibrary.local"], thumbnailDelivery: "url" });
+  // Callers that do not opt in (the native macOS client) keep inline thumbnails.
+  const inline = await api("/api/gallery", { query: "thumbfixture", providerIds: ["org.scientificfigurelibrary.local"] });
+  assert.match(JSON.stringify(record(inline._meta).candidatePreviews), /"previewDataUrl":"data:image\//u);
+  assert.ok(Buffer.byteLength(JSON.stringify(gallery)) < 100 * 1024);
+  assert.doesNotMatch(JSON.stringify(gallery), /data:image/u);
+  const candidate = records(data(gallery).candidates)[0]!;
+  const preview = record(record(record(gallery._meta).candidatePreviews)[String(candidate.candidateId)]);
+  const thumbUrl = String(preview.previewUrl);
+  assert.match(thumbUrl, /^\/api\/thumb\/[a-f0-9]{64}$/u);
+  const thumb = await request(thumbUrl);
+  assert.equal(thumb.status, 200);
+  assert.equal(thumb.headers.get("cache-control"), "private, max-age=31536000, immutable");
+  const thumbBytes = new Uint8Array(await thumb.clone().arrayBuffer());
+  assert.equal(hash(thumbBytes), thumbUrl.slice("/api/thumb/".length));
+  assert.equal((await decode(thumb)).width, 480);
+  const anonymous = await fetch(local.origin + thumbUrl);
+  assert.equal(anonymous.status, 401);
+  assert.equal(anonymous.headers.get("cache-control"), "no-store");
+  assert.equal((await request(`/api/thumb/${"0".repeat(64)}`)).status, 404);
+  assert.equal((await request("/api/thumb/not-a-hash")).status, 404);
+
+  // Exact preview and confirmation still use the exact displayed bytes, not the card thumbnail.
+  const exact = await api("/api/preview", { resultSetId: data(gallery).resultSetId, providerId: candidate.providerId, exactSelector: candidate.exactSelector });
+  const exactImage = (exact.content as Array<Record<string, unknown>>).find((block) => block.type === "image")!;
+  assert.equal(data(exact).transportSha256, hash(Buffer.from(String(exactImage.data), "base64")));
+  assert.notEqual(data(exact).transportSha256, hash(thumbBytes));
+
+  const item = records(data(await api("/api/library")).items)[0]!;
+  assert.equal(item.previewAvailable, true);
+  const query = new URLSearchParams({ templateId: String(item.templateId), revisionId: String(item.revisionId), contentDigest: String(item.contentDigest) });
+  const libraryThumb = await request(`/api/library-thumb?${query}`);
+  assert.equal(libraryThumb.status, 200);
+  assert.equal(libraryThumb.headers.get("cache-control"), "private, max-age=31536000, immutable");
+  assert.equal((await decode(libraryThumb)).width, 480);
+  assert.equal((await fetch(`${local.origin}/api/library-thumb?${query}`)).status, 401);
+  const missing = await request(`/api/library-thumb?${new URLSearchParams({ templateId: String(item.templateId), revisionId: String(item.revisionId), contentDigest: "0".repeat(64) })}`);
+  assert.equal(missing.status, 400);
+  assert.equal(missing.headers.get("cache-control"), "no-store");
+
+  const full = await api("/api/gallery", { limit: 12, providerIds: ["org.figureya.module"], thumbnailDelivery: "url" });
+  assert.equal(records(data(full).candidates).length, 12);
+  // Card images are URLs now; what remains is candidate metadata (about 100 KiB for 12 FigureYa cards).
+  assert.doesNotMatch(JSON.stringify(full), /data:image/u);
+  assert.ok(Buffer.byteLength(JSON.stringify(full)) < 128 * 1024, `12-card gallery payload: ${Buffer.byteLength(JSON.stringify(full))} bytes`);
+  const first = await api("/api/gallery", { limit: 1, providerIds: ["org.figureya.module"], thumbnailDelivery: "url" });
+  const next = await api("/api/gallery-page", { resultSetId: data(first).resultSetId, cursor: record(data(first).pagination).nextCursor });
+  assert.equal(record(data(next).pagination).pageIndex, 2);
+  assert.doesNotMatch(JSON.stringify(next), /data:image/u);
+});
