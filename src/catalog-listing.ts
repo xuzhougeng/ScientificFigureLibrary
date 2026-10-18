@@ -2,6 +2,7 @@ import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 import { scopedCandidateId } from "./candidate-images.ts";
 import { markdownPlainText } from "./figure-description.ts";
+import { PLOT_FAMILY_GROUP_IDS, plotFamilyGroup, type PlotFamilyGroup } from "./plot-family-groups.ts";
 import type { OperationRegistry } from "./service/operations.ts";
 import { outcome, terminal } from "./tool-outcome.ts";
 import type { TemplateCandidate } from "./types.ts";
@@ -15,7 +16,8 @@ export const CatalogListingInput = z.object({
   resultSetId: z.string().min(1).max(256).optional().describe("Continue a listing returned by this tool; omit filters when continuing."),
   offset: z.number().int().min(0).optional().describe("Entry offset inside resultSetId; use the returned nextOffset."),
   providerIds: z.array(z.string().min(1).max(200)).min(1).max(16).optional(),
-  plotFamily: z.string().min(1).max(200).optional(),
+  plotFamily: z.string().min(1).max(200).optional().describe("Provider-specific family text; prefer familyGroup, which also covers entries without a family."),
+  familyGroup: z.enum(PLOT_FAMILY_GROUP_IDS).optional().describe("Canonical figure-type group from the familyGroup facet."),
   language: z.string().min(1).max(100).optional(),
   assetKind: z.enum(["plot_template", "visual_reference"]).optional(),
   limit: z.number().int().min(0).max(CATALOG_LISTING_MAX_LIMIT).optional().default(CATALOG_LISTING_DEFAULT_LIMIT)
@@ -49,6 +51,7 @@ interface ListedEntry {
   templateId: string;
   title: string;
   titleEn?: string;
+  familyGroup: PlotFamilyGroup;
   plotFamily: string;
   language: string;
   assetKind: TemplateCandidate["assetKind"];
@@ -88,6 +91,7 @@ export function buildCatalogListing(set: CatalogListingSet, offset: number, limi
     templateId: candidate.templateId,
     title: oneLine(candidate.title),
     ...(candidate.titleEn ? { titleEn: oneLine(candidate.titleEn) } : {}),
+    familyGroup: plotFamilyGroup(candidate),
     plotFamily: candidate.plotFamily || "unclassified",
     language: candidate.language || "unknown",
     assetKind: candidate.assetKind,
@@ -96,6 +100,7 @@ export function buildCatalogListing(set: CatalogListingSet, offset: number, limi
   }));
   const facets = {
     providerId: facet(set.candidates, (candidate) => candidate.providerId),
+    familyGroup: facet(set.candidates, (candidate) => plotFamilyGroup(candidate)),
     plotFamily: facet(set.candidates, (candidate) => candidate.plotFamily || "unclassified"),
     language: facet(set.candidates, (candidate) => candidate.language || "unknown"),
     assetKind: facet(set.candidates, (candidate) => candidate.assetKind),
@@ -107,6 +112,7 @@ export function buildCatalogListing(set: CatalogListingSet, offset: number, limi
     `PAGINATION: ${JSON.stringify({ total, offset, returned: entries.length, nextOffset })}`,
     ...set.sources.map((source) =>
       `SOURCE ${source.providerId} (${source.sourceLabel}): ${source.matched} entries; health=${source.health}${source.errorCode ? `; ${source.errorCode}` : ""}`),
+    facetLine("familyGroup", facets.familyGroup),
     facetLine("plotFamily", facets.plotFamily),
     facetLine("language", facets.language),
     facetLine("assetKind", facets.assetKind),
@@ -114,7 +120,7 @@ export function buildCatalogListing(set: CatalogListingSet, offset: number, limi
     !total
       ? "No catalog entries matched these Provider filters. Report the empty filters; do not claim the whole library lacks the figure type unless the default Providers were listed without filters."
       : !entries.length
-        ? "Facets only. Narrow with providerIds/language/assetKind if the user stated them (plotFamily omits unclassified entries), then continue with this resultSetId and offset to read entries."
+        ? "Facets only. Narrow with familyGroup, providerIds, language or assetKind when they clearly match the user's need (other/unclassified hold analysis-only and unlabelled templates), then continue with this resultSetId and offset to read entries."
         : "Choose relevant entries by meaning, not by exact wording. Show them with figure_library_get_candidate_images (same resultSetId, at most 12 candidateIds), then wait for user selection. An absent keyword hit is not evidence that the library lacks a figure type.",
   ];
   return {
@@ -136,17 +142,18 @@ function entryLines(entries: ListedEntry[], detail: CatalogListingDetail) {
   if (!entries.length) return [];
   if (detail === "full") {
     return [
-      "ENTRIES: candidateId | title | titleEn | plotFamily | language | providerId | thumbnail | summary",
+      "ENTRIES: candidateId | title | titleEn | familyGroup | plotFamily | language | providerId | thumbnail | summary",
       ...entries.map((entry) =>
-        [entry.candidateId, entry.title, entry.titleEn ?? "-", entry.plotFamily, entry.language, entry.providerId, entry.thumbnailAvailable ? "thumbnail" : "no-thumbnail", entry.summary].join(" | ")),
+        [entry.candidateId, entry.title, entry.titleEn ?? "-", entry.familyGroup, entry.plotFamily, entry.language, entry.providerId, entry.thumbnailAvailable ? "thumbnail" : "no-thumbnail", entry.summary].join(" | ")),
     ];
   }
   // Compact lines group by Provider and only flag the rare entry without a thumbnail.
-  const lines = ["ENTRIES: candidateId | title | titleEn | plotFamily | summary"];
+  const lines = ["ENTRIES: candidateId | title | titleEn | familyGroup/plotFamily | summary"];
   let provider = "";
   for (const entry of entries) {
     if (entry.providerId !== provider) lines.push(`PROVIDER ${(provider = entry.providerId)}`);
-    lines.push([entry.candidateId, entry.title, entry.titleEn ?? "-", entry.plotFamily, entry.summary].join(" | ") + (entry.thumbnailAvailable ? "" : " [no-thumbnail]"));
+    const family = entry.plotFamily === entry.familyGroup || entry.plotFamily === "unclassified" ? entry.familyGroup : `${entry.familyGroup}/${entry.plotFamily}`;
+    lines.push([entry.candidateId, entry.title, entry.titleEn ?? "-", family, entry.summary].join(" | ") + (entry.thumbnailAvailable ? "" : " [no-thumbnail]"));
   }
   return lines;
 }
@@ -171,7 +178,7 @@ export function defineCatalogListing(operations: OperationRegistry, options: {
       const invalid = (message: string) =>
         terminal(outcome("failed", "catalog_listing_invalid_input", `Catalog listing failed: ${message}`));
       const offset = input.offset ?? 0;
-      if (input.resultSetId && (input.providerIds || input.plotFamily || input.language || input.assetKind)) {
+      if (input.resultSetId && (input.providerIds || input.plotFamily || input.familyGroup || input.language || input.assetKind)) {
         return invalid("filters cannot change while continuing a listing; start a new listing without resultSetId.");
       }
       if (!input.resultSetId && offset !== 0) {

@@ -94,11 +94,11 @@ test("catalog listing gives agents a compact, paginated, facet-counted catalog t
     assert.match(text(first), /not evidence that the library lacks/u);
     // Compact (default) lines group by Provider and omit language/Provider/thumbnail columns.
     assert.match(text(first), new RegExp(`^PROVIDER ${LOCAL_LIBRARY_PROVIDER_ID.replace(/\./gu, "\\.")}$`, "mu"));
-    assert.match(text(first), /^ENTRIES: candidateId \| title \| titleEn \| plotFamily \| summary$/mu);
+    assert.match(text(first), /^ENTRIES: candidateId \| title \| titleEn \| familyGroup\/plotFamily \| summary$/mu);
     assert.doesNotMatch(text(first), /\| (R|Python) \|/u);
     for (const entry of firstEntries) assert.ok(String(entry.summary).length <= 61);
     const full = await call("figure_library_list_catalog", { ...local, limit: 1, detail: "full" });
-    assert.match(text(full), /^ENTRIES: candidateId \| title \| titleEn \| plotFamily \| language \| providerId \| thumbnail \| summary$/mu);
+    assert.match(text(full), /^ENTRIES: candidateId \| title \| titleEn \| familyGroup \| plotFamily \| language \| providerId \| thumbnail \| summary$/mu);
     assert.match(text(full), / \| thumbnail \| /u);
 
     // limit 0 returns counts and facets only; the result set then pages from offset 0.
@@ -126,6 +126,15 @@ test("catalog listing gives agents a compact, paginated, facet-counted catalog t
 
     assert.equal(data(await call("figure_library_list_catalog", { ...local, plotFamily: "heatmap" })).total, 1);
     assert.equal(data(await call("figure_library_list_catalog", { ...local, language: "Python" })).total, 1);
+    // Canonical groups: a facet over the listing and a filter applied before the result set is registered.
+    assert.deepEqual(record(data(first).facets).familyGroup, [{ value: "volcano", count: 2 }, { value: "heatmap", count: 1 }]);
+    assert.match(text(first), /^FACET familyGroup: volcano=2, heatmap=1$/mu);
+    const volcanoes = await call("figure_library_list_catalog", { ...local, familyGroup: "volcano" });
+    assert.equal(data(volcanoes).total, 2);
+    for (const entry of entries(data(volcanoes).entries)) assert.equal(entry.familyGroup, "volcano");
+    assert.equal(code(await call("figure_library_list_catalog", { resultSetId: data(volcanoes).resultSetId, familyGroup: "heatmap" })), "catalog_listing_invalid_input");
+    assert.equal(entries(data(await call("figure_library_list_catalog", { resultSetId: data(volcanoes).resultSetId, offset: 0 })).entries).length, 2);
+    assert.equal((await call("figure_library_list_catalog", { ...local, familyGroup: "not-a-group" })).isError, true);
 
     assert.equal(code(await call("figure_library_list_catalog", { resultSetId, plotFamily: "heatmap" })), "catalog_listing_invalid_input");
     assert.equal(code(await call("figure_library_list_catalog", { ...local, offset: 1 })), "catalog_listing_invalid_input");

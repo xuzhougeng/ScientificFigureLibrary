@@ -646,18 +646,28 @@ can return nothing. `figure_library_list_catalog` lets the host Agent read the
 catalog itself and choose by meaning. It is read-only and model-visible.
 
 - A new listing takes optional `providerIds` (default Providers when omitted;
-  Community stays explicit-only), `plotFamily`, `language`, `assetKind`,
-  `limit` (0–100, default 50; `0` returns counts and facets only) and `detail`
-  (`compact`, the default, or `full`). It registers an ordinary browse result set: the
-  same Provider filters, catalog revision and Library binding checks as search.
+  Community stays explicit-only), `familyGroup`, `plotFamily`, `language`,
+  `assetKind`, `limit` (0–100, default 50; `0` returns counts and facets only)
+  and `detail` (`compact`, the default, or `full`). It registers an ordinary
+  browse result set: the same Provider filters, catalog revision and Library
+  binding checks as search; a `familyGroup` filter is applied to the Provider
+  results before the set is registered and is part of its query digest.
+- `familyGroup` is a read-only canonical figure-type group (for example
+  `embedding`, `volcano`, `set_overlap`, `survival`, `proportion`, `other`,
+  `unclassified`; list in [plot-family-groups.ts](../src/plot-family-groups.ts)).
+  It is derived from the stored `plotFamily`, falling back to words in the
+  template ID and English title when the family is empty or only a domain label.
+  Stored metadata, selectors and the keyword search `plotFamily` filter are
+  unchanged.
 - The response has `resultSetId`, `total`, `offset`, `nextOffset`, `sources[]`
-  (per-Provider `matched` and `health`), `facets` (`providerId`, `plotFamily`,
-  `language`, `assetKind` counts over the whole filtered listing; empty values
-  appear as `unclassified`/`unknown`) and `entries[]` with `candidateId`,
-  `providerId`, `templateId`, `title`, optional `titleEn`, `plotFamily`,
-  `language`, `assetKind`, `thumbnailAvailable` and a single-line `summary`.
+  (per-Provider `matched` and `health`), `facets` (`providerId`, `familyGroup`,
+  `plotFamily`, `language`, `assetKind` counts over the whole filtered listing;
+  empty values appear as `unclassified`/`unknown`) and `entries[]` with
+  `candidateId`, `providerId`, `templateId`, `title`, optional `titleEn`,
+  `familyGroup`, `plotFamily`, `language`, `assetKind`, `thumbnailAvailable` and
+  a single-line `summary`.
   Text content repeats this as one `|`-separated line per entry. `compact` lines
-  carry `candidateId | title | titleEn | plotFamily | summary` with a
+  carry `candidateId | title | titleEn | familyGroup/plotFamily | summary` with a
   60-character summary, grouped under `PROVIDER <id>` headers and flagging only
   `[no-thumbnail]`; `full` lines add language, Provider and thumbnail columns with
   a 100-character summary. It contains no images, exact selectors, challenges
