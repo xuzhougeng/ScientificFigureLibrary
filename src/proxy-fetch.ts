@@ -79,16 +79,22 @@ function httpsGetViaConnect(url: string, proxyHref: string, init: RequestInit): 
       if (head.length) socket.unshift(head);
       tlsSocket = tls.connect({ socket, servername: target.hostname }, () => {
         if (settled) return;
+        // createConnection leaves the request without an agent, so Node falls
+        // back to port 80 and sends "Host: <name>:80" (GitHub answers 400).
+        // Do not pass agent: false: a fresh agent ignores createConnection and
+        // connects directly, bypassing the tunnel.
         request = https.request(
           target,
           {
             method: "GET",
+            defaultPort: 443,
             createConnection: () => tlsSocket!,
             headers: {
               Accept: "application/octet-stream, */*",
               "Accept-Encoding": "identity",
               "User-Agent": "Scientific-Figure-Library",
               ...headers,
+              Host: target.host,
             },
           },
           (response) => {

@@ -28,8 +28,10 @@ async function proxyFixture(t: TestContext, stage: "connect" | "tls" | "headers"
   let ready!: () => void;
   const reached = new Promise<void>(resolve => { ready = resolve; });
   let requests = 0;
+  const hosts: (string | undefined)[] = [];
   const target = https.createServer({ key, cert }, (request, response) => {
     requests++;
+    hosts.push(request.headers.host);
     if (stage === "success") response.end("fixture bytes");
     else if (stage === "redirect" && request.url === "/start") {
       response.writeHead(302, { location: "https://api.github.com/final" }); response.end();
@@ -56,7 +58,7 @@ async function proxyFixture(t: TestContext, stage: "connect" | "tls" | "headers"
     await new Promise<void>(resolve => proxy.close(() => resolve()));
     tls.setDefaultCACertificates(originalCAs); resetNetworkAccessForTests();
   });
-  return { proxy, reached, sockets, requests: () => requests };
+  return { proxy, reached, sockets, requests: () => requests, hosts };
 }
 
 async function assertClosed(sockets: Set<Duplex>) {
@@ -150,6 +152,25 @@ test("proxy success and connection failure remove abort listeners and close sock
     assert.equal(getEventListeners(controller.signal, "abort").length, 0);
     await assertClosed(fixture.sockets);
   });
+});
+
+test("proxied HTTPS requests send the target Host without a stray port", async t => {
+  const fixture = await proxyFixture(t, "success");
+  const response = await within(fetchWithOptionalProxy("https://api.github.com/start", { headers: { Host: "evil.example" } }));
+  // The request must travel through the tunnel (agent: false would bypass it).
+  assert.equal(await response.text(), "fixture bytes");
+  assert.equal(fixture.requests(), 1);
+  assert.deepEqual(fixture.hosts, ["api.github.com"]);
+  await assertClosed(fixture.sockets);
+});
+
+test("the network diagnostic reports a proxied GitHub response as forwarded", async t => {
+  const fixture = await proxyFixture(t, "success");
+  const result = await within(testNetworkAccess());
+  assert.equal(result.forwardingTested, true);
+  assert.equal(result.message, "GitHub release endpoint responded");
+  assert.deepEqual(fixture.hosts, ["api.github.com"]);
+  await assertClosed(fixture.sockets);
 });
 
 test("a caller deadline also bounds a redirected HTTPS request", async t => {
