@@ -462,6 +462,10 @@ by meaning with a one-line reason each, show them with
 `figure_library_get_candidate_images` on the listing `resultSetId`, then continue
 with the normal selection and exact-preview path. Before telling the user the
 library lacks a figure type, list the default Providers without filters.
+Within one session read the catalog pages once and reuse them for later
+requests; a `limit: 0` call returns the current `catalogRevision`, and only a
+changed revision (or a stale listing result set) requires reading the pages
+again.
 
 After search, present the current page using the App or the host's image support.
 Ordinary hosts can call `figure_library_get_candidate_images` with current-result

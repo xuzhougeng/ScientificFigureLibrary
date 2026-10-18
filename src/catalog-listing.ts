@@ -18,6 +18,8 @@ export const CatalogListingInput = z.object({
   providerIds: z.array(z.string().min(1).max(200)).min(1).max(16).optional(),
   plotFamily: z.string().min(1).max(200).optional().describe("Provider-specific family text; prefer familyGroup, which also covers entries without a family."),
   familyGroup: z.enum(PLOT_FAMILY_GROUP_IDS).optional().describe("Canonical figure-type group from the familyGroup facet."),
+  templates: z.array(z.object({ providerId: z.string().min(1).max(200), templateId: z.string().min(1).max(300) }).strict()).min(1).max(12).optional()
+    .describe("Re-list only these entries (from an earlier listing) to get fresh candidateIds without reading the whole catalog again."),
   language: z.string().min(1).max(100).optional(),
   assetKind: z.enum(["plot_template", "visual_reference"]).optional(),
   limit: z.number().int().min(0).max(CATALOG_LISTING_MAX_LIMIT).optional().default(CATALOG_LISTING_DEFAULT_LIMIT)
@@ -39,6 +41,8 @@ export interface CatalogListingSource {
 
 export interface CatalogListingSet {
   resultSetId: string;
+  /** Changes whenever any listed Provider catalog or the Library binding changes. */
+  catalogRevision: string;
   candidates: TemplateCandidate[];
   sources: CatalogListingSource[];
 }
@@ -109,6 +113,7 @@ export function buildCatalogListing(set: CatalogListingSet, offset: number, limi
     `FACET ${name}: ${values.map(({ value, count }) => `${value}=${count}`).join(", ") || "(none)"}`;
   const lines = [
     `RESULT_SET_ID: ${set.resultSetId}`,
+    `CATALOG_REVISION: ${set.catalogRevision}`,
     `PAGINATION: ${JSON.stringify({ total, offset, returned: entries.length, nextOffset })}`,
     ...set.sources.map((source) =>
       `SOURCE ${source.providerId} (${source.sourceLabel}): ${source.matched} entries; health=${source.health}${source.errorCode ? `; ${source.errorCode}` : ""}`),
@@ -121,11 +126,12 @@ export function buildCatalogListing(set: CatalogListingSet, offset: number, limi
       ? "No catalog entries matched these Provider filters. Report the empty filters; do not claim the whole library lacks the figure type unless the default Providers were listed without filters."
       : !entries.length
         ? "Facets only. Narrow with familyGroup, providerIds, language or assetKind when they clearly match the user's need (other/unclassified hold analysis-only and unlabelled templates), then continue with this resultSetId and offset to read entries."
-        : "Choose relevant entries by meaning, not by exact wording. Show them with figure_library_get_candidate_images (same resultSetId, at most 12 candidateIds), then wait for user selection. An absent keyword hit is not evidence that the library lacks a figure type.",
+        : "Choose relevant entries by meaning, not by exact wording. Show them with figure_library_get_candidate_images (same resultSetId, at most 12 candidateIds), then wait for user selection. An absent keyword hit is not evidence that the library lacks a figure type. Keep these entries for later requests in this session; re-read the catalog only when a limit:0 call reports a different catalogRevision.",
   ];
   return {
     structured: {
       resultSetId: set.resultSetId,
+      catalogRevision: set.catalogRevision,
       total,
       offset,
       limit,
@@ -178,7 +184,7 @@ export function defineCatalogListing(operations: OperationRegistry, options: {
       const invalid = (message: string) =>
         terminal(outcome("failed", "catalog_listing_invalid_input", `Catalog listing failed: ${message}`));
       const offset = input.offset ?? 0;
-      if (input.resultSetId && (input.providerIds || input.plotFamily || input.familyGroup || input.language || input.assetKind)) {
+      if (input.resultSetId && (input.providerIds || input.plotFamily || input.familyGroup || input.templates || input.language || input.assetKind)) {
         return invalid("filters cannot change while continuing a listing; start a new listing without resultSetId.");
       }
       if (!input.resultSetId && offset !== 0) {

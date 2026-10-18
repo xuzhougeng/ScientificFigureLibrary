@@ -675,6 +675,16 @@ catalog itself and choose by meaning. It is read-only and model-visible.
 - A keyword `figure_library_search` with no match points the Agent to this tool.
   The Skill makes catalog listing plus semantic choice the default for a
   described need and keeps keyword search for named templates or chart types.
+- Every response, including `limit: 0`, carries `catalogRevision` (also as a
+  `CATALOG_REVISION:` text line). It changes when any listed Provider catalog
+  or the Library binding changes, so an Agent can read the pages once per
+  session and later compare only the revision. A listing `resultSetId` can
+  still be evicted or go stale; image and preview tools then report
+  `search_results_stale` and a fresh listing is needed for display.
+- `templates` (1–12 `{ providerId, templateId }` pairs from an earlier
+  listing) re-lists only those entries under a new `resultSetId`, so an Agent
+  that reused its earlier read can get fresh `candidateId`s for display
+  without reading every page again. It cannot be combined with `resultSetId`.
 - Continue with `{ resultSetId, offset: nextOffset }` and no filters. Filters on
   a continuation, an `offset` without `resultSetId` or past the end return
   `catalog_listing_invalid_input`; a search result set, an evicted listing,
