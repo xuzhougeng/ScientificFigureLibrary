@@ -64,22 +64,26 @@ Keep provenance/execution truth in metadata, not repeated template-facing discla
    missing absolute global Library and Local workspace directories. Never
    infer either directory from the current project. `figure_library_open`
    opens the optional App when the user requests it.
-2. Search using the user's plotting goal and compact data/visual requirements.
-   Inspect user-provided reference images with the host viewer first. Do not
-   invent a query when the user only asks to open the library.
-3. `figure_library_search` returns a `resultSetId`, provider-qualified
-   `exactSelector`s, result-scoped `candidateId`s, thumbnail URIs and pagination.
-   Keep these returned identities unchanged. Default Providers are Local
-   Published, FigureYa, Open Figure Modules, then opted-in personal sources;
-   bundled Community is frozen and explicit-only (`includeInDefaultSearch: false`).
-4. Search is keyword-based. When it returns no or poor matches, or the user's
-   wording may differ from template names, call `figure_library_list_catalog`
-   before concluding anything is missing. It returns per-Provider counts,
-   plotFamily/language facets and one compact text line per template; narrow
-   with `providerIds`/`plotFamily`/`language` and page with the returned
-   `resultSetId` and `nextOffset`. Choose entries by meaning yourself. Only
-   after the default Providers were listed without filters may you say the
-   library lacks a figure type.
+2. First state the user's core need to yourself: data shape, scientific
+   question, required visual form, language. Inspect user-provided reference
+   images with the host viewer first. Do not invent a need when the user only
+   asks to open the library.
+3. Default: choose from the catalog by meaning. Call
+   `figure_library_list_catalog` with `limit: 0` to read per-Provider counts and
+   plotFamily/language facets, narrow only by `providerIds`/`language`/`assetKind`
+   the user actually stated (plotFamily filters drop unclassified entries), then
+   read the compact entry pages with the returned `resultSetId` and `nextOffset`.
+   Reading these text pages is expected; it shows no images. Pick at most 6
+   entries that satisfy the core need and give each a one-line reason.
+4. Use `figure_library_search` (keyword) only when the user names a template or
+   chart type, or as a quick first try. Zero or poor keyword hits never mean
+   the library lacks the figure; fall back to step 3. Only after the default
+   Providers were listed without filters may you say a figure type is missing.
+   Both tools return a `resultSetId` and result-scoped `candidateId`s; search
+   also returns provider-qualified `exactSelector`s and thumbnail URIs. Keep
+   returned identities unchanged. Default Providers are Local Published,
+   FigureYa, Open Figure Modules, then opted-in personal sources; bundled
+   Community is frozen and explicit-only (`includeInDefaultSearch: false`).
 5. In an App host, the component displays thumbnails. In an ordinary MCP host,
    read the returned thumbnail resources or call
    `figure_library_get_candidate_images` with the result set and current-page
@@ -89,7 +93,7 @@ Keep provenance/execution truth in metadata, not repeated template-facing discla
 6. Wait for user selection after presenting the page. For another page, use
    `figure_library_search_page` with the original `resultSetId` and opaque
    `nextCursor`; do not alter the query to simulate pagination. Never walk all
-   candidates automatically. Explicit delegation to choose permits reviewing
+   candidate images automatically. Explicit delegation to choose permits reviewing
    a small relevant subset. Do not claim the user saw images merely because
    the model received them; if the host cannot display them, report that limit.
 

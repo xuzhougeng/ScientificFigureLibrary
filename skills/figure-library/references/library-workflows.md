@@ -449,13 +449,17 @@ Search defaults to 6 candidates per page and returns the true `total`,
 yourself. If the server returns `search_results_stale`, start a new search;
 never reuse the old result set.
 
-Search ranking is keyword-based. Before telling the user the library lacks a
-figure type, call `figure_library_list_catalog` (default Providers, no filters)
-and read its facets and compact entry lines; narrow with `providerIds`,
-`plotFamily` or `language`, continue with the returned `resultSetId` and
-`nextOffset`, and choose entries by meaning. The listing is text only: show the
-chosen entries with `figure_library_get_candidate_images` on the listing
-`resultSetId`, then continue with the normal selection and exact-preview path.
+Search ranking is keyword-based and misses descriptive wording, especially
+long Chinese requests. The default path for a described need is semantic
+selection from the catalog: `figure_library_list_catalog` with `limit: 0` for
+Provider counts and facets, then compact entry pages (`detail: "compact"`, the
+default) continued with the returned `resultSetId` and `nextOffset`. Narrow by
+`providerIds`, `language` or `assetKind` only when the user stated them;
+`plotFamily` filters drop the many unclassified entries. Choose at most 6 entries
+by meaning with a one-line reason each, show them with
+`figure_library_get_candidate_images` on the listing `resultSetId`, then continue
+with the normal selection and exact-preview path. Before telling the user the
+library lacks a figure type, list the default Providers without filters.
 
 After search, present the current page using the App or the host's image support.
 Ordinary hosts can call `figure_library_get_candidate_images` with current-result

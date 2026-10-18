@@ -646,18 +646,25 @@ can return nothing. `figure_library_list_catalog` lets the host Agent read the
 catalog itself and choose by meaning. It is read-only and model-visible.
 
 - A new listing takes optional `providerIds` (default Providers when omitted;
-  Community stays explicit-only), `plotFamily`, `language`, `assetKind` and
-  `limit` (1–100, default 50). It registers an ordinary browse result set: the
+  Community stays explicit-only), `plotFamily`, `language`, `assetKind`,
+  `limit` (0–100, default 50; `0` returns counts and facets only) and `detail`
+  (`compact`, the default, or `full`). It registers an ordinary browse result set: the
   same Provider filters, catalog revision and Library binding checks as search.
 - The response has `resultSetId`, `total`, `offset`, `nextOffset`, `sources[]`
   (per-Provider `matched` and `health`), `facets` (`providerId`, `plotFamily`,
   `language`, `assetKind` counts over the whole filtered listing; empty values
   appear as `unclassified`/`unknown`) and `entries[]` with `candidateId`,
   `providerId`, `templateId`, `title`, optional `titleEn`, `plotFamily`,
-  `language`, `assetKind`, `thumbnailAvailable` and a single-line `summary` of at
-  most 100 characters.
-  Text content repeats this as one `|`-separated line per entry. It contains no
-  images, exact selectors, challenges or receipts.
+  `language`, `assetKind`, `thumbnailAvailable` and a single-line `summary`.
+  Text content repeats this as one `|`-separated line per entry. `compact` lines
+  carry `candidateId | title | titleEn | plotFamily | summary` with a
+  60-character summary, grouped under `PROVIDER <id>` headers and flagging only
+  `[no-thumbnail]`; `full` lines add language, Provider and thumbnail columns with
+  a 100-character summary. It contains no images, exact selectors, challenges
+  or receipts.
+- A keyword `figure_library_search` with no match points the Agent to this tool.
+  The Skill makes catalog listing plus semantic choice the default for a
+  described need and keeps keyword search for named templates or chart types.
 - Continue with `{ resultSetId, offset: nextOffset }` and no filters. Filters on
   a continuation, an `offset` without `resultSetId` or past the end return
   `catalog_listing_invalid_input`; a search result set, an evicted listing,

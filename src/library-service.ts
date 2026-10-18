@@ -252,7 +252,7 @@ function validationStateText(state: ValidationStateSummaryV1) {
 
 function candidateText(candidates: Array<TemplateCandidate & { candidateId: string; thumbnailUri?: string }>) {
   if (!candidates.length) {
-    return "No matching templates were found in the selected Providers. No tool retry is needed unless the user changes the search intent.";
+    return "No keyword match in the selected Providers. Keyword search misses descriptive wording; call figure_library_list_catalog and choose by meaning before telling the user the library lacks this figure type. Do not retry the same search.";
   }
   const publicationReview = candidates.some((candidate) => candidate.matchKind);
   return [
@@ -818,7 +818,7 @@ export async function createLibraryService(options: LibraryServiceOptions = {}) 
       visibleCandidates.length ? "search_candidates_ready" : "search_no_matches",
       visibleCandidates.length
         ? `Unified search returned page ${pageIndex} of ${options.state.candidates.length} complete ranked matches. Display this page in the host or optional App, then wait for user selection.`
-        : "Unified search completed without a matching candidate from the selected Providers.",
+        : "Unified keyword search found no match in the selected Providers; use figure_library_list_catalog for semantic selection before concluding the figure type is missing.",
       visibleCandidates.length ? "ask_user" : "none",
     );
     const structuredContent = {
@@ -1134,7 +1134,7 @@ export async function createLibraryService(options: LibraryServiceOptions = {}) 
     {
       title: "Search all matching scientific figure Providers",
       description:
-        "Search Local Published, FigureYa, Open Figure Modules and opted-in personal Providers. Present candidates using host thumbnail resources/image tools or the optional App, then wait for selection. Community is explicit-only; Working, Capture and flat-v1 entries are excluded.",
+        "Keyword search over Local Published, FigureYa, Open Figure Modules and opted-in personal Providers; best for named templates or chart types. For a described need (data, scientific question, look) or no/poor matches, use figure_library_list_catalog and choose by meaning. Present candidates using host thumbnail resources/image tools or the optional App, then wait for selection. Community is explicit-only; Working, Capture and flat-v1 entries are excluded.",
       inputSchema: SearchInput.shape,
       annotations: {
         readOnlyHint: true,

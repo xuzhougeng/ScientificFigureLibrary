@@ -8,7 +8,7 @@ import type { TemplateCandidate } from "./types.ts";
 
 export const CATALOG_LISTING_DEFAULT_LIMIT = 50;
 export const CATALOG_LISTING_MAX_LIMIT = 100;
-const SUMMARY_CHARS = 100;
+const SUMMARY_CHARS = { full: 100, compact: 60 } as const;
 const MAX_FACET_VALUES = 60;
 
 export const CatalogListingInput = z.object({
@@ -18,8 +18,12 @@ export const CatalogListingInput = z.object({
   plotFamily: z.string().min(1).max(200).optional(),
   language: z.string().min(1).max(100).optional(),
   assetKind: z.enum(["plot_template", "visual_reference"]).optional(),
-  limit: z.number().int().min(1).max(CATALOG_LISTING_MAX_LIMIT).optional().default(CATALOG_LISTING_DEFAULT_LIMIT),
+  limit: z.number().int().min(0).max(CATALOG_LISTING_MAX_LIMIT).optional().default(CATALOG_LISTING_DEFAULT_LIMIT)
+    .describe("Entries per page; 0 returns only Provider counts and facets."),
+  detail: z.enum(["compact", "full"]).optional().default("compact")
+    .describe("compact: candidateId, titles, plotFamily and a 60-character summary per line; full adds language, Provider and thumbnail columns with 100 characters."),
 });
+export type CatalogListingDetail = "compact" | "full";
 export type CatalogListingRequest = z.infer<typeof CatalogListingInput>;
 
 export interface CatalogListingSource {
@@ -39,6 +43,19 @@ export interface CatalogListingSet {
 
 type Facet = Array<{ value: string; count: number }>;
 
+interface ListedEntry {
+  candidateId: string;
+  providerId: string;
+  templateId: string;
+  title: string;
+  titleEn?: string;
+  plotFamily: string;
+  language: string;
+  assetKind: TemplateCandidate["assetKind"];
+  thumbnailAvailable: boolean;
+  summary: string;
+}
+
 function facet(candidates: TemplateCandidate[], pick: (candidate: TemplateCandidate) => string): Facet {
   const counts = new Map<string, number>();
   for (const candidate of candidates) {
@@ -55,16 +72,17 @@ function oneLine(value: string) {
   return value.replace(/[\r\n\t|]+/gu, " ").replace(/\s+/gu, " ").trim();
 }
 
-export function catalogEntrySummary(candidate: TemplateCandidate) {
+export function catalogEntrySummary(candidate: TemplateCandidate, detail: CatalogListingDetail = "full") {
   const text = oneLine(markdownPlainText(candidate.description || candidate.excerpt || ""));
-  return text.length > SUMMARY_CHARS ? `${text.slice(0, SUMMARY_CHARS)}…` : text;
+  const max = SUMMARY_CHARS[detail];
+  return text.length > max ? `${text.slice(0, max)}…` : text;
 }
 
-export function buildCatalogListing(set: CatalogListingSet, offset: number, limit: number) {
+export function buildCatalogListing(set: CatalogListingSet, offset: number, limit: number, detail: CatalogListingDetail = "full") {
   const total = set.candidates.length;
   const page = set.candidates.slice(offset, offset + limit);
   const nextOffset = offset + page.length < total ? offset + page.length : null;
-  const entries = page.map((candidate) => ({
+  const entries: ListedEntry[] = page.map((candidate) => ({
     candidateId: scopedCandidateId(set.resultSetId, candidate),
     providerId: candidate.providerId,
     templateId: candidate.templateId,
@@ -74,7 +92,7 @@ export function buildCatalogListing(set: CatalogListingSet, offset: number, limi
     language: candidate.language || "unknown",
     assetKind: candidate.assetKind,
     thumbnailAvailable: candidate.searchPreviewAvailable ?? candidate.previewAvailable,
-    summary: catalogEntrySummary(candidate),
+    summary: catalogEntrySummary(candidate, detail),
   }));
   const facets = {
     providerId: facet(set.candidates, (candidate) => candidate.providerId),
@@ -92,12 +110,12 @@ export function buildCatalogListing(set: CatalogListingSet, offset: number, limi
     facetLine("plotFamily", facets.plotFamily),
     facetLine("language", facets.language),
     facetLine("assetKind", facets.assetKind),
-    "ENTRIES: candidateId | title | titleEn | plotFamily | language | providerId | thumbnail | summary",
-    ...entries.map((entry) =>
-      [entry.candidateId, entry.title, entry.titleEn ?? "-", entry.plotFamily, entry.language, entry.providerId, entry.thumbnailAvailable ? "thumbnail" : "no-thumbnail", entry.summary].join(" | ")),
-    total
-      ? "Choose relevant entries by meaning, not by exact wording. Show them with figure_library_get_candidate_images (same resultSetId, at most 12 candidateIds), then wait for user selection. An absent keyword hit is not evidence that the library lacks a figure type."
-      : "No catalog entries matched these Provider filters. Report the empty filters; do not claim the whole library lacks the figure type unless the default Providers were listed without filters.",
+    ...entryLines(entries, detail),
+    !total
+      ? "No catalog entries matched these Provider filters. Report the empty filters; do not claim the whole library lacks the figure type unless the default Providers were listed without filters."
+      : !entries.length
+        ? "Facets only. Narrow with providerIds/language/assetKind if the user stated them (plotFamily omits unclassified entries), then continue with this resultSetId and offset to read entries."
+        : "Choose relevant entries by meaning, not by exact wording. Show them with figure_library_get_candidate_images (same resultSetId, at most 12 candidateIds), then wait for user selection. An absent keyword hit is not evidence that the library lacks a figure type.",
   ];
   return {
     structured: {
@@ -112,6 +130,25 @@ export function buildCatalogListing(set: CatalogListingSet, offset: number, limi
     },
     lines,
   };
+}
+
+function entryLines(entries: ListedEntry[], detail: CatalogListingDetail) {
+  if (!entries.length) return [];
+  if (detail === "full") {
+    return [
+      "ENTRIES: candidateId | title | titleEn | plotFamily | language | providerId | thumbnail | summary",
+      ...entries.map((entry) =>
+        [entry.candidateId, entry.title, entry.titleEn ?? "-", entry.plotFamily, entry.language, entry.providerId, entry.thumbnailAvailable ? "thumbnail" : "no-thumbnail", entry.summary].join(" | ")),
+    ];
+  }
+  // Compact lines group by Provider and only flag the rare entry without a thumbnail.
+  const lines = ["ENTRIES: candidateId | title | titleEn | plotFamily | summary"];
+  let provider = "";
+  for (const entry of entries) {
+    if (entry.providerId !== provider) lines.push(`PROVIDER ${(provider = entry.providerId)}`);
+    lines.push([entry.candidateId, entry.title, entry.titleEn ?? "-", entry.plotFamily, entry.summary].join(" | ") + (entry.thumbnailAvailable ? "" : " [no-thumbnail]"));
+  }
+  return lines;
 }
 
 export function defineCatalogListing(operations: OperationRegistry, options: {
@@ -147,13 +184,15 @@ export function defineCatalogListing(operations: OperationRegistry, options: {
         if (offset > set.candidates.length) {
           return invalid(`offset ${offset} is beyond the ${set.candidates.length} entries of this listing.`);
         }
-        const listing = buildCatalogListing(set, offset, input.limit);
+        const listing = buildCatalogListing(set, offset, input.limit, input.detail);
         return terminal(
           outcome(
             "ok",
             listing.structured.total ? "catalog_listing_ready" : "catalog_listing_empty",
             listing.structured.total
-              ? `Catalog listing returned entries ${offset + 1}-${offset + listing.structured.entries.length} of ${listing.structured.total}.`
+              ? listing.structured.entries.length
+                ? `Catalog listing returned entries ${offset + 1}-${offset + listing.structured.entries.length} of ${listing.structured.total}.`
+                : `Catalog facets for ${listing.structured.total} entries; no entries were requested.`
               : "The selected Providers returned no catalog entries.",
             listing.structured.total ? "ask_user" : "none",
           ),

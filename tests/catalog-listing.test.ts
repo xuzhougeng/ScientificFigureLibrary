@@ -92,6 +92,30 @@ test("catalog listing gives agents a compact, paginated, facet-counted catalog t
     assert.match(text(first), /^ENTRIES: candidateId \| title/mu);
     assert.match(text(first), /^FACET plotFamily: volcano=2, heatmap=1$/mu);
     assert.match(text(first), /not evidence that the library lacks/u);
+    // Compact (default) lines group by Provider and omit language/Provider/thumbnail columns.
+    assert.match(text(first), new RegExp(`^PROVIDER ${LOCAL_LIBRARY_PROVIDER_ID.replace(/\./gu, "\\.")}$`, "mu"));
+    assert.match(text(first), /^ENTRIES: candidateId \| title \| titleEn \| plotFamily \| summary$/mu);
+    assert.doesNotMatch(text(first), /\| (R|Python) \|/u);
+    for (const entry of firstEntries) assert.ok(String(entry.summary).length <= 61);
+    const full = await call("figure_library_list_catalog", { ...local, limit: 1, detail: "full" });
+    assert.match(text(full), /^ENTRIES: candidateId \| title \| titleEn \| plotFamily \| language \| providerId \| thumbnail \| summary$/mu);
+    assert.match(text(full), / \| thumbnail \| /u);
+
+    // limit 0 returns counts and facets only; the result set then pages from offset 0.
+    const facetsOnly = await call("figure_library_list_catalog", { ...local, limit: 0 });
+    assert.equal(code(facetsOnly), "catalog_listing_ready");
+    assert.equal(entries(data(facetsOnly).entries).length, 0);
+    assert.equal(data(facetsOnly).total, 3);
+    assert.equal(data(facetsOnly).nextOffset, 0);
+    assert.match(text(facetsOnly), /^FACET language: R=2, Python=1$/mu);
+    assert.doesNotMatch(text(facetsOnly), /^ENTRIES:/mu);
+    const afterFacets = await call("figure_library_list_catalog", { resultSetId: data(facetsOnly).resultSetId, offset: 0, limit: 5 });
+    assert.equal(entries(data(afterFacets).entries).length, 3);
+
+    // A described need that keyword search cannot match points the Agent to semantic catalog selection.
+    const missed = await call("figure_library_search", { query: "想逐个病人展示治疗持续了多久以及什么时候出现缓解", ...local });
+    assert.equal(code(missed), "search_no_matches");
+    assert.match(text(missed), /figure_library_list_catalog/u);
 
     const resultSetId = data(first).resultSetId;
     const second = await call("figure_library_list_catalog", { resultSetId, offset: 2, limit: 2 });
