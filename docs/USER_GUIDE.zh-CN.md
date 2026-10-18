@@ -439,7 +439,9 @@ Wisp/Codex/Claude/Cursor 插件 ZIP，以及 Pi 与 dsh 使用的 npm 包，均�
 
 不使用 App 时，调用 `figure_library_get_skill` 读取同源指导。搜索返回候选 ID 和
 缩略图 URI，宿主通过 `figure_library_get_candidate_images` 或 MCP 资源读取展示
-当前页，再用 `figure_library_search_page` 翻页。用户选择后沿用精确 headless
+当前页，再用 `figure_library_search_page` 翻页。关键词检索因用词与模板命名不一致而落空时，
+Agent 调用 `figure_library_list_catalog` 读取紧凑的文本目录（各 Provider 数量、图型族与语言分面、
+每个模板一行），自行按语义挑选；选出的候选同样通过候选图片工具展示。用户选择后沿用精确 headless
 预览、确认和 Plan/Apply 流程。工具成功返回图片与用户实际看到图片需分别验证。
 
 ### 9.3 协议与相关文档

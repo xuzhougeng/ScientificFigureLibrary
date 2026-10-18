@@ -50,6 +50,7 @@ export const STANDARD_TOOL_NAMES = Object.freeze([
   "figure_library_export_diagnostics",
   "figure_library_github_auth_instructions",
   "figure_library_github_auth_status",
+  "figure_library_list_catalog",
   "figure_library_list_provider_sources",
   "figure_library_network_status",
   "figure_library_network_test",

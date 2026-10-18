@@ -72,13 +72,21 @@ Keep provenance/execution truth in metadata, not repeated template-facing discla
    Keep these returned identities unchanged. Default Providers are Local
    Published, FigureYa, Open Figure Modules, then opted-in personal sources;
    bundled Community is frozen and explicit-only (`includeInDefaultSearch: false`).
-4. In an App host, the component displays thumbnails. In an ordinary MCP host,
+4. Search is keyword-based. When it returns no or poor matches, or the user's
+   wording may differ from template names, call `figure_library_list_catalog`
+   before concluding anything is missing. It returns per-Provider counts,
+   plotFamily/language facets and one compact text line per template; narrow
+   with `providerIds`/`plotFamily`/`language` and page with the returned
+   `resultSetId` and `nextOffset`. Choose entries by meaning yourself. Only
+   after the default Providers were listed without filters may you say the
+   library lacks a figure type.
+5. In an App host, the component displays thumbnails. In an ordinary MCP host,
    read the returned thumbnail resources or call
    `figure_library_get_candidate_images` with the result set and current-page
-   candidate IDs (at most 12). Display the returned images with their labels
+   or listed candidate IDs (at most 12). Display the returned images with their labels
    using the host's image support. This is thumbnail browsing, not exact
    preview confirmation. Do not generate replacement images.
-5. Wait for user selection after presenting the page. For another page, use
+6. Wait for user selection after presenting the page. For another page, use
    `figure_library_search_page` with the original `resultSetId` and opaque
    `nextCursor`; do not alter the query to simulate pagination. Never walk all
    candidates automatically. Explicit delegation to choose permits reviewing

@@ -149,6 +149,7 @@ try {
     "figure_library_apply_full_restore",
     "figure_library_plan_template_bundle_import",
     "figure_library_apply_template_bundle_import",
+    "figure_library_list_catalog",
     "figure_library_list_provider_sources",
     "figure_library_network_status",
     "figure_library_network_test",
@@ -315,6 +316,21 @@ try {
   const candidateResource = await client.readResource({ uri: figureYa.thumbnailUri });
   if (candidateResource.contents[0]?.blob !== imageBlock.data || candidateResource.contents[0]?.mimeType !== imageBlock.mimeType) {
     throw new Error("candidate image tool and resource disagree");
+  }
+
+  smokeStep = "catalog-listing";
+  const catalogListing = await client.callTool({ name: "figure_library_list_catalog", arguments: { providerIds: ["org.figureya.module"], limit: 5 } });
+  const listedEntry = structured(catalogListing).entries?.find((entry) => entry.thumbnailAvailable);
+  if (outcome(catalogListing).code !== "catalog_listing_ready" || structured(catalogListing).total < 100 ||
+      typeof structured(catalogListing).nextOffset !== "number" || !listedEntry?.candidateId ||
+      JSON.stringify(structured(catalogListing)).includes("data:image/")) {
+    throw new Error("catalog listing did not return a compact paginated FigureYa catalog");
+  }
+  const listedImages = await client.callTool({ name: "figure_library_get_candidate_images", arguments: {
+    resultSetId: structured(catalogListing).resultSetId, candidateIds: [listedEntry.candidateId],
+  } });
+  if (outcome(listedImages).code !== "candidate_images_ready") {
+    throw new Error("catalog listing candidates cannot be displayed with candidate images");
   }
   const previewed = await client.callTool({
     name: "figure_library_preview",

@@ -639,6 +639,33 @@ headless preview also exposes `PREVIEW_CHALLENGE` in its text response. All
 materialization and replay gates below remain unchanged. An Agent receiving
 an image is not proof the user saw it on their screen.
 
+### Catalog listing for semantic selection
+
+Search ranking is lexical, so a query worded differently from template names
+can return nothing. `figure_library_list_catalog` lets the host Agent read the
+catalog itself and choose by meaning. It is read-only and model-visible.
+
+- A new listing takes optional `providerIds` (default Providers when omitted;
+  Community stays explicit-only), `plotFamily`, `language`, `assetKind` and
+  `limit` (1–100, default 50). It registers an ordinary browse result set: the
+  same Provider filters, catalog revision and Library binding checks as search.
+- The response has `resultSetId`, `total`, `offset`, `nextOffset`, `sources[]`
+  (per-Provider `matched` and `health`), `facets` (`providerId`, `plotFamily`,
+  `language`, `assetKind` counts over the whole filtered listing; empty values
+  appear as `unclassified`/`unknown`) and `entries[]` with `candidateId`,
+  `providerId`, `templateId`, `title`, optional `titleEn`, `plotFamily`,
+  `language`, `assetKind`, `thumbnailAvailable` and a single-line `summary` of at
+  most 100 characters.
+  Text content repeats this as one `|`-separated line per entry. It contains no
+  images, exact selectors, challenges or receipts.
+- Continue with `{ resultSetId, offset: nextOffset }` and no filters. Filters on
+  a continuation, an `offset` without `resultSetId` or past the end return
+  `catalog_listing_invalid_input`; a search result set, an evicted listing,
+  or a catalog/Library change returns `search_results_stale`.
+- Listed `candidateId`s belong to the listing result set, so
+  `figure_library_get_candidate_images` and the thumbnail URIs accept them, and
+  the returned `exactSelector` feeds the unchanged headless exact-preview path.
+
 ## Exact materialization
 
 ### Local application and shared business service
@@ -1039,7 +1066,7 @@ alone must not be described as delivery to the user.
 | Area | Tools |
 | --- | --- |
 | Guidance | `figure_library_get_skill` |
-| Workbench and retrieval | `figure_library_get_candidate_images`, `figure_library_search_page`, `figure_library_open`, `figure_library_search`, `figure_library_describe`, `figure_library_preview`, `figure_library_preview_exact_headless`, `figure_library_confirm_selection_headless`, `figure_library_create_plot_task_headless`, `figure_library_source_status` |
+| Workbench and retrieval | `figure_library_get_candidate_images`, `figure_library_search_page`, `figure_library_list_catalog`, `figure_library_open`, `figure_library_search`, `figure_library_describe`, `figure_library_preview`, `figure_library_preview_exact_headless`, `figure_library_confirm_selection_headless`, `figure_library_create_plot_task_headless`, `figure_library_source_status` |
 | App-only component tools | `figure_library_preview_exact`, `figure_library_confirm_selection`, `figure_library_record_ui_event` |
 | Diagnostics export | `figure_library_export_diagnostics` |
 | Global binding | `figure_library_plan_bind_global`, `figure_library_apply_bind_global` |

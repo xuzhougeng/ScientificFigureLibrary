@@ -449,6 +449,14 @@ Search defaults to 6 candidates per page and returns the true `total`,
 yourself. If the server returns `search_results_stale`, start a new search;
 never reuse the old result set.
 
+Search ranking is keyword-based. Before telling the user the library lacks a
+figure type, call `figure_library_list_catalog` (default Providers, no filters)
+and read its facets and compact entry lines; narrow with `providerIds`,
+`plotFamily` or `language`, continue with the returned `resultSetId` and
+`nextOffset`, and choose entries by meaning. The listing is text only: show the
+chosen entries with `figure_library_get_candidate_images` on the listing
+`resultSetId`, then continue with the normal selection and exact-preview path.
+
 After search, present the current page using the App or the host's image support.
 Ordinary hosts can call `figure_library_get_candidate_images` with current-result
 candidate IDs (at most 12), or read each candidate's `thumbnailUri`. Then wait

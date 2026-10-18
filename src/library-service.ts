@@ -98,6 +98,7 @@ import {
   defineCandidateImages,
   scopedCandidateId,
 } from "./candidate-images.ts";
+import { defineCatalogListing } from "./catalog-listing.ts";
 
 export { VERSION };
 export const MATERIALIZATION_PROTOCOL_VERSION = 2;
@@ -541,6 +542,8 @@ interface SearchSessionState {
     { health: "degraded" | "corrupt"; errorCode: string; safeMessage: string }
   >;
   candidateIds: Set<string>;
+  /** Created by figure_library_list_catalog; may be continued by offset. */
+  catalogListing?: boolean;
 }
 
 export interface LibraryServiceOptions {
@@ -916,6 +919,30 @@ export async function createLibraryService(options: LibraryServiceOptions = {}) 
       if (!state || state.queryDigest !== searchQueryDigest(parsedInput)) throw new Error("The cached publication search is missing or its query/filters changed; create a new Plan.");
       return await buildSearchPage({ resultSetId: options.resultSetId, state, offset: 0, limit: parsedInput.limit, correlationId, invocationSource, toolName, operationStartedAt });
     }
+    const { resultSetId, state } = await createSearchResultSet(options);
+    return await buildSearchPage({
+      resultSetId,
+      state,
+      offset: 0,
+      limit: parsedInput.limit,
+      correlationId,
+      invocationSource,
+      toolName,
+      operationStartedAt,
+    });
+  }
+
+  async function createSearchResultSet(options: {
+    parsedInput: ParsedSearchInput;
+    explicitlySelected: boolean;
+    correlationId: string;
+    invocationSource: "agent" | "app";
+    toolName: "figure_library_search" | "figure_library_search_page" | "figure_library_list_catalog";
+    customTag?: string;
+    favoriteSelector?: ExactTemplateSelector;
+    catalogListing?: boolean;
+  }) {
+    const { parsedInput, explicitlySelected, correlationId, invocationSource, toolName } = options;
     const request: SearchRequest = {
       query: parsedInput.query,
       dataProfile: parsedInput.dataProfile,
@@ -1039,6 +1066,7 @@ export async function createLibraryService(options: LibraryServiceOptions = {}) 
       providerMatches,
       providerFailures,
       candidateIds: new Set(normalized.map((candidate) => scopedCandidateId(resultSetId, candidate))),
+      ...(options.catalogListing ? { catalogListing: true } : {}),
     };
     searchSessions.set(resultSetId, state);
     while (searchSessions.size > 128) {
@@ -1056,17 +1084,50 @@ export async function createLibraryService(options: LibraryServiceOptions = {}) 
       libraryRevision: bindingDigest,
       safeMessage: `Matched ${normalized.length} candidates.`,
     });
-    return await buildSearchPage({
-      resultSetId,
-      state,
-      offset: 0,
-      limit: parsedInput.limit,
-      correlationId,
-      invocationSource,
-      toolName,
-      operationStartedAt,
-    });
+    return { resultSetId, state };
   }
+
+  const catalogListingSources = (state: SearchSessionState) =>
+    registry.list().map(({ providerId, sourceLabel }) => {
+      const failure = state.providerFailures[providerId];
+      return {
+        providerId,
+        sourceLabel,
+        matched: state.providerMatches[providerId] ?? 0,
+        health: failure?.health ?? (state.input.providerIds.includes(providerId) ? "ready" : "not_selected"),
+        ...(failure ? { errorCode: failure.errorCode, safeMessage: failure.safeMessage } : {}),
+      };
+    });
+  defineCatalogListing(operations, {
+    failure: previewFailure,
+    list: async (input) => {
+      const correlationId = diagnostics.createCorrelationId("catalog");
+      const { resultSetId, state } = await createSearchResultSet({
+        parsedInput: {
+          query: "",
+          browse: true,
+          plotFamily: input.plotFamily,
+          language: input.language,
+          assetKind: input.assetKind,
+          providerIds: input.providerIds ?? registry.defaultProviderIds(),
+          limit: input.limit,
+        },
+        explicitlySelected: input.providerIds !== undefined,
+        correlationId,
+        invocationSource: "agent",
+        toolName: "figure_library_list_catalog",
+        catalogListing: true,
+      });
+      return { resultSetId, candidates: state.candidates, sources: catalogListingSources(state) };
+    },
+    continueListing: async (resultSetId) => {
+      const { state } = await requireSearchState(resultSetId);
+      if (!state.catalogListing) {
+        throw new PreviewProtocolError("search_results_stale", "This resultSetId belongs to a search, not a catalog listing; use figure_library_search_page for it.");
+      }
+      return { resultSetId, candidates: state.candidates, sources: catalogListingSources(state) };
+    },
+  });
 
   operations.define(
     "figure_library_search",
