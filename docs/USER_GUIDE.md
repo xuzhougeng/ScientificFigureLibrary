@@ -514,7 +514,14 @@ Agent by default calls `figure_library_list_catalog`: it first reads Provider
 counts and plot-family/language facets, then compact one-line-per-template
 pages, and picks matches by meaning with a reason for each. Keyword search
 stays for named templates or chart types, and a keyword miss never means the
-library lacks the figure. Listed candidates display through the same image tool. After the user selects a
+library lacks the figure. Listed candidates display through the same image tool.
+
+To load fewer tools in a host, set `SFL_TOOL_PROFILE` in its MCP server
+configuration: `use` (finding, previewing and materializing templates; 28
+tools, about a third of the schema size), `author` (adds intake, review and
+publishing to Local Published) or `full` (default, every tool). For example, in
+a JSON MCP configuration add `"env": { "SFL_TOOL_PROFILE": "use" }` to the
+`figure-library` server entry. The local clients are not affected. After the user selects a
 candidate, use the existing exact headless preview/confirmation and Plan/Apply
 flow. Host image display must be tested separately from tool execution.
 

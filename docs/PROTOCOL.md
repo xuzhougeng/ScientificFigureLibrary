@@ -1090,6 +1090,23 @@ alone must not be described as delivery to the user.
 There are no `figure_capture_*`, project status/pin, direct-write import, sync,
 archive/reconcile, or one-step materialize tools in the standard 0.6 server.
 
+### Tool profiles
+
+`SFL_TOOL_PROFILE` selects which tools the MCP adapter registers, so a host can
+load fewer tool schemas. It does not change the shared service, the local
+clients or any tool contract. Unset or empty means `full`; any other value
+than the three below stops the server at startup.
+
+| Profile | Registers | Measured `tools/list` size |
+| --- | --- | --- |
+| `use` | guidance, source status, search/pagination/catalog listing, candidate images, describe/preview, App and headless exact preview/confirmation, plot-task handoff, UI events, materialization, global/workspace binding, write-lock recovery, Provider source listing, diagnostics export, network and update status (28 tools) | about 24 KB |
+| `author` | `use` plus direct intake, review inspection, gate updates, publish, discard, restore and adoption (46 tools) | about 56 KB |
+| `full` (default) | every tool in the table above, including bundles, Provider source changes, publication export and GitHub/Open Figure PRs (62 tools), and any tool added later | about 72 KB |
+
+The list lives in [tool-profiles.ts](../src/tool-profiles.ts). A reduced profile
+adds a sentence to the server instructions naming it, so the Agent can ask
+the user to switch to `full` instead of inventing a missing workflow.
+
 ## Distribution
 
 The same standard MCP server and Skill are packaged for Wisp, Codex, Claude,
