@@ -5,7 +5,7 @@ import test from "node:test";
 import YAML from "yaml";
 import { VERSION } from "../src/version.ts";
 // @ts-expect-error -- the packaging helper is an intentionally untyped .mjs module.
-const { assertPersonalSnapshotInventory, commonPluginFiles } = await import("../scripts/plugin-package-lib.mjs");
+const { assertPersonalSnapshotInventory, buildArchive, commonPluginFiles, PLUGIN_GALLERY_IMAGE, pluginPreviewDownloads } = await import("../scripts/plugin-package-lib.mjs");
 
 const root = path.resolve(import.meta.dirname, "..");
 const WEBSITE = "https://xuzhougeng.github.io/ScientificFigureLibrary/";
@@ -277,4 +277,32 @@ test("plugin packaging rejects personal archives and undeclared snapshot files",
       ),
     /missing declared personal module snapshot file/u,
   );
+});
+
+test("plugin packages carry catalog metadata and pinned download manifests, not gallery images", async () => {
+  const files: string[] = await commonPluginFiles();
+  assert.deepEqual(files.filter((file) => PLUGIN_GALLERY_IMAGE.test(file)), []);
+  assert.ok(files.includes(BRAND_ASSET));
+  for (const control of ["assets/catalog.json", "assets/figureya-preview.manifest.json", "assets/personal-modules/module-catalog.json", "assets/personal-modules/module-preview.manifest.json"]) {
+    assert.ok(files.includes(control), control);
+  }
+  const commit = "a".repeat(40);
+  const manifests: Map<string, Uint8Array> = await pluginPreviewDownloads({ commit, repository: "owner/repo", requireCleanAssets: false });
+  assert.deepEqual([...manifests.keys()].sort(), ["assets/personal-modules/preview-downloads.json", "assets/preview-downloads.json"]);
+  for (const [relative, bytes] of manifests) {
+    const manifest = JSON.parse(Buffer.from(bytes).toString("utf8")) as { schema: string; repository: string; commit: string; files: Array<{ path: string; bytes: number }> };
+    assert.equal(manifest.schema, "figure-library.preview-downloads.v1");
+    assert.equal(manifest.repository, "owner/repo");
+    assert.equal(manifest.commit, commit);
+    assert.ok(manifest.files.length > 0, relative);
+    // Every pinned image exists in the repository snapshot that the commit publishes.
+    const prefix = path.posix.dirname(relative);
+    for (const file of manifest.files) {
+      assert.equal(fs.statSync(path.join(root, prefix, file.path)).size, file.bytes, file.path);
+      assert.equal(files.includes(path.posix.join(prefix, file.path)), false, file.path);
+    }
+  }
+  const archive = await buildArchive(["README.md"], manifests);
+  assert.ok(archive["assets/preview-downloads.json"]);
+  await assert.rejects(buildArchive(["README.md"], new Map([["README.md", new Uint8Array()]])), /would replace a repository file/u);
 });
