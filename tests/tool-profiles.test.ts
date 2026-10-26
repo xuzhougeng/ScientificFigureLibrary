@@ -44,6 +44,8 @@ test("MCP server registers exactly the selected profile and says so in its instr
     SFL_DIAGNOSTICS_DIR: path.join(root, "diagnostics"),
     XDG_CONFIG_HOME: path.join(root, "config"), XDG_DATA_HOME: path.join(root, "data"),
     APPDATA: path.join(root, "config"), LOCALAPPDATA: path.join(root, "data"),
+    // No background update check or catalog refresh may write into root while it is removed.
+    SFL_OPEN_FIGURE_AUTO_REFRESH: "0", SFL_MCP_UPDATE_NOTICES: "0",
   };
   const previous = Object.fromEntries(Object.keys(overrides).map((key) => [key, process.env[key]]));
   Object.assign(process.env, overrides);
