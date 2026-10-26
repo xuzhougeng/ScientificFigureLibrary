@@ -76,6 +76,11 @@ Keep provenance/execution truth in metadata, not repeated template-facing discla
    templates; when unsure, do not narrow), then read the compact entry pages with the returned `resultSetId` and `nextOffset`.
    Reading these text pages is expected; it shows no images. Pick at most 6
    entries that satisfy the core need and give each a one-line reason.
+   Read the full catalog once per session: for later figure requests, reuse
+   the entries you already read and call only `limit: 0` to compare its
+   `catalogRevision`; re-read the pages only when it changed. Listed
+   `candidateId`s belong to their listing `resultSetId`; if image tools report
+   it stale, list again before displaying.
 4. Use `figure_library_search` (keyword) only when the user names a template or
    chart type, or as a quick first try. Zero or poor keyword hits never mean
    the library lacks the figure; fall back to step 3. Only after the default

@@ -296,7 +296,12 @@ type ParsedSearchInput = Omit<z.infer<typeof SearchInput>, "providerIds" | "resu
   browse?: boolean;
   /** Catalog listing only: canonical figure-type group applied after Provider search. */
   familyGroup?: PlotFamilyGroup;
+  /** Catalog listing only: exact Provider-qualified template keys to re-list. */
+  templateKeys?: string[];
 };
+
+/** Provider IDs and template IDs never contain a space, so it is a safe separator. */
+const templateKey = (providerId: string, templateId: string) => `${providerId} ${templateId}`;
 
 function searchQueryDigest(input: ParsedSearchInput) {
   return sha256(
@@ -314,6 +319,7 @@ function searchQueryDigest(input: ParsedSearchInput) {
       limit: input.limit,
       browse: input.browse === true,
       ...(input.familyGroup ? { familyGroup: input.familyGroup } : {}),
+      ...(input.templateKeys ? { templateKeys: [...input.templateKeys].sort() } : {}),
     }),
   );
 }
@@ -1016,6 +1022,10 @@ export async function createLibraryService(options: LibraryServiceOptions = {}) 
     if (parsedInput.familyGroup) {
       for (const result of searched) result.candidates = result.candidates.filter((candidate) => plotFamilyGroup(candidate) === parsedInput.familyGroup);
     }
+    if (parsedInput.templateKeys) {
+      const wanted = new Set(parsedInput.templateKeys);
+      for (const result of searched) result.candidates = result.candidates.filter((candidate) => wanted.has(templateKey(candidate.providerId, candidate.templateId)));
+    }
     const providerMatches = Object.fromEntries(
       searched.map(({ providerId, candidates }) => [providerId, candidates.length]),
     );
@@ -1115,6 +1125,7 @@ export async function createLibraryService(options: LibraryServiceOptions = {}) 
           browse: true,
           plotFamily: input.plotFamily,
           ...(input.familyGroup ? { familyGroup: input.familyGroup } : {}),
+          ...(input.templates ? { templateKeys: input.templates.map((item) => templateKey(item.providerId, item.templateId)) } : {}),
           language: input.language,
           assetKind: input.assetKind,
           providerIds: input.providerIds ?? registry.defaultProviderIds(),
@@ -1126,14 +1137,14 @@ export async function createLibraryService(options: LibraryServiceOptions = {}) 
         toolName: "figure_library_list_catalog",
         catalogListing: true,
       });
-      return { resultSetId, candidates: state.candidates, sources: catalogListingSources(state) };
+      return { resultSetId, catalogRevision: state.catalogRevision, candidates: state.candidates, sources: catalogListingSources(state) };
     },
     continueListing: async (resultSetId) => {
       const { state } = await requireSearchState(resultSetId);
       if (!state.catalogListing) {
         throw new PreviewProtocolError("search_results_stale", "This resultSetId belongs to a search, not a catalog listing; use figure_library_search_page for it.");
       }
-      return { resultSetId, candidates: state.candidates, sources: catalogListingSources(state) };
+      return { resultSetId, catalogRevision: state.catalogRevision, candidates: state.candidates, sources: catalogListingSources(state) };
     },
   });
 

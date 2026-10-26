@@ -92,6 +92,12 @@ test("catalog listing gives agents a compact, paginated, facet-counted catalog t
     assert.match(text(first), /^ENTRIES: candidateId \| title/mu);
     assert.match(text(first), /^FACET plotFamily: volcano=2, heatmap=1$/mu);
     assert.match(text(first), /not evidence that the library lacks/u);
+    // The revision lets an Agent reuse one catalog read for the whole session.
+    const revision = String(data(first).catalogRevision);
+    assert.match(revision, /^[a-f0-9]{64}$/u);
+    assert.match(text(first), new RegExp(`^CATALOG_REVISION: ${revision}$`, "mu"));
+    assert.match(text(first), /re-read the catalog only when a limit:0 call reports a different catalogRevision/u);
+    assert.equal(data(await call("figure_library_list_catalog", { ...local, limit: 0 })).catalogRevision, revision);
     // Compact (default) lines group by Provider and omit language/Provider/thumbnail columns.
     assert.match(text(first), new RegExp(`^PROVIDER ${LOCAL_LIBRARY_PROVIDER_ID.replace(/\./gu, "\\.")}$`, "mu"));
     assert.match(text(first), /^ENTRIES: candidateId \| title \| titleEn \| familyGroup\/plotFamily \| summary$/mu);
@@ -135,6 +141,13 @@ test("catalog listing gives agents a compact, paginated, facet-counted catalog t
     assert.equal(code(await call("figure_library_list_catalog", { resultSetId: data(volcanoes).resultSetId, familyGroup: "heatmap" })), "catalog_listing_invalid_input");
     assert.equal(entries(data(await call("figure_library_list_catalog", { resultSetId: data(volcanoes).resultSetId, offset: 0 })).entries).length, 2);
     assert.equal((await call("figure_library_list_catalog", { ...local, familyGroup: "not-a-group" })).isError, true);
+    // Re-listing chosen entries by Provider and template ID is cheap and yields fresh, usable candidateIds.
+    const reListed = await call("figure_library_list_catalog", { templates: [{ providerId: LOCAL_LIBRARY_PROVIDER_ID, templateId: "listing-heatmap-r" }] });
+    assert.equal(data(reListed).total, 1);
+    const fresh = entries(data(reListed).entries)[0]!;
+    assert.equal(fresh.templateId, "listing-heatmap-r");
+    assert.equal(code(await call("figure_library_get_candidate_images", { resultSetId: data(reListed).resultSetId, candidateIds: [fresh.candidateId] })), "candidate_images_ready");
+    assert.equal(code(await call("figure_library_list_catalog", { resultSetId: data(reListed).resultSetId, templates: [{ providerId: LOCAL_LIBRARY_PROVIDER_ID, templateId: "listing-volcano-r" }] })), "catalog_listing_invalid_input");
 
     assert.equal(code(await call("figure_library_list_catalog", { resultSetId, plotFamily: "heatmap" })), "catalog_listing_invalid_input");
     assert.equal(code(await call("figure_library_list_catalog", { ...local, offset: 1 })), "catalog_listing_invalid_input");
@@ -159,6 +172,7 @@ test("catalog listing gives agents a compact, paginated, facet-counted catalog t
     assert.ok(Number(data(defaults).total) > 100);
 
     await publish("listing-pca-r", "pca", "R");
+    assert.notEqual(data(await call("figure_library_list_catalog", { ...local, limit: 0 })).catalogRevision, revision);
     assert.equal(code(await call("figure_library_list_catalog", { resultSetId, offset: 0 })), "search_results_stale");
   } finally {
     await client.close();
@@ -177,13 +191,13 @@ test("catalog listing summaries are single-line, bounded and fill missing facets
   const summary = catalogEntrySummary(candidate);
   assert.equal(summary.includes("\n") || summary.includes("|"), false);
   assert.ok(summary.length <= 101);
-  const listing = buildCatalogListing({ resultSetId: "rs", candidates: [candidate], sources: [] }, 0, 10);
+  const listing = buildCatalogListing({ resultSetId: "rs", catalogRevision: "rev", candidates: [candidate], sources: [] }, 0, 10);
   const [entry] = listing.structured.entries;
   assert.equal(entry!.title, "A title");
   assert.equal(entry!.plotFamily, "unclassified");
   assert.equal(entry!.language, "unknown");
   assert.equal(listing.structured.nextOffset, null);
-  const empty = buildCatalogListing({ resultSetId: "rs", candidates: [], sources: [] }, 0, 10);
+  const empty = buildCatalogListing({ resultSetId: "rs", catalogRevision: "rev", candidates: [], sources: [] }, 0, 10);
   assert.equal(empty.structured.total, 0);
   assert.match(empty.lines.at(-1)!, /do not claim the whole library lacks/u);
 });
