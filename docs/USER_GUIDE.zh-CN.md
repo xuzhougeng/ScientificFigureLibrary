@@ -439,7 +439,13 @@ Wisp/Codex/Claude/Cursor 插件 ZIP，以及 Pi 与 dsh 使用的 npm 包，均�
 
 不使用 App 时，调用 `figure_library_get_skill` 读取同源指导。搜索返回候选 ID 和
 缩略图 URI，宿主通过 `figure_library_get_candidate_images` 或 MCP 资源读取展示
-当前页，再用 `figure_library_search_page` 翻页。用户选择后沿用精确 headless
+当前页，再用 `figure_library_search_page` 翻页。当你描述的是需求（数据、科学问题、想要的样子）而不是图名时，
+Agent 默认调用 `figure_library_list_catalog`：先看各 Provider 数量与图型族、语言分面，再读每个模板一行的紧凑目录，
+按语义挑选并逐条说明理由。关键词检索保留给明确的模板名或图型；关键词没搜到不代表库里没有。选出的候选同样通过候选图片工具展示。
+
+想让宿主少加载一些工具，可在其 MCP 服务配置中设置 `SFL_TOOL_PROFILE`：`use`（找图、预览与材料化，28 个工具，
+工具定义体积约为全部的三分之一）、`author`（再加录入、审阅与发布到 Local Published）或 `full`（默认，全部工具）。
+例如在 JSON 格式的 MCP 配置里，为 `figure-library` 条目加上 `"env": { "SFL_TOOL_PROFILE": "use" }`。本地客户端不受影响。用户选择后沿用精确 headless
 预览、确认和 Plan/Apply 流程。工具成功返回图片与用户实际看到图片需分别验证。
 
 ### 9.3 协议与相关文档

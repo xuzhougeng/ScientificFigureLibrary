@@ -639,6 +639,40 @@ headless preview also exposes `PREVIEW_CHALLENGE` in its text response. All
 materialization and replay gates below remain unchanged. An Agent receiving
 an image is not proof the user saw it on their screen.
 
+### Catalog listing for semantic selection
+
+Search ranking is lexical, so a query worded differently from template names
+can return nothing. `figure_library_list_catalog` lets the host Agent read the
+catalog itself and choose by meaning. It is read-only and model-visible.
+
+- A new listing takes optional `providerIds` (default Providers when omitted;
+  Community stays explicit-only), `plotFamily`, `language`, `assetKind`,
+  `limit` (0–100, default 50; `0` returns counts and facets only) and `detail`
+  (`compact`, the default, or `full`). It registers an ordinary browse result set: the
+  same Provider filters, catalog revision and Library binding checks as search.
+- The response has `resultSetId`, `total`, `offset`, `nextOffset`, `sources[]`
+  (per-Provider `matched` and `health`), `facets` (`providerId`, `plotFamily`,
+  `language`, `assetKind` counts over the whole filtered listing; empty values
+  appear as `unclassified`/`unknown`) and `entries[]` with `candidateId`,
+  `providerId`, `templateId`, `title`, optional `titleEn`, `plotFamily`,
+  `language`, `assetKind`, `thumbnailAvailable` and a single-line `summary`.
+  Text content repeats this as one `|`-separated line per entry. `compact` lines
+  carry `candidateId | title | titleEn | plotFamily | summary` with a
+  60-character summary, grouped under `PROVIDER <id>` headers and flagging only
+  `[no-thumbnail]`; `full` lines add language, Provider and thumbnail columns with
+  a 100-character summary. It contains no images, exact selectors, challenges
+  or receipts.
+- A keyword `figure_library_search` with no match points the Agent to this tool.
+  The Skill makes catalog listing plus semantic choice the default for a
+  described need and keeps keyword search for named templates or chart types.
+- Continue with `{ resultSetId, offset: nextOffset }` and no filters. Filters on
+  a continuation, an `offset` without `resultSetId` or past the end return
+  `catalog_listing_invalid_input`; a search result set, an evicted listing,
+  or a catalog/Library change returns `search_results_stale`.
+- Listed `candidateId`s belong to the listing result set, so
+  `figure_library_get_candidate_images` and the thumbnail URIs accept them, and
+  the returned `exactSelector` feeds the unchanged headless exact-preview path.
+
 ## Exact materialization
 
 ### Local application and shared business service
@@ -1039,7 +1073,7 @@ alone must not be described as delivery to the user.
 | Area | Tools |
 | --- | --- |
 | Guidance | `figure_library_get_skill` |
-| Workbench and retrieval | `figure_library_get_candidate_images`, `figure_library_search_page`, `figure_library_open`, `figure_library_search`, `figure_library_describe`, `figure_library_preview`, `figure_library_preview_exact_headless`, `figure_library_confirm_selection_headless`, `figure_library_create_plot_task_headless`, `figure_library_source_status` |
+| Workbench and retrieval | `figure_library_get_candidate_images`, `figure_library_search_page`, `figure_library_list_catalog`, `figure_library_open`, `figure_library_search`, `figure_library_describe`, `figure_library_preview`, `figure_library_preview_exact_headless`, `figure_library_confirm_selection_headless`, `figure_library_create_plot_task_headless`, `figure_library_source_status` |
 | App-only component tools | `figure_library_preview_exact`, `figure_library_confirm_selection`, `figure_library_record_ui_event` |
 | Diagnostics export | `figure_library_export_diagnostics` |
 | Global binding | `figure_library_plan_bind_global`, `figure_library_apply_bind_global` |
@@ -1055,6 +1089,23 @@ alone must not be described as delivery to the user.
 
 There are no `figure_capture_*`, project status/pin, direct-write import, sync,
 archive/reconcile, or one-step materialize tools in the standard 0.6 server.
+
+### Tool profiles
+
+`SFL_TOOL_PROFILE` selects which tools the MCP adapter registers, so a host can
+load fewer tool schemas. It does not change the shared service, the local
+clients or any tool contract. Unset or empty means `full`; any other value
+than the three below stops the server at startup.
+
+| Profile | Registers | Measured `tools/list` size |
+| --- | --- | --- |
+| `use` | guidance, source status, search/pagination/catalog listing, candidate images, describe/preview, App and headless exact preview/confirmation, plot-task handoff, UI events, materialization, global/workspace binding, write-lock recovery, Provider source listing, diagnostics export, network and update status (28 tools) | about 24 KB |
+| `author` | `use` plus direct intake, review inspection, gate updates, publish, discard, restore and adoption (46 tools) | about 56 KB |
+| `full` (default) | every tool in the table above, including bundles, Provider source changes, publication export and GitHub/Open Figure PRs (62 tools), and any tool added later | about 72 KB |
+
+The list lives in [tool-profiles.ts](../src/tool-profiles.ts). A reduced profile
+adds a sentence to the server instructions naming it, so the Agent can ask
+the user to switch to `full` instead of inventing a missing workflow.
 
 ## Distribution
 

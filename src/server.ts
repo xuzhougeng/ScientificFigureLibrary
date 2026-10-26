@@ -8,19 +8,23 @@ import { inspectNetworkAccess, testNetworkAccess } from "./network-access.ts";
 import { z } from "zod";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { outcome, terminal } from "./tool-outcome.ts";
+import { includesTool, resolveToolProfile, TOOL_PROFILE_ENV, type ToolProfile } from "./tool-profiles.ts";
 
 export { VERSION };
 export { MATERIALIZATION_PROTOCOL_VERSION } from "./library-service.ts";
 
 /** MCP is an external adapter. Local clients call LibraryService directly. */
-export async function createServer(options: LibraryServiceOptions & { service?: LibraryService; updateMonitor?: ReturnType<typeof createMcpUpdateMonitor> } = {}) {
+export async function createServer(options: LibraryServiceOptions & { service?: LibraryService; updateMonitor?: ReturnType<typeof createMcpUpdateMonitor>; toolProfile?: ToolProfile } = {}) {
+  const toolProfile = options.toolProfile ?? resolveToolProfile();
+  const includeTool = (name: string) => includesTool(toolProfile, name);
   const service = options.service ?? await createLibraryService(options);
   const server = new McpServer({ ...SFL_SERVER_IDENTITY, version: VERSION }, {
-    instructions: "Start with figure_library_get_skill for the single SFL Skill and available guidance. Use ordinary search, thumbnail resources/image tools and pagination for host-native browsing; the MCP App is optional. Exact preview confirmation is required before materialization planning.",
+    instructions: "Start with figure_library_get_skill for the single SFL Skill and available guidance. Use ordinary search, thumbnail resources/image tools and pagination for host-native browsing; the MCP App is optional. Exact preview confirmation is required before materialization planning." +
+      (toolProfile === "full" ? "" : ` This server uses the '${toolProfile}' tool profile (${TOOL_PROFILE_ENV}); tools outside it are not registered, so ask the user to switch to 'full' for a hidden workflow.`),
   });
   const updates = options.updateMonitor ?? createMcpUpdateMonitor(options.service ? { noticesEnabled: false } : {});
   await updates.load();
-  mountOperations(server, service.operations, updates);
+  mountOperations(server, service.operations, updates, includeTool);
   const diagnosticResult = async (failureCode: string, operation: () => Promise<CallToolResult>): Promise<CallToolResult> => {
     let result: CallToolResult;
     try { result = await operation(); }
@@ -33,7 +37,7 @@ export async function createServer(options: LibraryServiceOptions & { service?: 
     const notice = updates.notice();
     return notice ? { ...result, content: [...result.content, { type: "text", text: notice }] } : result;
   };
-  server.registerTool("figure_library_network_status", {
+  if (includeTool("figure_library_network_status")) server.registerTool("figure_library_network_status", {
     description: "Read this process's current user/machine proxy configuration; does not prove forwarding.", inputSchema: {},
     annotations: { readOnlyHint: true },
   }, async () => diagnosticResult("network_status_failed", async () => {
@@ -43,7 +47,7 @@ export async function createServer(options: LibraryServiceOptions & { service?: 
       invalid ? "Inspect and correct the enabled proxy configuration before another request." : "Network configuration read; reachability and forwarding are not established.",
       invalid ? "ask_user" : "none"), { ...status }, [JSON.stringify(status)]);
   }));
-  server.registerTool("figure_library_network_test", {
+  if (includeTool("figure_library_network_test")) server.registerTool("figure_library_network_test", {
     description: "Run a bounded connectivity test only against the fixed SFL GitHub releases endpoint.", inputSchema: {},
     annotations: { readOnlyHint: true, openWorldHint: true },
   }, async () => diagnosticResult("network_test_failed", async () => {
@@ -52,7 +56,7 @@ export async function createServer(options: LibraryServiceOptions & { service?: 
     return terminal(outcome(passed ? "ok" : "failed", passed ? "network_test_passed" : "network_test_failed",
       status.message, passed ? "none" : "ask_user"), { ...status }, [JSON.stringify(status)]);
   }));
-  server.registerTool("figure_library_update_status", {
+  if (includeTool("figure_library_update_status")) server.registerTool("figure_library_update_status", {
     description: "Report running/latest stable SFL versions, cache age and release link; refresh manually if requested.",
     inputSchema: { refresh: z.boolean().optional() }, annotations: { readOnlyHint: true, openWorldHint: true },
   }, async ({ refresh }) => diagnosticResult("update_status_failed", async () => {

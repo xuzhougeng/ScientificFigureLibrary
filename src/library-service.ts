@@ -98,6 +98,7 @@ import {
   defineCandidateImages,
   scopedCandidateId,
 } from "./candidate-images.ts";
+import { defineCatalogListing } from "./catalog-listing.ts";
 
 export { VERSION };
 export const MATERIALIZATION_PROTOCOL_VERSION = 2;
@@ -251,7 +252,7 @@ function validationStateText(state: ValidationStateSummaryV1) {
 
 function candidateText(candidates: Array<TemplateCandidate & { candidateId: string; thumbnailUri?: string }>) {
   if (!candidates.length) {
-    return "No matching templates were found in the selected Providers. No tool retry is needed unless the user changes the search intent.";
+    return "No keyword match in the selected Providers. Keyword search misses descriptive wording; call figure_library_list_catalog and choose by meaning before telling the user the library lacks this figure type. Do not retry the same search.";
   }
   const publicationReview = candidates.some((candidate) => candidate.matchKind);
   return [
@@ -541,6 +542,8 @@ interface SearchSessionState {
     { health: "degraded" | "corrupt"; errorCode: string; safeMessage: string }
   >;
   candidateIds: Set<string>;
+  /** Created by figure_library_list_catalog; may be continued by offset. */
+  catalogListing?: boolean;
 }
 
 export interface LibraryServiceOptions {
@@ -815,7 +818,7 @@ export async function createLibraryService(options: LibraryServiceOptions = {}) 
       visibleCandidates.length ? "search_candidates_ready" : "search_no_matches",
       visibleCandidates.length
         ? `Unified search returned page ${pageIndex} of ${options.state.candidates.length} complete ranked matches. Display this page in the host or optional App, then wait for user selection.`
-        : "Unified search completed without a matching candidate from the selected Providers.",
+        : "Unified keyword search found no match in the selected Providers; use figure_library_list_catalog for semantic selection before concluding the figure type is missing.",
       visibleCandidates.length ? "ask_user" : "none",
     );
     const structuredContent = {
@@ -916,6 +919,30 @@ export async function createLibraryService(options: LibraryServiceOptions = {}) 
       if (!state || state.queryDigest !== searchQueryDigest(parsedInput)) throw new Error("The cached publication search is missing or its query/filters changed; create a new Plan.");
       return await buildSearchPage({ resultSetId: options.resultSetId, state, offset: 0, limit: parsedInput.limit, correlationId, invocationSource, toolName, operationStartedAt });
     }
+    const { resultSetId, state } = await createSearchResultSet(options);
+    return await buildSearchPage({
+      resultSetId,
+      state,
+      offset: 0,
+      limit: parsedInput.limit,
+      correlationId,
+      invocationSource,
+      toolName,
+      operationStartedAt,
+    });
+  }
+
+  async function createSearchResultSet(options: {
+    parsedInput: ParsedSearchInput;
+    explicitlySelected: boolean;
+    correlationId: string;
+    invocationSource: "agent" | "app";
+    toolName: "figure_library_search" | "figure_library_search_page" | "figure_library_list_catalog";
+    customTag?: string;
+    favoriteSelector?: ExactTemplateSelector;
+    catalogListing?: boolean;
+  }) {
+    const { parsedInput, explicitlySelected, correlationId, invocationSource, toolName } = options;
     const request: SearchRequest = {
       query: parsedInput.query,
       dataProfile: parsedInput.dataProfile,
@@ -1039,6 +1066,7 @@ export async function createLibraryService(options: LibraryServiceOptions = {}) 
       providerMatches,
       providerFailures,
       candidateIds: new Set(normalized.map((candidate) => scopedCandidateId(resultSetId, candidate))),
+      ...(options.catalogListing ? { catalogListing: true } : {}),
     };
     searchSessions.set(resultSetId, state);
     while (searchSessions.size > 128) {
@@ -1056,24 +1084,57 @@ export async function createLibraryService(options: LibraryServiceOptions = {}) 
       libraryRevision: bindingDigest,
       safeMessage: `Matched ${normalized.length} candidates.`,
     });
-    return await buildSearchPage({
-      resultSetId,
-      state,
-      offset: 0,
-      limit: parsedInput.limit,
-      correlationId,
-      invocationSource,
-      toolName,
-      operationStartedAt,
-    });
+    return { resultSetId, state };
   }
+
+  const catalogListingSources = (state: SearchSessionState) =>
+    registry.list().map(({ providerId, sourceLabel }) => {
+      const failure = state.providerFailures[providerId];
+      return {
+        providerId,
+        sourceLabel,
+        matched: state.providerMatches[providerId] ?? 0,
+        health: failure?.health ?? (state.input.providerIds.includes(providerId) ? "ready" : "not_selected"),
+        ...(failure ? { errorCode: failure.errorCode, safeMessage: failure.safeMessage } : {}),
+      };
+    });
+  defineCatalogListing(operations, {
+    failure: previewFailure,
+    list: async (input) => {
+      const correlationId = diagnostics.createCorrelationId("catalog");
+      const { resultSetId, state } = await createSearchResultSet({
+        parsedInput: {
+          query: "",
+          browse: true,
+          plotFamily: input.plotFamily,
+          language: input.language,
+          assetKind: input.assetKind,
+          providerIds: input.providerIds ?? registry.defaultProviderIds(),
+          limit: input.limit,
+        },
+        explicitlySelected: input.providerIds !== undefined,
+        correlationId,
+        invocationSource: "agent",
+        toolName: "figure_library_list_catalog",
+        catalogListing: true,
+      });
+      return { resultSetId, candidates: state.candidates, sources: catalogListingSources(state) };
+    },
+    continueListing: async (resultSetId) => {
+      const { state } = await requireSearchState(resultSetId);
+      if (!state.catalogListing) {
+        throw new PreviewProtocolError("search_results_stale", "This resultSetId belongs to a search, not a catalog listing; use figure_library_search_page for it.");
+      }
+      return { resultSetId, candidates: state.candidates, sources: catalogListingSources(state) };
+    },
+  });
 
   operations.define(
     "figure_library_search",
     {
       title: "Search all matching scientific figure Providers",
       description:
-        "Search Local Published, FigureYa, Open Figure Modules and opted-in personal Providers. Present candidates using host thumbnail resources/image tools or the optional App, then wait for selection. Community is explicit-only; Working, Capture and flat-v1 entries are excluded.",
+        "Keyword search over Local Published, FigureYa, Open Figure Modules and opted-in personal Providers; best for named templates or chart types. For a described need (data, scientific question, look) or no/poor matches, use figure_library_list_catalog and choose by meaning. Present candidates using host thumbnail resources/image tools or the optional App, then wait for selection. Community is explicit-only; Working, Capture and flat-v1 entries are excluded.",
       inputSchema: SearchInput.shape,
       annotations: {
         readOnlyHint: true,

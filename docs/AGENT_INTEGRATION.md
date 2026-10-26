@@ -40,6 +40,7 @@ SFL 管理可复用资产及其身份、版本、来源。具体研究任务、�
 | 搜索 | 返回候选 ID、Provider 限定精确选择、可用缩略图 URI 和分页信息；App 专用缩略图保留兼容 |
 | 候选图片 | `figure_library_get_candidate_images` 返回 1–12 张有身份标签的标准 MCP 图片；也可按 URI 读取图片资源 |
 | 翻页 | `figure_library_search_page` 同时对 Agent 和 App 开放，复用原有不透明游标与过期检查 |
+| 目录枚举 | `figure_library_list_catalog` 返回各 Provider 数量、图型族/语言分面和每个模板一行的紧凑目录，供 Agent 按语义选择；候选 ID 可直接用于候选图片和精确预览 |
 | 精确看图与确认 | 复用 `figure_library_preview_exact_headless` 和 `figure_library_confirm_selection_headless` |
 | 材料化 | 复用 receipt、plan/apply、过期状态检查及重放语义 |
 | 本地客户端与内置运行时 | macOS SwiftUI、Windows Node/Web 及随包运行时已确定为下一阶段方向，尚未实现；当前插件仍需可调用的 Node.js 22+ |
