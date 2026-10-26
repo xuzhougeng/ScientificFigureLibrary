@@ -5,7 +5,7 @@ import { OperationRegistry } from "./service/operations.ts";
 import type { createMcpUpdateMonitor } from "./mcp-updates.ts";
 
 /** The external MCP boundary adapts the same operations the local app calls directly. */
-export function mountOperations(server: McpServer, service: OperationRegistry, updates?: ReturnType<typeof createMcpUpdateMonitor>) {
+export function mountOperations(server: McpServer, service: OperationRegistry, updates?: ReturnType<typeof createMcpUpdateMonitor>, includeTool: (name: string) => boolean = () => true) {
   const execute = async (name: string, input: unknown) => {
     const result = await service.execute(name, input);
     if (result.isError) return result;
@@ -14,6 +14,7 @@ export function mountOperations(server: McpServer, service: OperationRegistry, u
   };
   for (const operation of service.operations.values()) {
     const { name, execute: _execute, ...configuration } = operation;
+    if (!includeTool(name)) continue;
     const ui = configuration._meta?.ui;
     if (ui && typeof ui === "object" && "resourceUri" in ui && typeof ui.resourceUri === "string") {
       registerAppTool(server, name, { ...configuration, _meta: { ...configuration._meta, ui: { ...ui, resourceUri: ui.resourceUri } } }, async (input: unknown) => execute(name, input));

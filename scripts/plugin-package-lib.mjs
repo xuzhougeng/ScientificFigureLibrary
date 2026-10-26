@@ -1,9 +1,11 @@
+import { execFile as execFileCallback } from "node:child_process";
 import { createHash } from "node:crypto";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
+import { promisify } from "node:util";
 import { strFromU8, strToU8, unzipSync, zipSync } from "fflate";
 import {
   assertFinalCommunitySnapshot,
@@ -12,6 +14,7 @@ import {
   publishArtifactsToDirectory,
   publishReleaseArtifacts,
 } from "./package-release-lib.mjs";
+import { previewDownloadManifests } from "./preview-download-manifest.mjs";
 import {
   ModuleCatalogIndex,
   PERSONAL_MODULE_REPOSITORY,
@@ -19,6 +22,9 @@ import {
 import { PERSONAL_MODULE_PROVIDER_ID } from "../src/providers.ts";
 
 export const root = path.resolve(import.meta.dirname, "..");
+const execFile = promisify(execFileCallback);
+/** Gallery previews and thumbnails; brand assets stay packaged. */
+export const PLUGIN_GALLERY_IMAGE = /^assets\/(?!brand\/).*\.(?:png|jpe?g|webp|gif)$/iu;
 
 /**
  * Host-specific package scripts are public release entrypoints too. Recheck
@@ -109,7 +115,6 @@ export async function commonPluginFiles() {
     await fs.access(path.join(skillRoot, relative));
   }
   files.push(...(await walk(skillRoot, "skills/figure-library")).filter((file) => !file.includes("/__pycache__/") && !file.endsWith(".pyc")));
-  files.push(...(await walk(path.join(root, "assets", "thumbs"), "assets/thumbs")));
   files.push(...(await walk(path.join(root, "assets", "brand"), "assets/brand")));
   files.push(...(await walk(path.join(root, "assets", "licenses"), "assets/licenses")));
   const personalPreviewManifest = await readJson(
@@ -143,14 +148,37 @@ export async function commonPluginFiles() {
   if (new Set(personalPreviewFiles).size !== personalPreviewFiles.length) {
     throw new Error("personal module preview manifest contains duplicate paths");
   }
-  files.push(...personalPreviewFiles);
   const personalSnapshotFiles = await walk(
     path.join(root, "assets", "personal-modules"),
     "assets/personal-modules",
   );
-  assertPersonalSnapshotInventory(personalSnapshotFiles, files);
+  // The repository snapshot still holds every image (the download source);
+  // only the control files enter the plugin.
+  assertPersonalSnapshotInventory(personalSnapshotFiles, [...files, ...personalPreviewFiles]);
   files.push(...(await walk(path.join(root, "assets", "community"), "assets/community")));
+  const packagedImages = files.filter((file) => PLUGIN_GALLERY_IMAGE.test(file));
+  if (packagedImages.length) {
+    throw new Error(`plugin packages download gallery images on demand; remove ${packagedImages.join(", ")}`);
+  }
   return files;
+}
+
+/**
+ * Pinned preview download manifests for FigureYa and Open Figure Modules, the
+ * same as the npm and local packages. Images are fetched on demand from the
+ * packaging commit, so that commit must be pushed and assets/ must match it.
+ */
+export async function pluginPreviewDownloads(options = {}) {
+  const repositoryRoot = options.repositoryRoot ?? root;
+  const { stdout: dirty } = options.requireCleanAssets === false
+    ? { stdout: "" }
+    : await execFile("git", ["status", "--porcelain", "--untracked-files=all", "--", "assets"], { cwd: repositoryRoot });
+  if (dirty.trim()) {
+    throw new Error(`assets/ differs from HEAD; commit it before packaging so on-demand previews resolve:\n${dirty.trim()}`);
+  }
+  const commit = options.commit ?? (await execFile("git", ["rev-parse", "HEAD"], { cwd: repositoryRoot })).stdout.trim();
+  const repository = options.repository ?? process.env.GITHUB_REPOSITORY ?? "xuzhougeng/ScientificFigureLibrary";
+  return (await previewDownloadManifests(repositoryRoot, repository, commit)).manifests;
 }
 
 export function packagedServerHasAppUri(source, version) {
@@ -241,10 +269,14 @@ export function assertPackagedGuidance({ packagedReadme, packagedProtocol, packa
   }
 }
 
-export async function buildArchive(relativeFiles) {
+export async function buildArchive(relativeFiles, generatedFiles = new Map()) {
   const archive = {};
   for (const relative of [...relativeFiles].sort()) {
     archive[relative] = new Uint8Array(await fs.readFile(path.join(root, relative)));
+  }
+  for (const [relative, bytes] of generatedFiles) {
+    if (archive[relative]) throw new Error(`generated plugin file would replace a repository file: ${relative}`);
+    archive[relative] = new Uint8Array(bytes);
   }
   return archive;
 }

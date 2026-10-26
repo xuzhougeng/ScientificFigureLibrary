@@ -508,7 +508,20 @@ topics in this table are on-demand references, not independent Skills.
 Without the App, call `figure_library_get_skill` to read the same guidance.
 Search returns candidate IDs and thumbnail URIs; use
 `figure_library_get_candidate_images` or MCP resource reads to display the page,
-and `figure_library_search_page` to continue browsing. After the user selects a
+and `figure_library_search_page` to continue browsing. When you describe a need
+(your data, the scientific question, the look) rather than name a chart, the
+Agent by default calls `figure_library_list_catalog`: it first reads Provider
+counts and plot-family/language facets, then compact one-line-per-template
+pages, and picks matches by meaning with a reason for each. Keyword search
+stays for named templates or chart types, and a keyword miss never means the
+library lacks the figure. Listed candidates display through the same image tool.
+
+To load fewer tools in a host, set `SFL_TOOL_PROFILE` in its MCP server
+configuration: `use` (finding, previewing and materializing templates; 28
+tools, about a third of the schema size), `author` (adds intake, review and
+publishing to Local Published) or `full` (default, every tool). For example, in
+a JSON MCP configuration add `"env": { "SFL_TOOL_PROFILE": "use" }` to the
+`figure-library` server entry. The local clients are not affected. After the user selects a
 candidate, use the existing exact headless preview/confirmation and Plan/Apply
 flow. Host image display must be tested separately from tool execution.
 

@@ -5,6 +5,7 @@ import {
   assertPackagedGuidance,
   buildArchive,
   commonPluginFiles,
+  pluginPreviewDownloads,
   publishVerifiedZip,
   readJson,
   root,
@@ -24,7 +25,7 @@ if (manifest.version !== packageJson.version) {
 }
 
 const files = [".wisp-plugin/plugin.json", ...(await commonPluginFiles())];
-const archive = await buildArchive(files);
+const archive = await buildArchive(files, await pluginPreviewDownloads());
 const candidate = await writeVerifiedZip(
   archive,
   `scientific-figure-library-wisp-${packageJson.version}.zip`,

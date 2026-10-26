@@ -643,6 +643,60 @@ headless preview also exposes `PREVIEW_CHALLENGE` in its text response. All
 materialization and replay gates below remain unchanged. An Agent receiving
 an image is not proof the user saw it on their screen.
 
+### Catalog listing for semantic selection
+
+Search ranking is lexical, so a query worded differently from template names
+can return nothing. `figure_library_list_catalog` lets the host Agent read the
+catalog itself and choose by meaning. It is read-only and model-visible.
+
+- A new listing takes optional `providerIds` (default Providers when omitted;
+  Community stays explicit-only), `familyGroup`, `plotFamily`, `language`,
+  `assetKind`, `limit` (0–100, default 50; `0` returns counts and facets only)
+  and `detail` (`compact`, the default, or `full`). It registers an ordinary
+  browse result set: the same Provider filters, catalog revision and Library
+  binding checks as search; a `familyGroup` filter is applied to the Provider
+  results before the set is registered and is part of its query digest.
+- `familyGroup` is a read-only canonical figure-type group (for example
+  `embedding`, `volcano`, `set_overlap`, `survival`, `proportion`, `other`,
+  `unclassified`; list in [plot-family-groups.ts](../src/plot-family-groups.ts)).
+  It is derived from the stored `plotFamily`, falling back to words in the
+  template ID and English title when the family is empty or only a domain label.
+  Stored metadata, selectors and the keyword search `plotFamily` filter are
+  unchanged.
+- The response has `resultSetId`, `total`, `offset`, `nextOffset`, `sources[]`
+  (per-Provider `matched` and `health`), `facets` (`providerId`, `familyGroup`,
+  `plotFamily`, `language`, `assetKind` counts over the whole filtered listing;
+  empty values appear as `unclassified`/`unknown`) and `entries[]` with
+  `candidateId`, `providerId`, `templateId`, `title`, optional `titleEn`,
+  `familyGroup`, `plotFamily`, `language`, `assetKind`, `thumbnailAvailable` and
+  a single-line `summary`.
+  Text content repeats this as one `|`-separated line per entry. `compact` lines
+  carry `candidateId | title | titleEn | familyGroup/plotFamily | summary` with a
+  60-character summary, grouped under `PROVIDER <id>` headers and flagging only
+  `[no-thumbnail]`; `full` lines add language, Provider and thumbnail columns with
+  a 100-character summary. It contains no images, exact selectors, challenges
+  or receipts.
+- A keyword `figure_library_search` with no match points the Agent to this tool.
+  The Skill makes catalog listing plus semantic choice the default for a
+  described need and keeps keyword search for named templates or chart types.
+- Every response, including `limit: 0`, carries `catalogRevision` (also as a
+  `CATALOG_REVISION:` text line). It changes when any listed Provider catalog
+  or the Library binding changes, so an Agent can read the pages once per
+  session and later compare only the revision. A listing `resultSetId` can
+  still be evicted or go stale; image and preview tools then report
+  `search_results_stale` and a fresh listing is needed for display.
+- `templates` (1–12 `{ providerId, templateId }` pairs from an earlier
+  listing) re-lists only those entries under a new `resultSetId`, so an Agent
+  that reused its earlier read can get fresh `candidateId`s for display
+  without reading every page again. It cannot be combined with `resultSetId`.
+- Continue with `{ resultSetId, offset: nextOffset }` and no filters. Filters on
+  a continuation, an `offset` without `resultSetId` or past the end return
+  `catalog_listing_invalid_input`; a search result set, an evicted listing,
+  or a catalog/Library change returns `search_results_stale`.
+- Listed `candidateId`s belong to the listing result set, so
+  `figure_library_get_candidate_images` and the thumbnail URIs accept them, and
+  the returned `exactSelector` feeds the unchanged headless exact-preview path.
+
 ## Exact materialization
 
 ### Local application and shared business service
@@ -1043,7 +1097,7 @@ alone must not be described as delivery to the user.
 | Area | Tools |
 | --- | --- |
 | Guidance | `figure_library_get_skill` |
-| Workbench and retrieval | `figure_library_get_candidate_images`, `figure_library_search_page`, `figure_library_open`, `figure_library_search`, `figure_library_describe`, `figure_library_preview`, `figure_library_preview_exact_headless`, `figure_library_confirm_selection_headless`, `figure_library_create_plot_task_headless`, `figure_library_source_status` |
+| Workbench and retrieval | `figure_library_get_candidate_images`, `figure_library_search_page`, `figure_library_list_catalog`, `figure_library_open`, `figure_library_search`, `figure_library_describe`, `figure_library_preview`, `figure_library_preview_exact_headless`, `figure_library_confirm_selection_headless`, `figure_library_create_plot_task_headless`, `figure_library_source_status` |
 | App-only component tools | `figure_library_preview_exact`, `figure_library_confirm_selection`, `figure_library_record_ui_event` |
 | Diagnostics export | `figure_library_export_diagnostics` |
 | Global binding | `figure_library_plan_bind_global`, `figure_library_apply_bind_global` |
@@ -1059,6 +1113,23 @@ alone must not be described as delivery to the user.
 
 There are no `figure_capture_*`, project status/pin, direct-write import, sync,
 archive/reconcile, or one-step materialize tools in the standard 0.6 server.
+
+### Tool profiles
+
+`SFL_TOOL_PROFILE` selects which tools the MCP adapter registers, so a host can
+load fewer tool schemas. It does not change the shared service, the local
+clients or any tool contract. Unset or empty means `full`; any other value
+than the three below stops the server at startup.
+
+| Profile | Registers | Measured `tools/list` size |
+| --- | --- | --- |
+| `use` | guidance, source status, search/pagination/catalog listing, candidate images, describe/preview, App and headless exact preview/confirmation, plot-task handoff, UI events, materialization, global/workspace binding, write-lock recovery, Provider source listing, diagnostics export, network and update status (28 tools) | about 24 KB |
+| `author` | `use` plus direct intake, review inspection, gate updates, publish, discard, restore and adoption (46 tools) | about 56 KB |
+| `full` (default) | every tool in the table above, including bundles, Provider source changes, publication export and GitHub/Open Figure PRs (62 tools), and any tool added later | about 72 KB |
+
+The list lives in [tool-profiles.ts](../src/tool-profiles.ts). A reduced profile
+adds a sentence to the server instructions naming it, so the Agent can ask
+the user to switch to `full` instead of inventing a missing workflow.
 
 ## Distribution
 
@@ -1257,7 +1328,7 @@ license. See
 
 ## 本地轻量安装包的预览交付
 
-本地 DMG / Windows ZIP 与 npm 包（Pi / dsh 安装路径）的 FigureYa 与 Open Figure Modules bootstrap 可包含 `preview-downloads.json`，其每个图片身份必须与既有预览 manifest 完全一致。图片来源固定为构建提交中的文件；不改变 Provider、exact selector 或 Published Release 的身份。
+本地 DMG / Windows ZIP、npm 包（Pi / dsh 安装路径）以及 Wisp / Claude / Codex / Cursor 插件 ZIP 的 FigureYa 与 Open Figure Modules bootstrap 只携带目录元数据和 `preview-downloads.json`，不携带画廊图片（`assets/brand/` 除外），其每个图片身份必须与既有预览 manifest 完全一致。图片来源固定为构建提交中的文件，因此打包要求 `assets/` 与该提交一致、且该提交已推送；不改变 Provider、exact selector 或 Published Release 的身份。下载与其他 HTTPS 操作一样使用 0.9.1 的同用户代理设置；产品不以完全离线使用为目标。
 
 候选可返回 `previewDelivery: "download"`。此模式下 `previewAvailable` 表示存在可获取的固定身份，并不承诺网络可达或已经缓存；当前页图片传输结果由 `searchPreviewAvailable` / `searchPreviewStatus` 表达。搜索不会下载非当前页候选的图片。精确预览只有取得、校验和传输真实图片后才可确认。缩略图下载失败不改变精确图片身份，可重新请求预览。
 

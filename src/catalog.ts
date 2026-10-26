@@ -1,5 +1,6 @@
 import { PreviewDownloadStore, type PreviewDownloadOptions } from "./preview-downloads.ts";
 import { markdownPlainText } from "./figure-description.ts";
+import { familyWords } from "./plot-family-groups.ts";
 import { createHash } from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
@@ -275,7 +276,24 @@ const FIGURE_FAMILIES = [
       "scviolin",
     ],
   },
+  {
+    id: "embedding",
+    label: "UMAP/tSNE / 降维图",
+    triggers: ["umap", "tsne", "t-sne", "降维", "dimensionality reduction"],
+    idPatterns: ["umap", "tsne"],
+  },
 ] as const;
+
+// Domain labels describe the data, not the figure form, so they must not
+// outrank a template whose identifier names the requested chart.
+const DOMAIN_FAMILY_SCALE: Partial<Record<string, number>> = { "single-cell": 0.25 };
+
+/** Two-letter terms (km, hr) only match whole words of an identifier, never inside FPKM or THR. */
+function matchesIdentifier(identifier: string, identifierWords: string, value: string) {
+  if (value.length >= 3) return identifier.includes(value);
+  // identifierWords holds only space-separated [a-z0-9] words.
+  return ` ${identifierWords} `.includes(` ${value} `);
+}
 
 export interface SearchIntent {
   families: string[];
@@ -454,12 +472,20 @@ export function scoreSearchableTemplate(
   ] as const;
 
   let score = 0;
+  let specificMatch = false;
   const matchedTerms = new Set<string>();
   const fieldMatches = new Map<string, string[]>();
+  const identifierWords = familyWords(`${template.templateId} ${template.title}`);
   for (const term of intent.terms) {
-    const specificity = GENERIC_TERMS.has(term.value) ? 0.15 : 1;
+    const generic = GENERIC_TERMS.has(term.value);
+    const specificity = generic ? 0.15 : 1;
     for (const field of fields) {
-      if (!field.value || !includesTerm(field.value, term.value, field.embedded)) continue;
+      if (!field.value) continue;
+      const matched = field.embedded
+        ? matchesIdentifier(field.value, identifierWords, term.value)
+        : includesTerm(field.value, term.value, false);
+      if (!matched) continue;
+      if (!generic) specificMatch = true;
       score += term.weight * field.weight * specificity;
       matchedTerms.add(term.value);
       const matches = fieldMatches.get(field.name) ?? [];
@@ -476,14 +502,15 @@ export function scoreSearchableTemplate(
   for (const familyId of intent.families) {
     const family = FIGURE_FAMILIES.find((item) => item.id === familyId);
     if (!family) continue;
-    if (family.idPatterns.some((pattern) => identifier.includes(pattern))) {
-      score += 600;
+    const scale = DOMAIN_FAMILY_SCALE[family.id] ?? 1;
+    if (family.idPatterns.some((pattern) => matchesIdentifier(identifier, identifierWords, pattern))) {
+      score += 600 * scale;
       familyMatches.push(family.label);
     } else if (family.triggers.some((trigger) => containsPhrase(description, trigger))) {
-      score += 120;
+      score += 120 * scale;
       familyMatches.push(family.label);
     } else if (family.triggers.some((trigger) => containsPhrase(application, trigger))) {
-      score += 60;
+      score += 60 * scale;
       familyMatches.push(family.label);
     }
 
@@ -507,6 +534,9 @@ export function scoreSearchableTemplate(
       variantNotes.push(`未请求的特化形式：${variant.label}`);
     }
   }
+
+  // A hit made only of generic words ("plot", "figure", "gene") is not a match.
+  if (!specificMatch && !familyMatches.length) score = 0;
 
   const reasons = [];
   if (familyMatches.length) reasons.push(`图表家族匹配：${familyMatches.join("、")}`);
