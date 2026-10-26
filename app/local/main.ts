@@ -171,7 +171,7 @@ function renderFavorites() {
     card.append(node("h2", String(item.title)), node("p", String(item.sourceLabel), "favorite-source"), node("p", String(item.application)));
     const controls = node("div", undefined, "favorite-actions");
     controls.append(action("查看模板", async () => {
-      const response = await api("favorites", { action: "open", id: item.id });
+      const response = await api("favorites", { action: "open", id: item.id, thumbnailDelivery: "url" });
       displayResult(response);
       await showPage("discover");
     }));
@@ -354,7 +354,7 @@ function displayResult(value: CallToolResult) {
 function galleryArgs() {
   const provider = el<HTMLSelectElement>("search-provider").value;
   const customTag = el<HTMLSelectElement>("search-custom-tag").value;
-  return { limit: 12, ...(provider ? { providerIds: [provider] } : {}), ...(customTag ? { customTag } : {}) };
+  return { limit: 12, thumbnailDelivery: "url", ...(provider ? { providerIds: [provider] } : {}), ...(customTag ? { customTag } : {}) };
 }
 async function loadGallery() {
   input("search-query").value = "";
@@ -729,51 +729,32 @@ async function bindDirectories() {
 }
 let libraryLayout = "gallery";
 try { libraryLayout = localStorage.getItem("sfl-library-layout") === "list" ? "list" : "gallery"; } catch { /* Storage may be unavailable. */ }
-const libraryImages = new Map<string, string>();
-let libraryObserver: IntersectionObserver | undefined;
 function applyLibraryLayout() {
   el("library-items").dataset.layout = libraryLayout;
   button("library-gallery").setAttribute("aria-pressed", String(libraryLayout === "gallery"));
   button("library-list").setAttribute("aria-pressed", String(libraryLayout === "list"));
-  if (libraryLayout === "gallery") el("library-items").querySelectorAll<HTMLElement>(".library-preview[data-pending]").forEach((preview) => libraryObserver?.observe(preview));
+  if (libraryLayout === "gallery") el("library-items").querySelectorAll<HTMLElement>(".library-preview[data-pending]").forEach(mountLibraryThumbnail);
 }
 for (const layout of ["gallery", "list"]) button(`library-${layout}`).onclick = () => {
   libraryLayout = layout;
   try { localStorage.setItem("sfl-library-layout", layout); } catch { /* Keep the current session usable. */ }
   applyLibraryLayout();
 };
+// Thumbnails are exact-content URLs with immutable caching, so the browser reuses them across visits.
+function mountLibraryThumbnail(preview: HTMLElement) {
+  if (!preview.dataset.pending || !preview.dataset.thumbnail) return;
+  delete preview.dataset.pending;
+  const image = node("img"); image.loading = "lazy"; image.decoding = "async";
+  image.alt = preview.getAttribute("aria-label")?.replace(/^查看 /u, "") ?? "";
+  image.onerror = () => { preview.textContent = "图片无法显示，点击查看与管理"; };
+  preview.replaceChildren(image);
+  image.src = preview.dataset.thumbnail;
+}
 async function loadLibrary() {
   await refreshCustomTags();
   const customTag = el<HTMLSelectElement>("library-custom-tag").value;
   const items = records(details(requireResult(await api("library"))).items).filter(item => !customTag || tagUI.tagsFor({ providerId: LOCAL_TAG_PROVIDER, templateId: String(item.templateId) }).includes(customTag));
   const target = el("library-items");
-  libraryObserver?.disconnect();
-  libraryObserver = new IntersectionObserver((entries) => {
-    for (const entry of entries) if (entry.isIntersecting && libraryLayout === "gallery") {
-      libraryObserver?.unobserve(entry.target);
-      const preview = entry.target as HTMLButtonElement;
-      delete preview.dataset.pending;
-      const item = items.find((item) => item.templateId === preview.dataset.templateId)!;
-      void (async () => {
-        try {
-          const key = JSON.stringify([item.templateId, item.workingHead ?? item.publishedHead]);
-          let url = libraryImages.get(key);
-          if (!url) {
-            const detail = details(await call("figure_library_review_open", { templateId: item.templateId }));
-            const content = record(detail.workingContent ?? detail.publishedContent);
-            if (!content.primaryPreview) { preview.textContent = "暂无预览图片"; return; }
-            const asset = details(requireResult(await api("asset", { templateId: item.templateId, revisionId: content.revisionId, contentDigest: content.contentDigest, logicalPath: content.primaryPreview })));
-            url = `data:${String(asset.mimeType)};base64,${String(asset.data)}`;
-            libraryImages.set(key, url);
-            if (libraryImages.size > 100) libraryImages.delete(libraryImages.keys().next().value!);
-          }
-          const image = node("img"); image.src = url; image.alt = String(item.title);
-          image.onerror = () => { preview.textContent = "图片无法显示，点击查看与管理"; };
-          preview.replaceChildren(image);
-        } catch { preview.textContent = "预览加载失败，点击查看与管理"; }
-      })();
-    }
-  }, { rootMargin: "200px" });
   target.replaceChildren();
   applyLibraryLayout();
   if (!items.length) { target.append(node("div", customTag ? "没有符合此自定义标签的图片。" : "我的图库还没有资产。用「创建参考图」收入图片和代码。", "local-empty")); return; }
@@ -785,11 +766,16 @@ async function loadLibrary() {
     const preview = action("加载预览…", () => showLibraryDetail(String(item.templateId)), true);
     preview.classList.add("library-preview");
     preview.setAttribute("aria-label", `查看 ${String(item.title)}`);
-    preview.dataset.templateId = String(item.templateId); preview.dataset.pending = "true";
+    preview.dataset.templateId = String(item.templateId);
+    if (item.previewAvailable === false) preview.textContent = "暂无预览图片";
+    else {
+      preview.dataset.pending = "true";
+      preview.dataset.thumbnail = `/api/library-thumb?${new URLSearchParams({ templateId: String(item.templateId), revisionId: String(item.revisionId), contentDigest: String(item.contentDigest) })}`;
+    }
     info.append(tagUI.widget({ providerId: LOCAL_TAG_PROVIDER, templateId: String(item.templateId) }, { templateId: String(item.templateId) }, String(item.title)));
     row.append(preview, info, action("查看与管理", () => showLibraryDetail(String(item.templateId))));
     target.append(row);
-    if (libraryLayout === "gallery") libraryObserver.observe(preview);
+    if (libraryLayout === "gallery" && preview.dataset.pending) mountLibraryThumbnail(preview);
   }
 }
 async function showLibraryDetail(templateId: string) {
@@ -895,7 +881,7 @@ el("discover-page").addEventListener("click", (event) => {
   if (target.classList.contains("page-next")) {
     void run(async () => {
       if (!result?.pagination.nextCursor) return;
-      displayResult(await call("figure_library_search_page", { resultSetId: result.resultSetId, cursor: result.pagination.nextCursor }));
+      displayResult(await api("gallery-page", { resultSetId: result.resultSetId, cursor: result.pagination.nextCursor }));
       el("results-heading").scrollIntoView({ block: "start" });
     }, target);
   }
