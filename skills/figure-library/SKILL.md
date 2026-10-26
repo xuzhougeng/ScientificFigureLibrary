@@ -70,9 +70,10 @@ Keep provenance/execution truth in metadata, not repeated template-facing discla
    asks to open the library.
 3. Default: choose from the catalog by meaning. Call
    `figure_library_list_catalog` with `limit: 0` to read per-Provider counts and
-   plotFamily/language facets, narrow only by `providerIds`/`language`/`assetKind`
-   the user actually stated (plotFamily filters drop unclassified entries), then
-   read the compact entry pages with the returned `resultSetId` and `nextOffset`.
+   familyGroup/language facets. Narrow by `familyGroup` only when one group
+   clearly fits the need, and by `providerIds`/`language`/`assetKind` only when
+   the user stated them (`other`/`unclassified` hold analysis-only and unlabelled
+   templates; when unsure, do not narrow), then read the compact entry pages with the returned `resultSetId` and `nextOffset`.
    Reading these text pages is expected; it shows no images. Pick at most 6
    entries that satisfy the core need and give each a one-line reason.
 4. Use `figure_library_search` (keyword) only when the user names a template or

@@ -99,6 +99,7 @@ import {
   scopedCandidateId,
 } from "./candidate-images.ts";
 import { defineCatalogListing } from "./catalog-listing.ts";
+import { plotFamilyGroup, type PlotFamilyGroup } from "./plot-family-groups.ts";
 
 export { VERSION };
 export const MATERIALIZATION_PROTOCOL_VERSION = 2;
@@ -293,6 +294,8 @@ function candidateText(candidates: Array<TemplateCandidate & { candidateId: stri
 type ParsedSearchInput = Omit<z.infer<typeof SearchInput>, "providerIds" | "resultSetId"> & {
   providerIds: string[];
   browse?: boolean;
+  /** Catalog listing only: canonical figure-type group applied after Provider search. */
+  familyGroup?: PlotFamilyGroup;
 };
 
 function searchQueryDigest(input: ParsedSearchInput) {
@@ -310,6 +313,7 @@ function searchQueryDigest(input: ParsedSearchInput) {
       providerIds: [...input.providerIds].sort(),
       limit: input.limit,
       browse: input.browse === true,
+      ...(input.familyGroup ? { familyGroup: input.familyGroup } : {}),
     }),
   );
 }
@@ -1009,6 +1013,9 @@ export async function createLibraryService(options: LibraryServiceOptions = {}) 
       const matching = new Set(annotations.entries.filter(entry => entry.tags.includes(options.customTag!)).map(customTagKey));
       for (const result of searched) result.candidates = result.candidates.filter(candidate => matching.has(customTagKey(candidate)));
     }
+    if (parsedInput.familyGroup) {
+      for (const result of searched) result.candidates = result.candidates.filter((candidate) => plotFamilyGroup(candidate) === parsedInput.familyGroup);
+    }
     const providerMatches = Object.fromEntries(
       searched.map(({ providerId, candidates }) => [providerId, candidates.length]),
     );
@@ -1107,6 +1114,7 @@ export async function createLibraryService(options: LibraryServiceOptions = {}) 
           query: "",
           browse: true,
           plotFamily: input.plotFamily,
+          ...(input.familyGroup ? { familyGroup: input.familyGroup } : {}),
           language: input.language,
           assetKind: input.assetKind,
           providerIds: input.providerIds ?? registry.defaultProviderIds(),

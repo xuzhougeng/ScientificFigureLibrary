@@ -454,8 +454,10 @@ long Chinese requests. The default path for a described need is semantic
 selection from the catalog: `figure_library_list_catalog` with `limit: 0` for
 Provider counts and facets, then compact entry pages (`detail: "compact"`, the
 default) continued with the returned `resultSetId` and `nextOffset`. Narrow by
-`providerIds`, `language` or `assetKind` only when the user stated them;
-`plotFamily` filters drop the many unclassified entries. Choose at most 6 entries
+the canonical `familyGroup` only when one group clearly fits, and by
+`providerIds`, `language` or `assetKind` only when the user stated them; the
+`other` and `unclassified` groups hold analysis-only and unlabelled templates,
+so do not narrow when unsure. Choose at most 6 entries
 by meaning with a one-line reason each, show them with
 `figure_library_get_candidate_images` on the listing `resultSetId`, then continue
 with the normal selection and exact-preview path. Before telling the user the
