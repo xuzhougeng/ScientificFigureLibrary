@@ -5,6 +5,7 @@ import {
   assertPackagedGuidance,
   buildArchive,
   commonPluginFiles,
+  pluginPreviewDownloads,
   publishVerifiedZip,
   readJson,
   smokePackagedPlugin,
@@ -25,7 +26,7 @@ const files = [
   ".codex-plugin/mcp.json",
   ...(await commonPluginFiles()),
 ];
-const archive = await buildArchive(files);
+const archive = await buildArchive(files, await pluginPreviewDownloads());
 const candidate = await writeVerifiedZip(
   archive,
   `scientific-figure-library-codex-${packageJson.version}.zip`,

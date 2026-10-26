@@ -1324,7 +1324,7 @@ license. See
 
 ## 本地轻量安装包的预览交付
 
-本地 DMG / Windows ZIP 与 npm 包（Pi / dsh 安装路径）的 FigureYa 与 Open Figure Modules bootstrap 可包含 `preview-downloads.json`，其每个图片身份必须与既有预览 manifest 完全一致。图片来源固定为构建提交中的文件；不改变 Provider、exact selector 或 Published Release 的身份。
+本地 DMG / Windows ZIP、npm 包（Pi / dsh 安装路径）以及 Wisp / Claude / Codex / Cursor 插件 ZIP 的 FigureYa 与 Open Figure Modules bootstrap 只携带目录元数据和 `preview-downloads.json`，不携带画廊图片（`assets/brand/` 除外），其每个图片身份必须与既有预览 manifest 完全一致。图片来源固定为构建提交中的文件，因此打包要求 `assets/` 与该提交一致、且该提交已推送；不改变 Provider、exact selector 或 Published Release 的身份。下载与其他 HTTPS 操作一样使用 0.9.1 的同用户代理设置；产品不以完全离线使用为目标。
 
 候选可返回 `previewDelivery: "download"`。此模式下 `previewAvailable` 表示存在可获取的固定身份，并不承诺网络可达或已经缓存；当前页图片传输结果由 `searchPreviewAvailable` / `searchPreviewStatus` 表达。搜索不会下载非当前页候选的图片。精确预览只有取得、校验和传输真实图片后才可确认。缩略图下载失败不改变精确图片身份，可重新请求预览。
 

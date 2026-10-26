@@ -5,6 +5,7 @@ import {
   assertPackagedGuidance,
   buildArchive,
   commonPluginFiles,
+  pluginPreviewDownloads,
   publishVerifiedZip,
   readJson,
   smokePackagedPlugin,
@@ -25,7 +26,7 @@ const files = [
   ".cursor-plugin/mcp.json",
   ...(await commonPluginFiles()),
 ];
-const archive = await buildArchive(files);
+const archive = await buildArchive(files, await pluginPreviewDownloads());
 // Cursor discovers MCP at the plugin root by default. Keep the git source
 // under .cursor-plugin/ so a checkout is not treated as a project MCP config.
 archive["mcp.json"] = archive[".cursor-plugin/mcp.json"];
