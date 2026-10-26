@@ -1864,6 +1864,55 @@ export interface PublishedVersionedTemplateCandidate {
   previewAvailable: boolean;
 }
 
+/** Published Head listing entry with the exact content and release it was built from. */
+export interface PublishedVersionedTemplateEntry {
+  candidate: PublishedVersionedTemplateCandidate;
+  content: TemplateContentV1;
+  release: TemplateReleaseV1;
+}
+
+interface PublishedListingMemo extends PublishedVersionedTemplateEntry {
+  identity: string;
+  previewFile?: string;
+  signature: string;
+}
+
+const LISTING_READ_CONCURRENCY = 16;
+
+/** Map with bounded concurrency; on failure, rethrow the earliest failing item like a serial loop would. */
+async function mapInOrder<T, R>(items: readonly T[], mapper: (item: T) => Promise<R>): Promise<R[]> {
+  const settled = new Array<PromiseSettledResult<R>>(items.length);
+  let next = 0;
+  await Promise.all(
+    Array.from({ length: Math.min(LISTING_READ_CONCURRENCY, items.length) }, async () => {
+      while (next < items.length) {
+        const index = next;
+        next += 1;
+        try {
+          settled[index] = { status: "fulfilled", value: await mapper(items[index]!) };
+        } catch (reason) {
+          settled[index] = { status: "rejected", reason };
+        }
+      }
+    }),
+  );
+  return settled.map((result) => {
+    if (result.status === "rejected") throw result.reason;
+    return result.value;
+  });
+}
+
+/** Cheap change detector for immutable files: any rewrite, replacement or removal changes it. */
+async function fileSignature(file: string) {
+  try {
+    const stat = await fs.lstat(file, { bigint: true });
+    return `${stat.isFile() ? "f" : "x"}:${stat.size}:${stat.mtimeNs}:${stat.ctimeNs}:${stat.ino}`;
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return "missing";
+    throw error;
+  }
+}
+
 export interface RevisionPreview {
   templateId: string;
   revisionId: string;
@@ -2539,6 +2588,12 @@ export class VersionedTemplateLibrary {
   readonly runtimeContext?: LibraryOperationContext;
   private readonly faultInjector?: VersionedTemplateLibraryOptions["faultInjector"];
   private libraryId?: string;
+  /**
+   * Published Head entries keyed by templateId. Content, release and preview files are
+   * immutable once written, so an entry stays valid while its exact identity and file
+   * signatures are unchanged; series files are re-read on every listing.
+   */
+  private readonly publishedListing = new Map<string, PublishedListingMemo>();
 
   constructor(
     root?: string | LibraryRuntimeSnapshot,
@@ -2735,9 +2790,7 @@ export class VersionedTemplateLibrary {
     const directories = entries.filter((item) => item.isDirectory() && !item.name.startsWith("."));
     const safeNames = directories.filter((entry) => isSafeSegment(entry.name)).map((entry) => entry.name);
     assertNoPortableCaseCollision(safeNames, "template series directories");
-    for (const entry of directories) {
-      if (!isSafeSegment(entry.name)) continue;
-      const series = await this.getSeries(entry.name);
+    for (const series of await mapInOrder(safeNames, (name) => this.getSeries(name))) {
       if (series && (options.includeArchived || series.status !== "archived")) result.push(series);
     }
     return result.sort((left, right) => compareCanonicalStrings(left.templateId, right.templateId));
@@ -2811,71 +2864,120 @@ export class VersionedTemplateLibrary {
   }
 
   async listPublishedCandidates(): Promise<PublishedVersionedTemplateCandidate[]> {
-    const output: PublishedVersionedTemplateCandidate[] = [];
-    for (const series of await this.listSeries()) {
-      const head = series.publishedHead;
-      if (!head) continue;
-      const [content, release] = await Promise.all([
-        this.requireContent(series.templateId, head.revisionId, head.contentDigest),
-        this.requireRelease(series.templateId, head.releaseId),
-      ]);
-      if (
-        release.revisionId !== head.revisionId ||
-        release.contentDigest !== head.contentDigest ||
-        release.publishedAt !== head.publishedAt
-      ) {
-        throw new Error(`published head does not match its release: ${series.templateId}`);
-      }
-      let previewAvailable = false;
-      if (content.primaryPreview) {
-        try {
-          const { asset, bytes } = await this.checkedRevisionAsset(
-            content,
-            content.primaryPreview,
-          );
-          const extension = path.posix
-            .extname(asset.logicalPath)
-            .toLocaleLowerCase("en-US");
-          if (asset.role !== "visual") {
-            throw new Error("primary preview is not a visual asset");
-          }
-          assertMcpImageBytes({ bytes, mimeType: asset.mediaType, extension });
-          previewAvailable = true;
-        } catch {
-          // Published content remains retrievable and materializable, but search must
-          // not advertise malformed, missing, or corrupted bytes as an MCP image.
-        }
-      }
-      output.push({
-        templateId: series.templateId,
-        revisionId: content.revisionId,
-        contentDigest: content.contentDigest,
-        releaseId: release.releaseId,
-        publishedAt: release.publishedAt,
-        title: content.title,
-        ...(content.titleEn ? { titleEn: content.titleEn } : {}),
-        description: content.description,
-        tags: [...content.tags],
-        visualProfile: content.visualProfile,
-        dataProfile: content.dataProfile,
-        ...(content.application ? { application: content.application } : {}),
-        ...(content.scientificQuestion ? { scientificQuestion: content.scientificQuestion } : {}),
-        packages: [...content.packages],
-        license: content.license,
-        assetKind: content.assetKind,
-        language: content.language,
-        plotFamily: content.plotFamily,
-        codeStatus: content.codeStatus,
-        executionStatus: content.executionStatus,
-        validationState: effectiveValidationState(content),
-        ...(content.primaryPreview ? { primaryPreview: content.primaryPreview } : {}),
-        ...(content.canonicalPreviewDecision
-          ? { canonicalPreviewDecision: canonicalJsonClone(content.canonicalPreviewDecision) }
-          : {}),
-        previewAvailable,
-      });
+    return (await this.listPublishedEntries()).map((entry) => entry.candidate);
+  }
+
+  /** Current Published Heads with their exact content and release; callers receive copies. */
+  async listPublishedEntries(): Promise<PublishedVersionedTemplateEntry[]> {
+    const heads = (await this.listSeries()).filter((series) => series.publishedHead);
+    const entries = await mapInOrder(heads, (series) => this.publishedEntry(series));
+    const current = new Set(heads.map((series) => series.templateId));
+    for (const templateId of this.publishedListing.keys()) {
+      if (!current.has(templateId)) this.publishedListing.delete(templateId);
     }
-    return output.sort((left, right) => compareCanonicalStrings(left.templateId, right.templateId));
+    return entries
+      .sort((left, right) => compareCanonicalStrings(left.candidate.templateId, right.candidate.templateId))
+      .map(({ candidate, content, release }) => structuredClone({ candidate, content, release }));
+  }
+
+  private async publishedEntrySignature(templateId: string, revisionId: string, releaseId: string, previewFile?: string) {
+    const files = [
+      path.join(this.revisionDirectory(templateId, revisionId), "content.json"),
+      this.releaseFile(templateId, releaseId),
+      ...(previewFile ? [previewFile] : []),
+    ];
+    return (await Promise.all(files.map(fileSignature))).join("|");
+  }
+
+  private async publishedEntry(series: TemplateSeriesV1): Promise<PublishedListingMemo> {
+    const head = series.publishedHead!;
+    const identity = canonicalJson([head.revisionId, head.contentDigest, head.releaseId, head.publishedAt]);
+    const cached = this.publishedListing.get(series.templateId);
+    if (
+      cached?.identity === identity &&
+      cached.signature ===
+        (await this.publishedEntrySignature(series.templateId, head.revisionId, head.releaseId, cached.previewFile))
+    ) {
+      return cached;
+    }
+    this.publishedListing.delete(series.templateId);
+    // Take the signature before reading so a concurrent rewrite invalidates this entry next time.
+    const contentFile = path.join(this.revisionDirectory(series.templateId, head.revisionId), "content.json");
+    const before = await Promise.all([fileSignature(contentFile), fileSignature(this.releaseFile(series.templateId, head.releaseId))]);
+    const [content, release] = await Promise.all([
+      this.requireContent(series.templateId, head.revisionId, head.contentDigest),
+      this.requireRelease(series.templateId, head.releaseId),
+    ]);
+    if (
+      release.revisionId !== head.revisionId ||
+      release.contentDigest !== head.contentDigest ||
+      release.publishedAt !== head.publishedAt
+    ) {
+      throw new Error(`published head does not match its release: ${series.templateId}`);
+    }
+    let previewAvailable = false;
+    let previewFile: string | undefined;
+    let previewSignature: string | undefined;
+    if (content.primaryPreview) {
+      try {
+        const asset = content.assets.find((item) => item.logicalPath === content.primaryPreview);
+        if (asset) {
+          previewFile = resolveContained(this.revisionDirectory(content.templateId, content.revisionId), asset.file);
+          previewSignature = await fileSignature(previewFile);
+        }
+        const checked = await this.checkedRevisionAsset(content, content.primaryPreview);
+        const extension = path.posix
+          .extname(checked.asset.logicalPath)
+          .toLocaleLowerCase("en-US");
+        if (checked.asset.role !== "visual") {
+          throw new Error("primary preview is not a visual asset");
+        }
+        assertMcpImageBytes({ bytes: checked.bytes, mimeType: checked.asset.mediaType, extension });
+        previewAvailable = true;
+      } catch {
+        // Published content remains retrievable and materializable, but search must
+        // not advertise malformed, missing, or corrupted bytes as an MCP image.
+      }
+    }
+    const candidate: PublishedVersionedTemplateCandidate = {
+      templateId: series.templateId,
+      revisionId: content.revisionId,
+      contentDigest: content.contentDigest,
+      releaseId: release.releaseId,
+      publishedAt: release.publishedAt,
+      title: content.title,
+      ...(content.titleEn ? { titleEn: content.titleEn } : {}),
+      description: content.description,
+      tags: [...content.tags],
+      visualProfile: content.visualProfile,
+      dataProfile: content.dataProfile,
+      ...(content.application ? { application: content.application } : {}),
+      ...(content.scientificQuestion ? { scientificQuestion: content.scientificQuestion } : {}),
+      packages: [...content.packages],
+      license: content.license,
+      assetKind: content.assetKind,
+      language: content.language,
+      plotFamily: content.plotFamily,
+      codeStatus: content.codeStatus,
+      executionStatus: content.executionStatus,
+      validationState: effectiveValidationState(content),
+      ...(content.primaryPreview ? { primaryPreview: content.primaryPreview } : {}),
+      ...(content.canonicalPreviewDecision
+        ? { canonicalPreviewDecision: canonicalJsonClone(content.canonicalPreviewDecision) }
+        : {}),
+      previewAvailable,
+    };
+    const entry: PublishedListingMemo = {
+      identity,
+      signature: [...before, ...(previewFile ? [previewSignature!] : [])].join("|"),
+      ...(previewFile ? { previewFile } : {}),
+      candidate,
+      content,
+      release,
+    };
+    // A failed preview check is not cached, so transient read errors cannot stick.
+    if (previewAvailable || !content.primaryPreview) this.publishedListing.set(series.templateId, entry);
+    return entry;
   }
 
   private async listReleases(templateId: string): Promise<TemplateReleaseV1[]> {

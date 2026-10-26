@@ -341,10 +341,12 @@ export class LocalPublishedProviderAdapter implements ProviderAdapter {
 
   async search(context: ProviderContext, request: SearchRequest) {
     const intent = buildSearchIntent(request);
-    const scored = (await context.library.versionedLibrary.listPublishedCandidates())
-      .filter((item) => matchesLocalFilters(item, request))
-      .map((item) => ({
+    const scored = (await context.library.versionedLibrary.listPublishedEntries())
+      .filter(({ candidate }) => matchesLocalFilters(candidate, request))
+      .map(({ candidate: item, content, release }) => ({
         item,
+        content,
+        release,
         evidence: scoreSearchableTemplate(
           {
             templateId: item.templateId,
@@ -368,17 +370,18 @@ export class LocalPublishedProviderAdapter implements ProviderAdapter {
           compareSearchHits(left.item.templateId, left.evidence.score, right.item.templateId, right.evidence.score, request),
       );
 
+    // The listing already pins each Published Head to its exact content and release, so only the
+    // release-bound Review is read per match. Full exact resolution, including release history,
+    // still runs when a page is hydrated or a candidate is previewed, described or materialized.
     return Promise.all(
-      scored.map(async ({ item, evidence }): Promise<TemplateCandidate> => {
+      scored.map(async ({ item, content, release, evidence }): Promise<TemplateCandidate> => {
         const selector = localPublishedExactSelector({
           templateId: item.templateId,
           revisionId: item.revisionId,
           contentDigest: item.contentDigest,
           releaseId: item.releaseId,
         });
-        const resolved = await this.resolve(context, selector, "describe");
-        if (resolved.value.kind !== "local-published") throw new Error("invalid Local resolution");
-        const { content, review } = resolved.value;
+        const review = await releaseBoundReview(context.library, release);
         return {
           templateId: item.templateId,
           providerId: this.descriptor.providerId,
@@ -1298,6 +1301,9 @@ export class UnavailableProviderAdapter implements ProviderAdapter {
 export class DefaultProviderRegistry implements ProviderRegistry {
   readonly #adapters: Map<string, ProviderAdapter>;
   #enabledOverrides = new Map<string, boolean>();
+  /** Revision values are treated as immutable once returned by an adapter. */
+  readonly #revisionDigests = new WeakMap<object, string>();
+  readonly #catalogRevisions = new Map<string, string>();
 
   constructor(adapters: ProviderAdapter[]) {
     this.#adapters = new Map();
@@ -1360,14 +1366,34 @@ export class DefaultProviderRegistry implements ProviderRegistry {
         revision: await this.get(providerId).revision(context),
       })),
     );
-    return providerSha256(
+    const libraryBinding = providerLibraryBindingDigest(context.library);
+    // Bundled catalogs return the same immutable object on every call; hashing their multi-MB
+    // canonical JSON once lets repeated stale checks reuse the identical digest.
+    const key = canonicalJson({
+      providers: unique,
+      libraryBinding,
+      revisions: revisions.map(({ providerId, revision }) => ({ providerId, digest: this.revisionDigest(revision) })),
+    });
+    const cached = this.#catalogRevisions.get(key);
+    if (cached) return cached;
+    const digest = providerSha256(
       canonicalJson({
         schema: "figure-library.search-catalog-revision.v1",
         providers: unique,
-        libraryBinding: providerLibraryBindingDigest(context.library),
+        libraryBinding,
         revisions,
       }),
     );
+    this.#catalogRevisions.set(key, digest);
+    while (this.#catalogRevisions.size > 32) this.#catalogRevisions.delete(this.#catalogRevisions.keys().next().value as string);
+    return digest;
+  }
+
+  private revisionDigest(revision: unknown) {
+    if (!revision || typeof revision !== "object") return providerSha256(canonicalJson(revision));
+    let digest = this.#revisionDigests.get(revision);
+    if (!digest) this.#revisionDigests.set(revision, (digest = providerSha256(canonicalJson(revision))));
+    return digest;
   }
 
   async status(context: ProviderContext) {

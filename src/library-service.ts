@@ -688,11 +688,14 @@ export async function createLibraryService(options: LibraryServiceOptions = {}) 
   };
   const referenceCache = createReferenceCache({
     registry, context: currentProviderContext,
-    candidate: async (resultSetId, candidateId) => {
+    candidates: async (resultSetId, candidateIds) => {
       const { state } = await requireSearchState(resultSetId);
-      const candidate = state.candidates.find((item) => scopedCandidateId(resultSetId, item) === candidateId);
-      if (!candidate) throw new PreviewProtocolError("preview_selection_mismatch", "A candidate ID does not belong to this result set.");
-      return candidate;
+      const byId = new Map(state.candidates.map((item) => [scopedCandidateId(resultSetId, item), item]));
+      return candidateIds.map((candidateId) => {
+        const candidate = byId.get(candidateId);
+        if (!candidate) throw new PreviewProtocolError("preview_selection_mismatch", "A candidate ID does not belong to this result set.");
+        return candidate;
+      });
     },
   });
   defineCandidateImages(operations, {

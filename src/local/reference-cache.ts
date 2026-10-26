@@ -129,7 +129,8 @@ async function readTemplatePack(
 export function createReferenceCache(options: {
   registry: ProviderRegistry;
   context(): Promise<ProviderContext>;
-  candidate(resultSetId: string, candidateId: string): Promise<TemplateCandidate>;
+  /** Checks the result set once and returns the candidates in request order. */
+  candidates(resultSetId: string, candidateIds: readonly string[]): Promise<TemplateCandidate[]>;
 }) {
   const figureYaModule = (context: ProviderContext, candidate: TemplateCandidate) =>
     context.catalog.catalog.modules.find((item) => item.moduleId === candidate.templateId);
@@ -211,7 +212,11 @@ export function createReferenceCache(options: {
     }
   }
 
-  async function packStatus(context: ProviderContext, candidate: TemplateCandidate): Promise<Pick<ReferenceCacheStatus, "archive" | "pack">> {
+  async function packStatus(
+    context: ProviderContext,
+    candidate: TemplateCandidate,
+    packIds: (providerId: string, directory: string) => Promise<Set<string>>,
+  ): Promise<Pick<ReferenceCacheStatus, "archive" | "pack">> {
     if (candidate.providerId === LOCAL_LIBRARY_PROVIDER_ID) {
       try {
         return { archive: "cached", pack: await localPublishedPack(context, candidate) };
@@ -224,7 +229,7 @@ export function createReferenceCache(options: {
     }
     if (!candidate.materializable) return { archive: "not_applicable" };
     const directory = galleryCodeDirectory(context.library.snapshot.root, candidate.providerId);
-    const ids = await sourcePackIds(context, candidate.providerId, directory);
+    const ids = await packIds(candidate.providerId, directory);
     const zipCached = ids.has(candidate.templateId);
     const pack =
       candidate.providerId === FIGUREYA_PROVIDER_ID
@@ -268,28 +273,39 @@ export function createReferenceCache(options: {
   return {
     status: async (raw: unknown) => {
       const input = z.object({ resultSetId: z.string().min(1), candidateIds: z.array(z.string().min(1)).min(1).max(12) }).strict().parse(raw);
+      const candidateIds = [...new Set(input.candidateIds)];
+      const candidates = await options.candidates(input.resultSetId, candidateIds);
       const context = await options.context();
-      const items: ReferenceCacheStatus[] = [];
-      for (const candidateId of [...new Set(input.candidateIds)]) {
-        const candidate = await options.candidate(input.resultSetId, candidateId);
-        const image = await cachedImage(context, candidate);
-        try {
-          const pack = await packStatus(context, candidate);
-          items.push({ candidateId, image, ...pack });
-        } catch (error) {
-          items.push({
-            candidateId,
-            image,
-            archive: "missing",
-            error: error instanceof Error ? error.message : String(error),
-          });
-        }
-      }
+      // Source-pack inventories are per Provider, not per card; inspect each once per request.
+      const inventories = new Map<string, Promise<Set<string>>>();
+      const packIds = (providerId: string, directory: string) => {
+        const key = `${providerId}\0${directory}`;
+        let inventory = inventories.get(key);
+        if (!inventory) inventories.set(key, (inventory = sourcePackIds(context, providerId, directory)));
+        return inventory;
+      };
+      const items = await Promise.all(
+        candidates.map(async (candidate, index): Promise<ReferenceCacheStatus> => {
+          const candidateId = candidateIds[index]!;
+          const image = await cachedImage(context, candidate);
+          try {
+            return { candidateId, image, ...(await packStatus(context, candidate, packIds)) };
+          } catch (error) {
+            return {
+              candidateId,
+              image,
+              archive: "missing",
+              error: error instanceof Error ? error.message : String(error),
+            };
+          }
+        }),
+      );
       return { items };
     },
     ensure: async (raw: unknown) => {
       const input = selection.extend({ allowNetwork: z.boolean() }).strict().parse(raw);
-      const candidate = await options.candidate(input.resultSetId, input.candidateId);
+      const [candidate] = await options.candidates(input.resultSetId, [input.candidateId]);
+      if (!candidate) throw new Error("A candidate ID does not belong to this result set.");
       const context = await options.context();
       if (!candidate.materializable) throw new Error("此参考没有可获取的固定版本包");
       const pack = await ensureProviderPack(context, candidate, input.allowNetwork);
