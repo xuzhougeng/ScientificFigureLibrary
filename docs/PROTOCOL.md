@@ -525,6 +525,16 @@ and only metadata actually present in the search result. This basic detail is
 fully local to the App: it works without `serverTools`, does not call the
 Agent, and does not update model context.
 
+The App primarily consumes standard `ui/notifications/tool-result` messages.
+For Hosts that expose initial compatibility globals, it also hydrates validated
+search data from `window.openai.toolOutput` and the canonical MCP envelopes in
+`window.openai.toolResponseMetadata`, once connected and on `openai:set_globals`.
+Private preview metadata is accepted only for the same result-scoped page.
+Late compatibility state may fill missing images but cannot navigate away from
+an active page or replace a newer search. Duplicate delivery does not reset
+selection or close a detail dialog. This is a read-only rendering fallback:
+it does not parse JSON text, call tools, or create confirmation/Apply authority.
+
 After presenting the page in the App or host image display, the Agent must
 wait for user selection. Ordinary hosts may first retrieve current-page
 thumbnails through the image tool or resource URIs below. The Agent must not call
