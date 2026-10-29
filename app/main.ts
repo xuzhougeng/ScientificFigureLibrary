@@ -19,7 +19,6 @@ import { createIcon, setButtonContent } from "./icons.ts";
 import {
   announceSelectionChange,
   openCandidateDetail,
-  parseSearchResult,
   renderCandidateCards,
   renderPlotSetBar,
   mountExactPreviewImage,
@@ -37,6 +36,7 @@ import {
 } from "./display-mode.ts";
 import "./styles.css";
 import { mountPlottingTips } from "./plotting-tips.ts";
+import { createSearchResultReceiver, parseSearchToolResult } from "./search-result-receiver.ts";
 
 let preferenceStorage: Storage | undefined;
 try { preferenceStorage = window.localStorage; } catch { /* Embedded host may deny storage. */ }
@@ -537,7 +537,7 @@ async function loadNextPage() {
         cursor: activeResult.pagination.nextCursor,
       },
     });
-    const parsed = parseSearchResult(result.structuredContent, result._meta);
+    const parsed = parseSearchToolResult(result);
     if (!parsed) throw new Error("unrecognized search page");
     render(parsed);
   } catch (error) {
@@ -618,13 +618,25 @@ expandBrowse.addEventListener("click", () => void requestWorkbenchMode("fullscre
 keepVisible.addEventListener("click", () => void requestWorkbenchMode("pip"));
 reexpand.addEventListener("click", () => void requestWorkbenchMode("fullscreen"));
 
+const searchResults = createSearchResultReceiver({ current: () => activeResult, render });
+
+function hydrateInitialHostResult() {
+  const host = window as unknown as { openai?: unknown };
+  let globals: unknown;
+  try { globals = host.openai; } catch { return; }
+  searchResults.legacy(globals);
+}
+
+// Feature-detected compatibility for Hosts exposing initial result globals.
+// This only renders validated data; it never calls a tool or grants approval.
+window.addEventListener("openai:set_globals", hydrateInitialHostResult);
+
 app.ontoolinput = (input) => {
   const request = input.arguments as Record<string, unknown>;
   if (typeof request.query === "string") query.textContent = `“${request.query}”`;
 };
 app.ontoolresult = (result) => {
-  const parsed = parseSearchResult(result.structuredContent, result._meta);
-  if (parsed) render(parsed);
+  const parsed = searchResults.notification(result);
   applyFirstRunSetup(result.structuredContent, { hasCandidates: Boolean(parsed?.candidates.length) });
 };
 app.onhostcontextchanged = applyHostContext;
@@ -641,6 +653,7 @@ window.addEventListener("unhandledrejection", (event) => {
 app
   .connect()
   .then(() => {
+    hydrateInitialHostResult();
     const context = app.getHostContext();
     if (context) applyHostContext(context);
     else refreshDisplayChrome();
