@@ -1,0 +1,97 @@
+{
+  "kit": "SFL editable SVG kit",
+  "version": "2.0",
+  "icons": [
+    {
+      "file": "svg/01-app-primary.svg",
+      "label_zh": "主图标 / 轻层次",
+      "sha256": "54266510ea096313427529852e4b68548d2b2e1f5dac40317e210514b00ddc69"
+    },
+    {
+      "file": "svg/02-app-flat.svg",
+      "label_zh": "主图标 / 纯色易改",
+      "sha256": "1a9c9b209d14ea6cd5426857072dc2e23b62687e7512e23811707451457cc8be"
+    },
+    {
+      "file": "svg/03-app-light.svg",
+      "label_zh": "浅色底图标",
+      "sha256": "d3553c3fc628d4304feaeb30ba2d58152c43b1bd04643c1a982aaeac794067b9"
+    },
+    {
+      "file": "svg/04-app-dark.svg",
+      "label_zh": "深色底开放式图标",
+      "sha256": "ec82fc4105a13c83616d90f869b47af72067b92b8f68e5d119e5d728fa1913b5"
+    },
+    {
+      "file": "svg/05-brandmark-paper.svg",
+      "label_zh": "透明底 / 卡片标志",
+      "sha256": "d165cad916deb3888e9a356b19834855315f5f4424735cb7239afa2730ff0ba4"
+    },
+    {
+      "file": "svg/06-brandmark-open.svg",
+      "label_zh": "透明底 / 开放式品牌标志",
+      "sha256": "9aa53e988957a2c178dee1a6a128bf2100c37167af40cf242b48994b77d98f0f"
+    },
+    {
+      "file": "svg/07-brandmark-monochrome.svg",
+      "label_zh": "单色深色 / 真透明镂空",
+      "sha256": "450881835ba48ae69a3f9ffcd2c008824cfc2f82e3b4eb3e04eae03ed9833092"
+    },
+    {
+      "file": "svg/08-brandmark-reverse.svg",
+      "label_zh": "反白 / 真透明镂空",
+      "sha256": "28928265bdd75034bd530d170e09271eb156fc7c2681faa17348da760080db59"
+    },
+    {
+      "file": "svg/09-brandmark-currentcolor.svg",
+      "label_zh": "主题色 / currentColor",
+      "sha256": "232ceec53c27970c5400b324f2b9a3309c58902a86fb3fb9211dfb6d639c1348"
+    },
+    {
+      "file": "svg/10-icon-64.svg",
+      "label_zh": "64 px / 小尺寸版本",
+      "sha256": "2fa449a6a1061530ea817b0539e26239a9c4907e96ce70c2bec34edeb4a027e9"
+    },
+    {
+      "file": "svg/11-icon-32.svg",
+      "label_zh": "32 px / 小尺寸版本",
+      "sha256": "cb9fd554d4ff3295900407d5f49f7fd0186cca2f84935933a91d1d3864fbfeb0"
+    },
+    {
+      "file": "svg/12-icon-24.svg",
+      "label_zh": "24 px / 小尺寸版本",
+      "sha256": "743df55bb8eb27c507a0204dde181a1e77ee3ea5d1f7f06592f89447e61e74b7"
+    },
+    {
+      "file": "svg/13-icon-16.svg",
+      "label_zh": "16 px / 小尺寸版本",
+      "sha256": "6f53f93ddd0cafa4226689e7c2fcca079b2fb85ec4d7729634267e123f80ea56"
+    },
+    {
+      "file": "svg/14-app-square-source.svg",
+      "label_zh": "全方形底 / 平台转换源",
+      "sha256": "89d6ccebe23f2e6217ae1588aafdfcfad3d3860838f3fb25ded66e5c9fe07fd6"
+    },
+    {
+      "file": "svg/15-app-inset-source.svg",
+      "label_zh": "加留白方形底 / 裁切准备",
+      "sha256": "91a37b76cf7ddc466273f1faa69727674a42ee3ecc0634b198715498eecc075f"
+    },
+    {
+      "file": "svg/16-wordmark-dark.svg",
+      "label_zh": "横版组合 / 深色",
+      "sha256": "7d669ffcb8f41f6718690375ead2e8e465e49871e04abfce14cd08e6725625f3"
+    },
+    {
+      "file": "svg/17-wordmark-reverse.svg",
+      "label_zh": "横版组合 / 反白",
+      "sha256": "b5590c4aa825aae72d03a1766434e121d20af751917afb2d3cc8192ab28c05dc"
+    },
+    {
+      "file": "svg/18-symbol-16-monochrome.svg",
+      "label_zh": "16 px / 单色紧凑标志",
+      "sha256": "4c93b8cd15419a6ba58bef63a8b6ab428f57e8ac868b44b8bbda1aba9f7fd452"
+    }
+  ],
+  "overview": "00-overview.svg"
+}

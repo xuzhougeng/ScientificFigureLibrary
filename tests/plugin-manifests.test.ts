@@ -12,6 +12,7 @@ const WEBSITE = "https://xuzhougeng.github.io/ScientificFigureLibrary/";
 const REPOSITORY = "https://github.com/xuzhougeng/ScientificFigureLibrary";
 const DEVELOPERS = "xuzhougeng and jarxunlai";
 const BRAND_ASSET = "assets/brand/sfl-logo.svg";
+const FAVICON_ASSET = "assets/brand/sfl-favicon.svg";
 
 function readJson(relative: string) {
   return JSON.parse(fs.readFileSync(path.join(root, relative), "utf8")) as Record<string, unknown>;
@@ -168,6 +169,20 @@ test("brand and Skill UI assets are self-contained, portable, and consistent", a
     canonicalText,
     /(?:href|src|xlink:href)\s*=\s*["']https?:\/\//iu,
   );
+  // Shipped icons are copies of the editable kit; a recolor must update both.
+  for (const [shipped, source] of [
+    [BRAND_ASSET, "01-app-primary.svg"],
+    [FAVICON_ASSET, "13-icon-16.svg"],
+    ["docs/assets/logo.svg", "01-app-primary.svg"],
+    ["docs/assets/logo-nav.svg", "11-icon-32.svg"],
+    ["docs/assets/favicon.svg", "13-icon-16.svg"],
+  ] as const) {
+    assert.deepEqual(
+      fs.readFileSync(path.join(root, shipped)),
+      fs.readFileSync(path.join(root, "design/brand/svg", source)),
+      `${shipped} matches ${source}`,
+    );
+  }
 
   const skillDirectories = fs
     .readdirSync(path.join(root, "skills"), { withFileTypes: true })
@@ -209,8 +224,10 @@ test("brand and Skill UI assets are self-contained, portable, and consistent", a
   const files = await commonPluginFiles();
   assert.deepEqual(files.filter((file: string) => file.endsWith("/SKILL.md")), ["skills/figure-library/SKILL.md"]);
   assert.ok(files.every((file: string) => !file.includes("__pycache__") && !file.endsWith(".pyc")));
+  assert.ok(files.every((file: string) => !file.startsWith("design/")));
   for (const required of [
     BRAND_ASSET,
+    FAVICON_ASSET,
     "skills/figure-library/agents/openai.yaml",
     "skills/figure-library/assets/sfl-logo.svg",
     "skills/figure-library/references/figure-description/GUIDE.md",

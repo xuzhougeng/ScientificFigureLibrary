@@ -121,7 +121,7 @@ export async function startLocalHttp(options: {
         return;
       }
       if (url.pathname === "/favicon.svg" && request.method === "GET") {
-        const icon = await fs.readFile(path.resolve(import.meta.dirname, "../assets/brand/sfl-logo.svg"));
+        const icon = await fs.readFile(path.resolve(import.meta.dirname, "../assets/brand/sfl-favicon.svg"));
         response.writeHead(200, { "Content-Type": "image/svg+xml; charset=utf-8" });
         response.end(icon);
         return;

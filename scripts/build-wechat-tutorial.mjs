@@ -42,14 +42,14 @@ const html = `<!DOCTYPE html>
   <title>${title} | Scientific Figure Library</title>
   <meta name="description" content="SFL 中文图文教程：下载安装、首次设置、浏览参考图、复制绘图提示词，再使用自己的数据绘图。附常见问题与外部工具接入方法。">
   <link rel="canonical" href="https://xuzhougeng.github.io/ScientificFigureLibrary/wechat-tutorial.html">
-  <link rel="icon" href="assets/logo.svg" type="image/svg+xml">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="assets/pages.css">
   <link rel="stylesheet" href="assets/wechat-tutorial.css">
 </head>
 <body>
   <a class="skip-link" href="#article">跳至正文</a>
   <header class="site-nav"><div class="container">
-    <a class="brand" href="index.html"><img src="assets/logo.svg" alt="" width="28" height="28"><span class="brand-name">Scientific Figure Library</span><span class="brand-short" aria-hidden="true">SFL</span></a>
+    <a class="brand" href="index.html"><img src="assets/logo-nav.svg" alt="" width="28" height="28"><span class="brand-name">Scientific Figure Library</span><span class="brand-short" aria-hidden="true">SFL</span></a>
     <nav class="nav-links" aria-label="页面导航"><a href="index.html">首页</a><a href="gallery.html">图库</a><a href="tutorial.html">教程</a><a href="quickstart.html">快速开始</a></nav>
     <div class="nav-cta"><a class="btn btn-primary" href="https://github.com/xuzhougeng/ScientificFigureLibrary/releases/latest">下载 SFL</a></div>
   </div></header>

@@ -1,0 +1,141 @@
+{
+  "svg_count": 19,
+  "independent_icon_count": 18,
+  "checks": [
+    {
+      "file": "svg/01-app-primary.svg",
+      "xml_valid": true,
+      "unique_ids": true,
+      "local_references_valid": true,
+      "vector_only": true
+    },
+    {
+      "file": "svg/02-app-flat.svg",
+      "xml_valid": true,
+      "unique_ids": true,
+      "local_references_valid": true,
+      "vector_only": true
+    },
+    {
+      "file": "svg/03-app-light.svg",
+      "xml_valid": true,
+      "unique_ids": true,
+      "local_references_valid": true,
+      "vector_only": true
+    },
+    {
+      "file": "svg/04-app-dark.svg",
+      "xml_valid": true,
+      "unique_ids": true,
+      "local_references_valid": true,
+      "vector_only": true
+    },
+    {
+      "file": "svg/05-brandmark-paper.svg",
+      "xml_valid": true,
+      "unique_ids": true,
+      "local_references_valid": true,
+      "vector_only": true
+    },
+    {
+      "file": "svg/06-brandmark-open.svg",
+      "xml_valid": true,
+      "unique_ids": true,
+      "local_references_valid": true,
+      "vector_only": true
+    },
+    {
+      "file": "svg/07-brandmark-monochrome.svg",
+      "xml_valid": true,
+      "unique_ids": true,
+      "local_references_valid": true,
+      "vector_only": true
+    },
+    {
+      "file": "svg/08-brandmark-reverse.svg",
+      "xml_valid": true,
+      "unique_ids": true,
+      "local_references_valid": true,
+      "vector_only": true
+    },
+    {
+      "file": "svg/09-brandmark-currentcolor.svg",
+      "xml_valid": true,
+      "unique_ids": true,
+      "local_references_valid": true,
+      "vector_only": true
+    },
+    {
+      "file": "svg/10-icon-64.svg",
+      "xml_valid": true,
+      "unique_ids": true,
+      "local_references_valid": true,
+      "vector_only": true
+    },
+    {
+      "file": "svg/11-icon-32.svg",
+      "xml_valid": true,
+      "unique_ids": true,
+      "local_references_valid": true,
+      "vector_only": true
+    },
+    {
+      "file": "svg/12-icon-24.svg",
+      "xml_valid": true,
+      "unique_ids": true,
+      "local_references_valid": true,
+      "vector_only": true
+    },
+    {
+      "file": "svg/13-icon-16.svg",
+      "xml_valid": true,
+      "unique_ids": true,
+      "local_references_valid": true,
+      "vector_only": true
+    },
+    {
+      "file": "svg/14-app-square-source.svg",
+      "xml_valid": true,
+      "unique_ids": true,
+      "local_references_valid": true,
+      "vector_only": true
+    },
+    {
+      "file": "svg/15-app-inset-source.svg",
+      "xml_valid": true,
+      "unique_ids": true,
+      "local_references_valid": true,
+      "vector_only": true
+    },
+    {
+      "file": "svg/16-wordmark-dark.svg",
+      "xml_valid": true,
+      "unique_ids": true,
+      "local_references_valid": true,
+      "vector_only": true
+    },
+    {
+      "file": "svg/17-wordmark-reverse.svg",
+      "xml_valid": true,
+      "unique_ids": true,
+      "local_references_valid": true,
+      "vector_only": true
+    },
+    {
+      "file": "svg/18-symbol-16-monochrome.svg",
+      "xml_valid": true,
+      "unique_ids": true,
+      "local_references_valid": true,
+      "vector_only": true
+    },
+    {
+      "file": "00-overview.svg",
+      "xml_valid": true,
+      "unique_ids": true,
+      "local_references_valid": true,
+      "vector_only": true
+    }
+  ],
+  "single_ink_checks_passed": true,
+  "all_checks_passed": true
+}

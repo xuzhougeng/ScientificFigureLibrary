@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape" width="16" height="16" viewBox="0 0 16 16" version="1.1" role="img" aria-labelledby="title description">
+  <title id="title">SFL · 16 px solid symbol</title>
+  <desc id="description">Single-ink micro symbol with separate bars; no outer tile.</desc>
+  <defs />
+  <g id="layer-symbol" inkscape:groupmode="layer" inkscape:label="Micro symbol">
+    <path id="back-rail" d="M1 10.5V5A4 4 0 0 1 5 1H10.5A0.5 0.5 0 0 1 10.5 2H5A3 3 0 0 0 2 5V10.5A0.5 0.5 0 0 1 1 10.5Z" fill="#0B4F38" />
+    <path id="middle-rail" d="M3 14.5V5A2 2 0 0 1 5 3H14.5A0.5 0.5 0 0 1 14.5 4H5A1 1 0 0 0 4 5V14.5A0.5 0.5 0 0 1 3 14.5Z" fill="#0B4F38" />
+    <path id="density" d="M5 10C6.4 10 7.2 9 8.1 7.7C9 6.3 9.6 5 10.6 5C11.6 5 12.1 6.3 12.9 7.7C13.6 9 14 10 15 10Z" fill="#0B4F38" />
+    <rect id="bar-1" x="6" y="13" width="2" height="2" rx="0.35" fill="#0B4F38" />
+    <rect id="bar-2" x="9" y="12" width="2" height="3" rx="0.35" fill="#0B4F38" />
+    <rect id="bar-3" x="12" y="11" width="2" height="4" rx="0.35" fill="#0B4F38" />
+  </g>
+</svg>

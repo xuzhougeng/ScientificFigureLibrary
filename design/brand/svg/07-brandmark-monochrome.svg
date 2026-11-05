@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape" width="512" height="512" viewBox="0 0 512 512" version="1.1" role="img" aria-labelledby="title description">
+  <title id="title">SFL · Monochrome brand mark</title>
+  <desc id="description">A single ink with genuinely transparent bar knockouts, not white overpainting.</desc>
+  <defs />
+  <g id="layer-back" inkscape:groupmode="layer" inkscape:label="01 · Back library rail">
+    <path id="back-rail" d="M78 385V182A106 106 0 0 1 184 76H383A15 15 0 0 1 383 106H184A76 76 0 0 0 108 182V385A15 15 0 0 1 78 385Z" fill="#0B4F38" />
+  </g>
+  <g id="layer-middle" inkscape:groupmode="layer" inkscape:label="02 · Front library rail">
+    <path id="middle-rail" d="M118 421V182A66 66 0 0 1 184 116H419A15 15 0 0 1 419 146H184A36 36 0 0 0 148 182V421A15 15 0 0 1 118 421Z" fill="#0B4F38" />
+  </g>
+  <g id="layer-primary" inkscape:groupmode="layer" inkscape:label="03 · Density curve">
+    <path id="density-primary" d="M172 288C213.08 288 240.38 270.08 263.26 237.824C283.8 207.36 299.66 176 326.96 176C354.26 176 368.04 207.36 386.5 237.824C400.02 262.016 413.8 288 432 288A2 2 0 0 1 432 292H172A2 2 0 0 1 172 288Z" fill="#0B4F38" />
+  </g>
+  <g id="layer-bars" inkscape:groupmode="layer" inkscape:label="04 · Bar module / true transparent knockouts">
+    <path id="bar-module-knockouts" d="M198 316H312A28 28 0 0 1 340 344V408A28 28 0 0 1 312 436H198A28 28 0 0 1 170 408V344A28 28 0 0 1 198 316ZM205 376H221A6 6 0 0 1 227 382V404A6 6 0 0 1 221 410H205A6 6 0 0 1 199 404V382A6 6 0 0 1 205 376ZM247 358H263A6 6 0 0 1 269 364V404A6 6 0 0 1 263 410H247A6 6 0 0 1 241 404V364A6 6 0 0 1 247 358ZM289 334H305A6 6 0 0 1 311 340V404A6 6 0 0 1 305 410H289A6 6 0 0 1 283 404V340A6 6 0 0 1 289 334Z" fill="#0B4F38" fill-rule="evenodd" />
+  </g>
+</svg>
