@@ -87,6 +87,10 @@ npm run dev
 - 命名互斥量保证单实例；页面中离开本机来源的 http(s) 链接和 `window.open` 交给默认浏览器，本机地址和其他协议不外开。
 - `SFL.exe --smoke` 不显示窗口，验证 Node 解析、握手、认证请求和正常退出，供打包 smoke 使用。
 
+`desktop/windows/installer/sfl.iss` 把内置 Node 版打成按当前用户安装的 Inno Setup 安装包（`%LOCALAPPDATA%\Programs`，无需管理员）：
+向导只保留桌面快捷方式选项；通过 `AppMutex` 与外壳的互斥量在 SFL 运行时暂停安装/卸载，升级前删除旧版本的顶层程序文件，卸载不触碰用户数据。
+ZIP 继续作为免安装和插件目录分发形式。
+
 外壳的进程监管按「一个服务 + 统一握手」抽象，便于将来接入其他本地服务；目前只运行 SFL 后端。
 新增执行代码类服务属于产品边界调整，需先按 [产品原则](PRODUCT_PRINCIPLES.md) 决定。MCP 入口不经过外壳，
 宿主继续通过 `MCP.cmd` 或插件配置直接启动 Node。macOS 继续使用 SwiftUI 客户端。

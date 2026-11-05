@@ -12,6 +12,19 @@ macOS 两种架构、Windows x64、Linux x64 / arm64 都提供这两个版本。
 
 Windows 默认从 PATH 查找 `node.exe`。Linux 从 PATH 查找 `node`。macOS 从 Homebrew 常用位置和 App 的 PATH 查找；Finder 的 PATH 与终端可能不同。未能自动找到时，可在启动界面点击“选择本机 Node…”，指定可执行文件。CLI/MCP 可通过绝对路径环境变量 `SFL_NODE_BINARY` 指定。成功启动后，在 App 中复制的 MCP 配置使用实际选中的 Node 绝对路径。
 
+## Windows 安装包
+
+0.9.2 之后的版本提供 `ScientificFigureLibrary-<版本>-windows-x64-setup.exe`，内容与内置 Node 的 ZIP 相同。
+
+1. 运行安装包。只需选择是否创建桌面快捷方式，安装完成后可直接启动；不需要管理员权限。
+2. 程序安装到 `%LOCALAPPDATA%\Programs\ScientificFigureLibrary`，并在开始菜单添加「Scientific Figure Library」。
+   使用方式与下面 ZIP 中的 `SFL.exe` 相同；MCP 配置同样在「设置」中复制，指向安装目录里的 `runtime\node.exe`。
+3. 升级时直接运行新版本安装包：若程序或使用该目录 Node 的 MCP 进程正在运行，安装程序会请求关闭；旧版本的程序文件会先删除，图库、工作区和配置不受影响。
+4. 卸载：在「设置 → 应用 → 已安装的应用」中卸载 Scientific Figure Library。卸载只删除程序目录；用户图库、`%APPDATA%\ScientificFigureLibrary` 中的配置以及 `%LOCALAPPDATA%\ScientificFigureLibrary` 中的日志和窗口缓存会保留。
+
+安装包与 ZIP 二选一即可。需要免安装、放在固定目录，或把解压目录当作宿主插件目录使用时，选 ZIP；使用本机 Node 的 `no-node` 版只提供 ZIP。
+安装包未签名，首次运行可能出现 SmartScreen 提示。静默安装可使用 `/VERYSILENT /SUPPRESSMSGBOXES`，安装目录可用 `/DIR=` 指定。
+
 ## Windows ZIP
 
 1. 下载 Windows x64 ZIP，解压整个文件夹。
@@ -97,7 +110,7 @@ macOS 可能阻止从网络下载的 App 首次运行；只在确认下载来源
 
 ## 构建与验证
 
-- Windows：`npm run package:windows`；本机 Node 版为 `npm run package:windows:no-node`。需要 Go（版本见 `desktop/windows/shell/go.mod`）编译 `SFL.exe`，打包时通过 `go run` 获取固定版本的 go-winres 来嵌入图标和清单。
+- Windows：`npm run package:windows`；本机 Node 版为 `npm run package:windows:no-node`。需要 Go（版本见 `desktop/windows/shell/go.mod`）编译 `SFL.exe`，打包时通过 `go run` 获取固定版本的 go-winres 来嵌入图标和清单。安装包用 `npm run package:windows:installer`，需要 Windows 上的 Inno Setup 6（默认路径或 `SFL_ISCC`），产物用 `node scripts/smoke-windows-installer.mjs <setup.exe>` 验证；该 smoke 会在当前用户下临时安装、重装并卸载。
 - Linux：`npm run package:linux`（x64）或 `npm run package:linux:arm64`；本机 Node 版为 `npm run package:linux:no-node` / `npm run package:linux:arm64:no-node`
 - macOS：在 macOS/Xcode 环境运行 `npm run package:macos` 构建本机架构；显式入口为 `npm run package:macos:arm64` 和 `npm run package:macos:x64`，须在对应架构运行原生 smoke。
 - 本机 Node 版 macOS：`npm run package:macos:no-node`；显式架构可运行 `node scripts/package-local-client.mjs macos-arm64 --system-node`（先构建）。

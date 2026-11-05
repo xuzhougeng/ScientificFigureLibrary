@@ -99,6 +99,7 @@
     "modules:feed": "node scripts/publish-open-figure-feed.mjs",
     "start:local": "node dist/index.js --local",
     "package:windows": "npm run build && node scripts/package-local-client.mjs windows-x64",
+    "package:windows:installer": "npm run build && node scripts/package-local-client.mjs windows-x64 --installer",
     "package:linux": "npm run build && node scripts/package-local-client.mjs linux-x64",
     "package:linux:arm64": "npm run build && node scripts/package-local-client.mjs linux-arm64",
     "package:macos": "npm run build && node scripts/package-local-client.mjs macos-native",

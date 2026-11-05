@@ -52,7 +52,8 @@ main 推送和合并队列检查不会因此额外打包。四个测试矩阵全
 - `package:plugins` 和 `package:npm`，包括四种宿主插件的解包、清单及 MCP smoke。
 - 正式发布使用的本地客户端工作流：Windows x64、Linux x64/arm64、macOS arm64/x64，
   每个平台均构建内置 Node / `no-node` 两种包，并运行对应平台的安装包或原生 smoke。
-- 正式发布使用的 `prepareGitHubRelease`：严格检查完整的 31 个文件、SHA-256 sidecar、
+  Windows 另外测试 Go 桌面外壳，并用固定版本、校验 SHA-256 的 Inno Setup 构建安装包，验证安装、重装和卸载。
+- 正式发布使用的 `prepareGitHubRelease`：严格检查完整的发布文件（v0.9.2 及以前为 31 个，之后加上 Windows 安装包为 33 个）、SHA-256 sidecar、
   Wisp 更新 feed 和双语 Release notes，并生成来源提交与文件清单报告。
 
 结果仅保存为 `validated-release-candidate` 与 `release-validation-report` Actions artifacts。
