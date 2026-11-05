@@ -63,7 +63,7 @@ try {
   const icon = await fetch(`${launched.origin}/favicon.svg`);
   assert.equal(icon.status, 200);
   assert.match(icon.headers.get("content-type") ?? "", /image\/svg\+xml/u);
-  assert.equal(await icon.text(), await fs.readFile(path.join(root, "assets/brand/sfl-logo.svg"), "utf8"));
+  assert.equal(await icon.text(), await fs.readFile(path.join(root, "assets/brand/sfl-favicon.svg"), "utf8"));
   const api = async (route, body) => {
     const response = await fetch(`${launched.origin}/api/${route}`, {
       method: body === undefined ? "GET" : "POST",

@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape" width="512" height="512" viewBox="0 0 512 512" version="1.1" role="img" aria-labelledby="title description">
+  <title id="title">SFL · Unmasked square source</title>
+  <desc id="description">Full square background for downstream export. No platform packaging or system validation implied.</desc>
+  <defs />
+  <g id="layer-background" inkscape:groupmode="layer" inkscape:label="00 · App background">
+    <rect id="background-tile" x="0" y="0" width="512" height="512" rx="0" fill="#129C63" />
+  </g>
+  <g id="layer-back" inkscape:groupmode="layer" inkscape:label="01 · Back card">
+    <path id="back-card" d="M216 76H328A38 38 0 0 1 366 114V210A38 38 0 0 1 328 248H294A22 22 0 0 0 272 270V330A38 38 0 0 1 234 368H116A38 38 0 0 1 78 330V214A138 138 0 0 1 216 76Z" fill="#56C794" />
+  </g>
+  <g id="layer-middle" inkscape:groupmode="layer" inkscape:label="02 · Middle card">
+    <path id="middle-card" d="M216 110H362A38 38 0 0 1 400 148V244A38 38 0 0 1 362 282H328A22 22 0 0 0 306 304V364A38 38 0 0 1 268 402H150A38 38 0 0 1 112 364V214A104 104 0 0 1 216 110Z" fill="#A4E5C5" />
+  </g>
+  <g id="layer-front" inkscape:groupmode="layer" inkscape:label="04 · Front F-shaped figure sheet">
+    <path id="front-sheet" d="M216 144H396A38 38 0 0 1 434 182V278A38 38 0 0 1 396 316H362A22 22 0 0 0 340 338V398A38 38 0 0 1 302 436H184A38 38 0 0 1 146 398V214A70 70 0 0 1 216 144Z" fill="#FBFDFA" />
+  </g>
+  <g id="layer-secondary" inkscape:groupmode="layer" inkscape:label="05 · Secondary density curve">
+    <path id="density-secondary" d="M178 280C191 278 197 226 214 226C224 226 229 240 233 254C222 266 206 277 178 280Z" fill="#A8DFC4" />
+  </g>
+  <g id="layer-primary" inkscape:groupmode="layer" inkscape:label="06 · Primary density curve">
+    <path id="density-primary" d="M174 288C210.656 288 235.016 270.08 255.432 237.824C273.76 207.36 287.912 176 312.272 176C336.632 176 348.928 207.36 365.4 237.824C377.464 262.016 389.76 288 406 288A2 2 0 0 1 406 292H174A2 2 0 0 1 174 288Z" fill="#0B4F38" />
+  </g>
+  <g id="layer-bars" inkscape:groupmode="layer" inkscape:label="07 · Three bars">
+    <rect id="bar-1" x="187" y="376" width="28" height="34" rx="6" fill="#129C63" />
+    <rect id="bar-2" x="229" y="358" width="28" height="52" rx="6" fill="#129C63" />
+    <rect id="bar-3" x="271" y="334" width="28" height="76" rx="6" fill="#F59E0B" />
+  </g>
+</svg>

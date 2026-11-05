@@ -238,8 +238,7 @@ async function macos(architecture) {
   await fs.chmod(path.join(macOS, 'ScientificFigureLibrary'), 0o755);
   await fs.chmod(path.join(macOS, 'sfl-mcp'), 0o755);
   await run('codesign', ['--force', '--sign', '-', path.join(macOS, 'sfl-mcp')]);
-  const icon = path.join(staging, 'icon.png');
-  await run('xcrun', ['swift', path.join(root, 'desktop/macos/Icon.swift'), icon]);
+  const icon = path.join(root, 'desktop/macos/AppIcon.png');
   const iconset = path.join(staging, 'AppIcon.iconset');
   await fs.mkdir(iconset);
   for (const size of [16, 32, 128, 256, 512]) for (const scale of [1, 2]) {

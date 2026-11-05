@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape" width="16" height="16" viewBox="0 0 16 16" version="1.1" role="img" aria-labelledby="title description">
+  <title id="title">SFL · 16 px</title>
+  <desc id="description">16 px optical size on its own pixel grid. Two cards, one curve, three micro bars.</desc>
+  <defs />
+  <g id="layer-background" inkscape:groupmode="layer" inkscape:label="00 · App background">
+    <rect id="background-tile" x="0" y="0" width="16" height="16" rx="4" fill="#129C63" />
+  </g>
+  <g id="layer-back" inkscape:groupmode="layer" inkscape:label="01 · Single rear card">
+    <path id="back-card" d="M6 2H11A1 1 0 0 1 12 3V6A1 1 0 0 1 11 7H9.8A0.8 0.8 0 0 0 9 7.8V11A1 1 0 0 1 8 12H3A1 1 0 0 1 2 11V6A4 4 0 0 1 6 2Z" fill="#A4E5C5" />
+  </g>
+  <g id="layer-front" inkscape:groupmode="layer" inkscape:label="03 · Front F-shaped sheet">
+    <path id="front-sheet" d="M6 4H13A1 1 0 0 1 14 5V8A1 1 0 0 1 13 9H11.8A0.8 0.8 0 0 0 11 9.8V13A1 1 0 0 1 10 14H5A1 1 0 0 1 4 13V6A2 2 0 0 1 6 4Z" fill="#FBFDFA" />
+  </g>
+  <g id="layer-primary" inkscape:groupmode="layer" inkscape:label="04 · Simplified density">
+    <path id="density-primary" d="M5 8C6.2 8 6.8 7.2 7.6 6.2C8.2 5.4 8.7 5 9.4 5C10.1 5 10.6 5.4 11.2 6.2C11.9 7.2 12.2 8 13 8Z" fill="#0B4F38" />
+  </g>
+  <g id="layer-bars" inkscape:groupmode="layer" inkscape:label="05 · Pixel-aligned bars">
+    <rect id="bar-1" x="5" y="12" width="1" height="1" rx="0.2" fill="#129C63" />
+    <rect id="bar-2" x="7" y="11" width="1" height="2" rx="0.2" fill="#129C63" />
+    <rect id="bar-3" x="9" y="10" width="1" height="3" rx="0.2" fill="#F59E0B" />
+  </g>
+</svg>

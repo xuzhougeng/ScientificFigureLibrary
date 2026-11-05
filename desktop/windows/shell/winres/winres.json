@@ -1,7 +1,7 @@
 {
   "RT_GROUP_ICON": {
     "#1": {
-      "0000": "icon.png"
+      "0000": ["icon.png", "icon-64.png", "icon-48.png", "icon-32.png", "icon-24.png", "icon-16.png"]
     }
   },
   "RT_MANIFEST": {

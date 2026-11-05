@@ -1,0 +1,335 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape" width="1600" height="1120" viewBox="0 0 1600 1120" version="1.1" role="img" aria-labelledby="title description">
+  <title id="title">SFL · Editable SVG overview</title>
+  <desc id="description">Every icon in this sheet is editable vector geometry. Native-size studies are true pixel dimensions, not enlarged labels.</desc>
+  <defs />
+  <rect id="board-canvas" x="0" y="0" width="1600" height="1120" rx="0" fill="#F6F7F3" />
+  <text x="64" y="82" font-family="Arial, Helvetica, sans-serif" font-size="62" font-weight="700" fill="#0B3D2C">SFL</text>
+  <path d="M213 38V100" stroke="#129C63" stroke-width="3" />
+  <text x="248" y="70" font-family="Arial, Helvetica, sans-serif" font-size="38" font-weight="700" fill="#0B3D2C">Scientific Figure Library</text>
+  <text x="250" y="101" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="400" fill="#4B6B5C" letter-spacing="1.5">EDITABLE VECTOR SYSTEM  /  APPROVED FORM, FLEXIBLE COLOR</text>
+  <svg width="500" height="500" viewBox="0 0 512 512" version="1.1" role="img" aria-labelledby="hero-title hero-description" x="64" y="160">
+    <title id="hero-title">SFL · Primary app icon</title>
+    <desc id="hero-description">Editable layered F-shaped scientific figure library icon. Each component is an independent named layer.</desc>
+    <defs>
+      <linearGradient id="hero-background-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop id="hero-background-gradient-start" offset="0" stop-color="#25B97B" />
+        <stop id="hero-background-gradient-end" offset="1" stop-color="#0B7A4C" />
+      </linearGradient>
+      <linearGradient id="hero-card-back-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop id="hero-card-back-gradient-start" offset="0" stop-color="#6AD3A4" />
+        <stop id="hero-card-back-gradient-end" offset="1" stop-color="#56C794" />
+      </linearGradient>
+      <linearGradient id="hero-card-middle-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop id="hero-card-middle-gradient-start" offset="0" stop-color="#BAEDD4" />
+        <stop id="hero-card-middle-gradient-end" offset="1" stop-color="#A4E5C5" />
+      </linearGradient>
+      <linearGradient id="hero-paper-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop id="hero-paper-gradient-start" offset="0" stop-color="#FFFFFF" />
+        <stop id="hero-paper-gradient-end" offset="1" stop-color="#FBFDFA" />
+      </linearGradient>
+      <linearGradient id="hero-curve-gradient" x1="0%" y1="0%" x2="0%" y2="100%">
+        <stop id="hero-curve-gradient-start" offset="0" stop-color="#14694B" />
+        <stop id="hero-curve-gradient-end" offset="1" stop-color="#0B4F38" />
+      </linearGradient>
+    </defs>
+    <g id="hero-layer-background" inkscape:groupmode="layer" inkscape:label="00 · App background">
+      <rect id="hero-background-tile" x="0" y="0" width="512" height="512" rx="124" fill="url(#hero-background-gradient)" />
+    </g>
+    <g id="hero-layer-back" inkscape:groupmode="layer" inkscape:label="01 · Back card">
+      <path id="hero-back-card" d="M216 76H328A38 38 0 0 1 366 114V210A38 38 0 0 1 328 248H294A22 22 0 0 0 272 270V330A38 38 0 0 1 234 368H116A38 38 0 0 1 78 330V214A138 138 0 0 1 216 76Z" fill="url(#hero-card-back-gradient)" />
+    </g>
+    <g id="hero-layer-middle" inkscape:groupmode="layer" inkscape:label="02 · Middle card">
+      <path id="hero-middle-card" d="M216 110H362A38 38 0 0 1 400 148V244A38 38 0 0 1 362 282H328A22 22 0 0 0 306 304V364A38 38 0 0 1 268 402H150A38 38 0 0 1 112 364V214A104 104 0 0 1 216 110Z" fill="url(#hero-card-middle-gradient)" />
+    </g>
+    <g id="hero-layer-depth" inkscape:groupmode="layer" inkscape:label="03 · Optional vector depth" opacity="0.28">
+      <path id="hero-front-shadow" d="M216 144H396A38 38 0 0 1 434 182V278A38 38 0 0 1 396 316H362A22 22 0 0 0 340 338V398A38 38 0 0 1 302 436H184A38 38 0 0 1 146 398V214A70 70 0 0 1 216 144Z" fill="#0B7A4C" transform="translate(0 6)" />
+    </g>
+    <g id="hero-layer-front" inkscape:groupmode="layer" inkscape:label="04 · Front F-shaped figure sheet">
+      <path id="hero-front-sheet" d="M216 144H396A38 38 0 0 1 434 182V278A38 38 0 0 1 396 316H362A22 22 0 0 0 340 338V398A38 38 0 0 1 302 436H184A38 38 0 0 1 146 398V214A70 70 0 0 1 216 144Z" fill="url(#hero-paper-gradient)" />
+    </g>
+    <g id="hero-layer-secondary" inkscape:groupmode="layer" inkscape:label="05 · Secondary density curve">
+      <path id="hero-density-secondary" d="M178 280C191 278 197 226 214 226C224 226 229 240 233 254C222 266 206 277 178 280Z" fill="#A8DFC4" />
+    </g>
+    <g id="hero-layer-primary" inkscape:groupmode="layer" inkscape:label="06 · Primary density curve">
+      <path id="hero-density-primary" d="M174 288C210.656 288 235.016 270.08 255.432 237.824C273.76 207.36 287.912 176 312.272 176C336.632 176 348.928 207.36 365.4 237.824C377.464 262.016 389.76 288 406 288A2 2 0 0 1 406 292H174A2 2 0 0 1 174 288Z" fill="url(#hero-curve-gradient)" />
+    </g>
+    <g id="hero-layer-bars" inkscape:groupmode="layer" inkscape:label="07 · Three bars">
+      <rect id="hero-bar-1" x="187" y="376" width="28" height="34" rx="6" fill="#129C63" />
+      <rect id="hero-bar-2" x="229" y="358" width="28" height="52" rx="6" fill="#129C63" />
+      <rect id="hero-bar-3" x="271" y="334" width="28" height="76" rx="6" fill="#F59E0B" />
+    </g>
+  </svg>
+  <text x="64" y="702" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="700" fill="#0B3D2C">01  PRIMARY</text>
+  <text x="64" y="730" font-family="Arial, Helvetica, sans-serif" font-size="17" font-weight="400" fill="#4B6B5C">Layered F / density curves / three bars</text>
+  <svg width="240" height="240" viewBox="0 0 512 512" version="1.1" role="img" aria-labelledby="preview-02-title preview-02-description" x="638" y="160">
+    <title id="preview-02-title">SFL · Flat app icon</title>
+    <desc id="preview-02-description">Flat-color master for convenient manual recoloring.</desc>
+    <defs />
+    <g id="preview-02-layer-background" inkscape:groupmode="layer" inkscape:label="00 · App background">
+      <rect id="preview-02-background-tile" x="0" y="0" width="512" height="512" rx="124" fill="#129C63" />
+    </g>
+    <g id="preview-02-layer-back" inkscape:groupmode="layer" inkscape:label="01 · Back card">
+      <path id="preview-02-back-card" d="M216 76H328A38 38 0 0 1 366 114V210A38 38 0 0 1 328 248H294A22 22 0 0 0 272 270V330A38 38 0 0 1 234 368H116A38 38 0 0 1 78 330V214A138 138 0 0 1 216 76Z" fill="#56C794" />
+    </g>
+    <g id="preview-02-layer-middle" inkscape:groupmode="layer" inkscape:label="02 · Middle card">
+      <path id="preview-02-middle-card" d="M216 110H362A38 38 0 0 1 400 148V244A38 38 0 0 1 362 282H328A22 22 0 0 0 306 304V364A38 38 0 0 1 268 402H150A38 38 0 0 1 112 364V214A104 104 0 0 1 216 110Z" fill="#A4E5C5" />
+    </g>
+    <g id="preview-02-layer-front" inkscape:groupmode="layer" inkscape:label="04 · Front F-shaped figure sheet">
+      <path id="preview-02-front-sheet" d="M216 144H396A38 38 0 0 1 434 182V278A38 38 0 0 1 396 316H362A22 22 0 0 0 340 338V398A38 38 0 0 1 302 436H184A38 38 0 0 1 146 398V214A70 70 0 0 1 216 144Z" fill="#FBFDFA" />
+    </g>
+    <g id="preview-02-layer-secondary" inkscape:groupmode="layer" inkscape:label="05 · Secondary density curve">
+      <path id="preview-02-density-secondary" d="M178 280C191 278 197 226 214 226C224 226 229 240 233 254C222 266 206 277 178 280Z" fill="#A8DFC4" />
+    </g>
+    <g id="preview-02-layer-primary" inkscape:groupmode="layer" inkscape:label="06 · Primary density curve">
+      <path id="preview-02-density-primary" d="M174 288C210.656 288 235.016 270.08 255.432 237.824C273.76 207.36 287.912 176 312.272 176C336.632 176 348.928 207.36 365.4 237.824C377.464 262.016 389.76 288 406 288A2 2 0 0 1 406 292H174A2 2 0 0 1 174 288Z" fill="#0B4F38" />
+    </g>
+    <g id="preview-02-layer-bars" inkscape:groupmode="layer" inkscape:label="07 · Three bars">
+      <rect id="preview-02-bar-1" x="187" y="376" width="28" height="34" rx="6" fill="#129C63" />
+      <rect id="preview-02-bar-2" x="229" y="358" width="28" height="52" rx="6" fill="#129C63" />
+      <rect id="preview-02-bar-3" x="271" y="334" width="28" height="76" rx="6" fill="#F59E0B" />
+    </g>
+  </svg>
+  <text x="638" y="430" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="700" fill="#0B3D2C">02  FLAT</text>
+  <svg width="240" height="240" viewBox="0 0 512 512" version="1.1" role="img" aria-labelledby="preview-06-title preview-06-description" x="942" y="160">
+    <title id="preview-06-title">SFL · Open brand mark</title>
+    <desc id="preview-06-description">Two library rails, a density curve, and a bar module; transparent background.</desc>
+    <defs />
+    <g id="preview-06-layer-back" inkscape:groupmode="layer" inkscape:label="01 · Back library rail">
+      <path id="preview-06-back-rail" d="M78 385V182A106 106 0 0 1 184 76H383A15 15 0 0 1 383 106H184A76 76 0 0 0 108 182V385A15 15 0 0 1 78 385Z" fill="#A4E5C5" />
+    </g>
+    <g id="preview-06-layer-middle" inkscape:groupmode="layer" inkscape:label="02 · Front library rail">
+      <path id="preview-06-middle-rail" d="M118 421V182A66 66 0 0 1 184 116H419A15 15 0 0 1 419 146H184A36 36 0 0 0 148 182V421A15 15 0 0 1 118 421Z" fill="#56C794" />
+    </g>
+    <g id="preview-06-layer-primary" inkscape:groupmode="layer" inkscape:label="03 · Density curve">
+      <path id="preview-06-density-primary" d="M172 288C213.08 288 240.38 270.08 263.26 237.824C283.8 207.36 299.66 176 326.96 176C354.26 176 368.04 207.36 386.5 237.824C400.02 262.016 413.8 288 432 288A2 2 0 0 1 432 292H172A2 2 0 0 1 172 288Z" fill="#0B4F38" />
+    </g>
+    <g id="preview-06-layer-module" inkscape:groupmode="layer" inkscape:label="04 · Bar module">
+      <rect id="preview-06-bar-module" x="170" y="316" width="170" height="120" rx="28" fill="#0B4F38" />
+    </g>
+    <g id="preview-06-layer-bars" inkscape:groupmode="layer" inkscape:label="05 · Three bars">
+      <rect id="preview-06-bar-1" x="199" y="376" width="28" height="34" rx="6" fill="#8EDDB6" />
+      <rect id="preview-06-bar-2" x="241" y="358" width="28" height="52" rx="6" fill="#8EDDB6" />
+      <rect id="preview-06-bar-3" x="283" y="334" width="28" height="76" rx="6" fill="#F59E0B" />
+    </g>
+  </svg>
+  <text x="942" y="430" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="700" fill="#0B3D2C">06  OPEN MARK</text>
+  <svg width="240" height="240" viewBox="0 0 512 512" version="1.1" role="img" aria-labelledby="preview-04-title preview-04-description" x="1246" y="160">
+    <title id="preview-04-title">SFL · Dark app icon</title>
+    <desc id="preview-04-description">Open library-rail mark on a dark background.</desc>
+    <defs />
+    <g id="preview-04-layer-background" inkscape:groupmode="layer" inkscape:label="00 · App background">
+      <rect id="preview-04-background-tile" x="0" y="0" width="512" height="512" rx="124" fill="#0E2A20" />
+    </g>
+    <g id="preview-04-layer-back" inkscape:groupmode="layer" inkscape:label="01 · Back library rail">
+      <path id="preview-04-back-rail" d="M78 385V182A106 106 0 0 1 184 76H383A15 15 0 0 1 383 106H184A76 76 0 0 0 108 182V385A15 15 0 0 1 78 385Z" fill="#56C794" />
+    </g>
+    <g id="preview-04-layer-middle" inkscape:groupmode="layer" inkscape:label="02 · Front library rail">
+      <path id="preview-04-middle-rail" d="M118 421V182A66 66 0 0 1 184 116H419A15 15 0 0 1 419 146H184A36 36 0 0 0 148 182V421A15 15 0 0 1 118 421Z" fill="#A4E5C5" />
+    </g>
+    <g id="preview-04-layer-primary" inkscape:groupmode="layer" inkscape:label="03 · Density curve">
+      <path id="preview-04-density-primary" d="M172 288C213.08 288 240.38 270.08 263.26 237.824C283.8 207.36 299.66 176 326.96 176C354.26 176 368.04 207.36 386.5 237.824C400.02 262.016 413.8 288 432 288A2 2 0 0 1 432 292H172A2 2 0 0 1 172 288Z" fill="#FFFFFF" />
+    </g>
+    <g id="preview-04-layer-module" inkscape:groupmode="layer" inkscape:label="04 · Bar module">
+      <rect id="preview-04-bar-module" x="170" y="316" width="170" height="120" rx="28" fill="#FBFDFA" />
+    </g>
+    <g id="preview-04-layer-bars" inkscape:groupmode="layer" inkscape:label="05 · Three bars">
+      <rect id="preview-04-bar-1" x="199" y="376" width="28" height="34" rx="6" fill="#129C63" />
+      <rect id="preview-04-bar-2" x="241" y="358" width="28" height="52" rx="6" fill="#129C63" />
+      <rect id="preview-04-bar-3" x="283" y="334" width="28" height="76" rx="6" fill="#F59E0B" />
+    </g>
+  </svg>
+  <text x="1246" y="430" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="700" fill="#0B3D2C">04  DARK</text>
+  <svg width="240" height="240" viewBox="0 0 512 512" version="1.1" role="img" aria-labelledby="preview-03-title preview-03-description" x="638" y="465">
+    <title id="preview-03-title">SFL · Light app icon</title>
+    <desc id="preview-03-description">Flat artwork on a light surface.</desc>
+    <defs />
+    <g id="preview-03-layer-background" inkscape:groupmode="layer" inkscape:label="00 · App background">
+      <rect id="preview-03-background-tile" x="0" y="0" width="512" height="512" rx="124" fill="#E9F7F0" />
+    </g>
+    <g id="preview-03-layer-back" inkscape:groupmode="layer" inkscape:label="01 · Back card">
+      <path id="preview-03-back-card" d="M216 76H328A38 38 0 0 1 366 114V210A38 38 0 0 1 328 248H294A22 22 0 0 0 272 270V330A38 38 0 0 1 234 368H116A38 38 0 0 1 78 330V214A138 138 0 0 1 216 76Z" fill="#56C794" />
+    </g>
+    <g id="preview-03-layer-middle" inkscape:groupmode="layer" inkscape:label="02 · Middle card">
+      <path id="preview-03-middle-card" d="M216 110H362A38 38 0 0 1 400 148V244A38 38 0 0 1 362 282H328A22 22 0 0 0 306 304V364A38 38 0 0 1 268 402H150A38 38 0 0 1 112 364V214A104 104 0 0 1 216 110Z" fill="#A4E5C5" />
+    </g>
+    <g id="preview-03-layer-front" inkscape:groupmode="layer" inkscape:label="04 · Front F-shaped figure sheet">
+      <path id="preview-03-front-sheet" d="M216 144H396A38 38 0 0 1 434 182V278A38 38 0 0 1 396 316H362A22 22 0 0 0 340 338V398A38 38 0 0 1 302 436H184A38 38 0 0 1 146 398V214A70 70 0 0 1 216 144Z" fill="#FBFDFA" />
+    </g>
+    <g id="preview-03-layer-secondary" inkscape:groupmode="layer" inkscape:label="05 · Secondary density curve">
+      <path id="preview-03-density-secondary" d="M178 280C191 278 197 226 214 226C224 226 229 240 233 254C222 266 206 277 178 280Z" fill="#A8DFC4" />
+    </g>
+    <g id="preview-03-layer-primary" inkscape:groupmode="layer" inkscape:label="06 · Primary density curve">
+      <path id="preview-03-density-primary" d="M174 288C210.656 288 235.016 270.08 255.432 237.824C273.76 207.36 287.912 176 312.272 176C336.632 176 348.928 207.36 365.4 237.824C377.464 262.016 389.76 288 406 288A2 2 0 0 1 406 292H174A2 2 0 0 1 174 288Z" fill="#0B4F38" />
+    </g>
+    <g id="preview-03-layer-bars" inkscape:groupmode="layer" inkscape:label="07 · Three bars">
+      <rect id="preview-03-bar-1" x="187" y="376" width="28" height="34" rx="6" fill="#129C63" />
+      <rect id="preview-03-bar-2" x="229" y="358" width="28" height="52" rx="6" fill="#129C63" />
+      <rect id="preview-03-bar-3" x="271" y="334" width="28" height="76" rx="6" fill="#F59E0B" />
+    </g>
+  </svg>
+  <text x="638" y="735" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="700" fill="#0B3D2C">03  LIGHT</text>
+  <svg width="240" height="240" viewBox="0 0 512 512" version="1.1" role="img" aria-labelledby="preview-07-title preview-07-description" x="942" y="465">
+    <title id="preview-07-title">SFL · Monochrome brand mark</title>
+    <desc id="preview-07-description">A single ink with genuinely transparent bar knockouts, not white overpainting.</desc>
+    <defs />
+    <g id="preview-07-layer-back" inkscape:groupmode="layer" inkscape:label="01 · Back library rail">
+      <path id="preview-07-back-rail" d="M78 385V182A106 106 0 0 1 184 76H383A15 15 0 0 1 383 106H184A76 76 0 0 0 108 182V385A15 15 0 0 1 78 385Z" fill="#0B4F38" />
+    </g>
+    <g id="preview-07-layer-middle" inkscape:groupmode="layer" inkscape:label="02 · Front library rail">
+      <path id="preview-07-middle-rail" d="M118 421V182A66 66 0 0 1 184 116H419A15 15 0 0 1 419 146H184A36 36 0 0 0 148 182V421A15 15 0 0 1 118 421Z" fill="#0B4F38" />
+    </g>
+    <g id="preview-07-layer-primary" inkscape:groupmode="layer" inkscape:label="03 · Density curve">
+      <path id="preview-07-density-primary" d="M172 288C213.08 288 240.38 270.08 263.26 237.824C283.8 207.36 299.66 176 326.96 176C354.26 176 368.04 207.36 386.5 237.824C400.02 262.016 413.8 288 432 288A2 2 0 0 1 432 292H172A2 2 0 0 1 172 288Z" fill="#0B4F38" />
+    </g>
+    <g id="preview-07-layer-bars" inkscape:groupmode="layer" inkscape:label="04 · Bar module / true transparent knockouts">
+      <path id="preview-07-bar-module-knockouts" d="M198 316H312A28 28 0 0 1 340 344V408A28 28 0 0 1 312 436H198A28 28 0 0 1 170 408V344A28 28 0 0 1 198 316ZM205 376H221A6 6 0 0 1 227 382V404A6 6 0 0 1 221 410H205A6 6 0 0 1 199 404V382A6 6 0 0 1 205 376ZM247 358H263A6 6 0 0 1 269 364V404A6 6 0 0 1 263 410H247A6 6 0 0 1 241 404V364A6 6 0 0 1 247 358ZM289 334H305A6 6 0 0 1 311 340V404A6 6 0 0 1 305 410H289A6 6 0 0 1 283 404V340A6 6 0 0 1 289 334Z" fill="#0B4F38" fill-rule="evenodd" />
+    </g>
+  </svg>
+  <text x="942" y="735" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="700" fill="#0B3D2C">07  MONO</text>
+  <rect id="reverse-preview-bg" x="1246" y="465" width="240" height="240" rx="36" fill="#0E2A20" />
+  <svg width="240" height="240" viewBox="0 0 512 512" version="1.1" role="img" aria-labelledby="preview-08-title preview-08-description" x="1246" y="465">
+    <title id="preview-08-title">SFL · Reverse brand mark</title>
+    <desc id="preview-08-description">White artwork for dark surfaces; transparent background and cutouts.</desc>
+    <defs />
+    <g id="preview-08-layer-back" inkscape:groupmode="layer" inkscape:label="01 · Back library rail">
+      <path id="preview-08-back-rail" d="M78 385V182A106 106 0 0 1 184 76H383A15 15 0 0 1 383 106H184A76 76 0 0 0 108 182V385A15 15 0 0 1 78 385Z" fill="#FFFFFF" />
+    </g>
+    <g id="preview-08-layer-middle" inkscape:groupmode="layer" inkscape:label="02 · Front library rail">
+      <path id="preview-08-middle-rail" d="M118 421V182A66 66 0 0 1 184 116H419A15 15 0 0 1 419 146H184A36 36 0 0 0 148 182V421A15 15 0 0 1 118 421Z" fill="#FFFFFF" />
+    </g>
+    <g id="preview-08-layer-primary" inkscape:groupmode="layer" inkscape:label="03 · Density curve">
+      <path id="preview-08-density-primary" d="M172 288C213.08 288 240.38 270.08 263.26 237.824C283.8 207.36 299.66 176 326.96 176C354.26 176 368.04 207.36 386.5 237.824C400.02 262.016 413.8 288 432 288A2 2 0 0 1 432 292H172A2 2 0 0 1 172 288Z" fill="#FFFFFF" />
+    </g>
+    <g id="preview-08-layer-bars" inkscape:groupmode="layer" inkscape:label="04 · Bar module / true transparent knockouts">
+      <path id="preview-08-bar-module-knockouts" d="M198 316H312A28 28 0 0 1 340 344V408A28 28 0 0 1 312 436H198A28 28 0 0 1 170 408V344A28 28 0 0 1 198 316ZM205 376H221A6 6 0 0 1 227 382V404A6 6 0 0 1 221 410H205A6 6 0 0 1 199 404V382A6 6 0 0 1 205 376ZM247 358H263A6 6 0 0 1 269 364V404A6 6 0 0 1 263 410H247A6 6 0 0 1 241 404V364A6 6 0 0 1 247 358ZM289 334H305A6 6 0 0 1 311 340V404A6 6 0 0 1 305 410H289A6 6 0 0 1 283 404V340A6 6 0 0 1 289 334Z" fill="#FFFFFF" fill-rule="evenodd" />
+    </g>
+  </svg>
+  <text x="1246" y="735" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="700" fill="#0B3D2C">08  REVERSE</text>
+  <path d="M64 790H1536" stroke="#D5E2DB" stroke-width="1.5" />
+  <text x="64" y="838" font-family="Arial, Helvetica, sans-serif" font-size="17" font-weight="700" fill="#0B3D2C">OPTICAL SIZES</text>
+  <text x="64" y="864" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="400" fill="#4B6B5C">Shown at actual SVG pixel dimensions on this 1600 px board.</text>
+  <svg width="64" height="64" viewBox="0 0 512 512" version="1.1" role="img" aria-labelledby="native-64-title native-64-description" x="64" y="900">
+    <title id="native-64-title">SFL · 64 px</title>
+    <desc id="native-64-description">64 px version; full double-density motif, flat colors.</desc>
+    <defs />
+    <g id="native-64-layer-background" inkscape:groupmode="layer" inkscape:label="00 · App background">
+      <rect id="native-64-background-tile" x="0" y="0" width="512" height="512" rx="124" fill="#129C63" />
+    </g>
+    <g id="native-64-layer-back" inkscape:groupmode="layer" inkscape:label="01 · Back card">
+      <path id="native-64-back-card" d="M216 76H328A38 38 0 0 1 366 114V210A38 38 0 0 1 328 248H294A22 22 0 0 0 272 270V330A38 38 0 0 1 234 368H116A38 38 0 0 1 78 330V214A138 138 0 0 1 216 76Z" fill="#56C794" />
+    </g>
+    <g id="native-64-layer-middle" inkscape:groupmode="layer" inkscape:label="02 · Middle card">
+      <path id="native-64-middle-card" d="M216 110H362A38 38 0 0 1 400 148V244A38 38 0 0 1 362 282H328A22 22 0 0 0 306 304V364A38 38 0 0 1 268 402H150A38 38 0 0 1 112 364V214A104 104 0 0 1 216 110Z" fill="#A4E5C5" />
+    </g>
+    <g id="native-64-layer-front" inkscape:groupmode="layer" inkscape:label="04 · Front F-shaped figure sheet">
+      <path id="native-64-front-sheet" d="M216 144H396A38 38 0 0 1 434 182V278A38 38 0 0 1 396 316H362A22 22 0 0 0 340 338V398A38 38 0 0 1 302 436H184A38 38 0 0 1 146 398V214A70 70 0 0 1 216 144Z" fill="#FBFDFA" />
+    </g>
+    <g id="native-64-layer-secondary" inkscape:groupmode="layer" inkscape:label="05 · Secondary density curve">
+      <path id="native-64-density-secondary" d="M178 280C191 278 197 226 214 226C224 226 229 240 233 254C222 266 206 277 178 280Z" fill="#A8DFC4" />
+    </g>
+    <g id="native-64-layer-primary" inkscape:groupmode="layer" inkscape:label="06 · Primary density curve">
+      <path id="native-64-density-primary" d="M174 288C210.656 288 235.016 270.08 255.432 237.824C273.76 207.36 287.912 176 312.272 176C336.632 176 348.928 207.36 365.4 237.824C377.464 262.016 389.76 288 406 288A2 2 0 0 1 406 292H174A2 2 0 0 1 174 288Z" fill="#0B4F38" />
+    </g>
+    <g id="native-64-layer-bars" inkscape:groupmode="layer" inkscape:label="07 · Three bars">
+      <rect id="native-64-bar-1" x="187" y="376" width="28" height="34" rx="6" fill="#129C63" />
+      <rect id="native-64-bar-2" x="229" y="358" width="28" height="52" rx="6" fill="#129C63" />
+      <rect id="native-64-bar-3" x="271" y="334" width="28" height="76" rx="6" fill="#F59E0B" />
+    </g>
+  </svg>
+  <text x="64" y="998" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="400" fill="#0B3D2C">64 px</text>
+  <svg width="32" height="32" viewBox="0 0 32 32" version="1.1" role="img" aria-labelledby="native-32-title native-32-description" x="174" y="932">
+    <title id="native-32-title">SFL · 32 px</title>
+    <desc id="native-32-description">32 px optical size on its own pixel grid. Three cards, one curve, three bars; secondary density removed.</desc>
+    <defs />
+    <g id="native-32-layer-background" inkscape:groupmode="layer" inkscape:label="00 · App background">
+      <rect id="native-32-background-tile" x="0" y="0" width="32" height="32" rx="8" fill="#129C63" />
+    </g>
+    <g id="native-32-layer-back" inkscape:groupmode="layer" inkscape:label="01 · Back card">
+      <path id="native-32-back-card" d="M13 5H21A2 2 0 0 1 23 7V14A2 2 0 0 1 21 16H18.5A1.5 1.5 0 0 0 17 17.5V21A2 2 0 0 1 15 23H7A2 2 0 0 1 5 21V13A8 8 0 0 1 13 5Z" fill="#56C794" />
+    </g>
+    <g id="native-32-layer-middle" inkscape:groupmode="layer" inkscape:label="02 · Middle card">
+      <path id="native-32-middle-card" d="M13 7H23A2 2 0 0 1 25 9V16A2 2 0 0 1 23 18H20.5A1.5 1.5 0 0 0 19 19.5V23A2 2 0 0 1 17 25H9A2 2 0 0 1 7 23V13A6 6 0 0 1 13 7Z" fill="#A4E5C5" />
+    </g>
+    <g id="native-32-layer-front" inkscape:groupmode="layer" inkscape:label="03 · Front F-shaped sheet">
+      <path id="native-32-front-sheet" d="M13 9H25A2 2 0 0 1 27 11V18A2 2 0 0 1 25 20H22.5A1.5 1.5 0 0 0 21 21.5V25A2 2 0 0 1 19 27H11A2 2 0 0 1 9 25V13A4 4 0 0 1 13 9Z" fill="#FBFDFA" />
+    </g>
+    <g id="native-32-layer-primary" inkscape:groupmode="layer" inkscape:label="04 · Simplified density">
+      <path id="native-32-density-primary" d="M10.5 18C13 18 14.2 16.6 15.4 14.8C16.6 13 17.4 11.5 19 11.5C20.6 11.5 21.4 13 22.4 14.8C23.4 16.6 24 18 25.5 18V19H10.5Z" fill="#0B4F38" />
+    </g>
+    <g id="native-32-layer-bars" inkscape:groupmode="layer" inkscape:label="05 · Pixel-aligned bars">
+      <rect id="native-32-bar-1" x="11" y="23" width="2" height="2" rx="0.4" fill="#129C63" />
+      <rect id="native-32-bar-2" x="14" y="22" width="2" height="3" rx="0.4" fill="#129C63" />
+      <rect id="native-32-bar-3" x="17" y="21" width="2" height="4" rx="0.4" fill="#F59E0B" />
+    </g>
+  </svg>
+  <text x="174" y="998" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="400" fill="#0B3D2C">32 px</text>
+  <svg width="24" height="24" viewBox="0 0 24 24" version="1.1" role="img" aria-labelledby="native-24-title native-24-description" x="284" y="940">
+    <title id="native-24-title">SFL · 24 px</title>
+    <desc id="native-24-description">24 px optical size on its own pixel grid. Three cards, one curve, three bars; secondary density removed.</desc>
+    <defs />
+    <g id="native-24-layer-background" inkscape:groupmode="layer" inkscape:label="00 · App background">
+      <rect id="native-24-background-tile" x="0" y="0" width="24" height="24" rx="6" fill="#129C63" />
+    </g>
+    <g id="native-24-layer-back" inkscape:groupmode="layer" inkscape:label="01 · Back card">
+      <path id="native-24-back-card" d="M10 3H15.5A1.5 1.5 0 0 1 17 4.5V9.5A1.5 1.5 0 0 1 15.5 11H14.2A1.2 1.2 0 0 0 13 12.2V15.5A1.5 1.5 0 0 1 11.5 17H4.5A1.5 1.5 0 0 1 3 15.5V10A7 7 0 0 1 10 3Z" fill="#56C794" />
+    </g>
+    <g id="native-24-layer-middle" inkscape:groupmode="layer" inkscape:label="02 · Middle card">
+      <path id="native-24-middle-card" d="M10 5H17.5A1.5 1.5 0 0 1 19 6.5V11.5A1.5 1.5 0 0 1 17.5 13H16.2A1.2 1.2 0 0 0 15 14.2V17.5A1.5 1.5 0 0 1 13.5 19H6.5A1.5 1.5 0 0 1 5 17.5V10A5 5 0 0 1 10 5Z" fill="#A4E5C5" />
+    </g>
+    <g id="native-24-layer-front" inkscape:groupmode="layer" inkscape:label="03 · Front F-shaped sheet">
+      <path id="native-24-front-sheet" d="M10 7H19.5A1.5 1.5 0 0 1 21 8.5V13.5A1.5 1.5 0 0 1 19.5 15H18.2A1.2 1.2 0 0 0 17 16.2V19.5A1.5 1.5 0 0 1 15.5 21H8.5A1.5 1.5 0 0 1 7 19.5V10A3 3 0 0 1 10 7Z" fill="#FBFDFA" />
+    </g>
+    <g id="native-24-layer-primary" inkscape:groupmode="layer" inkscape:label="04 · Simplified density">
+      <path id="native-24-density-primary" d="M8 13C9.8 13 10.8 12 11.6 10.8C12.6 9.3 13.2 8.5 14.4 8.5C15.6 8.5 16.2 9.3 17.2 10.8C18 12 18.8 13 20 13V14H8Z" fill="#0B4F38" />
+    </g>
+    <g id="native-24-layer-bars" inkscape:groupmode="layer" inkscape:label="05 · Pixel-aligned bars">
+      <rect id="native-24-bar-1" x="8" y="18" width="2" height="2" rx="0.4" fill="#129C63" />
+      <rect id="native-24-bar-2" x="11" y="17" width="2" height="3" rx="0.4" fill="#129C63" />
+      <rect id="native-24-bar-3" x="14" y="16" width="2" height="4" rx="0.4" fill="#F59E0B" />
+    </g>
+  </svg>
+  <text x="284" y="998" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="400" fill="#0B3D2C">24 px</text>
+  <svg width="16" height="16" viewBox="0 0 16 16" version="1.1" role="img" aria-labelledby="native-16-title native-16-description" x="394" y="948">
+    <title id="native-16-title">SFL · 16 px</title>
+    <desc id="native-16-description">16 px optical size on its own pixel grid. Two cards, one curve, three micro bars.</desc>
+    <defs />
+    <g id="native-16-layer-background" inkscape:groupmode="layer" inkscape:label="00 · App background">
+      <rect id="native-16-background-tile" x="0" y="0" width="16" height="16" rx="4" fill="#129C63" />
+    </g>
+    <g id="native-16-layer-back" inkscape:groupmode="layer" inkscape:label="01 · Single rear card">
+      <path id="native-16-back-card" d="M6 2H11A1 1 0 0 1 12 3V6A1 1 0 0 1 11 7H9.8A0.8 0.8 0 0 0 9 7.8V11A1 1 0 0 1 8 12H3A1 1 0 0 1 2 11V6A4 4 0 0 1 6 2Z" fill="#A4E5C5" />
+    </g>
+    <g id="native-16-layer-front" inkscape:groupmode="layer" inkscape:label="03 · Front F-shaped sheet">
+      <path id="native-16-front-sheet" d="M6 4H13A1 1 0 0 1 14 5V8A1 1 0 0 1 13 9H11.8A0.8 0.8 0 0 0 11 9.8V13A1 1 0 0 1 10 14H5A1 1 0 0 1 4 13V6A2 2 0 0 1 6 4Z" fill="#FBFDFA" />
+    </g>
+    <g id="native-16-layer-primary" inkscape:groupmode="layer" inkscape:label="04 · Simplified density">
+      <path id="native-16-density-primary" d="M5 8C6.2 8 6.8 7.2 7.6 6.2C8.2 5.4 8.7 5 9.4 5C10.1 5 10.6 5.4 11.2 6.2C11.9 7.2 12.2 8 13 8Z" fill="#0B4F38" />
+    </g>
+    <g id="native-16-layer-bars" inkscape:groupmode="layer" inkscape:label="05 · Pixel-aligned bars">
+      <rect id="native-16-bar-1" x="5" y="12" width="1" height="1" rx="0.2" fill="#129C63" />
+      <rect id="native-16-bar-2" x="7" y="11" width="1" height="2" rx="0.2" fill="#129C63" />
+      <rect id="native-16-bar-3" x="9" y="10" width="1" height="3" rx="0.2" fill="#F59E0B" />
+    </g>
+  </svg>
+  <text x="394" y="998" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="400" fill="#0B3D2C">16 px</text>
+  <text x="638" y="838" font-family="Arial, Helvetica, sans-serif" font-size="17" font-weight="700" fill="#0B3D2C">SHARED GEOMETRY</text>
+  <text x="638" y="869" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="400" fill="#4B6B5C">Cards, curves and bars remain separate editable layers.</text>
+  <text x="638" y="895" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="400" fill="#4B6B5C">Flat masters contain direct fills; gradients are optional.</text>
+  <rect id="swatch-tile" x="638" y="932" width="140" height="38" rx="8" fill="#129C63" />
+  <text x="638" y="993" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="700" fill="#0B3D2C">Tile</text>
+  <text x="638" y="1015" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="400" fill="#4B6B5C">#129C63</text>
+  <rect id="swatch-card_back" x="804" y="932" width="140" height="38" rx="8" fill="#56C794" />
+  <text x="804" y="993" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="700" fill="#0B3D2C">Back card</text>
+  <text x="804" y="1015" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="400" fill="#4B6B5C">#56C794</text>
+  <rect id="swatch-card_middle" x="970" y="932" width="140" height="38" rx="8" fill="#A4E5C5" />
+  <text x="970" y="993" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="700" fill="#0B3D2C">Middle card</text>
+  <text x="970" y="1015" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="400" fill="#4B6B5C">#A4E5C5</text>
+  <rect id="swatch-ink" x="1136" y="932" width="140" height="38" rx="8" fill="#0B4F38" />
+  <text x="1136" y="993" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="700" fill="#0B3D2C">Ink</text>
+  <text x="1136" y="1015" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="400" fill="#4B6B5C">#0B4F38</text>
+  <rect id="swatch-bar_accent" x="1302" y="932" width="140" height="38" rx="8" fill="#F59E0B" />
+  <text x="1302" y="993" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="700" fill="#0B3D2C">Accent</text>
+  <text x="1302" y="1015" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="400" fill="#4B6B5C">#F59E0B</text>
+  <text x="64" y="1080" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="400" fill="#4B6B5C">SFL / SVG KIT v2     ·     Colors are editable; change palette.json and rebuild.</text>
+</svg>

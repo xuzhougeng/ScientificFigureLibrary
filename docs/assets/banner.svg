@@ -1,24 +1,28 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1600" height="420" viewBox="0 0 1600 420" role="img" aria-label="Scientific Figure Library — local-first MCP App for your scientific figures on Claude Science and Wisp Science">
   <rect width="1600" height="420" fill="#f5f4ef"/>
-  <rect x="0" y="0" width="12" height="420" fill="#267253"/>
-  <g transform="translate(64,86)">
-    <rect x="8" y="40" width="18" height="18" fill="#267253"/>
-    <rect x="30" y="40" width="18" height="18" fill="#6aa57c"/>
-    <rect x="52" y="40" width="18" height="18" fill="#c4d9c8"/>
-    <rect x="8" y="62" width="18" height="18" fill="#6aa57c"/>
-    <rect x="30" y="62" width="18" height="18" fill="#1b4d35"/>
-    <rect x="52" y="62" width="18" height="18" fill="#267253"/>
-    <rect x="8" y="84" width="18" height="18" fill="#c4d9c8"/>
-    <rect x="30" y="84" width="18" height="18" fill="#267253"/>
-    <rect x="52" y="84" width="18" height="18" fill="#8fbf9a"/>
-    <circle cx="148" cy="78" r="7" fill="#c45c26"/>
-    <circle cx="172" cy="54" r="5" fill="#c45c26"/>
-    <circle cx="196" cy="92" r="6" fill="#267253"/>
-    <circle cx="220" cy="40" r="8" fill="#c45c26"/>
-    <circle cx="236" cy="70" r="5" fill="#1b4d35"/>
-    <polyline fill="none" stroke="#1b4d35" stroke-width="3" points="280,120 310,88 340,96 372,52 410,60"/>
+  <rect x="0" y="0" width="12" height="420" fill="#129C63"/>
+  <svg x="96" y="60" width="330" height="330" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape">
+  <defs />
+  <g id="layer-back" inkscape:groupmode="layer" inkscape:label="01 · Back library rail">
+    <path id="back-rail" d="M78 385V182A106 106 0 0 1 184 76H383A15 15 0 0 1 383 106H184A76 76 0 0 0 108 182V385A15 15 0 0 1 78 385Z" fill="#A4E5C5" />
   </g>
-  <text x="64" y="64" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="20" font-weight="700" fill="#267253" letter-spacing="3">LOCAL FIRST</text>
+  <g id="layer-middle" inkscape:groupmode="layer" inkscape:label="02 · Front library rail">
+    <path id="middle-rail" d="M118 421V182A66 66 0 0 1 184 116H419A15 15 0 0 1 419 146H184A36 36 0 0 0 148 182V421A15 15 0 0 1 118 421Z" fill="#56C794" />
+  </g>
+  <g id="layer-primary" inkscape:groupmode="layer" inkscape:label="03 · Density curve">
+    <path id="density-primary" d="M172 288C213.08 288 240.38 270.08 263.26 237.824C283.8 207.36 299.66 176 326.96 176C354.26 176 368.04 207.36 386.5 237.824C400.02 262.016 413.8 288 432 288A2 2 0 0 1 432 292H172A2 2 0 0 1 172 288Z" fill="#0B4F38" />
+  </g>
+  <g id="layer-module" inkscape:groupmode="layer" inkscape:label="04 · Bar module">
+    <rect id="bar-module" x="170" y="316" width="170" height="120" rx="28" fill="#0B4F38" />
+  </g>
+  <g id="layer-bars" inkscape:groupmode="layer" inkscape:label="05 · Three bars">
+    <rect id="bar-1" x="199" y="376" width="28" height="34" rx="6" fill="#8EDDB6" />
+    <rect id="bar-2" x="241" y="358" width="28" height="52" rx="6" fill="#8EDDB6" />
+    <rect id="bar-3" x="283" y="334" width="28" height="76" rx="6" fill="#F59E0B" />
+  </g>
+</svg>
+
+  <text x="64" y="64" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="20" font-weight="700" fill="#0B4F38" letter-spacing="3">LOCAL FIRST</text>
   <text x="500" y="160" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="56" font-weight="700" fill="#17211c">Scientific Figure Library</text>
   <text x="500" y="208" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="24" fill="#5b675f">Your figures, reviewed and reusable across projects</text>
   <text x="500" y="252" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="18" fill="#5b675f">Import, review, publish locally — then search and materialize in Claude Science or Wisp Science</text>
