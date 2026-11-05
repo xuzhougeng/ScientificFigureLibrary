@@ -14,6 +14,8 @@ const pkg = JSON.parse(await fs.readFile(path.join(root, 'package.json'), 'utf8'
 const target = process.argv[2] === 'macos-native' ? `macos-${process.arch}` : process.argv[2];
 const runtimeMode = process.argv.includes('--system-node') ? 'system' : 'bundled';
 const variant = runtimeMode === 'system' ? '-no-node' : '';
+const installer = process.argv.includes('--installer');
+if (installer && (target !== 'windows-x64' || runtimeMode !== 'bundled')) throw new Error('--installer builds only the bundled-Node windows-x64 package');
 const output = path.resolve(process.env.SFL_CLIENT_OUTPUT ?? path.join(root, 'release', 'local-client'));
 await assertPluginReleaseReady();
 await fs.mkdir(output, { recursive: true });
@@ -68,6 +70,42 @@ async function windowsShell(destination) {
   await run('go', ['run', 'github.com/tc-hib/go-winres@v0.3.3', 'make', '--in', 'winres/winres.json', '--out', 'rsrc', '--arch', 'amd64', '--product-version', pkg.version, '--file-version', fileVersion], { cwd: build });
   await run('go', ['build', '-trimpath', '-ldflags', '-H windowsgui -s -w', '-o', path.join(destination, 'SFL.exe'), '.'], { cwd: build, env: { ...process.env, GOOS: 'windows', GOARCH: 'amd64', CGO_ENABLED: '0' } });
 }
+async function innoCompiler() {
+  const candidates = [
+    process.env.SFL_ISCC,
+    process.env.LOCALAPPDATA && path.join(process.env.LOCALAPPDATA, 'Programs', 'Inno Setup 6', 'ISCC.exe'),
+    path.join(process.env['ProgramFiles(x86)'] ?? 'C:\\Program Files (x86)', 'Inno Setup 6', 'ISCC.exe'),
+  ].filter(Boolean);
+  for (const candidate of candidates) {
+    try { await fs.access(candidate); return candidate; } catch {}
+  }
+  throw new Error('Inno Setup 6 (ISCC.exe) was not found; install it or set SFL_ISCC');
+}
+// A single 256 px PNG entry; Windows scales it for smaller icon sizes.
+function icoFromPng(png) {
+  const header = Buffer.alloc(22);
+  header.writeUInt16LE(1, 2);
+  header.writeUInt16LE(1, 4);
+  header.writeUInt16LE(1, 10);
+  header.writeUInt16LE(32, 12);
+  header.writeUInt32LE(png.length, 14);
+  header.writeUInt32LE(22, 18);
+  return Buffer.concat([header, png]);
+}
+async function windowsInstaller(directory) {
+  if (process.platform !== 'win32') throw new Error('The Windows installer is compiled with Inno Setup on Windows');
+  const compiler = await innoCompiler();
+  const build = path.join(staging, 'windows-installer');
+  await fs.cp(path.join(root, 'desktop/windows/installer'), build, { recursive: true });
+  await fs.writeFile(path.join(build, 'sfl.ico'), icoFromPng(await fs.readFile(path.join(root, 'desktop/windows/shell/winres/icon.png'))));
+  const entries = (await fs.readdir(directory)).sort();
+  await fs.writeFile(path.join(build, 'payload.iss'), entries.map(entry => `Type: filesandordirs; Name: "{app}\\${entry}"\r\n`).join(''));
+  const fileVersion = `${pkg.version.split(/[-+]/)[0]}.0`;
+  await run(compiler, ['/Qp', `/DAppVersion=${pkg.version}`, `/DFileVersion=${fileVersion}`, `/DSourceDir=${directory}`, `/DOutputDir=${output}`, path.join(build, 'sfl.iss')]);
+  const file = path.join(output, `ScientificFigureLibrary-${pkg.version}-windows-x64-setup.exe`);
+  await digestFile(file);
+  console.log(`WINDOWS_INSTALLER=${file}`);
+}
 async function windows() {
   const name = `ScientificFigureLibrary-${pkg.version}-windows-x64${variant}`;
   const directory = path.join(staging, name);
@@ -112,6 +150,7 @@ async function windows() {
   await fs.writeFile(file, zipSync(archive, { level: 6 }));
   await digestFile(file);
   console.log(`WINDOWS_ZIP=${file}`);
+  if (installer) await windowsInstaller(directory);
 }
 async function linux(architecture) {
   const target = `linux-${architecture}`;

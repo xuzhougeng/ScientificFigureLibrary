@@ -51,7 +51,18 @@ jobs:
         run: |
           go vet ./...
           go test ./...
-      - run: node scripts/package-local-client.mjs windows-x64
+      - name: Install pinned Inno Setup
+        shell: pwsh
+        run: |
+          $setup = Join-Path $env:RUNNER_TEMP 'innosetup-6.7.3.exe'
+          Invoke-WebRequest -Uri 'https://github.com/jrsoftware/issrc/releases/download/is-6_7_3/innosetup-6.7.3.exe' -OutFile $setup
+          $hash = (Get-FileHash -Algorithm SHA256 $setup).Hash.ToLowerInvariant()
+          if ($hash -ne '9c73c3bae7ed48d44112a0f48e66742c00090bdb5bef71d9d3c056c66e97b732') { throw "Inno Setup installer hash mismatch: $hash" }
+          $dir = Join-Path $env:RUNNER_TEMP 'InnoSetup'
+          $process = Start-Process -FilePath $setup -ArgumentList '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/CURRENTUSER', "/DIR=$dir" -Wait -PassThru
+          if ($process.ExitCode -ne 0) { throw "Inno Setup install failed: $($process.ExitCode)" }
+          "SFL_ISCC=$(Join-Path $dir 'ISCC.exe')" >> $env:GITHUB_ENV
+      - run: node scripts/package-local-client.mjs windows-x64 --installer
       - run: node scripts/package-local-client.mjs windows-x64 --system-node
       - name: Verify ZIPs and both runtime modes
         shell: pwsh
@@ -62,11 +73,19 @@ jobs:
             node scripts/smoke-packaged-local.mjs $archive.FullName
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           }
+      - name: Verify the installer installs, upgrades and uninstalls
+        shell: pwsh
+        run: |
+          foreach ($setup in Get-ChildItem release/local-client/*windows-x64-setup.exe) {
+            node scripts/smoke-windows-installer.mjs $setup.FullName
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: windows-local-client
           path: |
             release/local-client/*.zip
+            release/local-client/*.exe
             release/local-client/*.sha256
           compression-level: 0
           if-no-files-found: error

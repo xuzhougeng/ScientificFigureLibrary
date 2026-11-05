@@ -47,10 +47,11 @@ export const LOCAL_CLIENT_ROWS = Object.freeze([
   {
     id: "windows-x64",
     ext: "zip",
+    installer: true,
     systemEn: "Windows x64",
     systemZh: "Windows x64",
-    installEn: "Unzip the whole folder, then run `Start SFL.cmd`.",
-    installZh: "解压整个文件夹，运行 `Start SFL.cmd`。",
+    installEn: "Run the setup (no administrator rights), or unzip the whole folder and run `SFL.exe`.",
+    installZh: "运行 setup 安装（无需管理员权限），或解压整个文件夹后运行 `SFL.exe`。",
   },
   {
     id: "linux-x64",
@@ -105,6 +106,17 @@ export function localClientFileName(version, id, ext, noNode = false) {
   return `ScientificFigureLibrary-${version}-${id}${noNode ? "-no-node" : ""}.${ext}`;
 }
 
+export function localClientInstallerName(version, id) {
+  return `ScientificFigureLibrary-${version}-${id}-setup.exe`;
+}
+
+// Bundled-Node setup.exe installers ship with every release after v0.9.2.
+export function hasLocalClientInstallers(version) {
+  assertProductVersion(version);
+  const [major, minor, patch] = version.split(".").map(Number);
+  return major > 0 || minor > 9 || (minor === 9 && patch > 2);
+}
+
 export function pluginFileName(host, version) {
   return `scientific-figure-library-${host}-${version}.zip`;
 }
@@ -119,6 +131,10 @@ export function expectedReleaseAssets(version) {
   for (const row of LOCAL_CLIENT_ROWS) {
     for (const noNode of [false, true]) {
       const file = localClientFileName(version, row.id, row.ext, noNode);
+      names.push(file, `${file}.sha256`);
+    }
+    if (row.installer && hasLocalClientInstallers(version)) {
+      const file = localClientInstallerName(version, row.id);
       names.push(file, `${file}.sha256`);
     }
   }
@@ -488,7 +504,11 @@ export async function checkReleaseTag({
 function localClientRow(row, { version, repo, sizes, lang }) {
   const bundled = localClientFileName(version, row.id, row.ext, false);
   const system = localClientFileName(version, row.id, row.ext, true);
-  const bundledLink = assetLink(repo, version, bundled, `${row.id}.${row.ext}`, sizes[bundled]);
+  let bundledLink = assetLink(repo, version, bundled, `${row.id}.${row.ext}`, sizes[bundled]);
+  if (row.installer && hasLocalClientInstallers(version)) {
+    const setup = localClientInstallerName(version, row.id);
+    bundledLink = `${assetLink(repo, version, setup, `${row.id}-setup.exe`, sizes[setup])}<br>${bundledLink}`;
+  }
   const systemLink = assetLink(repo, version, system, `${row.id}-no-node.${row.ext}`, sizes[system]);
   const systemLabel = lang === "zh" ? row.systemZh : row.systemEn;
   const install = lang === "zh" ? row.installZh : row.installEn;

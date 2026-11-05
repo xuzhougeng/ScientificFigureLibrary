@@ -206,6 +206,30 @@ test("checkReleaseTag compares the tag with package.json without requiring git",
   }
 });
 
+test("releases after v0.9.2 add the Windows setup ahead of the bundled ZIP", () => {
+  const setup = "ScientificFigureLibrary-0.9.3-windows-x64-setup.exe";
+  assert.ok(!expectedReleaseAssets("0.9.2").some((name: string) => name.endsWith("-setup.exe")));
+  const names = expectedReleaseAssets("0.9.3");
+  assert.equal(names.length, 33);
+  assert.ok(names.includes(setup));
+  assert.ok(names.includes(`${setup}.sha256`));
+  assert.ok(expectedReleaseAssets("1.0.0").includes("ScientificFigureLibrary-1.0.0-windows-x64-setup.exe"));
+  const sizes = Object.fromEntries(names.map((name: string) => [name, name === feedName ? 120 : 2_000_000]));
+  const body = buildGitHubReleaseBody({
+    version: "0.9.3",
+    tagSha,
+    repository: "xuzhougeng/ScientificFigureLibrary",
+    notes: parseReleaseNotesSource(notesSource(), "0.9.3"),
+    sizes,
+  }) as string;
+  const windowsRows = body.split("\n").filter((line) => line.startsWith("| Windows x64 |"));
+  assert.equal(windowsRows.length, 2);
+  for (const row of windowsRows) {
+    assert.ok(row.indexOf(setup) > 0 && row.indexOf(setup) < row.indexOf("windows-x64.zip"), row);
+    assert.ok(row.includes("SFL.exe"), row);
+  }
+});
+
 test("buildGitHubReleaseBody rejects a truncated SHA", () => {
   const notes = parseReleaseNotesSource(notesSource(), "0.9.0");
   const sizes = Object.fromEntries(expectedReleaseAssets("0.9.0").map((name: string) => [name, name === feedName ? 120 : 2_000_000]));

@@ -39,6 +39,24 @@ MCP Apps SDK, Zod, fflate, ISC-licensed YAML, and Apache-2.0-licensed Fuse.js
 code. Their source packages and exact versions are recorded in
 `package-lock.json`.
 
+## Windows desktop shell and installer
+
+`SFL.exe` (`desktop/windows/shell/`) is compiled from Go and links
+[jchv/go-webview2](https://github.com/jchv/go-webview2) (MIT), which embeds the
+Microsoft WebView2Loader from the WebView2 SDK (BSD-3-Clause),
+[jchv/go-winloader](https://github.com/jchv/go-winloader) (ISC) and
+`golang.org/x/sys` (BSD-3-Clause). Exact versions are in
+`desktop/windows/shell/go.sum`. Its icon, manifest and version resources are
+generated at build time with [go-winres](https://github.com/tc-hib/go-winres)
+(0BSD); go-winres is not shipped.
+
+The Windows setup is built with [Inno Setup](https://jrsoftware.org/isinfo.php),
+Copyright (C) 1997-2026 Jordan Russell and Martijn Laan, under the Inno Setup
+License. `desktop/windows/installer/ChineseSimplified.isl` is the Simplified
+Chinese translation maintained at
+[kira-96/Inno-Setup-Chinese-Simplified-Translation](https://github.com/kira-96/Inno-Setup-Chinese-Simplified-Translation)
+(MIT), taken unmodified from the Inno Setup 6.7.3 source tag.
+
 ## Bundled figure workflow Skills
 
 The figure-style Skill and its Python sidecar derive from Wisp Science figure-style (Apache-2.0). Its license text, attribution and adaptation notice ship at skills/figure-library/references/figure-style/LICENSE and NOTICE.md. No Python/R runtime or plotting packages are bundled.
