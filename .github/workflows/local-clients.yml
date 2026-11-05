@@ -40,8 +40,17 @@ jobs:
         with:
           node-version: '22'
           cache: npm
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: desktop/windows/shell/go.mod
+          cache-dependency-path: desktop/windows/shell/go.sum
       - run: npm ci
       - run: npm run build
+      - name: Test the desktop shell
+        working-directory: desktop/windows/shell
+        run: |
+          go vet ./...
+          go test ./...
       - run: node scripts/package-local-client.mjs windows-x64
       - run: node scripts/package-local-client.mjs windows-x64 --system-node
       - name: Verify ZIPs and both runtime modes
