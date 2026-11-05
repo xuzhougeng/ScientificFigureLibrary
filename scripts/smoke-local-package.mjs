@@ -63,6 +63,11 @@ if (systemNode) {
   try { resolve({ SFL_NODE_BINARY: path.join(root, windows ? 'missing-node.exe' : 'missing-node') }); } catch { rejected = true; }
   if (!rejected) throw new Error('Missing Node was not rejected');
 }
+if (windows) {
+  // The desktop shell resolves Node itself; PATH above holds only System32.
+  const { execFileSync } = await import('node:child_process');
+  execFileSync(path.join(packageRoot, 'SFL.exe'), ['--smoke'], { cwd: root, env: systemNode ? { ...env, SFL_NODE_BINARY: binary } : env, stdio: ['ignore', 'pipe', 'inherit'], timeout: 120_000 });
+}
 const child = spawn(binary, [path.join(packageRoot, 'dist/index.js'), '--local', '--no-open'], { cwd: root, env, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
 let log = '';
 child.stderr.on('data', bytes => { log = (log + bytes).slice(-8000); });
@@ -142,7 +147,7 @@ try {
   await call('figure_library_apply_materialize', apply, true);
   const replay = await call('figure_library_apply_materialize', apply, true);
   if (replay.envelope.outcome !== 'replayed') throw new Error('Installer materialization replay failed');
-  const result = { status: 'passed', target: manifest.target, version: manifest.version, nodeVersion: manifest.nodeVersion, runtimeMode: manifest.runtimeMode, systemNodeRemovedFromChildPath: !systemNode, syntheticUserActions: true, downloadedPreviews: true, cachedImageCount: cachedImages.length, installedFilesVerified: manifest.files.length, binding: true, localWeb: true, import: true, publish: true, search: true, images: true, localConfirmation: true, materialize: true, replay: true };
+  const result = { status: 'passed', target: manifest.target, version: manifest.version, nodeVersion: manifest.nodeVersion, runtimeMode: manifest.runtimeMode, systemNodeRemovedFromChildPath: !systemNode, syntheticUserActions: true, downloadedPreviews: true, cachedImageCount: cachedImages.length, installedFilesVerified: manifest.files.length, desktopShell: windows, binding: true, localWeb: true, import: true, publish: true, search: true, images: true, localConfirmation: true, materialize: true, replay: true };
   await request('shutdown', {});
   const stopped = await Promise.race([exit, new Promise((_, reject) => { setTimeout(() => reject(new Error('Local service did not stop')), 20_000).unref(); })]);
   if (stopped.code !== 0) throw new Error(`Local service exit failed: ${JSON.stringify(stopped)}`);

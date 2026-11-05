@@ -10,6 +10,7 @@
 - [ ] Windows 网页：首次绑定、搜索、图片列表、精确预览、选择、材料化。
 - [ ] Windows 网页：本地知识库列表、图片/代码导入、审阅、发布与历史。
 - [x] Windows 包内 Node、独立启动入口及 MCP 配置；已验证子进程 PATH 不包含系统 Node。具体宿主插件安装仍需逐一验收。
+- [ ] Windows 桌面外壳 `SFL.exe`（Go + WebView2）：`--smoke`、单实例、关窗停止服务已在本机验证；窗口内页面显示、外部链接、目录选择对话框和 SmartScreen 提示待人工验收。
 - [ ] macOS SwiftUI：与网页相同的核心知识库流程、原生窗口和目录选择。
 - [x] macOS 私有 Node、按 arm64 / x64 分别原生编译的 App 与 DMG；原生窗口和核心业务 smoke 通过。Developer ID 签名与公证尚未配置。
 - [ ] MCP App 保持简化候选交互；Skill、协议、双语手册和分发说明同步。

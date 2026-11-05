@@ -21,7 +21,7 @@ SFL 是本地图片—代码知识库客户端。用户在本机管理图片、�
 | 部分 | 确定方向 | 责任 |
 | --- | --- | --- |
 | macOS 本地客户端 | SwiftUI 原生 App，必要时使用 AppKit | 本地知识库浏览、管理、搜索、预览、选择及系统交互 |
-| Windows 本地客户端 | 内置 Node 运行时启动本地 HTTP 服务，在浏览器打开 Web 页面 | 复用现有 Web UI，承接本地知识库操作；现阶段不开发 WinUI 3 |
+| Windows 本地客户端 | Go 桌面外壳 `SFL.exe` 启动内置 Node 的本地 HTTP 服务，在 WebView2 窗口中显示 Web 页面；缺少 WebView2 时改用默认浏览器 | 复用现有 Web UI，承接本地知识库操作；外壳只负责进程生命周期，不含业务逻辑；现阶段不开发 WinUI 3 |
 | Linux 本地客户端 | 与 Windows 相同：内置 Node 启动本地 HTTP 服务，用系统浏览器打开 Web 页面 | 复用现有 Web UI；现阶段不开发 GTK/Qt 原生界面 |
 | 共享后端 | 现有 TypeScript/Node 服务 | 图片—代码关联、元数据、Library、Provider、检索、精确身份和写入规则 |
 | MCP | 面向外部 CLI/Desktop 的工具与资源接口 | 返回候选列表、图片与精确选择，提供知识库操作能力 |
@@ -72,6 +72,24 @@ npm run dev
 
 默认本地客户端安装包使用内置 Node 22.23.2，`no-node` 版使用本机 Node.js 22+；通用的旧式 MCP 插件包仍保留系统 `node` 启动方式。
 两种分发方式的配置不要混用，客户端设置可以复制实际运行时绝对路径的 MCP 配置。
+
+### Windows 桌面外壳
+
+`desktop/windows/shell/` 是 Go 编写的 `SFL.exe`，参照 Ollama、SyncTrayzor 等「后台服务 + Web 界面」
+项目的做法：外壳只负责进程生命周期，业务逻辑全部留在共享 TypeScript 后端。
+
+- 按 `runtime-mode.json` 使用包内 `runtime\node.exe`，或在 `no-node` 版中按 `SFL_NODE_BINARY`、PATH 查找并检查 Node.js 22+；
+  与 `Start SFL.cmd` 一样移除 `NODE_OPTIONS`、`NODE_PATH`。
+- 以 `--local --no-open` 无窗口启动后端，读取 stdout 上的 `figure-library.local-launch.v1` 握手（与 macOS App 相同），
+  再在 WebView2 窗口中打开带一次性连接票据的地址。握手中的令牌不写入日志。
+- 后端放入 kill-on-close 作业对象，外壳异常退出时不会遗留服务；关窗时先调用 `/api/shutdown`，超时才终止。
+  页面内退出会结束服务并关闭窗口；服务意外退出时弹窗提示日志位置。
+- 命名互斥量保证单实例；页面中离开本机来源的 http(s) 链接和 `window.open` 交给默认浏览器，本机地址和其他协议不外开。
+- `SFL.exe --smoke` 不显示窗口，验证 Node 解析、握手、认证请求和正常退出，供打包 smoke 使用。
+
+外壳的进程监管按「一个服务 + 统一握手」抽象，便于将来接入其他本地服务；目前只运行 SFL 后端。
+新增执行代码类服务属于产品边界调整，需先按 [产品原则](PRODUCT_PRINCIPLES.md) 决定。MCP 入口不经过外壳，
+宿主继续通过 `MCP.cmd` 或插件配置直接启动 Node。macOS 继续使用 SwiftUI 客户端。
 
 ## 图片自定义标签
 

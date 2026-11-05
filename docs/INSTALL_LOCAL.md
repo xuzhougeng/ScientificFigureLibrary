@@ -1,7 +1,7 @@
 # 本地客户端安装与使用
 
 本地客户端是简单的图片—代码知识库，不内置 AI，也不执行模板代码。
-macOS 使用原生 SwiftUI，Windows 与 Linux 使用本机网页；均提供内置 Node 和使用本机 Node 两种安装包。
+macOS 使用原生 SwiftUI，Windows 在独立窗口中显示本机网页，Linux 使用浏览器打开本机网页；均提供内置 Node 和使用本机 Node 两种安装包。
 
 ## 选择是否携带 Node
 
@@ -15,10 +15,14 @@ Windows 默认从 PATH 查找 `node.exe`。Linux 从 PATH 查找 `node`。macOS 
 ## Windows ZIP
 
 1. 下载 Windows x64 ZIP，解压整个文件夹。
-2. 双击 `Start SFL.cmd`。本地服务窗口会保持打开，并在默认浏览器打开页面。
-   若浏览器没有自动打开，把服务窗口里的地址复制到 Edge 或 Chrome。使用期间不要关闭该窗口。访问 GitHub 超时或连接被重置时，错误会显示在这个窗口。
+2. 双击 `SFL.exe`。程序在独立窗口中打开，不再显示命令行窗口；再次双击会切换到已打开的窗口，不会启动第二个服务。
+   窗口使用系统自带的 Microsoft Edge WebView2 Runtime（Windows 11 和大多数 Windows 10 已预装）。缺少该组件时，程序改为在默认浏览器打开页面。
+   页面中的外部链接（如 GitHub）在默认浏览器中打开。本地服务的输出和 GitHub 超时、连接被重置等错误写入 `%LOCALAPPDATA%\ScientificFigureLibrary\logs\desktop.log`，上一次运行的日志保留为 `desktop.previous.log`；服务意外退出时会弹窗提示日志位置。
 3. 在「设置」中确认全局图库和本地工作区的绝对目录。同一页可配置系统代理和图片缓存。添加、移除或恢复 FigureYa 等来源请到「外部图库」；自己的资产在「我的图库」。默认不使用系统代理；若 Clash 等把 GitHub 解析到 198.18.x，请打开系统代理并填写本机回环地址（例如 `http://127.0.0.1:7897`）。
-4. 使用“退出本地客户端”结束服务，再关闭页面。
+4. 关闭窗口即退出：程序先请求本地服务正常结束，10 秒内未结束才强制停止。也可以使用“退出本地客户端”。在浏览器模式下，请用“退出本地客户端”结束服务。
+
+`Start SFL.cmd` 仍保留，用于排查问题：它带命令行窗口启动服务，并在默认浏览器打开页面，错误直接显示在该窗口。
+`SFL.exe --browser` 强制使用默认浏览器。未签名的 `SFL.exe` 首次运行时可能出现 SmartScreen 提示。
 
 内置 Node 版不需要安装 Node.js；本机 Node 版要求 Node.js 22+。请保留整个解压目录，不要单独移动 `node.exe`、`dist/` 或 `assets/`。
 当前提供 x64 包；其他处理器架构不在此包的验证范围内。网页需要现代浏览器。
@@ -93,7 +97,7 @@ macOS 可能阻止从网络下载的 App 首次运行；只在确认下载来源
 
 ## 构建与验证
 
-- Windows：`npm run package:windows`；本机 Node 版为 `npm run package:windows:no-node`
+- Windows：`npm run package:windows`；本机 Node 版为 `npm run package:windows:no-node`。需要 Go（版本见 `desktop/windows/shell/go.mod`）编译 `SFL.exe`，打包时通过 `go run` 获取固定版本的 go-winres 来嵌入图标和清单。
 - Linux：`npm run package:linux`（x64）或 `npm run package:linux:arm64`；本机 Node 版为 `npm run package:linux:no-node` / `npm run package:linux:arm64:no-node`
 - macOS：在 macOS/Xcode 环境运行 `npm run package:macos` 构建本机架构；显式入口为 `npm run package:macos:arm64` 和 `npm run package:macos:x64`，须在对应架构运行原生 smoke。
 - 本机 Node 版 macOS：`npm run package:macos:no-node`；显式架构可运行 `node scripts/package-local-client.mjs macos-arm64 --system-node`（先构建）。
