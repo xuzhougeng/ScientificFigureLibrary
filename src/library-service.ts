@@ -351,6 +351,21 @@ function searchPreviewUnavailable(
   };
 }
 
+/**
+ * Page-budget timeout: the preview exists but did not finish preparing
+ * inside this page's budget. It is transient and retryable, so it must
+ * never be reported as "missing" (the source image is really absent).
+ * Only this page's transport state is pending; the exact-preview state
+ * is untouched, and a later load retries it instead of freezing it.
+ */
+function searchPreviewPending(candidate: TemplateCandidate): TemplateCandidate {
+  return {
+    ...candidate,
+    searchPreviewAvailable: false,
+    searchPreviewStatus: "pending" as const,
+  };
+}
+
 async function hydrateCandidatePreviews(options: {
   candidates: TemplateCandidate[];
   context: CurrentLibraryContext;
@@ -378,11 +393,13 @@ async function hydrateCandidatePreviews(options: {
           };
         }
       }
-      if (candidate.searchPreviewAvailable === false) {
+      if (candidate.searchPreviewAvailable === false && candidate.searchPreviewStatus !== "pending") {
         return { ...candidate, searchPreviewStatus: "missing" as const };
       }
+      // A previous page timed out on this preview ("pending"): fall through
+      // and retry it — the transport cache may be warm by now.
       const remaining = searchPreviewPageRemainingMs(startedAt);
-      if (remaining <= 0) return searchPreviewUnavailable(candidate);
+      if (remaining <= 0) return searchPreviewPending(candidate);
       try {
         const hydrate = (async (): Promise<TemplateCandidate> => {
         const preview = await loadProviderPreview({
@@ -429,7 +446,7 @@ async function hydrateCandidatePreviews(options: {
         return await Promise.race([
           hydrate,
           new Promise<TemplateCandidate>((resolve) => {
-            const timer = setTimeout(() => resolve(searchPreviewUnavailable(candidate)), remaining);
+            const timer = setTimeout(() => resolve(searchPreviewPending(candidate)), remaining);
             timer.unref?.();
           }),
         ]);

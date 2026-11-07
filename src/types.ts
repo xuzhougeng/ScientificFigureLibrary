@@ -248,6 +248,7 @@ export interface ProviderPreviewRef {
 export type PreviewStatus =
   | "ready"
   | "missing"
+  | "pending"
   | "unreadable"
   | "unsupported"
   | "too_large";
