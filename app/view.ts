@@ -58,6 +58,12 @@ export interface Candidate {
   assetKind: "plot_template" | "visual_reference";
   language: string;
   plotFamily: string;
+  /** Explicit figure-type groups, primary first; absent means "derive from plotFamily". */
+  familyGroups?: string[];
+  /** Research domains declared for this entry. */
+  domains?: string[];
+  /** `analysis`: the entry prepares or analyses data without drawing a figure. */
+  templateKind?: "analysis";
   reviewStatus: "not_reviewed" | "draft" | "approved" | "archived";
   codeStatus: "none" | "scaffold" | "provided" | "reviewed";
   executionStatus: "not_run" | "passed" | "failed" | "unknown";
@@ -98,6 +104,21 @@ export interface SearchResult {
     nextCursor: string | null;
   };
   candidates: Candidate[];
+  /** Local clients only: group and domain counts over the matches before those two filters. */
+  facets?: { familyGroup: FacetCount[]; domain: FacetCount[] };
+  /** Local clients only: the group and domain filters applied to this result. */
+  filters?: { familyGroup: string | null; domain: string | null };
+}
+
+export interface FacetCount {
+  value: string;
+  count: number;
+}
+
+function parseFacetCounts(value: unknown): FacetCount[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter((item): item is FacetCount =>
+    Boolean(item) && typeof item === "object" && typeof (item as FacetCount).value === "string" && typeof (item as FacetCount).count === "number");
 }
 
 export interface CandidateElements {
@@ -371,6 +392,17 @@ export function parseSearchResult(value: unknown, meta?: unknown): SearchResult 
         typeof raw.pagination.nextCursor === "string" ? raw.pagination.nextCursor : null,
     },
     candidates,
+    ...(raw.facets && typeof raw.facets === "object"
+      ? { facets: { familyGroup: parseFacetCounts(raw.facets.familyGroup), domain: parseFacetCounts(raw.facets.domain) } }
+      : {}),
+    ...(raw.filters && typeof raw.filters === "object"
+      ? {
+          filters: {
+            familyGroup: typeof raw.filters.familyGroup === "string" ? raw.filters.familyGroup : null,
+            domain: typeof raw.filters.domain === "string" ? raw.filters.domain : null,
+          },
+        }
+      : {}),
   };
 }
 

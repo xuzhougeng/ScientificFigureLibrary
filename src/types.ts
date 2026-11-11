@@ -431,6 +431,12 @@ export interface TemplateCandidate {
   assetKind: AssetKind;
   language: string;
   plotFamily: string;
+  /** Explicit canonical figure-type groups, primary first; absent means "derive from plotFamily". */
+  familyGroups?: string[];
+  /** Explicit research domains (see `domains.ts`); absent means none declared. */
+  domains?: string[];
+  /** `analysis` marks an entry that prepares or analyses data without drawing a figure. */
+  templateKind?: "analysis";
   reviewStatus: ReviewStatus;
   codeStatus: CodeStatus;
   executionStatus: ExecutionStatus;

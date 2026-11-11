@@ -3,6 +3,8 @@ import { createHash } from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { canonicalJson, compareCanonicalStrings } from "./canonical-json.ts";
+import { domainsFromKeywords } from "./domains.ts";
+import { plotFamilyGroups } from "./plot-family-groups.ts";
 import { assertMcpImageBytes } from "./image-validation.ts";
 import { buildSearchIntent, compareSearchHits, keepSearchHit, normalizeSearchText, scoreSearchableTemplate } from "./catalog.ts";
 import {
@@ -944,6 +946,8 @@ export class ModuleCatalogIndex {
             codeFiles: module.codeFiles,
             packages: module.packages,
             tags: module.tags,
+            familyGroups: plotFamilyGroups({ plotFamily: module.plotFamily, templateId: module.moduleId, titleEn: module.titleEn }),
+            domains: domainsFromKeywords([module.moduleId, module.plotFamily, ...module.tags]),
           },
           intent,
         ),
@@ -1021,6 +1025,7 @@ export class ModuleCatalogIndex {
           assetKind: "plot_template" as const,
           language: module.language,
           plotFamily: module.plotFamily,
+          domains: domainsFromKeywords([module.moduleId, module.plotFamily, ...module.tags]),
           reviewStatus: "not_reviewed" as const,
           codeStatus: (module.codeFiles.length ? "provided" : "none") as "provided" | "none",
           executionStatus: "not_run" as const,

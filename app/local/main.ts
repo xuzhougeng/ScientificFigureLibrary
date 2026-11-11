@@ -11,6 +11,8 @@ import { refreshCacheTasks, watchCacheTasks } from "./cache-tasks.ts";
 import { mountClientUpdates } from "./updates.ts";
 import { PAGE_STORAGE_KEY, PAGE_TITLES, galleryCacheActionLabel, galleryMissingCount, isPageId, pageHash, prefetchButtonLabel, readSavedPage, type PageId } from "./ui-state.ts";
 import { canonicalJson } from "../../src/canonical-json.ts";
+import { appliedFilter, cardFacetChips, facetLabel, renderFacets, type FacetFilter } from "./facets.ts";
+import { mountColorPanel, type ReferenceCodeColors } from "./colors.ts";
 import "../styles.css";
 import "./styles.css";
 
@@ -28,6 +30,8 @@ let page: PageId = "discover";
 let favorites: Array<Record<string, unknown>> = [];
 const failedPrefetchIds = new Set<string>();
 let result: SearchResult | undefined;
+/** Figure-type and domain filters; they persist across searches until cleared. */
+let facetFilter: FacetFilter = {};
 let selected = new Map<string, Candidate>();
 const pages = new Map<number, SearchResult>();
 let editingTemplateId: string | undefined;
@@ -262,6 +266,16 @@ function display(parsed: SearchResult) {
         onRequestAgentReview: () => {},
       });
       view.dialog.append(tagUI.widget(candidate, { resultSetId: parsed.resultSetId, candidateId: candidate.candidateId }, candidate.title));
+      const colors = mountColorPanel({
+        document,
+        preview: view.preview,
+        hasCode: candidate.codeStatus !== "none",
+        loadCodeColors: () => api<ReferenceCodeColors>("reference-colors", { resultSetId: parsed.resultSetId, candidateId: candidate.candidateId }),
+        onCacheCode: (done) => void run(async () => {
+          await openReferenceCache([candidate], parsed.resultSetId, () => { refreshDetailState(); done(); });
+        }),
+      });
+      view.dialog.addEventListener("close", () => colors.dispose(), { once: true });
       const actions = view.dialog.querySelector(".detail-toolbar-actions")!;
       const cache = action("下载代码", async () => { await openReferenceCache([candidate], parsed.resultSetId, refreshDetailState); }, true);
       setButtonContent(cache, "download", "下载代码", { iconOnly: true });
@@ -322,8 +336,13 @@ function display(parsed: SearchResult) {
   for (const candidate of parsed.candidates) {
     const card = [...el("cards").children].find(item => (item as HTMLElement).dataset.candidateId === candidate.candidateId);
     card?.querySelector(".content")?.prepend(favoriteButton(candidate, parsed.resultSetId));
+    const facets = cardFacetChips({ document, candidate, onPick: (filter) => applyFacetFilter({ ...facetFilter, ...filter }) });
+    if (facets.childElementCount) card?.querySelector(".content")?.append(facets);
   }
-  el("results-title").textContent = parsed.query ? `“${parsed.query}”的候选图片` : "图库";
+  facetFilter = appliedFilter(parsed);
+  renderFacets({ document, container: el("facets"), result: parsed, onChange: applyFacetFilter });
+  const scope = [facetFilter.domain ? facetLabel("domain", facetFilter.domain) : "", facetFilter.familyGroup ? facetLabel("familyGroup", facetFilter.familyGroup) : ""].filter(Boolean).join(" · ");
+  el("results-title").textContent = parsed.query ? `“${parsed.query}”的候选图片${scope ? `（${scope}）` : ""}` : scope || "图库";
   el("results-count").textContent = `${parsed.pagination.total} 个结果`;
   const label = `第 ${parsed.pagination.pageIndex} / ${Math.max(1, Math.ceil(parsed.pagination.total / parsed.pagination.pageSize))} 页`;
   const prevDisabled = !pages.has(parsed.pagination.pageIndex - 1);
@@ -354,7 +373,14 @@ function displayResult(value: CallToolResult) {
 function galleryArgs() {
   const provider = el<HTMLSelectElement>("search-provider").value;
   const customTag = el<HTMLSelectElement>("search-custom-tag").value;
-  return { limit: 12, thumbnailDelivery: "url", ...(provider ? { providerIds: [provider] } : {}), ...(customTag ? { customTag } : {}) };
+  return { limit: 12, thumbnailDelivery: "url", ...(provider ? { providerIds: [provider] } : {}), ...(customTag ? { customTag } : {}), ...facetFilter };
+}
+function applyFacetFilter(filter: FacetFilter) {
+  facetFilter = filter;
+  void run(async () => {
+    await search();
+    el("results-heading").scrollIntoView({ block: "nearest" });
+  });
 }
 async function loadGallery() {
   input("search-query").value = "";
@@ -873,7 +899,6 @@ async function importAsset() {
 }
 
 for (const control of document.querySelectorAll<HTMLButtonElement>("button[data-page]")) control.addEventListener("click", () => void run(() => showPage(control.dataset.page!)));
-for (const control of document.querySelectorAll<HTMLButtonElement>("button[data-query]")) control.addEventListener("click", () => { input("search-query").value = control.dataset.query!; void run(search, control); });
 form("search-form").addEventListener("submit", (event) => { event.preventDefault(); void run(search, form("search-form").querySelector("button")!); });
 el("discover-page").addEventListener("click", (event) => {
   const target = event.target instanceof Element ? event.target.closest("button") : null;

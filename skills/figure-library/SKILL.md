@@ -70,8 +70,11 @@ Keep provenance/execution truth in metadata, not repeated template-facing discla
    asks to open the library.
 3. Default: choose from the catalog by meaning. Call
    `figure_library_list_catalog` with `limit: 0` to read per-Provider counts and
-   familyGroup/language facets. Narrow by `familyGroup` only when one group
-   clearly fits the need, and by `providerIds`/`language`/`assetKind` only when
+   familyGroup/domain/language facets. Narrow by `familyGroup` (figure type) or
+   `domain` (research field such as `single_cell` or `spatial`) only when one
+   value clearly fits the need — the two combine, and an entry can belong to
+   several of each (FigureYa entries marked `analysis` prepare data and draw
+   no figure) — and by `providerIds`/`language`/`assetKind` only when
    the user stated them (`other`/`unclassified` hold analysis-only and unlabelled
    templates; when unsure, do not narrow), then read the compact entry pages with the returned `resultSetId` and `nextOffset`.
    Reading these text pages is expected; it shows no images. Pick at most 6

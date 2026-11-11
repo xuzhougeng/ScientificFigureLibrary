@@ -298,10 +298,12 @@ test("local client binds, uploads, imports, reviews, publishes, previews and mat
     return String(record(await response.json()).sourcePath);
   };
   const imagePath = await upload("reference.png", png);
-  const codePath = await upload("plot.R", Buffer.from("stop('must not execute')\n"));
+  // The code is stored and scanned as text only; the stop() call proves it never runs.
+  const plotSource = "stop('must not execute')\ncols <- c(\"#E64B35\", \"#4DBBD5\")  # \"#000000\" stays a comment\nscale_fill_npg()\n";
+  const codePath = await upload("plot.R", Buffer.from(plotSource));
   const planned = await call("figure_library_plan_working_revision", {
     mode: "create", templateId: "template-123d4567-1234-1234-1234-123456789abc", title: "localclientfixture reference", description: "Local image and code", application: "Reusable visual reference for localclientfixture", dataProfile: "x y",
-    language: "R", license: "MIT", tags: ["localclientfixture"], assetKind: "plot_template", codeStatus: "scaffold", executionStatus: "not_run",
+    language: "R", license: "MIT", tags: ["localclientfixture", "single-cell"], assetKind: "plot_template", codeStatus: "scaffold", executionStatus: "not_run",
     visualAssets: [{ assetId: "reference", sourcePath: imagePath, visualRole: "source_reference" }],
     codeAssets: [{ assetId: "code", sourcePath: codePath, codeOrigin: "user_supplied", language: "R" }],
     canonicalCodeAssetId: "code",
@@ -321,7 +323,7 @@ test("local client binds, uploads, imports, reviews, publishes, previews and mat
   await api("/api/custom-tags", { target: { templateId: plan.templateId }, tags: ["个人分类"], expectedTags: [], libraryContext: annotations.libraryContext });
   assert.deepEqual(data(await call("figure_library_review_open", { templateId: plan.templateId })).workingContent, content, "tag edits do not create revisions or change source metadata");
   const file = await api("/api/asset", { templateId: plan.templateId, revisionId: content.revisionId, contentDigest: content.contentDigest, logicalPath: (content.assets as Array<Record<string, unknown>>).find((asset) => asset.role === "code")!.logicalPath });
-  assert.equal(Buffer.from(String(data(file).data), "base64").toString(), "stop('must not execute')\n");
+  assert.equal(Buffer.from(String(data(file).data), "base64").toString(), plotSource);
   const publication = record(data(await call("figure_library_plan_publish_working_revision", { templateId: plan.templateId })).plan);
   const published = await call("figure_library_apply_publish_working_revision", { planDigest: publication.planDigest, operationId: "local-test-publish", expectedTemplateId: plan.templateId, expectedSeriesDigest: publication.expectedSeriesDigest }, true);
   assert.equal(record(data(published).envelope).outcome, "applied", JSON.stringify(published));
@@ -382,7 +384,28 @@ test("local client binds, uploads, imports, reviews, publishes, previews and mat
     assert.equal(persisted.items[0]!.pack!.target, record(before.pack).target);
   } finally { await restarted.close(); }
   const codeFile = (record(before.pack).files as string[]).find((file) => /\.r$/iu.test(file))!;
-  assert.equal(await fs.readFile(path.join(String(record(before.pack).target), codeFile), "utf8"), "stop('must not execute')\n");
+  assert.equal(await fs.readFile(path.join(String(record(before.pack).target), codeFile), "utf8"), plotSource);
+
+  // Colours written in the locally stored code are read as text, never by running it.
+  const colors = await api("/api/reference-colors", selected);
+  assert.equal(colors.source, "reference_pack");
+  assert.deepEqual(colors.files, [codeFile]);
+  assert.deepEqual(records(colors.hex).map((color) => [color.hex, color.line]), [["#E64B35", 2], ["#4DBBD5", 2]]);
+  assert.deepEqual(records(colors.palettes).map((palette) => [palette.source, palette.name, (palette.colors as string[]).length]), [["ggsci", "npg", 10]]);
+  await assert.rejects(service.local.referenceColors({ resultSetId: selection.resultSetId, candidateId: "unknown" }));
+
+  // The gallery reports group/domain facets over the matches and filters by them.
+  const fixture = { query: "localclientfixture", providerIds: [String(candidate.providerId)] };
+  const all = data(await api("/api/gallery", fixture));
+  assert.deepEqual(all.filters, { familyGroup: null, domain: null });
+  assert.deepEqual(record(all.facets).domain, [{ value: "single_cell", count: 1 }]);
+  assert.deepEqual(records(all.candidates)[0]!.domains, ["single_cell"]);
+  const other = data(await api("/api/gallery", { ...fixture, domain: "spatial" }));
+  assert.equal(records(other.candidates).length, 0);
+  assert.deepEqual(other.filters, { familyGroup: null, domain: "spatial" });
+  assert.deepEqual(record(other.facets).domain, [{ value: "single_cell", count: 1 }], "facet counts describe the matches before the domain filter");
+  assert.equal(records(data(await api("/api/gallery", { ...fixture, domain: "single_cell" })).candidates).length, 1);
+  assert.equal(data(await call("figure_library_search", fixture)).facets, undefined, "the MCP search payload carries no facets");
 
 });
 

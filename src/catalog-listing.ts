@@ -2,7 +2,8 @@ import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 import { scopedCandidateId } from "./candidate-images.ts";
 import { markdownPlainText } from "./figure-description.ts";
-import { PLOT_FAMILY_GROUP_IDS, plotFamilyGroup, type PlotFamilyGroup } from "./plot-family-groups.ts";
+import { candidateDomains, DOMAIN_IDS, type DomainId } from "./domains.ts";
+import { PLOT_FAMILY_GROUP_IDS, plotFamilyGroups, type PlotFamilyGroup } from "./plot-family-groups.ts";
 import type { OperationRegistry } from "./service/operations.ts";
 import { outcome, terminal } from "./tool-outcome.ts";
 import type { TemplateCandidate } from "./types.ts";
@@ -17,7 +18,8 @@ export const CatalogListingInput = z.object({
   offset: z.number().int().min(0).optional().describe("Entry offset inside resultSetId; use the returned nextOffset."),
   providerIds: z.array(z.string().min(1).max(200)).min(1).max(16).optional(),
   plotFamily: z.string().min(1).max(200).optional().describe("Provider-specific family text; prefer familyGroup, which also covers entries without a family."),
-  familyGroup: z.enum(PLOT_FAMILY_GROUP_IDS).optional().describe("Canonical figure-type group from the familyGroup facet."),
+  familyGroup: z.enum(PLOT_FAMILY_GROUP_IDS).optional().describe("Canonical figure-type group from the familyGroup facet; matches every entry that belongs to the group, not only its primary group."),
+  domain: z.enum(DOMAIN_IDS).optional().describe("Research domain from the domain facet (single_cell, spatial, ...); entries without declared domains never match."),
   templates: z.array(z.object({ providerId: z.string().min(1).max(200), templateId: z.string().min(1).max(300) }).strict()).min(1).max(12).optional()
     .describe("Re-list only these entries (from an earlier listing) to get fresh candidateIds without reading the whole catalog again."),
   language: z.string().min(1).max(100).optional(),
@@ -47,7 +49,7 @@ export interface CatalogListingSet {
   sources: CatalogListingSource[];
 }
 
-type Facet = Array<{ value: string; count: number }>;
+export type Facet = Array<{ value: string; count: number }>;
 
 interface ListedEntry {
   candidateId: string;
@@ -55,7 +57,11 @@ interface ListedEntry {
   templateId: string;
   title: string;
   titleEn?: string;
+  /** Primary figure-type group. */
   familyGroup: PlotFamilyGroup;
+  /** Every figure-type group the entry belongs to, primary first. */
+  familyGroups: PlotFamilyGroup[];
+  domains: DomainId[];
   plotFamily: string;
   language: string;
   assetKind: TemplateCandidate["assetKind"];
@@ -63,11 +69,12 @@ interface ListedEntry {
   summary: string;
 }
 
-function facet(candidates: TemplateCandidate[], pick: (candidate: TemplateCandidate) => string): Facet {
+/** Count candidates per facet value; a candidate with several values counts once under each. */
+export function facet(candidates: TemplateCandidate[], pick: (candidate: TemplateCandidate) => string | readonly string[]): Facet {
   const counts = new Map<string, number>();
   for (const candidate of candidates) {
-    const value = pick(candidate);
-    counts.set(value, (counts.get(value) ?? 0) + 1);
+    const picked = pick(candidate);
+    for (const value of typeof picked === "string" ? [picked] : picked) counts.set(value, (counts.get(value) ?? 0) + 1);
   }
   return [...counts.entries()]
     .map(([value, count]) => ({ value, count }))
@@ -89,22 +96,28 @@ export function buildCatalogListing(set: CatalogListingSet, offset: number, limi
   const total = set.candidates.length;
   const page = set.candidates.slice(offset, offset + limit);
   const nextOffset = offset + page.length < total ? offset + page.length : null;
-  const entries: ListedEntry[] = page.map((candidate) => ({
-    candidateId: scopedCandidateId(set.resultSetId, candidate),
-    providerId: candidate.providerId,
-    templateId: candidate.templateId,
-    title: oneLine(candidate.title),
-    ...(candidate.titleEn ? { titleEn: oneLine(candidate.titleEn) } : {}),
-    familyGroup: plotFamilyGroup(candidate),
-    plotFamily: candidate.plotFamily || "unclassified",
-    language: candidate.language || "unknown",
-    assetKind: candidate.assetKind,
-    thumbnailAvailable: candidate.searchPreviewAvailable ?? candidate.previewAvailable,
-    summary: catalogEntrySummary(candidate, detail),
-  }));
+  const entries: ListedEntry[] = page.map((candidate) => {
+    const familyGroups = plotFamilyGroups(candidate);
+    return {
+      candidateId: scopedCandidateId(set.resultSetId, candidate),
+      providerId: candidate.providerId,
+      templateId: candidate.templateId,
+      title: oneLine(candidate.title),
+      ...(candidate.titleEn ? { titleEn: oneLine(candidate.titleEn) } : {}),
+      familyGroup: familyGroups[0]!,
+      familyGroups,
+      domains: candidateDomains(candidate),
+      plotFamily: candidate.plotFamily || "unclassified",
+      language: candidate.language || "unknown",
+      assetKind: candidate.assetKind,
+      thumbnailAvailable: candidate.searchPreviewAvailable ?? candidate.previewAvailable,
+      summary: catalogEntrySummary(candidate, detail),
+    };
+  });
   const facets = {
     providerId: facet(set.candidates, (candidate) => candidate.providerId),
-    familyGroup: facet(set.candidates, (candidate) => plotFamilyGroup(candidate)),
+    familyGroup: facet(set.candidates, (candidate) => plotFamilyGroups(candidate)),
+    domain: facet(set.candidates, (candidate) => candidateDomains(candidate)),
     plotFamily: facet(set.candidates, (candidate) => candidate.plotFamily || "unclassified"),
     language: facet(set.candidates, (candidate) => candidate.language || "unknown"),
     assetKind: facet(set.candidates, (candidate) => candidate.assetKind),
@@ -118,6 +131,7 @@ export function buildCatalogListing(set: CatalogListingSet, offset: number, limi
     ...set.sources.map((source) =>
       `SOURCE ${source.providerId} (${source.sourceLabel}): ${source.matched} entries; health=${source.health}${source.errorCode ? `; ${source.errorCode}` : ""}`),
     facetLine("familyGroup", facets.familyGroup),
+    facetLine("domain", facets.domain),
     facetLine("plotFamily", facets.plotFamily),
     facetLine("language", facets.language),
     facetLine("assetKind", facets.assetKind),
@@ -125,7 +139,7 @@ export function buildCatalogListing(set: CatalogListingSet, offset: number, limi
     !total
       ? "No catalog entries matched these Provider filters. Report the empty filters; do not claim the whole library lacks the figure type unless the default Providers were listed without filters."
       : !entries.length
-        ? "Facets only. Narrow with familyGroup, providerIds, language or assetKind when they clearly match the user's need (other/unclassified hold analysis-only and unlabelled templates), then continue with this resultSetId and offset to read entries."
+        ? "Facets only. Narrow with familyGroup, domain, providerIds, language or assetKind when they clearly match the user's need (other/unclassified hold analysis-only and unlabelled templates), then continue with this resultSetId and offset to read entries."
         : "Choose relevant entries by meaning, not by exact wording. Show them with figure_library_get_candidate_images (same resultSetId, at most 12 candidateIds), then wait for user selection. An absent keyword hit is not evidence that the library lacks a figure type. Keep these entries for later requests in this session; re-read the catalog only when a limit:0 call reports a different catalogRevision.",
   ];
   return {
@@ -176,7 +190,7 @@ export function defineCatalogListing(operations: OperationRegistry, options: {
     {
       title: "List the scientific figure catalog for semantic selection",
       description:
-        "Return a compact, paginated catalog of the default (or selected) Providers: per-Provider counts, plotFamily/language facets and one line per template. Use it before concluding that a figure type is missing, or when keyword search returns nothing; match entries by meaning, then display chosen candidateIds with figure_library_get_candidate_images. Read-only; no images, previews or receipts.",
+        "Return a compact, paginated catalog of the default (or selected) Providers: per-Provider counts, familyGroup/domain/language facets and one line per template. An entry can belong to several familyGroups and domains, so facet counts may add up to more than the total. Use it before concluding that a figure type is missing, or when keyword search returns nothing; match entries by meaning, then display chosen candidateIds with figure_library_get_candidate_images. Read-only; no images, previews or receipts.",
       inputSchema: CatalogListingInput.shape,
       annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
     },
@@ -184,7 +198,7 @@ export function defineCatalogListing(operations: OperationRegistry, options: {
       const invalid = (message: string) =>
         terminal(outcome("failed", "catalog_listing_invalid_input", `Catalog listing failed: ${message}`));
       const offset = input.offset ?? 0;
-      if (input.resultSetId && (input.providerIds || input.plotFamily || input.familyGroup || input.templates || input.language || input.assetKind)) {
+      if (input.resultSetId && (input.providerIds || input.plotFamily || input.familyGroup || input.domain || input.templates || input.language || input.assetKind)) {
         return invalid("filters cannot change while continuing a listing; start a new listing without resultSetId.");
       }
       if (!input.resultSetId && offset !== 0) {

@@ -1,6 +1,8 @@
 import { PreviewDownloadStore, type PreviewDownloadOptions } from "./preview-downloads.ts";
 import { markdownPlainText } from "./figure-description.ts";
-import { familyWords } from "./plot-family-groups.ts";
+import { familyWords, isPlotFamilyGroup, PLOT_FAMILY_GROUPS, type PlotFamilyGroup } from "./plot-family-groups.ts";
+import { DOMAINS, isDomainId, type DomainId } from "./domains.ts";
+import { correctSearchTypos, SEARCH_CONCEPTS } from "./search-vocabulary.ts";
 import { createHash } from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
@@ -33,6 +35,36 @@ export function isMcpImagePath(file: string | undefined) {
 
 const DEFAULT_ASSETS_DIR = path.resolve(import.meta.dirname, "..", "assets");
 const PREVIEW_MANIFEST = "figureya-preview.manifest.json";
+const TAXONOMY_FILE = "figureya-taxonomy.json";
+const TAXONOMY_SCHEMA = "figure-library.figureya-taxonomy.v1";
+
+/** Reviewed figure-type groups and research domains of one FigureYa module. */
+export interface FigureYaTaxonomyEntry {
+  groups: PlotFamilyGroup[];
+  domains: DomainId[];
+  kind?: "analysis";
+}
+
+/**
+ * Read the bundled taxonomy. It is optional metadata: a missing file or an
+ * entry with unknown values degrades to rule-based grouping, never to a load
+ * failure, so external catalogs without a taxonomy stay usable.
+ */
+export function parseFigureYaTaxonomy(value: unknown): Map<string, FigureYaTaxonomyEntry> {
+  const entries = new Map<string, FigureYaTaxonomyEntry>();
+  if (!value || typeof value !== "object" || (value as { schema?: unknown }).schema !== TAXONOMY_SCHEMA) return entries;
+  const modules = (value as { modules?: unknown }).modules;
+  if (!modules || typeof modules !== "object") return entries;
+  for (const [moduleId, raw] of Object.entries(modules as Record<string, unknown>)) {
+    if (!raw || typeof raw !== "object") continue;
+    const record = raw as { groups?: unknown; domains?: unknown; kind?: unknown };
+    const groups = Array.isArray(record.groups) ? [...new Set(record.groups.filter(isPlotFamilyGroup))] : [];
+    const domains = Array.isArray(record.domains) ? [...new Set(record.domains.filter(isDomainId))] : [];
+    if (!groups.length && !domains.length) continue;
+    entries.set(moduleId, { groups, domains, ...(record.kind === "analysis" ? { kind: "analysis" as const } : {}) });
+  }
+  return entries;
+}
 const SHA256 = /^[a-f0-9]{64}$/u;
 
 function previewMediaType(file: string) {
@@ -297,7 +329,16 @@ function matchesIdentifier(identifier: string, identifierWords: string, value: s
 
 export interface SearchIntent {
   families: string[];
-  terms: Array<{ value: string; weight: number }>;
+  /** Figure-type groups the query names, matched against an entry's declared groups. */
+  groups: PlotFamilyGroup[];
+  /** Research domains the query names, matched against an entry's declared domains. */
+  domains: DomainId[];
+  /**
+   * `weak` terms are two-character slices of a long Chinese phrase. One of
+   * them alone ("细胞") is too common to mean anything, so they only count for
+   * an entry that matches at least two different ones.
+   */
+  terms: Array<{ value: string; weight: number; weak?: boolean }>;
 }
 
 export interface SearchableTemplate {
@@ -314,6 +355,9 @@ export interface SearchableTemplate {
   codeFiles: string[];
   packages: string[];
   tags?: string[];
+  /** Every figure-type group the entry belongs to, primary first. */
+  familyGroups?: readonly string[];
+  domains?: readonly string[];
 }
 
 export interface SearchEvidence {
@@ -324,7 +368,9 @@ export interface SearchEvidence {
 }
 
 export function normalizeSearchText(value: string): string {
+  // NFKC folds full-width letters and digits ("ＵＭＡＰ") into their ASCII forms.
   return value
+    .normalize("NFKC")
     .toLocaleLowerCase()
     .replace(/[‐‑‒–—]/gu, "-")
     .replace(/\s+/gu, " ")
@@ -358,6 +404,22 @@ function tokens(value: string) {
     });
 }
 
+/** Particles that make a two-character slice meaningless as a search term. */
+const HAN_PARTICLES = /[的和与及或在用把对中了是有为图]/u;
+const COMMON_HAN_PAIRS = new Set(["分析", "基因", "数据", "结果", "表达", "样本", "展示", "绘制", "画出", "不同", "之间", "进行", "研究"]);
+
+/** Overlapping two-character slices of Chinese phrases of four characters or more. */
+function hanPairs(value: string) {
+  const pairs = new Set<string>();
+  for (const run of normalizeSearchText(value).match(/[\p{Script=Han}]{4,}/gu) ?? []) {
+    for (let index = 0; index + 2 <= run.length; index += 1) {
+      const pair = run.slice(index, index + 2);
+      if (!HAN_PARTICLES.test(pair) && !COMMON_HAN_PAIRS.has(pair)) pairs.add(pair);
+    }
+  }
+  return [...pairs];
+}
+
 export function buildSearchIntent(request: SearchRequest): SearchIntent {
   const weighted = new Map<string, number>();
   const add = (value: string, weight: number) => {
@@ -365,6 +427,8 @@ export function buildSearchIntent(request: SearchRequest): SearchIntent {
     if (!normalized || STOP_WORDS.has(normalized)) return;
     weighted.set(normalized, Math.max(weighted.get(normalized) ?? 0, weight));
   };
+  // Misspelt figure names are corrected before anything else reads the query.
+  const query = correctSearchTypos(normalizeSearchText(request.query ?? ""));
   const addText = (value: string | undefined, weight: number) => {
     if (!value) return;
     for (const token of tokens(value).slice(0, 18)) add(token, weight);
@@ -374,12 +438,12 @@ export function buildSearchIntent(request: SearchRequest): SearchIntent {
     }
   };
 
-  addText(request.query, 5);
+  addText(query, 5);
   addText(request.visualProfile, 2);
   addText(request.dataProfile, 1);
 
   const familyText = normalizeSearchText(
-    [request.query, request.visualProfile].filter(Boolean).join(" "),
+    [query, request.visualProfile].filter(Boolean).join(" "),
   );
   let families = FIGURE_FAMILIES.filter((family) =>
     family.triggers.some((trigger) => containsPhrase(familyText, trigger)),
@@ -392,12 +456,26 @@ export function buildSearchIntent(request: SearchRequest): SearchIntent {
     for (const trigger of family.triggers) add(trigger, 8);
   }
 
+  // A named concept brings its other names as terms, and its group and domain as facets to match.
+  let concepts = SEARCH_CONCEPTS.filter((concept) => concept.aliases.some((alias) => containsPhrase(familyText, alias)));
+  if (concepts.some((concept) => concept.group === "volcano")) concepts = concepts.filter((concept) => concept.group !== "scatter");
+  for (const concept of concepts) for (const alias of concept.aliases) add(alias, 4);
+  const groups = [...new Set(concepts.flatMap((concept) => (concept.group ? [concept.group] : [])))];
+  const domains = [...new Set(concepts.flatMap((concept) => (concept.domain ? [concept.domain] : [])))];
+
+  const strong = [...weighted.entries()]
+    .map(([value, weight]) => ({ value, weight }))
+    .sort((left, right) => right.weight - left.weight || right.value.length - left.value.length)
+    .slice(0, 48);
+  const weak = hanPairs(query)
+    .filter((pair) => !weighted.has(pair))
+    .slice(0, 12)
+    .map((value) => ({ value, weight: 1.5, weak: true }));
   return {
     families: families.map((family) => family.id),
-    terms: [...weighted.entries()]
-      .map(([value, weight]) => ({ value, weight }))
-      .sort((left, right) => right.weight - left.weight || right.value.length - left.value.length)
-      .slice(0, 48),
+    groups,
+    domains,
+    terms: [...strong, ...weak],
   };
 }
 
@@ -476,6 +554,7 @@ export function scoreSearchableTemplate(
   const matchedTerms = new Set<string>();
   const fieldMatches = new Map<string, string[]>();
   const identifierWords = familyWords(`${template.templateId} ${template.title}`);
+  const weakHits: Array<{ term: string; field: string; score: number }> = [];
   for (const term of intent.terms) {
     const generic = GENERIC_TERMS.has(term.value);
     const specificity = generic ? 0.15 : 1;
@@ -485,6 +564,10 @@ export function scoreSearchableTemplate(
         ? matchesIdentifier(field.value, identifierWords, term.value)
         : includesTerm(field.value, term.value, false);
       if (!matched) continue;
+      if (term.weak) {
+        weakHits.push({ term: term.value, field: field.name, score: term.weight * field.weight });
+        continue;
+      }
       if (!generic) specificMatch = true;
       score += term.weight * field.weight * specificity;
       matchedTerms.add(term.value);
@@ -492,6 +575,29 @@ export function scoreSearchableTemplate(
       matches.push(term.value);
       fieldMatches.set(field.name, matches);
     }
+  }
+  if (new Set(weakHits.map((hit) => hit.term)).size >= 2) {
+    specificMatch = true;
+    for (const hit of weakHits) {
+      score += hit.score;
+      matchedTerms.add(hit.term);
+      fieldMatches.set(hit.field, [...(fieldMatches.get(hit.field) ?? []), hit.term]);
+    }
+  }
+
+  // Declared groups and domains are reviewed metadata, so a named group that an entry
+  // lists first outranks a family word that merely appears in an identifier.
+  const facetNotes: string[] = [];
+  for (const group of intent.groups) {
+    const index = template.familyGroups?.indexOf(group) ?? -1;
+    if (index < 0) continue;
+    score += index === 0 ? 650 : 300;
+    facetNotes.push(`图型分组匹配：${PLOT_FAMILY_GROUPS.find((item) => item.id === group)?.label ?? group}`);
+  }
+  for (const domain of intent.domains) {
+    if (!template.domains?.includes(domain)) continue;
+    score += 120;
+    facetNotes.push(`研究领域匹配：${DOMAINS.find((item) => item.id === domain)?.label ?? domain}`);
   }
 
   const identifier = fields[0].value;
@@ -523,8 +629,10 @@ export function scoreSearchableTemplate(
 
   const intentText = intent.terms.map((term) => term.value).join(" ");
   const variantNotes = [];
+  // The FigureYa serial number is not part of the name: "33" + "DCA" must not read as "3d".
+  const variantId = compactTemplateId.replace(/^figureya\d+/u, "");
   for (const variant of SPECIALIZED_VARIANTS) {
-    if (!variant.idPatterns.some((pattern) => compactTemplateId.includes(pattern))) continue;
+    if (!variant.idPatterns.some((pattern) => variantId.includes(pattern))) continue;
     const requested = variant.triggers.some((trigger) => containsPhrase(intentText, trigger));
     if (requested) {
       score += 350;
@@ -536,10 +644,11 @@ export function scoreSearchableTemplate(
   }
 
   // A hit made only of generic words ("plot", "figure", "gene") is not a match.
-  if (!specificMatch && !familyMatches.length) score = 0;
+  if (!specificMatch && !familyMatches.length && !facetNotes.length) score = 0;
 
   const reasons = [];
   if (familyMatches.length) reasons.push(`图表家族匹配：${familyMatches.join("、")}`);
+  reasons.push(...facetNotes);
   reasons.push(...variantNotes);
   for (const field of fields) {
     const matches = fieldMatches.get(field.name);
@@ -769,11 +878,20 @@ export class CatalogIndex {
   readonly assetsDir: string;
 
   private readonly downloads?: PreviewDownloadStore;
-  private constructor(catalog: FigureYaCatalog, assetsDir: string, downloads?: PreviewDownloadStore) {
+  private readonly taxonomy: Map<string, FigureYaTaxonomyEntry>;
+  private constructor(
+    catalog: FigureYaCatalog,
+    assetsDir: string,
+    downloads?: PreviewDownloadStore,
+    taxonomy = new Map<string, FigureYaTaxonomyEntry>(),
+  ) {
     this.catalog = catalog;
     this.assetsDir = assetsDir;
     this.downloads = downloads;
+    this.taxonomy = taxonomy;
   }
+  /** Reviewed groups and domains of a module, when the bundled taxonomy lists it. */
+  taxonomyEntry(moduleId: string) { return this.taxonomy.get(moduleId); }
   get previewDownloads() { return this.downloads; }
 
   static async load(assetsDir = process.env.FIGUREYA_ASSETS_DIR ?? DEFAULT_ASSETS_DIR, downloadOptions: PreviewDownloadOptions = {}) {
@@ -796,7 +914,13 @@ export class CatalogIndex {
       return identity && file ? [{ path: file, bytes: identity.bytes, sha256: identity.digest, mediaType: identity.mediaType }] : [];
     });
     const downloads = await PreviewDownloadStore.load(assetsDir, FIGUREYA_PROVIDER_ID, expected, downloadOptions);
-    return new CatalogIndex(catalog, assetsDir, downloads);
+    let taxonomy = new Map<string, FigureYaTaxonomyEntry>();
+    try {
+      taxonomy = parseFigureYaTaxonomy(JSON.parse(await fs.readFile(path.join(assetsDir, TAXONOMY_FILE), "utf8")) as unknown);
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+    }
+    return new CatalogIndex(catalog, assetsDir, downloads, taxonomy);
   }
 
   private async loadPreview(module: FigureYaModule, allowDownload = true) {
@@ -866,6 +990,7 @@ export class CatalogIndex {
     const matches = this.catalog.modules
       .filter((module) => matchesFigureYaFilters(module, request))
       .map((module) => {
+        const taxonomy = this.taxonomy.get(module.moduleId);
         const evidence = scoreSearchableTemplate(
           {
             templateId: module.moduleId,
@@ -876,6 +1001,17 @@ export class CatalogIndex {
             inputFiles: module.inputFiles,
             codeFiles: module.codeFiles,
             packages: module.packages,
+            ...(taxonomy
+              ? {
+                  // The reviewed groups and domains are searchable by their Chinese labels as well.
+                  tags: [
+                    ...taxonomy.groups.map((group) => PLOT_FAMILY_GROUPS.find((item) => item.id === group)?.label ?? group),
+                    ...taxonomy.domains.map((domain) => DOMAINS.find((item) => item.id === domain)?.label ?? domain),
+                  ],
+                  familyGroups: taxonomy.groups,
+                  domains: taxonomy.domains,
+                }
+              : {}),
           },
           intent,
         );
@@ -900,6 +1036,7 @@ export class CatalogIndex {
         }
         warnings.push("上游代码尚未经过本地审核，也未由 ScientificFigureLibrary 执行");
         const exactSelector = figureYaCandidateSelector(this.catalog, module, "template");
+        const taxonomy = this.taxonomy.get(module.moduleId);
         return {
           templateId: module.moduleId,
           providerId: FIGUREYA_PROVIDER_ID,
@@ -930,6 +1067,9 @@ export class CatalogIndex {
           assetKind: "plot_template" as const,
           language: figureYaLanguages(module)[0] ?? "none",
           plotFamily: figureYaFamilies(module)[0] ?? "",
+          ...(taxonomy?.groups.length ? { familyGroups: taxonomy.groups } : {}),
+          ...(taxonomy?.domains.length ? { domains: taxonomy.domains } : {}),
+          ...(taxonomy?.kind ? { templateKind: taxonomy.kind } : {}),
           reviewStatus: "not_reviewed" as const,
           codeStatus: module.codeFiles.length ? ("provided" as const) : ("none" as const),
           executionStatus: "not_run" as const,

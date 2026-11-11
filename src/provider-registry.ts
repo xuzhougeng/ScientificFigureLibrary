@@ -3,6 +3,8 @@ import { createHash } from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
 import type { CatalogIndex } from "./catalog.ts";
+import { domainsFromKeywords } from "./domains.ts";
+import { plotFamilyGroups } from "./plot-family-groups.ts";
 import { ModuleCatalogIndex } from "./module-catalog.ts";
 import type { OfficialOpenFigureRuntime } from "./open-figure-official-source.ts";
 import {
@@ -360,6 +362,8 @@ export class LocalPublishedProviderAdapter implements ProviderAdapter {
             codeFiles: [],
             packages: item.packages,
             tags: item.tags,
+            familyGroups: plotFamilyGroups({ plotFamily: item.plotFamily }),
+            domains: domainsFromKeywords([item.plotFamily, ...item.tags]),
           },
           intent,
         ),
@@ -419,6 +423,7 @@ export class LocalPublishedProviderAdapter implements ProviderAdapter {
           assetKind: item.assetKind,
           language: item.language,
           plotFamily: item.plotFamily,
+          domains: domainsFromKeywords([item.plotFamily, ...item.tags]),
           reviewStatus: "approved",
           codeStatus: item.codeStatus,
           executionStatus: item.executionStatus,

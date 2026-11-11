@@ -1,0 +1,3123 @@
+{
+ "schema": "figure-library.figureya-taxonomy.v1",
+ "figureya": {
+  "repository": "https://github.com/ying-ge/FigureYa",
+  "commit": "f627917b79f28558779fb2e3ea2014cede41b89e"
+ },
+ "modules": {
+  "FigureYa000ContributionTemplate": {
+   "groups": [
+    "other"
+   ],
+   "domains": [
+    "general"
+   ],
+   "kind": "analysis",
+   "basis": "code"
+  },
+  "FigureYa1survivalCurve_update": {
+   "groups": [
+    "survival"
+   ],
+   "domains": [
+    "clinical_prognosis"
+   ],
+   "basis": "code"
+  },
+  "FigureYa2ggtree+pheatmap+msa": {
+   "groups": [
+    "tree",
+    "heatmap"
+   ],
+   "domains": [
+    "microbiome_evolution"
+   ],
+   "basis": "code"
+  },
+  "FigureYa3genomeView": {
+   "groups": [
+    "genome"
+   ],
+   "domains": [
+    "epigenomics"
+   ],
+   "basis": "code"
+  },
+  "FigureYa4bestSeparation": {
+   "groups": [
+    "survival"
+   ],
+   "domains": [
+    "clinical_prognosis"
+   ],
+   "basis": "code"
+  },
+  "FigureYa5bubbles": {
+   "groups": [
+    "bubble"
+   ],
+   "domains": [
+    "general"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa6rHRsV2": {
+   "groups": [
+    "forest",
+    "survival"
+   ],
+   "domains": [
+    "clinical_prognosis"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa7PSM": {
+   "groups": [
+    "other"
+   ],
+   "domains": [
+    "clinical_prognosis"
+   ],
+   "kind": "analysis",
+   "basis": "code"
+  },
+  "FigureYa8radar": {
+   "groups": [
+    "radar"
+   ],
+   "domains": [
+    "general"
+   ],
+   "basis": "code"
+  },
+  "FigureYa9heatmap": {
+   "groups": [
+    "heatmap"
+   ],
+   "domains": [
+    "general"
+   ],
+   "basis": "code"
+  },
+  "FigureYa10chromosomeV2_update": {
+   "groups": [
+    "genome"
+   ],
+   "domains": [
+    "genomic_variation"
+   ],
+   "basis": "code"
+  },
+  "FigureYa11bubble": {
+   "groups": [
+    "bubble",
+    "enrichment"
+   ],
+   "domains": [
+    "bulk_transcriptome"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa12box": {
+   "groups": [
+    "boxplot"
+   ],
+   "domains": [
+    "general"
+   ],
+   "basis": "code"
+  },
+  "FigureYa13GSEA_Java_update": {
+   "groups": [
+    "enrichment",
+    "bubble"
+   ],
+   "domains": [
+    "bulk_transcriptome"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa14circos": {
+   "groups": [
+    "circular",
+    "genome"
+   ],
+   "domains": [
+    "genomic_variation"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa15WGCNA": {
+   "groups": [
+    "tree"
+   ],
+   "domains": [
+    "bulk_transcriptome"
+   ],
+   "basis": "code"
+  },
+  "FigureYa16fitting": {
+   "groups": [
+    "line"
+   ],
+   "domains": [
+    "bulk_transcriptome"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa17WGCNA_heatmap": {
+   "groups": [
+    "heatmap"
+   ],
+   "domains": [
+    "bulk_transcriptome"
+   ],
+   "basis": "code"
+  },
+  "FigureYa18oncoplot_update": {
+   "groups": [
+    "genome"
+   ],
+   "domains": [
+    "genomic_variation"
+   ],
+   "basis": "code"
+  },
+  "FigureYa19Lollipop": {
+   "groups": [
+    "dot_range",
+    "genome"
+   ],
+   "domains": [
+    "genomic_variation"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa20mortality": {
+   "groups": [
+    "line"
+   ],
+   "domains": [
+    "clinical_prognosis"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa21TCGA2table": {
+   "groups": [
+    "table"
+   ],
+   "domains": [
+    "clinical_prognosis"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa22FPKM2TPM": {
+   "groups": [
+    "other"
+   ],
+   "domains": [
+    "bulk_transcriptome"
+   ],
+   "kind": "analysis",
+   "basis": "code"
+  },
+  "FigureYa23count2TPM": {
+   "groups": [
+    "other"
+   ],
+   "domains": [
+    "bulk_transcriptome"
+   ],
+   "kind": "analysis",
+   "basis": "manual"
+  },
+  "FigureYa24ROC": {
+   "groups": [
+    "roc"
+   ],
+   "domains": [
+    "clinical_prognosis"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa25Sankey_update": {
+   "groups": [
+    "flow"
+   ],
+   "domains": [
+    "general"
+   ],
+   "basis": "code"
+  },
+  "FigureYa26circos_R": {
+   "groups": [
+    "circular",
+    "network"
+   ],
+   "domains": [
+    "general"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa27tSNE_update": {
+   "groups": [
+    "embedding",
+    "violin"
+   ],
+   "domains": [
+    "single_cell"
+   ],
+   "basis": "code"
+  },
+  "FigureYa28color": {
+   "groups": [
+    "other"
+   ],
+   "domains": [
+    "general"
+   ],
+   "kind": "analysis",
+   "basis": "code"
+  },
+  "FigureYa30nomogram_update": {
+   "groups": [
+    "survival",
+    "roc"
+   ],
+   "domains": [
+    "clinical_prognosis"
+   ],
+   "basis": "code"
+  },
+  "FigureYa30Plus_nomogram_app": {
+   "groups": [
+    "survival"
+   ],
+   "domains": [
+    "clinical_prognosis"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa31lasso_update": {
+   "groups": [
+    "line",
+    "survival"
+   ],
+   "domains": [
+    "clinical_prognosis"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa32ID_table": {
+   "groups": [
+    "other"
+   ],
+   "domains": [
+    "bulk_transcriptome"
+   ],
+   "kind": "analysis",
+   "basis": "manual"
+  },
+  "FigureYa33DCA_update": {
+   "groups": [
+    "roc",
+    "survival"
+   ],
+   "domains": [
+    "clinical_prognosis"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa34count2FPKMv2": {
+   "groups": [
+    "other"
+   ],
+   "domains": [
+    "bulk_transcriptome"
+   ],
+   "kind": "analysis",
+   "basis": "code"
+  },
+  "FigureYa35batch_bestSeparationV3_update": {
+   "groups": [
+    "survival"
+   ],
+   "domains": [
+    "clinical_prognosis"
+   ],
+   "basis": "code"
+  },
+  "FigureYa36nSurvV3": {
+   "groups": [
+    "survival"
+   ],
+   "domains": [
+    "clinical_prognosis"
+   ],
+   "basis": "code"
+  },
+  "FigureYa37correlationV2_update": {
+   "groups": [
+    "correlation",
+    "circular"
+   ],
+   "domains": [
+    "general"
+   ],
+   "basis": "code"
+  },
+  "FigureYa38PCA": {
+   "groups": [
+    "embedding"
+   ],
+   "domains": [
+    "bulk_transcriptome"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa39bar": {
+   "groups": [
+    "bar"
+   ],
+   "domains": [
+    "general"
+   ],
+   "basis": "code"
+  },
+  "FigureYa40lineage": {
+   "groups": [
+    "other"
+   ],
+   "domains": [
+    "general"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa41GEO2lncRNA_update": {
+   "groups": [
+    "other"
+   ],
+   "domains": [
+    "bulk_transcriptome"
+   ],
+   "kind": "analysis",
+   "basis": "code"
+  },
+  "FigureYa42oncoprintV2_update": {
+   "groups": [
+    "genome",
+    "heatmap"
+   ],
+   "domains": [
+    "genomic_variation"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa43ManhattanV2": {
+   "groups": [
+    "genome",
+    "scatter"
+   ],
+   "domains": [
+    "genomic_variation"
+   ],
+   "basis": "code"
+  },
+  "FigureYa44profile": {
+   "groups": [
+    "line"
+   ],
+   "domains": [
+    "epigenomics"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa45V2": {
+   "groups": [
+    "heatmap"
+   ],
+   "domains": [
+    "other_omics",
+    "bulk_transcriptome"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa47HRtable": {
+   "groups": [
+    "table",
+    "survival"
+   ],
+   "domains": [
+    "clinical_prognosis"
+   ],
+   "basis": "code"
+  },
+  "FigureYa48Adonis": {
+   "groups": [
+    "bar"
+   ],
+   "domains": [
+    "microbiome_evolution"
+   ],
+   "basis": "code"
+  },
+  "FigureYa51TMB_update": {
+   "groups": [
+    "boxplot"
+   ],
+   "domains": [
+    "genomic_variation"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa52GOplot": {
+   "groups": [
+    "enrichment",
+    "circular",
+    "network",
+    "bubble"
+   ],
+   "domains": [
+    "bulk_transcriptome"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa53PPImodule": {
+   "groups": [
+    "other"
+   ],
+   "domains": [
+    "other_omics"
+   ],
+   "kind": "analysis",
+   "basis": "manual"
+  },
+  "FigureYa55panCancer_violinV2": {
+   "groups": [
+    "violin"
+   ],
+   "domains": [
+    "bulk_transcriptome"
+   ],
+   "basis": "code"
+  },
+  "FigureYa55plus_pancancer_boxplot": {
+   "groups": [
+    "boxplot"
+   ],
+   "domains": [
+    "bulk_transcriptome"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa56immune_inflitrationV3": {
+   "groups": [
+    "heatmap"
+   ],
+   "domains": [
+    "immune_microenvironment"
+   ],
+   "basis": "code"
+  },
+  "FigureYa57profile_1bw": {
+   "groups": [
+    "line"
+   ],
+   "domains": [
+    "epigenomics"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa58lncRNAreannotation": {
+   "groups": [
+    "other"
+   ],
+   "domains": [
+    "bulk_transcriptome"
+   ],
+   "kind": "analysis",
+   "basis": "code"
+  },
+  "FigureYa59Plus_GEO2DEG": {
+   "groups": [
+    "other"
+   ],
+   "domains": [
+    "bulk_transcriptome"
+   ],
+   "kind": "analysis",
+   "basis": "manual"
+  },
+  "FigureYa59Plus_volcano_shiny": {
+   "groups": [
+    "volcano"
+   ],
+   "domains": [
+    "bulk_transcriptome"
+   ],
+   "basis": "code"
+  },
+  "FigureYa59volcanoV2": {
+   "groups": [
+    "volcano"
+   ],
+   "domains": [
+    "bulk_transcriptome"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa60GSEA_clusterProfilerV2": {
+   "groups": [
+    "enrichment",
+    "line"
+   ],
+   "domains": [
+    "bulk_transcriptome"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa61GSVA": {
+   "groups": [
+    "enrichment",
+    "bar"
+   ],
+   "domains": [
+    "bulk_transcriptome"
+   ],
+   "basis": "code"
+  },
+  "FigureYa62twoAxis": {
+   "groups": [
+    "scatter",
+    "line"
+   ],
+   "domains": [
+    "general"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa63pubmedMiningV2": {
+   "groups": [
+    "other"
+   ],
+   "domains": [
+    "general"
+   ],
+   "kind": "analysis",
+   "basis": "manual"
+  },
+  "FigureYa64triangle": {
+   "groups": [
+    "scatter"
+   ],
+   "domains": [
+    "genomic_variation"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa65SVM": {
+   "groups": [
+    "set_overlap"
+   ],
+   "domains": [
+    "bulk_transcriptome"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa66UnivariateCox": {
+   "groups": [
+    "survival"
+   ],
+   "domains": [
+    "clinical_prognosis"
+   ],
+   "basis": "code"
+  },
+  "FigureYa66单因素cox": {
+   "groups": [
+    "survival"
+   ],
+   "domains": [
+    "clinical_prognosis"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa67phastCons": {
+   "groups": [
+    "line"
+   ],
+   "domains": [
+    "epigenomics"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa68friendsV2": {
+   "groups": [
+    "distribution",
+    "violin",
+    "boxplot"
+   ],
+   "domains": [
+    "bulk_transcriptome"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa69cancerSubtype": {
+   "groups": [
+    "heatmap"
+   ],
+   "domains": [
+    "bulk_transcriptome"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa70mutationEvents": {
+   "groups": [
+    "genome",
+    "correlation"
+   ],
+   "domains": [
+    "genomic_variation"
+   ],
+   "basis": "code"
+  },
+  "FigureYa71ssGSEA_update": {
+   "groups": [
+    "enrichment",
+    "heatmap"
+   ],
+   "domains": [
+    "bulk_transcriptome"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa72biomarker": {
+   "groups": [
+    "line"
+   ],
+   "domains": [
+    "epigenomics",
+    "bulk_transcriptome"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa73batchCorrelation": {
+   "groups": [
+    "correlation",
+    "scatter"
+   ],
+   "domains": [
+    "bulk_transcriptome"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa74OmicCircos": {
+   "groups": [
+    "circular",
+    "heatmap"
+   ],
+   "domains": [
+    "general"
+   ],
+   "basis": "code"
+  },
+  "FigureYa75bubble_volcano": {
+   "groups": [
+    "volcano",
+    "bubble"
+   ],
+   "domains": [
+    "bulk_transcriptome"
+   ],
+   "basis": "code"
+  },
+  "FigureYa76corrgram": {
+   "groups": [
+    "correlation"
+   ],
+   "domains": [
+    "general"
+   ],
+   "basis": "code"
+  },
+  "FigureYa77baseZoom": {
+   "groups": [
+    "bubble",
+    "scatter"
+   ],
+   "domains": [
+    "genomic_variation"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa78gganatogram": {
+   "groups": [
+    "other"
+   ],
+   "domains": [
+    "bulk_transcriptome"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa79CNV": {
+   "groups": [
+    "genome",
+    "line"
+   ],
+   "domains": [
+    "genomic_variation"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa80GOclustering": {
+   "groups": [
+    "tree",
+    "enrichment"
+   ],
+   "domains": [
+    "bulk_transcriptome"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa81immune_network": {
+   "groups": [
+    "network",
+    "correlation"
+   ],
+   "domains": [
+    "immune_microenvironment"
+   ],
+   "basis": "code"
+  },
+  "FigureYa82IGVzoom": {
+   "groups": [
+    "genome"
+   ],
+   "domains": [
+    "epigenomics"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa83enrichment": {
+   "groups": [
+    "enrichment",
+    "heatmap"
+   ],
+   "domains": [
+    "bulk_transcriptome"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa84roast": {
+   "groups": [
+    "enrichment"
+   ],
+   "domains": [
+    "bulk_transcriptome"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa85timeROC": {
+   "groups": [
+    "roc"
+   ],
+   "domains": [
+    "clinical_prognosis"
+   ],
+   "basis": "code"
+  },
+  "FigureYa86SNPmotif": {
+   "groups": [
+    "genome"
+   ],
+   "domains": [
+    "genomic_variation",
+    "epigenomics"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa87fish": {
+   "groups": [
+    "proportion"
+   ],
+   "domains": [
+    "genomic_variation"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa88DAVIDkappa": {
+   "groups": [
+    "tree",
+    "enrichment"
+   ],
+   "domains": [
+    "bulk_transcriptome"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa89ggplotCirco": {
+   "groups": [
+    "circular",
+    "heatmap"
+   ],
+   "domains": [
+    "general"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa90subgroup": {
+   "groups": [
+    "forest",
+    "survival"
+   ],
+   "domains": [
+    "clinical_prognosis"
+   ],
+   "basis": "code"
+  },
+  "FigureYa91cluster_heatmap": {
+   "groups": [
+    "heatmap"
+   ],
+   "domains": [
+    "general"
+   ],
+   "basis": "code"
+  },
+  "FigureYa92immune_gene_update": {
+   "groups": [
+    "correlation",
+    "scatter"
+   ],
+   "domains": [
+    "immune_microenvironment"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa93UMAP": {
+   "groups": [
+    "embedding",
+    "violin"
+   ],
+   "domains": [
+    "single_cell"
+   ],
+   "basis": "code"
+  },
+  "FigureYa94STEMbox_update": {
+   "groups": [
+    "line",
+    "boxplot"
+   ],
+   "domains": [
+    "bulk_transcriptome"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa95pairwise": {
+   "groups": [
+    "correlation",
+    "scatter"
+   ],
+   "domains": [
+    "bulk_transcriptome",
+    "genomic_variation"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa96R2": {
+   "groups": [
+    "scatter"
+   ],
+   "domains": [
+    "immune_microenvironment"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa97correlationV3": {
+   "groups": [
+    "correlation",
+    "heatmap"
+   ],
+   "domains": [
+    "immune_microenvironment"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa98STEMheatmapV2": {
+   "groups": [
+    "heatmap",
+    "line"
+   ],
+   "domains": [
+    "bulk_transcriptome"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa99smoothHRv2": {
+   "groups": [
+    "survival",
+    "line"
+   ],
+   "domains": [
+    "clinical_prognosis"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa101PCA": {
+   "groups": [
+    "embedding"
+   ],
+   "domains": [
+    "bulk_transcriptome"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa102multipanelROC": {
+   "groups": [
+    "roc",
+    "combo"
+   ],
+   "domains": [
+    "clinical_prognosis"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa103coAbundant": {
+   "groups": [
+    "heatmap"
+   ],
+   "domains": [
+    "other_omics"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa105GDSC": {
+   "groups": [
+    "boxplot"
+   ],
+   "domains": [
+    "other_omics"
+   ],
+   "basis": "code"
+  },
+  "FigureYa106immunotherapy": {
+   "groups": [
+    "heatmap"
+   ],
+   "domains": [
+    "immune_microenvironment"
+   ],
+   "basis": "code"
+  },
+  "FigureYa109SubtypeGSEA_update": {
+   "groups": [
+    "enrichment",
+    "heatmap"
+   ],
+   "domains": [
+    "bulk_transcriptome"
+   ],
+   "basis": "code"
+  },
+  "FigureYa110mutationSignature": {
+   "groups": [
+    "genome",
+    "heatmap"
+   ],
+   "domains": [
+    "genomic_variation"
+   ],
+   "basis": "code"
+  },
+  "FigureYa112Plus_venn": {
+   "groups": [
+    "set_overlap"
+   ],
+   "domains": [
+    "general"
+   ],
+   "basis": "code"
+  },
+  "FigureYa112venn": {
+   "groups": [
+    "set_overlap"
+   ],
+   "domains": [
+    "general"
+   ],
+   "basis": "code"
+  },
+  "FigureYa113MutSigCV": {
+   "groups": [
+    "genome"
+   ],
+   "domains": [
+    "genomic_variation"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa114ternaryCluster": {
+   "groups": [
+    "heatmap",
+    "enrichment"
+   ],
+   "domains": [
+    "bulk_transcriptome"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa115cofactor": {
+   "groups": [
+    "correlation",
+    "heatmap"
+   ],
+   "domains": [
+    "epigenomics"
+   ],
+   "basis": "code"
+  },
+  "FigureYa116supervisedCluster": {
+   "groups": [
+    "survival"
+   ],
+   "domains": [
+    "bulk_transcriptome",
+    "clinical_prognosis"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa117multilinearDE": {
+   "groups": [
+    "heatmap"
+   ],
+   "domains": [
+    "bulk_transcriptome"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa118MulticlassDESeq2": {
+   "groups": [
+    "other"
+   ],
+   "domains": [
+    "bulk_transcriptome"
+   ],
+   "kind": "analysis",
+   "basis": "code"
+  },
+  "FigureYa119Multiclasslimma": {
+   "groups": [
+    "other"
+   ],
+   "domains": [
+    "bulk_transcriptome"
+   ],
+   "kind": "analysis",
+   "basis": "code"
+  },
+  "FigureYa120MulticlassedgeR": {
+   "groups": [
+    "other"
+   ],
+   "domains": [
+    "bulk_transcriptome"
+   ],
+   "kind": "analysis",
+   "basis": "code"
+  },
+  "FigureYa121MethCGIcluster": {
+   "groups": [
+    "heatmap"
+   ],
+   "domains": [
+    "epigenomics"
+   ],
+   "basis": "code"
+  },
+  "FigureYa122mut2expr": {
+   "groups": [
+    "distribution",
+    "violin",
+    "genome"
+   ],
+   "domains": [
+    "genomic_variation",
+    "bulk_transcriptome"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa123mutVSexpr": {
+   "groups": [
+    "heatmap",
+    "genome"
+   ],
+   "domains": [
+    "genomic_variation",
+    "bulk_transcriptome"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa124AssociationHeatmap": {
+   "groups": [
+    "heatmap"
+   ],
+   "domains": [
+    "general"
+   ],
+   "basis": "code"
+  },
+  "FigureYa125FishertestV2": {
+   "groups": [
+    "heatmap",
+    "correlation"
+   ],
+   "domains": [
+    "general"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa126CorrelationHeatmap": {
+   "groups": [
+    "heatmap",
+    "correlation"
+   ],
+   "domains": [
+    "immune_microenvironment",
+    "bulk_transcriptome"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa127HeatmapPie": {
+   "groups": [
+    "heatmap",
+    "correlation",
+    "proportion"
+   ],
+   "domains": [
+    "bulk_transcriptome"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa128Prognostic": {
+   "groups": [
+    "survival"
+   ],
+   "domains": [
+    "clinical_prognosis"
+   ],
+   "basis": "code"
+  },
+  "FigureYa129TCGAbox": {
+   "groups": [
+    "boxplot"
+   ],
+   "domains": [
+    "bulk_transcriptome"
+   ],
+   "basis": "code"
+  },
+  "FigureYa131CMap_update": {
+   "groups": [
+    "heatmap"
+   ],
+   "domains": [
+    "other_omics"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa132alteration": {
+   "groups": [
+    "heatmap",
+    "bar",
+    "proportion"
+   ],
+   "domains": [
+    "genomic_variation"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa133m6Apeak_update": {
+   "groups": [
+    "other"
+   ],
+   "domains": [
+    "epigenomics"
+   ],
+   "kind": "analysis",
+   "basis": "code"
+  },
+  "FigureYa135multiVolcano": {
+   "groups": [
+    "volcano"
+   ],
+   "domains": [
+    "bulk_transcriptome"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa136fgsea": {
+   "groups": [
+    "enrichment"
+   ],
+   "domains": [
+    "bulk_transcriptome"
+   ],
+   "basis": "code"
+  },
+  "FigureYa138NiceCalibration": {
+   "groups": [
+    "roc"
+   ],
+   "domains": [
+    "clinical_prognosis"
+   ],
+   "basis": "code"
+  },
+  "FigureYa139TMB_titv": {
+   "groups": [
+    "genome",
+    "bar"
+   ],
+   "domains": [
+    "genomic_variation"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa140mosaicpie": {
+   "groups": [
+    "proportion"
+   ],
+   "domains": [
+    "general"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa141risk": {
+   "groups": [
+    "survival",
+    "scatter",
+    "heatmap",
+    "combo"
+   ],
+   "domains": [
+    "clinical_prognosis"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa142circosBar": {
+   "groups": [
+    "circular",
+    "bar"
+   ],
+   "domains": [
+    "microbiome_evolution"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa143survCor_update": {
+   "groups": [
+    "survival",
+    "correlation"
+   ],
+   "domains": [
+    "clinical_prognosis"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa144DiagHeatmap": {
+   "groups": [
+    "heatmap"
+   ],
+   "domains": [
+    "general"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa145target": {
+   "groups": [
+    "network"
+   ],
+   "domains": [
+    "general"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa146TMEbox": {
+   "groups": [
+    "boxplot"
+   ],
+   "domains": [
+    "immune_microenvironment"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa147interaction": {
+   "groups": [
+    "network"
+   ],
+   "domains": [
+    "general"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa147Plus_STRING": {
+   "groups": [
+    "network"
+   ],
+   "domains": [
+    "general"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa148SimpleDendrogram": {
+   "groups": [
+    "tree"
+   ],
+   "domains": [
+    "general"
+   ],
+   "basis": "code"
+  },
+  "FigureYa149rankHeatmap": {
+   "groups": [
+    "heatmap"
+   ],
+   "domains": [
+    "general"
+   ],
+   "basis": "code"
+  },
+  "FigureYa150diversityScore": {
+   "groups": [
+    "scatter"
+   ],
+   "domains": [
+    "single_cell"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa151pathifier": {
+   "groups": [
+    "heatmap",
+    "enrichment"
+   ],
+   "domains": [
+    "bulk_transcriptome"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa152DouleCorPlot": {
+   "groups": [
+    "correlation",
+    "scatter"
+   ],
+   "domains": [
+    "general"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa153ccgraph": {
+   "groups": [
+    "network",
+    "circular",
+    "enrichment"
+   ],
+   "domains": [
+    "bulk_transcriptome"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa154immuneSubtypes": {
+   "groups": [
+    "distribution",
+    "heatmap"
+   ],
+   "domains": [
+    "immune_microenvironment"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa155ATAC": {
+   "groups": [
+    "heatmap"
+   ],
+   "domains": [
+    "epigenomics"
+   ],
+   "basis": "code"
+  },
+  "FigureYa156enrichSimulation": {
+   "groups": [
+    "distribution",
+    "enrichment"
+   ],
+   "domains": [
+    "bulk_transcriptome"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa157ChIPpvalue": {
+   "groups": [
+    "line"
+   ],
+   "domains": [
+    "epigenomics"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa158MutationPattern": {
+   "groups": [
+    "genome",
+    "bar"
+   ],
+   "domains": [
+    "genomic_variation"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa159LR_RF_V2": {
+   "groups": [
+    "roc"
+   ],
+   "domains": [
+    "clinical_prognosis"
+   ],
+   "basis": "code"
+  },
+  "FigureYa160scGSVA": {
+   "groups": [
+    "enrichment",
+    "violin"
+   ],
+   "domains": [
+    "single_cell"
+   ],
+   "basis": "code"
+  },
+  "FigureYa161stemness": {
+   "groups": [
+    "heatmap",
+    "bar",
+    "boxplot"
+   ],
+   "domains": [
+    "bulk_transcriptome"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa162boxViolin": {
+   "groups": [
+    "violin",
+    "boxplot"
+   ],
+   "domains": [
+    "general"
+   ],
+   "basis": "code"
+  },
+  "FigureYa163twoVarCor_update": {
+   "groups": [
+    "correlation",
+    "scatter"
+   ],
+   "domains": [
+    "general"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa164PCA3D": {
+   "groups": [
+    "embedding"
+   ],
+   "domains": [
+    "general"
+   ],
+   "basis": "code"
+  },
+  "FigureYa165heatmapPvalue": {
+   "groups": [
+    "heatmap"
+   ],
+   "domains": [
+    "bulk_transcriptome"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa166scCNV": {
+   "groups": [
+    "heatmap",
+    "genome"
+   ],
+   "domains": [
+    "single_cell",
+    "genomic_variation"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa167TumorIndex": {
+   "groups": [
+    "boxplot",
+    "bar"
+   ],
+   "domains": [
+    "bulk_transcriptome"
+   ],
+   "basis": "code"
+  },
+  "FigureYa168legoplot": {
+   "groups": [
+    "genome",
+    "bar",
+    "proportion"
+   ],
+   "domains": [
+    "genomic_variation"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa169sigHeatmap": {
+   "groups": [
+    "heatmap"
+   ],
+   "domains": [
+    "bulk_transcriptome"
+   ],
+   "basis": "code"
+  },
+  "FigureYa170ImmuLncRNA": {
+   "groups": [
+    "bar",
+    "line",
+    "enrichment"
+   ],
+   "domains": [
+    "immune_microenvironment",
+    "bulk_transcriptome"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa171subgroupSurv": {
+   "groups": [
+    "survival"
+   ],
+   "domains": [
+    "clinical_prognosis"
+   ],
+   "basis": "code"
+  },
+  "FigureYa172ggplot2Gviz": {
+   "groups": [
+    "genome",
+    "line"
+   ],
+   "domains": [
+    "epigenomics"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa173fancybar": {
+   "groups": [
+    "bar"
+   ],
+   "domains": [
+    "general"
+   ],
+   "basis": "code"
+  },
+  "FigureYa174squareCross": {
+   "groups": [
+    "network",
+    "bar"
+   ],
+   "domains": [
+    "general"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa175quadrant": {
+   "groups": [
+    "scatter",
+    "distribution"
+   ],
+   "domains": [
+    "bulk_transcriptome"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa176BlandAltman": {
+   "groups": [
+    "scatter"
+   ],
+   "domains": [
+    "general"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa177RNAvelocity": {
+   "groups": [
+    "embedding"
+   ],
+   "domains": [
+    "single_cell"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa178receptorLigand": {
+   "groups": [
+    "bubble",
+    "heatmap"
+   ],
+   "domains": [
+    "single_cell"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa179AMDAplot": {
+   "groups": [
+    "heatmap",
+    "scatter"
+   ],
+   "domains": [
+    "bulk_transcriptome"
+   ],
+   "basis": "code"
+  },
+  "FigureYa180FGAplotV2": {
+   "groups": [
+    "bar"
+   ],
+   "domains": [
+    "genomic_variation"
+   ],
+   "basis": "code"
+  },
+  "FigureYa181multiCorrelation": {
+   "groups": [
+    "correlation",
+    "scatter"
+   ],
+   "domains": [
+    "general"
+   ],
+   "basis": "code"
+  },
+  "FigureYa182RFSurvV2": {
+   "groups": [
+    "survival",
+    "bar"
+   ],
+   "domains": [
+    "clinical_prognosis"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa183condSurv": {
+   "groups": [
+    "survival",
+    "line"
+   ],
+   "domains": [
+    "clinical_prognosis"
+   ],
+   "basis": "code"
+  },
+  "FigureYa184ranger": {
+   "groups": [
+    "survival"
+   ],
+   "domains": [
+    "clinical_prognosis"
+   ],
+   "basis": "code"
+  },
+  "FigureYa185sciATAC": {
+   "groups": [
+    "genome",
+    "embedding"
+   ],
+   "domains": [
+    "single_cell",
+    "epigenomics"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa186swimmerplot": {
+   "groups": [
+    "timeline"
+   ],
+   "domains": [
+    "clinical_prognosis"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa187RMS": {
+   "groups": [
+    "survival"
+   ],
+   "domains": [
+    "clinical_prognosis"
+   ],
+   "basis": "code"
+  },
+  "FigureYa188CNVload": {
+   "groups": [
+    "boxplot"
+   ],
+   "domains": [
+    "genomic_variation"
+   ],
+   "basis": "code"
+  },
+  "FigureYa189timeCindex": {
+   "groups": [
+    "survival",
+    "line"
+   ],
+   "domains": [
+    "clinical_prognosis"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa190batchLogistic": {
+   "groups": [
+    "other"
+   ],
+   "domains": [
+    "clinical_prognosis"
+   ],
+   "kind": "analysis",
+   "basis": "manual"
+  },
+  "FigureYa191bestLogistic": {
+   "groups": [
+    "roc"
+   ],
+   "domains": [
+    "clinical_prognosis"
+   ],
+   "basis": "code"
+  },
+  "FigureYa192breakpoint": {
+   "groups": [
+    "survival",
+    "line"
+   ],
+   "domains": [
+    "clinical_prognosis"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa193RiskTable": {
+   "groups": [
+    "survival",
+    "forest",
+    "table"
+   ],
+   "domains": [
+    "clinical_prognosis"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa194pySCENIC": {
+   "groups": [
+    "heatmap",
+    "embedding"
+   ],
+   "domains": [
+    "single_cell"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa195PanPaire": {
+   "groups": [
+    "line",
+    "bar",
+    "enrichment"
+   ],
+   "domains": [
+    "bulk_transcriptome"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa196PanPie": {
+   "groups": [
+    "proportion"
+   ],
+   "domains": [
+    "clinical_prognosis"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa196Plus_PanPie": {
+   "groups": [
+    "proportion"
+   ],
+   "domains": [
+    "clinical_prognosis"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa197SmoothHaz": {
+   "groups": [
+    "line",
+    "survival"
+   ],
+   "domains": [
+    "clinical_prognosis"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa198SignatureCombinationV2": {
+   "groups": [
+    "survival",
+    "bar"
+   ],
+   "domains": [
+    "clinical_prognosis"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa199crosslink": {
+   "groups": [
+    "network"
+   ],
+   "domains": [
+    "general"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa200pairwiseAUC": {
+   "groups": [
+    "roc",
+    "heatmap",
+    "bar"
+   ],
+   "domains": [
+    "bulk_transcriptome",
+    "clinical_prognosis"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa201ClusterCorrelation": {
+   "groups": [
+    "correlation",
+    "heatmap"
+   ],
+   "domains": [
+    "bulk_transcriptome"
+   ],
+   "basis": "code"
+  },
+  "FigureYa202consensusGene": {
+   "groups": [
+    "heatmap"
+   ],
+   "domains": [
+    "bulk_transcriptome"
+   ],
+   "basis": "code"
+  },
+  "FigureYa203ComBat": {
+   "groups": [
+    "other"
+   ],
+   "domains": [
+    "bulk_transcriptome"
+   ],
+   "kind": "analysis",
+   "basis": "code"
+  },
+  "FigureYa204PCAscore": {
+   "groups": [
+    "embedding",
+    "boxplot",
+    "heatmap"
+   ],
+   "domains": [
+    "bulk_transcriptome",
+    "clinical_prognosis"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa205immunophenoscore_update": {
+   "groups": [
+    "circular"
+   ],
+   "domains": [
+    "immune_microenvironment"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa206scHeatmap": {
+   "groups": [
+    "heatmap",
+    "bubble",
+    "enrichment"
+   ],
+   "domains": [
+    "single_cell"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa207Randomization": {
+   "groups": [
+    "other"
+   ],
+   "domains": [
+    "bulk_transcriptome"
+   ],
+   "kind": "analysis",
+   "basis": "code"
+  },
+  "FigureYa208FPI": {
+   "groups": [
+    "boxplot",
+    "enrichment"
+   ],
+   "domains": [
+    "bulk_transcriptome"
+   ],
+   "basis": "code"
+  },
+  "FigureYa209batchEnrich": {
+   "groups": [
+    "enrichment",
+    "bar",
+    "bubble"
+   ],
+   "domains": [
+    "bulk_transcriptome"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa210survivalScape": {
+   "groups": [
+    "survival",
+    "heatmap"
+   ],
+   "domains": [
+    "clinical_prognosis"
+   ],
+   "basis": "code"
+  },
+  "FigureYa211multiCohortImmSubtype": {
+   "groups": [
+    "heatmap",
+    "survival"
+   ],
+   "domains": [
+    "immune_microenvironment",
+    "bulk_transcriptome",
+    "clinical_prognosis"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa212drugTargetV2": {
+   "groups": [
+    "boxplot",
+    "scatter"
+   ],
+   "domains": [
+    "other_omics"
+   ],
+   "basis": "code"
+  },
+  "FigureYa213customizeHeatmap": {
+   "groups": [
+    "heatmap"
+   ],
+   "domains": [
+    "other_omics",
+    "bulk_transcriptome"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa214KEGG_hierarchyV2": {
+   "groups": [
+    "enrichment",
+    "bar"
+   ],
+   "domains": [
+    "bulk_transcriptome"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa215DNAage": {
+   "groups": [
+    "bar"
+   ],
+   "domains": [
+    "epigenomics"
+   ],
+   "basis": "code"
+  },
+  "FigureYa216MetaREM": {
+   "groups": [
+    "forest"
+   ],
+   "domains": [
+    "clinical_prognosis"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa217RMR": {
+   "groups": [
+    "other"
+   ],
+   "domains": [
+    "general"
+   ],
+   "kind": "analysis",
+   "basis": "code"
+  },
+  "FigureYa218Elasticnet": {
+   "groups": [
+    "bar",
+    "line"
+   ],
+   "domains": [
+    "bulk_transcriptome"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa219GMM": {
+   "groups": [
+    "roc",
+    "scatter"
+   ],
+   "domains": [
+    "clinical_prognosis"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa220repeatedLasso": {
+   "groups": [
+    "bar",
+    "survival"
+   ],
+   "domains": [
+    "clinical_prognosis"
+   ],
+   "basis": "code"
+  },
+  "FigureYa221tenFoldRF": {
+   "groups": [
+    "survival"
+   ],
+   "domains": [
+    "clinical_prognosis"
+   ],
+   "basis": "code"
+  },
+  "FigureYa222PCAgene": {
+   "groups": [
+    "embedding"
+   ],
+   "domains": [
+    "single_cell"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa223scNMF": {
+   "groups": [
+    "correlation",
+    "heatmap",
+    "enrichment"
+   ],
+   "domains": [
+    "single_cell"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa224scMarker": {
+   "groups": [
+    "embedding",
+    "proportion",
+    "bar",
+    "heatmap"
+   ],
+   "domains": [
+    "single_cell"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa225GiViTl": {
+   "groups": [
+    "roc"
+   ],
+   "domains": [
+    "clinical_prognosis"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa227boxdensity": {
+   "groups": [
+    "boxplot",
+    "distribution"
+   ],
+   "domains": [
+    "other_omics"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa228linkCor": {
+   "groups": [
+    "correlation",
+    "enrichment"
+   ],
+   "domains": [
+    "bulk_transcriptome"
+   ],
+   "basis": "code"
+  },
+  "FigureYa229PCOA": {
+   "groups": [
+    "embedding"
+   ],
+   "domains": [
+    "microbiome_evolution"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa230immunelandscape": {
+   "groups": [
+    "heatmap",
+    "correlation"
+   ],
+   "domains": [
+    "immune_microenvironment"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa231scScore": {
+   "groups": [
+    "embedding",
+    "violin"
+   ],
+   "domains": [
+    "single_cell"
+   ],
+   "basis": "code"
+  },
+  "FigureYa232scRankHeatmap": {
+   "groups": [
+    "heatmap",
+    "enrichment"
+   ],
+   "domains": [
+    "single_cell"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa233genepair": {
+   "groups": [
+    "heatmap",
+    "survival"
+   ],
+   "domains": [
+    "clinical_prognosis",
+    "bulk_transcriptome"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa234panImmune": {
+   "groups": [
+    "heatmap",
+    "scatter"
+   ],
+   "domains": [
+    "immune_microenvironment",
+    "bulk_transcriptome"
+   ],
+   "basis": "code"
+  },
+  "FigureYa235scDEG": {
+   "groups": [
+    "volcano",
+    "scatter",
+    "embedding",
+    "heatmap"
+   ],
+   "domains": [
+    "single_cell"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa236circGroup": {
+   "groups": [
+    "circular",
+    "heatmap"
+   ],
+   "domains": [
+    "general"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa237circVenn": {
+   "groups": [
+    "set_overlap",
+    "circular"
+   ],
+   "domains": [
+    "general"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa238corRiskMut": {
+   "groups": [
+    "genome",
+    "correlation",
+    "boxplot"
+   ],
+   "domains": [
+    "genomic_variation",
+    "clinical_prognosis"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa239ST_PDAC": {
+   "groups": [
+    "embedding"
+   ],
+   "domains": [
+    "spatial",
+    "single_cell"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa240CRISPR": {
+   "groups": [
+    "heatmap"
+   ],
+   "domains": [
+    "other_omics",
+    "bulk_transcriptome"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa241scRNA_NMI": {
+   "groups": [
+    "boxplot",
+    "embedding"
+   ],
+   "domains": [
+    "single_cell"
+   ],
+   "basis": "code"
+  },
+  "FigureYa242corMethExpr": {
+   "groups": [
+    "correlation",
+    "scatter"
+   ],
+   "domains": [
+    "epigenomics",
+    "bulk_transcriptome"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa243scMarkerGroupHeatmap": {
+   "groups": [
+    "heatmap"
+   ],
+   "domains": [
+    "single_cell"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa244PCAPlot": {
+   "groups": [
+    "embedding"
+   ],
+   "domains": [
+    "bulk_transcriptome"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa245Plus_VarDecompose": {
+   "groups": [
+    "other"
+   ],
+   "domains": [
+    "bulk_transcriptome"
+   ],
+   "kind": "analysis",
+   "basis": "manual"
+  },
+  "FigureYa245VarDecompose_update": {
+   "groups": [
+    "scatter"
+   ],
+   "domains": [
+    "bulk_transcriptome"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa246supervisedGDSC": {
+   "groups": [
+    "heatmap",
+    "boxplot"
+   ],
+   "domains": [
+    "other_omics",
+    "bulk_transcriptome"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa247oncoPredict": {
+   "groups": [
+    "boxplot"
+   ],
+   "domains": [
+    "other_omics"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa248MutLandscape": {
+   "groups": [
+    "genome",
+    "heatmap"
+   ],
+   "domains": [
+    "genomic_variation"
+   ],
+   "basis": "code"
+  },
+  "FigureYa249Regulon": {
+   "groups": [
+    "heatmap"
+   ],
+   "domains": [
+    "bulk_transcriptome"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa250ImmGenePair": {
+   "groups": [
+    "survival"
+   ],
+   "domains": [
+    "immune_microenvironment",
+    "clinical_prognosis"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa251NPHSurv": {
+   "groups": [
+    "survival"
+   ],
+   "domains": [
+    "clinical_prognosis"
+   ],
+   "basis": "code"
+  },
+  "FigureYa252mclust": {
+   "groups": [
+    "line"
+   ],
+   "domains": [
+    "general"
+   ],
+   "basis": "code"
+  },
+  "FigureYa253panGSEA": {
+   "groups": [
+    "enrichment",
+    "bubble"
+   ],
+   "domains": [
+    "bulk_transcriptome"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa254scViolin": {
+   "groups": [
+    "violin",
+    "boxplot"
+   ],
+   "domains": [
+    "single_cell"
+   ],
+   "basis": "code"
+  },
+  "FigureYa255TIME": {
+   "groups": [
+    "heatmap",
+    "enrichment"
+   ],
+   "domains": [
+    "immune_microenvironment",
+    "bulk_transcriptome"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa256panelLink": {
+   "groups": [
+    "heatmap",
+    "bar",
+    "combo"
+   ],
+   "domains": [
+    "general"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa257armCNV": {
+   "groups": [
+    "bar"
+   ],
+   "domains": [
+    "genomic_variation"
+   ],
+   "basis": "code"
+  },
+  "FigureYa258SNF": {
+   "groups": [
+    "heatmap"
+   ],
+   "domains": [
+    "other_omics",
+    "bulk_transcriptome"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa259circLink": {
+   "groups": [
+    "network",
+    "circular"
+   ],
+   "domains": [
+    "general"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa260CNV": {
+   "groups": [
+    "bar"
+   ],
+   "domains": [
+    "genomic_variation"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa261circGene": {
+   "groups": [
+    "circular",
+    "genome"
+   ],
+   "domains": [
+    "genomic_variation"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa262GDC": {
+   "groups": [
+    "heatmap",
+    "genome"
+   ],
+   "domains": [
+    "genomic_variation"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa263panDiff": {
+   "groups": [
+    "bubble",
+    "bar"
+   ],
+   "domains": [
+    "bulk_transcriptome"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa264epiImmune": {
+   "groups": [
+    "bar"
+   ],
+   "domains": [
+    "immune_microenvironment",
+    "bulk_transcriptome"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa265panCNV": {
+   "groups": [
+    "bar"
+   ],
+   "domains": [
+    "genomic_variation",
+    "bulk_transcriptome"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa266panHeatmap": {
+   "groups": [
+    "heatmap",
+    "boxplot"
+   ],
+   "domains": [
+    "bulk_transcriptome"
+   ],
+   "basis": "code"
+  },
+  "FigureYa267scCellChat": {
+   "groups": [
+    "heatmap",
+    "network"
+   ],
+   "domains": [
+    "single_cell"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa268panCNVexpr": {
+   "groups": [
+    "bubble",
+    "correlation"
+   ],
+   "domains": [
+    "genomic_variation",
+    "bulk_transcriptome"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa269scMetabolism": {
+   "groups": [
+    "heatmap"
+   ],
+   "domains": [
+    "single_cell"
+   ],
+   "basis": "code"
+  },
+  "FigureYa270panMeth": {
+   "groups": [
+    "bubble"
+   ],
+   "domains": [
+    "epigenomics",
+    "bulk_transcriptome"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa271panMethExpr": {
+   "groups": [
+    "bubble",
+    "correlation"
+   ],
+   "domains": [
+    "epigenomics",
+    "bulk_transcriptome"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa272scBulkCCCI": {
+   "groups": [
+    "heatmap",
+    "bar"
+   ],
+   "domains": [
+    "single_cell",
+    "bulk_transcriptome"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa273BAPC": {
+   "groups": [
+    "line"
+   ],
+   "domains": [
+    "clinical_prognosis"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa274MuSiCbulkProop": {
+   "groups": [
+    "embedding",
+    "heatmap"
+   ],
+   "domains": [
+    "single_cell",
+    "bulk_transcriptome"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa275scAUCell": {
+   "groups": [
+    "embedding"
+   ],
+   "domains": [
+    "single_cell"
+   ],
+   "basis": "code"
+  },
+  "FigureYa276panSNV": {
+   "groups": [
+    "genome",
+    "heatmap"
+   ],
+   "domains": [
+    "genomic_variation"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa277Immunomodulator": {
+   "groups": [
+    "heatmap"
+   ],
+   "domains": [
+    "immune_microenvironment"
+   ],
+   "basis": "code"
+  },
+  "FigureYa278heatmapPoints": {
+   "groups": [
+    "heatmap",
+    "bubble"
+   ],
+   "domains": [
+    "general"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa279panGeneGSEA": {
+   "groups": [
+    "enrichment",
+    "bubble"
+   ],
+   "domains": [
+    "bulk_transcriptome"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa280TMEofSTS": {
+   "groups": [
+    "heatmap"
+   ],
+   "domains": [
+    "immune_microenvironment"
+   ],
+   "basis": "code"
+  },
+  "FigureYa281wheel": {
+   "groups": [
+    "scatter"
+   ],
+   "domains": [
+    "single_cell"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa282CMAP_XSum": {
+   "groups": [
+    "scatter"
+   ],
+   "domains": [
+    "other_omics"
+   ],
+   "basis": "code"
+  },
+  "FigureYa283vennyPvalue": {
+   "groups": [
+    "set_overlap"
+   ],
+   "domains": [
+    "general"
+   ],
+   "basis": "code"
+  },
+  "FigureYa284pairwiseLogrank": {
+   "groups": [
+    "survival"
+   ],
+   "domains": [
+    "clinical_prognosis"
+   ],
+   "basis": "code"
+  },
+  "FigureYa285scRNA_monocle": {
+   "groups": [
+    "embedding"
+   ],
+   "domains": [
+    "single_cell"
+   ],
+   "basis": "code"
+  },
+  "FigureYa286ExprCorORR": {
+   "groups": [
+    "correlation",
+    "scatter"
+   ],
+   "domains": [
+    "clinical_prognosis"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa287L2logV2": {
+   "groups": [
+    "roc",
+    "line"
+   ],
+   "domains": [
+    "clinical_prognosis"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa288MutualExclusivity": {
+   "groups": [
+    "genome",
+    "heatmap"
+   ],
+   "domains": [
+    "genomic_variation"
+   ],
+   "basis": "code"
+  },
+  "FigureYa289TILSig": {
+   "groups": [
+    "survival"
+   ],
+   "domains": [
+    "immune_microenvironment",
+    "clinical_prognosis"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa290BarGraph": {
+   "groups": [
+    "bar",
+    "proportion"
+   ],
+   "domains": [
+    "single_cell"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa291PancanProgSigatureV2": {
+   "groups": [
+    "violin",
+    "survival"
+   ],
+   "domains": [
+    "clinical_prognosis",
+    "bulk_transcriptome"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa292HCCsubtype": {
+   "groups": [
+    "heatmap"
+   ],
+   "domains": [
+    "bulk_transcriptome"
+   ],
+   "basis": "code"
+  },
+  "FigureYa293machineLearning": {
+   "groups": [
+    "heatmap",
+    "survival"
+   ],
+   "domains": [
+    "clinical_prognosis"
+   ],
+   "basis": "code"
+  },
+  "FigureYa293Plus_BinaryClassificationML": {
+   "groups": [
+    "roc"
+   ],
+   "domains": [
+    "clinical_prognosis"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa294HCCdrug": {
+   "groups": [
+    "scatter"
+   ],
+   "domains": [
+    "other_omics"
+   ],
+   "basis": "code"
+  },
+  "FigureYa295ClassDiscovery": {
+   "groups": [
+    "heatmap",
+    "tree"
+   ],
+   "domains": [
+    "bulk_transcriptome"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa296VIPER": {
+   "groups": [
+    "other"
+   ],
+   "domains": [
+    "bulk_transcriptome"
+   ],
+   "kind": "analysis",
+   "basis": "code"
+  },
+  "FigureYa297Rbar": {
+   "groups": [
+    "bar"
+   ],
+   "domains": [
+    "general"
+   ],
+   "basis": "code"
+  },
+  "FigureYa298ecdfPvalue": {
+   "groups": [
+    "distribution"
+   ],
+   "domains": [
+    "general"
+   ],
+   "basis": "code"
+  },
+  "FigureYa299pancanSurv": {
+   "groups": [
+    "survival",
+    "forest",
+    "heatmap"
+   ],
+   "domains": [
+    "clinical_prognosis"
+   ],
+   "basis": "code"
+  },
+  "FigureYa300pancanCor": {
+   "groups": [
+    "correlation",
+    "scatter"
+   ],
+   "domains": [
+    "bulk_transcriptome"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa301scCoExpr": {
+   "groups": [
+    "embedding",
+    "correlation"
+   ],
+   "domains": [
+    "single_cell"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa302NTPPAM": {
+   "groups": [
+    "other"
+   ],
+   "domains": [
+    "bulk_transcriptome"
+   ],
+   "kind": "analysis",
+   "basis": "code"
+  },
+  "FigureYa303panCircos": {
+   "groups": [
+    "circular"
+   ],
+   "domains": [
+    "bulk_transcriptome"
+   ],
+   "basis": "code"
+  },
+  "FigureYa304MAGIC": {
+   "groups": [
+    "other"
+   ],
+   "domains": [
+    "single_cell"
+   ],
+   "kind": "analysis",
+   "basis": "code"
+  },
+  "FigureYa305PMAPscore": {
+   "groups": [
+    "other"
+   ],
+   "domains": [
+    "genomic_variation"
+   ],
+   "kind": "analysis",
+   "basis": "manual"
+  },
+  "FigureYa306slingshot": {
+   "groups": [
+    "embedding",
+    "heatmap",
+    "distribution"
+   ],
+   "domains": [
+    "single_cell"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa307CNVHeatmap": {
+   "groups": [
+    "heatmap",
+    "genome"
+   ],
+   "domains": [
+    "genomic_variation"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa308IHS": {
+   "groups": [
+    "scatter"
+   ],
+   "domains": [
+    "bulk_transcriptome",
+    "immune_microenvironment"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa310CPDBChordGramV2": {
+   "groups": [
+    "network",
+    "circular"
+   ],
+   "domains": [
+    "single_cell"
+   ],
+   "basis": "code"
+  },
+  "FigureYa311PAM50Heatmap": {
+   "groups": [
+    "heatmap"
+   ],
+   "domains": [
+    "bulk_transcriptome"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa312CellPreference": {
+   "groups": [
+    "heatmap"
+   ],
+   "domains": [
+    "single_cell"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa313CircularPlot": {
+   "groups": [
+    "circular"
+   ],
+   "domains": [
+    "general"
+   ],
+   "basis": "code"
+  },
+  "FigureYa314SingleRScore": {
+   "groups": [
+    "scatter"
+   ],
+   "domains": [
+    "single_cell"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa315SingleRFraction": {
+   "groups": [
+    "boxplot",
+    "violin"
+   ],
+   "domains": [
+    "single_cell"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa316RF_XGBoost_Boruta": {
+   "groups": [
+    "bar"
+   ],
+   "domains": [
+    "clinical_prognosis"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa317RoeDot": {
+   "groups": [
+    "bubble",
+    "embedding"
+   ],
+   "domains": [
+    "single_cell"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa318GenesetDEDotplot": {
+   "groups": [
+    "bubble",
+    "heatmap",
+    "enrichment"
+   ],
+   "domains": [
+    "single_cell"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa319ContribScore": {
+   "groups": [
+    "bar",
+    "proportion",
+    "embedding"
+   ],
+   "domains": [
+    "single_cell"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa320ClontypeHeatmap": {
+   "groups": [
+    "heatmap"
+   ],
+   "domains": [
+    "single_cell",
+    "immune_microenvironment"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa321volcanoSE": {
+   "groups": [
+    "volcano"
+   ],
+   "domains": [
+    "bulk_transcriptome"
+   ],
+   "basis": "manual"
+  },
+  "FigureYa322SSEA": {
+   "groups": [
+    "other"
+   ],
+   "domains": [
+    "bulk_transcriptome"
+   ],
+   "kind": "analysis",
+   "basis": "code"
+  },
+  "FigureYa323STpathseq": {
+   "groups": [
+    "other"
+   ],
+   "domains": [
+    "spatial",
+    "microbiome_evolution"
+   ],
+   "kind": "analysis",
+   "basis": "manual"
+  }
+ }
+}
