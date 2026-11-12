@@ -214,6 +214,7 @@ export async function startLocalHttp(options: {
         request.socket?.setTimeout(0);
         return json(response, 200, await service.local.ensureReference(input));
       }
+      if (url.pathname === "/api/reference-colors") return json(response, 200, await service.local.referenceColors(input));
       if (url.pathname === "/api/confirm") return json(response, 200, await service.local.confirm(input));
       if (url.pathname === "/api/asset") return json(response, 200, await service.local.asset(input));
       if (url.pathname === "/api/favorites") return json(response, 200, await service.local.changeFavorite(input));

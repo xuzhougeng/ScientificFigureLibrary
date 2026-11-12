@@ -100,8 +100,9 @@ import {
   defineCandidateImages,
   scopedCandidateId,
 } from "./candidate-images.ts";
-import { defineCatalogListing } from "./catalog-listing.ts";
-import { plotFamilyGroup, type PlotFamilyGroup } from "./plot-family-groups.ts";
+import { defineCatalogListing, facet as facetCounts, type Facet } from "./catalog-listing.ts";
+import { candidateDomains, DOMAIN_IDS, type DomainId } from "./domains.ts";
+import { inPlotFamilyGroup, PLOT_FAMILY_GROUP_IDS, plotFamilyGroups, type PlotFamilyGroup } from "./plot-family-groups.ts";
 
 export { VERSION };
 export const MATERIALIZATION_PROTOCOL_VERSION = 2;
@@ -298,6 +299,8 @@ type ParsedSearchInput = Omit<z.infer<typeof SearchInput>, "providerIds" | "resu
   browse?: boolean;
   /** Catalog listing only: canonical figure-type group applied after Provider search. */
   familyGroup?: PlotFamilyGroup;
+  /** Catalog listing only: research domain applied after Provider search. */
+  domain?: DomainId;
   /** Catalog listing only: exact Provider-qualified template keys to re-list. */
   templateKeys?: string[];
 };
@@ -321,6 +324,7 @@ function searchQueryDigest(input: ParsedSearchInput) {
       limit: input.limit,
       browse: input.browse === true,
       ...(input.familyGroup ? { familyGroup: input.familyGroup } : {}),
+      ...(input.domain ? { domain: input.domain } : {}),
       ...(input.templateKeys ? { templateKeys: [...input.templateKeys].sort() } : {}),
     }),
   );
@@ -563,6 +567,8 @@ interface SearchSessionState {
     { health: "degraded" | "corrupt"; errorCode: string; safeMessage: string }
   >;
   candidateIds: Set<string>;
+  /** Group and domain counts over the matches before the group/domain filters, so a client can offer them as facets. */
+  facets: { familyGroup: Facet; domain: Facet };
   /** Created by figure_library_list_catalog; may be continued by offset. */
   catalogListing?: boolean;
 }
@@ -795,6 +801,8 @@ export async function createLibraryService(options: LibraryServiceOptions = {}) 
     toolName: "figure_library_search" | "figure_library_search_page";
     operationStartedAt: number;
     thumbnails?: LocalThumbnailStore;
+    /** Local clients only: include group/domain facets and the active filters. */
+    facets?: boolean;
   }): Promise<CallToolResult> => {
     const context = await currentLibraries();
     const currentCatalogRevision = await registry.catalogRevision(
@@ -882,6 +890,12 @@ export async function createLibraryService(options: LibraryServiceOptions = {}) 
       candidates: visibleCandidates,
       diagnosticsDegraded: diagnostics.degraded,
       hostIntegrationCapabilities,
+      ...(options.facets
+        ? {
+            facets: options.state.facets,
+            filters: { familyGroup: options.state.input.familyGroup ?? null, domain: options.state.input.domain ?? null },
+          }
+        : {}),
     };
     const result = terminal(
       responseEnvelope,
@@ -936,6 +950,7 @@ export async function createLibraryService(options: LibraryServiceOptions = {}) 
     invocationSource: "app" | "server";
     operationStartedAt: number;
     thumbnails?: LocalThumbnailStore;
+    facets?: boolean;
   }) {
     const state = searchSessions.get(options.resultSetId);
     if (!state) {
@@ -961,6 +976,7 @@ export async function createLibraryService(options: LibraryServiceOptions = {}) 
       toolName: "figure_library_search_page",
       operationStartedAt: options.operationStartedAt,
       thumbnails: options.thumbnails,
+      facets: options.facets,
     });
   }
 
@@ -975,12 +991,13 @@ export async function createLibraryService(options: LibraryServiceOptions = {}) 
     customTag?: string;
     favoriteSelector?: ExactTemplateSelector;
     thumbnails?: LocalThumbnailStore;
+    facets?: boolean;
   }) {
     const { parsedInput, explicitlySelected, correlationId, invocationSource, toolName, operationStartedAt } = options;
     if (options.resultSetId) {
       const state = searchSessions.get(options.resultSetId);
       if (!state || state.queryDigest !== searchQueryDigest(parsedInput)) throw new Error("The cached publication search is missing or its query/filters changed; create a new Plan.");
-      return await buildSearchPage({ resultSetId: options.resultSetId, state, offset: 0, limit: parsedInput.limit, correlationId, invocationSource, toolName, operationStartedAt, thumbnails: options.thumbnails });
+      return await buildSearchPage({ resultSetId: options.resultSetId, state, offset: 0, limit: parsedInput.limit, correlationId, invocationSource, toolName, operationStartedAt, thumbnails: options.thumbnails, facets: options.facets });
     }
     const { resultSetId, state } = await createSearchResultSet(options);
     return await buildSearchPage({
@@ -993,6 +1010,7 @@ export async function createLibraryService(options: LibraryServiceOptions = {}) 
       toolName,
       operationStartedAt,
       thumbnails: options.thumbnails,
+      facets: options.facets,
     });
   }
 
@@ -1073,8 +1091,16 @@ export async function createLibraryService(options: LibraryServiceOptions = {}) 
       const matching = new Set(annotations.entries.filter(entry => entry.tags.includes(options.customTag!)).map(customTagKey));
       for (const result of searched) result.candidates = result.candidates.filter(candidate => matching.has(customTagKey(candidate)));
     }
+    const unfiltered = searched.flatMap(({ candidates }) => candidates);
+    const facets = {
+      familyGroup: facetCounts(unfiltered, (candidate) => plotFamilyGroups(candidate)),
+      domain: facetCounts(unfiltered, (candidate) => candidateDomains(candidate)),
+    };
     if (parsedInput.familyGroup) {
-      for (const result of searched) result.candidates = result.candidates.filter((candidate) => plotFamilyGroup(candidate) === parsedInput.familyGroup);
+      for (const result of searched) result.candidates = result.candidates.filter((candidate) => inPlotFamilyGroup(candidate, parsedInput.familyGroup!));
+    }
+    if (parsedInput.domain) {
+      for (const result of searched) result.candidates = result.candidates.filter((candidate) => candidateDomains(candidate).includes(parsedInput.domain!));
     }
     if (parsedInput.templateKeys) {
       const wanted = new Set(parsedInput.templateKeys);
@@ -1137,6 +1163,7 @@ export async function createLibraryService(options: LibraryServiceOptions = {}) 
       providerMatches,
       providerFailures,
       candidateIds: new Set(normalized.map((candidate) => scopedCandidateId(resultSetId, candidate))),
+      facets,
       ...(options.catalogListing ? { catalogListing: true } : {}),
     };
     searchSessions.set(resultSetId, state);
@@ -1179,6 +1206,7 @@ export async function createLibraryService(options: LibraryServiceOptions = {}) 
           browse: true,
           plotFamily: input.plotFamily,
           ...(input.familyGroup ? { familyGroup: input.familyGroup } : {}),
+          ...(input.domain ? { domain: input.domain } : {}),
           ...(input.templates ? { templateKeys: input.templates.map((item) => templateKey(item.providerId, item.templateId)) } : {}),
           language: input.language,
           assetKind: input.assetKind,
@@ -1701,6 +1729,8 @@ export async function createLibraryService(options: LibraryServiceOptions = {}) 
         query: z.string().max(2000).optional(),
         dataProfile: z.string().max(2000).optional(),
         customTag: z.string().trim().min(1).max(40).optional(),
+        familyGroup: z.enum(PLOT_FAMILY_GROUP_IDS).optional(),
+        domain: z.enum(DOMAIN_IDS).optional(),
         /** "url": the local web client loads cached card thumbnails from /api/thumb instead of inline data URLs. */
         thumbnailDelivery: z.enum(["inline", "url"]).optional(),
       }).strict().parse(raw ?? {});
@@ -1714,7 +1744,10 @@ export async function createLibraryService(options: LibraryServiceOptions = {}) 
             dataProfile: input.dataProfile,
             providerIds: input.providerIds ?? registry.defaultProviderIds(),
             limit: input.limit ?? 12,
+            ...(input.familyGroup ? { familyGroup: input.familyGroup } : {}),
+            ...(input.domain ? { domain: input.domain } : {}),
           },
+          facets: true,
           customTag: input.customTag?.normalize("NFC"),
           explicitlySelected: input.providerIds !== undefined,
           correlationId,
@@ -1732,7 +1765,7 @@ export async function createLibraryService(options: LibraryServiceOptions = {}) 
       try {
         return await searchPageFromCursor({
           ...input, correlationId: diagnostics.createCorrelationId("gallery-page"),
-          invocationSource: "app", operationStartedAt: performance.now(), thumbnails: localThumbnails,
+          invocationSource: "app", operationStartedAt: performance.now(), thumbnails: localThumbnails, facets: true,
         });
       } catch (error) {
         return previewFailure("Gallery pagination failed", error);
@@ -2454,6 +2487,7 @@ export async function createLibraryService(options: LibraryServiceOptions = {}) 
         input: parsedInput, request: searchRequest, candidates, queryDigest, catalogRevision, libraryBindingDigest: bindingDigest,
         providerMatches: Object.fromEntries(parsedInput.providerIds.map((id) => [id, candidates.filter((c) => c.providerId === id).length])),
         providerFailures: {}, candidateIds: new Set(candidates.map((candidate) => scopedCandidateId(resultSetId, candidate))),
+        facets: { familyGroup: [], domain: [] },
         presented: false,
       });
       while (searchSessions.size > 128) searchSessions.delete(searchSessions.keys().next().value!);
@@ -2606,6 +2640,7 @@ export async function createLibraryService(options: LibraryServiceOptions = {}) 
       applyGalleryCache: (input: unknown) => operations.run(() => galleryCache.apply(input)),
       referenceStatus: (input: unknown) => operations.run(() => referenceCache.status(input)),
       ensureReference: (input: unknown) => operations.run(() => referenceCache.ensure(input)),
+      referenceColors: (input: unknown) => operations.run(() => referenceCache.colors(input)),
       preview: (input: unknown) => operations.run(() => localOperations.preview(input)),
       confirm: (input: unknown) => operations.run(() => localOperations.confirm(input)),
       library: () => operations.run(() => localOperations.library()),

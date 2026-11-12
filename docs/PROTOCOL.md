@@ -655,31 +655,57 @@ an image is not proof the user saw it on their screen.
 
 ### Catalog listing for semantic selection
 
-Search ranking is lexical, so a query worded differently from template names
-can return nothing. `figure_library_list_catalog` lets the host Agent read the
+Search ranking is lexical. A bilingual vocabulary
+([search-vocabulary.ts](../src/search-vocabulary.ts)) covers common figure names
+and research fields: a query that names one ("山峦图", "ridgeline") also searches
+its other names, and the concept's figure-type group and domain are matched
+against the groups and domains an entry declares, so a reviewed group outranks a
+family word that only appears inside an identifier. Full-width input is folded,
+and a misspelt figure name is corrected when exactly one vocabulary word is one
+edit away. Search candidates may carry the optional `familyGroups`, `domains`
+and `templateKind` (`analysis`) fields described below. Wording outside the
+vocabulary can still return nothing. `figure_library_list_catalog` lets the host Agent read the
 catalog itself and choose by meaning. It is read-only and model-visible.
 
 - A new listing takes optional `providerIds` (default Providers when omitted;
-  Community stays explicit-only), `familyGroup`, `plotFamily`, `language`,
+  Community stays explicit-only), `familyGroup`, `domain`, `plotFamily`, `language`,
   `assetKind`, `limit` (0–100, default 50; `0` returns counts and facets only)
   and `detail` (`compact`, the default, or `full`). It registers an ordinary
   browse result set: the same Provider filters, catalog revision and Library
-  binding checks as search; a `familyGroup` filter is applied to the Provider
-  results before the set is registered and is part of its query digest.
+  binding checks as search; `familyGroup` and `domain` filters are applied to the
+  Provider results before the set is registered and are part of its query digest.
 - `familyGroup` is a read-only canonical figure-type group (for example
   `embedding`, `volcano`, `set_overlap`, `survival`, `proportion`, `other`,
   `unclassified`; list in [plot-family-groups.ts](../src/plot-family-groups.ts)).
   It is derived from the stored `plotFamily`, falling back to words in the
   template ID and English title when the family is empty or only a domain label.
   Stored metadata, selectors and the keyword search `plotFamily` filter are
-  unchanged.
+  unchanged. An entry can belong to several groups, primary first: explicit
+  `familyGroups` from Provider metadata or the bundled FigureYa taxonomy
+  ([figureya-taxonomy.json](../assets/figureya-taxonomy.json), drafted from each
+  module's plotting calls and reviewed) win over the rules, and the rules keep
+  every group the `plotFamily` matches. The `familyGroup` filter matches any
+  membership. Each group has a `kind`: `form` for figure forms, `theme` for the
+  four analysis themes (`survival`, `genome`, `enrichment`, `roc`) whose
+  members draw many forms. FigureYa modules that only prepare or analyse data
+  are listed under `other`.
+- `domain` is a research-domain facet independent of the figure type
+  (`single_cell`, `spatial`, `bulk_transcriptome`, `genomic_variation`,
+  `epigenomics`, `immune_microenvironment`, `clinical_prognosis`,
+  `microbiome_evolution`, `other_omics`, `general`; list in
+  [domains.ts](../src/domains.ts)). Domains are explicit metadata and are never
+  inferred from free text, so an entry without declared domains has none and
+  never matches a `domain` filter. Bundled FigureYa modules take theirs from
+  the same taxonomy.
 - The response has `resultSetId`, `total`, `offset`, `nextOffset`, `sources[]`
   (per-Provider `matched` and `health`), `facets` (`providerId`, `familyGroup`,
-  `plotFamily`, `language`, `assetKind` counts over the whole filtered listing;
-  empty values appear as `unclassified`/`unknown`) and `entries[]` with
-  `candidateId`, `providerId`, `templateId`, `title`, optional `titleEn`,
-  `familyGroup`, `plotFamily`, `language`, `assetKind`, `thumbnailAvailable` and
-  a single-line `summary`.
+  `domain`, `plotFamily`, `language`, `assetKind` counts over the whole filtered
+  listing; empty values appear as `unclassified`/`unknown`; an entry counts once
+  under each of its groups and domains, so those two facets can add up to more
+  than `total`) and `entries[]` with `candidateId`, `providerId`, `templateId`,
+  `title`, optional `titleEn`, `familyGroup` (the primary group),
+  `familyGroups`, `domains`, `plotFamily`, `language`, `assetKind`,
+  `thumbnailAvailable` and a single-line `summary`.
   Text content repeats this as one `|`-separated line per entry. `compact` lines
   carry `candidateId | title | titleEn | familyGroup/plotFamily | summary` with a
   60-character summary, grouped under `PROVIDER <id>` headers and flagging only

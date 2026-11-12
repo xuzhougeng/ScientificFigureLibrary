@@ -94,6 +94,7 @@ export async function commonPluginFiles() {
     "assets/FIGUREYA_LICENSE.txt",
     "assets/figureya-preview.manifest.json",
     "assets/figureya-source-pack.manifest.json",
+    "assets/figureya-taxonomy.json",
     "assets/personal-modules/module-catalog.json",
     "assets/personal-modules/module-preview.manifest.json",
     "assets/personal-modules/module-source-pack.manifest.json",

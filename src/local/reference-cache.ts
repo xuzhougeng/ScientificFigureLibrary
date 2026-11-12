@@ -12,6 +12,7 @@ import {
 } from "../providers.ts";
 import { cacheFigureYaSourceArchive, inspectFigureYaSourcePack } from "../materialize.ts";
 import { cacheModuleSourceArchive, inspectModuleSourcePack } from "../module-materialize.ts";
+import { codeLanguage, extractCodeColors, type CodeColorReport } from "../color-palette.ts";
 import { buildReferencePrompt, referenceHasCode } from "./reference-prompt.ts";
 import { galleryCodeDirectory } from "./gallery-cache.ts";
 
@@ -31,6 +32,22 @@ export interface ReferenceCacheStatus {
 }
 
 const selection = z.object({ resultSetId: z.string().min(1), candidateId: z.string().min(1) });
+const MAX_COLOR_FILES = 24;
+const MAX_COLOR_FILE_BYTES = 2 * 1024 * 1024;
+
+/**
+ * Colours written in a reference's code. `reference_pack` reads the code
+ * files already expanded on this machine; `catalog_text` falls back to the
+ * module text bundled with the FigureYa catalog, which has no line structure
+ * and may include commented-out colours. Nothing is downloaded or executed.
+ */
+export interface ReferenceCodeColors extends CodeColorReport {
+  source: "reference_pack" | "catalog_text" | "unavailable";
+  /** Code files that were scanned, relative to the reference pack. */
+  files: string[];
+  /** Whether a fixed-version reference pack can be fetched to get an exact result. */
+  canCache: boolean;
+}
 const CACHE_JSON = "cache.json";
 const MAX_PACK_FILES = 10_000;
 
@@ -270,7 +287,41 @@ export function createReferenceCache(options: {
     throw new Error("此来源没有参考包缓存；请使用「保存到项目」导出，不要另建第三份缓存");
   }
 
+  async function packCodeColors(pack: ReferencePackFiles): Promise<{ files: string[] } & CodeColorReport> {
+    const names = pack.files.filter((file) => codeLanguage(file)).slice(0, MAX_COLOR_FILES);
+    const sources: Array<{ path: string; text: string }> = [];
+    for (const name of names) {
+      const absolute = path.join(pack.target, ...name.split("/"));
+      const stat = await fs.lstat(absolute);
+      if (!stat.isFile() || stat.isSymbolicLink() || stat.size > MAX_COLOR_FILE_BYTES) continue;
+      sources.push({ path: name, text: await fs.readFile(absolute, "utf8") });
+    }
+    return { files: sources.map((source) => source.path), ...extractCodeColors(sources) };
+  }
+
   return {
+    colors: async (raw: unknown): Promise<ReferenceCodeColors> => {
+      const input = selection.strict().parse(raw);
+      const [candidate] = await options.candidates(input.resultSetId, [input.candidateId]);
+      if (!candidate) throw new Error("A candidate ID does not belong to this result set.");
+      const context = await options.context();
+      const canCache = candidate.materializable && candidate.providerId !== LOCAL_LIBRARY_PROVIDER_ID;
+      let pack: ReferencePackFiles | undefined;
+      try {
+        pack = (await packStatus(context, candidate, (providerId, directory) => sourcePackIds(context, providerId, directory))).pack;
+      } catch {
+        /* An unreadable cache is reported as "not cached"; the user can fetch it again. */
+      }
+      if (pack) return { source: "reference_pack", canCache: false, ...(await packCodeColors(pack)) };
+      if (candidate.providerId === FIGUREYA_PROVIDER_ID) {
+        const module = figureYaModule(context, candidate);
+        if (module?.fullText) {
+          const report = extractCodeColors([{ path: `${module.moduleId}.Rmd`, text: module.fullText, flattened: true }]);
+          return { source: "catalog_text", canCache, files: [], ...report };
+        }
+      }
+      return { source: "unavailable", canCache, files: [], hex: [], named: [], palettes: [] };
+    },
     status: async (raw: unknown) => {
       const input = z.object({ resultSetId: z.string().min(1), candidateIds: z.array(z.string().min(1)).min(1).max(12) }).strict().parse(raw);
       const candidateIds = [...new Set(input.candidateIds)];
