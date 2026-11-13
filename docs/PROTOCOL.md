@@ -108,6 +108,21 @@ materialize an exact result.
 > described, previewed, or newly materialized, but already materialized
 > projects are not deleted.
 >
+> **Feed payload limits:** every client from 0.6.7 downloads an update's
+> previews as one `module-previews.zip` and rejects the whole manifest when a
+> limit is exceeded: catalog 16 MiB, preview ZIP 64 MiB, 128 MiB expanded,
+> 10,000 files, 64 MiB per file. A rejected update leaves the client on its
+> previous snapshot. The feed therefore lists a **reduced rendition** of each
+> preview (JPEG, long edge at most 1200 px; an image that already fits, or
+> whose rendition would not be smaller, is kept as it is). The catalog
+> `preview` identity describes that rendition; `files[]`, `archive` and
+> `thumbnail` are unchanged, so a materialized template still contains the
+> original image. `scripts/publish-open-figure-feed.mjs` reads the same limit
+> constants as the client and refuses to prepare or sign a payload over any of
+> them. A manifest that was fetched but fails verification is an integrity
+> error and waits for the normal refresh interval; only a transport failure
+> uses the short network backoff.
+>
 > **0.6.1 personal module boundary:** default search order is Local Published,
 > FigureYa, Open Figure Modules, then dynamic personal Providers that opted
 > in. Community remains registered with `enabled: true`,

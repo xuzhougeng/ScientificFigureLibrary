@@ -61,6 +61,21 @@ main 推送和合并队列检查不会因此额外打包。四个测试矩阵全
 候选包沿用源码版本号；若尚未升版，不能将它覆盖到同版本的正式 Release。
 它不替代发布前的版本/标签一致性检查，也不代表真实用户设备或宿主界面已人工验收。
 
+## Open Figure feed 发布
+
+官方 Open Figure 目录的发布不在本仓库的 workflow 里，而在内容仓库 `jarxunlai/ScientificFigureLibrary-personal` 的 `open-figure-feed-publish`：它按该仓库的变量 `SFL_PUBLISHER_COMMIT` 检出本仓库，运行 [publish-open-figure-feed.mjs](../scripts/publish-open-figure-feed.mjs) 的 `publish-prepare` 和 `sign`。签名私钥只存在于该仓库的 GitHub 环境中。
+
+- 发布脚本有改动时，合并后要把 `SFL_PUBLISHER_COMMIT` 更新为新的提交，否则内容仓库继续用旧脚本。
+- 已发布的客户端（0.6.7 起）对一次更新有硬上限：目录 16 MiB、预览压缩包 64 MiB、解压后 128 MiB、1 万个文件、单文件 64 MiB。超过任何一项，客户端会拒收整次更新并停在旧目录。
+- 脚本因此发布缩小的预览图（JPEG，长边不超过 1200 px），并在 `validate`、`publish-prepare` 和 `sign` 三个模式下检查上述上限，超限即失败，不会签名。输出的 `size` 字段给出压缩包大小和上限。
+- 本地预演（只读内容仓库，不签名、不发布）：
+
+  ```bash
+  node scripts/publish-open-figure-feed.mjs --mode validate --repository <内容仓库路径>
+  ```
+
+- 闸门失败时不要调大上限：上限写在已发布的客户端里。应减少预览体积，例如降低 [preview-reduction.ts](../src/preview-reduction.ts) 里的长边或质量；模板数量继续增长后需要改为按需取图的新通道。
+
 ## GitHub Release
 
 推送稳定标签 `vX.Y.Z`（或对已有标签手动运行）会触发

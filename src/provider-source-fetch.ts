@@ -25,15 +25,15 @@ const PROVIDER_ID = /^[a-z0-9][a-z0-9._-]{1,126}[a-z0-9]$/u;
 const TEMPLATE_ID = /^[a-z0-9][a-z0-9._-]{0,126}[a-z0-9]$/u;
 const MAX_MANIFEST_BYTES = 256 * 1024;
 const MAX_SIGNATURE_BYTES = 16 * 1024;
-const MAX_CATALOG_BYTES = 16 * 1024 * 1024;
-const MAX_PREVIEW_ARCHIVE_BYTES = 64 * 1024 * 1024;
-const MAX_PREVIEW_EXPANDED_BYTES = 128 * 1024 * 1024;
-const MAX_PREVIEW_FILE_BYTES = 64 * 1024 * 1024;
+export const MAX_CATALOG_BYTES = 16 * 1024 * 1024;
+export const MAX_PREVIEW_ARCHIVE_BYTES = 64 * 1024 * 1024;
+export const MAX_PREVIEW_EXPANDED_BYTES = 128 * 1024 * 1024;
+export const MAX_PREVIEW_FILE_BYTES = 64 * 1024 * 1024;
 // pngjs normalizes every decoded preview to RGBA and can use eight bytes per
 // pixel while handling 16-bit PNG input. Keep that allocation inside the same
 // 64 MiB single-file safety boundary used by Provider payloads.
 const MAX_PREVIEW_PIXELS = MAX_PREVIEW_FILE_BYTES / 8;
-const MAX_PREVIEW_FILES = 10_000;
+export const MAX_PREVIEW_FILES = 10_000;
 const DEFAULT_TIMEOUT_MS = 60_000;
 const DEFAULT_REDIRECTS = 3;
 const ED25519_SPKI_PREFIX = Buffer.from("302a300506032b6570032100", "hex");

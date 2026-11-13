@@ -70,7 +70,8 @@ export interface FailedTransportImage {
 
 export type TransportImageResult = PreparedTransportImage | FailedTransportImage;
 
-interface RasterImage {
+/** Decoded 8-bit RGBA pixels, row-major. */
+export interface RasterImage {
   width: number;
   height: number;
   data: Uint8Array;
@@ -301,7 +302,8 @@ function applyOrientation(raster: RasterImage, orientation: number): RasterImage
   return { width: nextWidth, height: nextHeight, data: next, alpha };
 }
 
-function decodeRaster(bytes: Uint8Array, mimeType: string): RasterImage {
+/** Decode a PNG or JPEG into RGBA; any other type throws. */
+export function decodeRaster(bytes: Uint8Array, mimeType: string): RasterImage {
   if (mimeType === "image/png") {
     const png = PNG.sync.read(Buffer.from(bytes));
     const data = Uint8Array.from(png.data);
@@ -347,7 +349,7 @@ function encodePng(raster: RasterImage) {
   return new Uint8Array(PNG.sync.write(png));
 }
 
-function encodeJpegRaster(raster: RasterImage, quality: number) {
+export function encodeJpegRaster(raster: RasterImage, quality: number) {
   const encoded = encodeJpeg(
     { data: raster.data, width: raster.width, height: raster.height },
     quality,

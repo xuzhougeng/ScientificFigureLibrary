@@ -21,7 +21,7 @@ import {
   diffOfficialCatalogs,
   fetchVerifiedOfficialOpenFigureSnapshot,
 } from "../src/open-figure-feed.ts";
-import { OfficialOpenFigureSourceManager } from "../src/open-figure-official-source.ts";
+import { OfficialOpenFigureSourceManager, isOfficialOpenFigureIntegrityFailure } from "../src/open-figure-official-source.ts";
 import {
   PROVIDER_SOURCE_MANIFEST_SCHEMA,
   SecureProviderSourceFetcher,
@@ -64,6 +64,8 @@ async function officialFixture(options: {
   payloadCommit?: string;
   dropModule?: string;
   tombstones?: string[];
+  /** Declare a preview ZIP size other than the real one, as an oversized published feed does. */
+  declaredPreviewBytes?: number;
 } = {}) {
   const key = options.key ?? testKey();
   const sequence = options.sequence ?? 1;
@@ -93,7 +95,7 @@ async function officialFixture(options: {
     sequence,
     generatedAt: "2026-09-07T00:00:00.000Z",
     catalog: { url: catalogUrl, bytes: catalogBytes.byteLength, sha256: sha256(catalogBytes), mediaType: "application/json" },
-    previews: { url: previewsUrl, bytes: previewsBytes.byteLength, sha256: sha256(previewsBytes), mediaType: "application/zip" },
+    previews: { url: previewsUrl, bytes: options.declaredPreviewBytes ?? previewsBytes.byteLength, sha256: sha256(previewsBytes), mediaType: "application/zip" },
     authorizedNextKeys: [],
     tombstones: [...(options.tombstones ?? [])].sort(),
   };
@@ -112,6 +114,13 @@ async function officialFixture(options: {
     [previewsUrl, response(previewsBytes, "application/octet-stream")],
   ]);
   return { key, catalog, catalogBytes, previewsBytes, manifestBytes, routes, sequence, payloadCommit };
+}
+
+/** The fields of `statusDetails()` that describe the outcome of a refresh. */
+interface RefreshStatus {
+  activeOrigin: string;
+  lastError: { code: string; message: string } | null;
+  nextCheckAt: string | null;
 }
 
 function mockFetcher(routes: Map<string, RawHttpsResponse>) {
@@ -294,4 +303,55 @@ test("process start refreshes immediately and later checks skip unchanged payloa
   assert.equal(laterHits.some((url) => url.endsWith("module-catalog.json")), false);
   assert.equal(laterHits.some((url) => url.endsWith("module-previews.zip")), false);
   second.dispose();
+});
+
+test("a feed over the preview size limit is an integrity failure and is not retried on the network backoff", async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "sfl-open-figure-oversized-"));
+  const key = testKey();
+  // The size published on 2026-10-29: a correctly signed manifest declaring an 87 MiB preview ZIP.
+  const fixture = await officialFixture({ key, sequence: 5, declaredPreviewBytes: 91_482_230 });
+  let clock = Date.parse("2026-11-12T00:00:00.000Z");
+  const manager = new OfficialOpenFigureSourceManager({
+    paths: isolatedOfficialPaths(root),
+    bundledRoot: DEFAULT_PERSONAL_MODULE_ASSETS_DIR,
+    fetcher: mockFetcher(fixture.routes),
+    jitterRatio: 0,
+    now: () => clock,
+    env: { NODE_TEST_CONTEXT: "1" },
+    bootstrapPublicKeyBase64: key.publicKey,
+  });
+  await manager.load();
+  await manager.refresh({ ignoreTtl: true });
+  const rejected = manager.statusDetails() as unknown as RefreshStatus;
+  assert.equal(rejected.activeOrigin, "bundled", "the client keeps its previous catalog");
+  assert.equal(rejected.lastError?.code, "official_open_figure_integrity_error");
+  assert.match(rejected.lastError?.message ?? "", /no larger than 67108864/u);
+  // An unacceptable feed stays unacceptable until it is republished: wait the normal interval, not minutes.
+  assert.ok(Date.parse(rejected.nextCheckAt!) - clock >= 60 * 60 * 1000, rejected.nextCheckAt ?? "no next check");
+  manager.dispose();
+
+  // By contrast, a feed that cannot be reached is retried on the short network backoff.
+  const offline = new OfficialOpenFigureSourceManager({
+    paths: isolatedOfficialPaths(await fs.mkdtemp(path.join(os.tmpdir(), "sfl-open-figure-offline-"))),
+    bundledRoot: DEFAULT_PERSONAL_MODULE_ASSETS_DIR,
+    fetcher: mockFetcher(new Map()),
+    jitterRatio: 0,
+    now: () => clock,
+    env: { NODE_TEST_CONTEXT: "1" },
+    bootstrapPublicKeyBase64: key.publicKey,
+  });
+  await offline.load();
+  await offline.refresh({ ignoreTtl: true });
+  const unreachable = offline.statusDetails() as unknown as RefreshStatus;
+  assert.equal(unreachable.lastError?.code, "official_open_figure_network_error");
+  assert.ok(Date.parse(unreachable.nextCheckAt!) - clock <= 10 * 60 * 1000, unreachable.nextCheckAt ?? "no next check");
+  offline.dispose();
+});
+
+test("failures are classified by where they happen, with local I/O errors left as environment problems", () => {
+  assert.equal(isOfficialOpenFigureIntegrityFailure(new Error("manifest previews bytes must be a positive safe integer no larger than 67108864")), true);
+  assert.equal(isOfficialOpenFigureIntegrityFailure(new Error("official Open Figure rollback rejected: 2 < 4")), true);
+  assert.equal(isOfficialOpenFigureIntegrityFailure(new Error("preview ZIP contains an undeclared file")), true);
+  const diskFull = Object.assign(new Error("ENOSPC: no space left on device, write"), { code: "ENOSPC", syscall: "write" });
+  assert.equal(isOfficialOpenFigureIntegrityFailure(diskFull), false);
 });

@@ -332,7 +332,7 @@ export function assertOfficialKeyTransition(options: {
 }
 
 export async function fetchVerifiedOfficialOpenFigureSnapshot(options: {
-  fetcher: SecureProviderSourceFetcher;
+  fetcher: Pick<SecureProviderSourceFetcher, "fetch">;
   manifestUrl: string;
   trustedKeys: Ed25519PublicKeyIdentity[];
   skipUnchangedPayload?: boolean;

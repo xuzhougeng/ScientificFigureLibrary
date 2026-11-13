@@ -61,6 +61,30 @@ function assertHash(value: unknown, label: string): asserts value is string {
   if (typeof value !== "string" || !HASH.test(value)) throw new Error(`${label} must be SHA-256`);
 }
 
+/**
+ * The feed could not be reached or read: DNS, connection, timeout, HTTP status.
+ * Only this kind of failure is worth retrying within minutes.
+ */
+class OfficialOpenFigureTransportError extends Error {}
+
+/** A local I/O failure (disk full, permission) is an environment problem, not a verdict on the feed. */
+function isSystemError(error: unknown) {
+  return error instanceof Error && "syscall" in error && typeof (error as NodeJS.ErrnoException).code === "string";
+}
+
+/**
+ * Whether a refresh failed because the published feed itself is unacceptable.
+ * Everything that was fetched but then rejected — a manifest over a size limit,
+ * a bad signature, a rollback, a ZIP or catalog mismatch — stays rejected until
+ * the feed is republished, so retrying on the short network backoff only
+ * repeats the failure. The message pattern is kept for errors that carry no type.
+ */
+export function isOfficialOpenFigureIntegrityFailure(error: unknown) {
+  if (error instanceof OfficialOpenFigureTransportError) return false;
+  if (/signature|rollback|equivocation|schema|tombstone|identity|ZIP|catalog/i.test(safeError(error))) return true;
+  return !isSystemError(error);
+}
+
 function safeError(error: unknown) {
   const raw = error instanceof Error ? error.message : String(error);
   return raw.replace(/[\r\n\t]+/gu, " ").slice(0, 500) || "official Open Figure snapshot is unavailable";
@@ -554,7 +578,7 @@ export class OfficialOpenFigureSourceManager implements OfficialOpenFigureRuntim
     } catch (error) {
       const message = safeError(error);
       processLogError("Open Figure auto-update failed", error);
-      const integrity = /signature|rollback|equivocation|schema|tombstone|identity|ZIP|catalog/i.test(message);
+      const integrity = isOfficialOpenFigureIntegrityFailure(error);
       if (integrity) this.#networkFailures = 0;
       else this.#networkFailures += 1;
       await this.touchCheck({
@@ -574,8 +598,19 @@ export class OfficialOpenFigureSourceManager implements OfficialOpenFigureRuntim
           (key, index, values) => values.findIndex((item) => item.keyId === key.keyId) === index,
         )
       : [this.bootstrapKey];
+    // Mark failures raised while fetching, so verification failures can be told apart from them.
+    const source = this.fetcher;
+    const fetcher: Pick<SecureProviderSourceFetcher, "fetch"> = {
+      fetch: async (...args) => {
+        try {
+          return await source.fetch(...args);
+        } catch (error) {
+          throw new OfficialOpenFigureTransportError(safeError(error), { cause: error });
+        }
+      },
+    };
     return fetchVerifiedOfficialOpenFigureSnapshot({
-      fetcher: this.fetcher,
+      fetcher,
       manifestUrl: OFFICIAL_OPEN_FIGURE_MANIFEST_URL,
       trustedKeys: trusted,
       skipUnchangedPayload: options.skipUnchangedPayload === true,

@@ -15,6 +15,71 @@ import {
   validatePersonalModules,
   zipDeterministic,
 } from "./personal-modules-lib.mjs";
+import { unzipSync } from "fflate";
+// The limits every released client enforces on a feed update. The publisher reads the
+// same constants so a payload the clients would reject can never be signed.
+import {
+  MAX_CATALOG_BYTES,
+  MAX_PREVIEW_ARCHIVE_BYTES,
+  MAX_PREVIEW_EXPANDED_BYTES,
+  MAX_PREVIEW_FILE_BYTES,
+  MAX_PREVIEW_FILES,
+} from "../src/provider-source-fetch.ts";
+
+export const FEED_PAYLOAD_LIMITS = Object.freeze({
+  catalogBytes: MAX_CATALOG_BYTES,
+  previewArchiveBytes: MAX_PREVIEW_ARCHIVE_BYTES,
+  previewExpandedBytes: MAX_PREVIEW_EXPANDED_BYTES,
+  previewFileBytes: MAX_PREVIEW_FILE_BYTES,
+  previewFiles: MAX_PREVIEW_FILES,
+});
+
+const mebibytes = (bytes) => `${(bytes / (1024 * 1024)).toFixed(2)} MiB`;
+
+/**
+ * Fail before signing when released clients would reject the payload. Each
+ * client caps the preview ZIP, its expanded size, its file count and the
+ * catalog; a manifest over any cap is refused outright and the client stays on
+ * its previous snapshot, so an oversized feed stops updates for everyone.
+ */
+export function assertFeedPayloadLimits({ catalogBytes, previewsBytes }, limits = FEED_PAYLOAD_LIMITS) {
+  const problems = [];
+  if (catalogBytes.byteLength > limits.catalogBytes) {
+    problems.push(`catalog is ${mebibytes(catalogBytes.byteLength)}, over the ${mebibytes(limits.catalogBytes)} client limit`);
+  }
+  if (previewsBytes.byteLength > limits.previewArchiveBytes) {
+    problems.push(`preview ZIP is ${mebibytes(previewsBytes.byteLength)}, over the ${mebibytes(limits.previewArchiveBytes)} client limit`);
+  }
+  let files = 0;
+  let expanded = 0;
+  let largest = 0;
+  // The filter sees every entry's declared size; returning false skips decompression.
+  unzipSync(previewsBytes, {
+    filter: (file) => {
+      files += 1;
+      expanded += file.originalSize;
+      largest = Math.max(largest, file.originalSize);
+      return false;
+    },
+  });
+  if (files > limits.previewFiles) problems.push(`preview ZIP has ${files} files, over the ${limits.previewFiles} client limit`);
+  if (expanded > limits.previewExpandedBytes) {
+    problems.push(`preview ZIP expands to ${mebibytes(expanded)}, over the ${mebibytes(limits.previewExpandedBytes)} client limit`);
+  }
+  if (largest > limits.previewFileBytes) {
+    problems.push(`a preview file is ${mebibytes(largest)}, over the ${mebibytes(limits.previewFileBytes)} client limit`);
+  }
+  if (problems.length) {
+    throw new Error(`Open Figure feed payload exceeds what released clients accept: ${problems.join("; ")}. Nothing was signed.`);
+  }
+  return {
+    catalogBytes: catalogBytes.byteLength,
+    previewsBytes: previewsBytes.byteLength,
+    previewsLimitBytes: limits.previewArchiveBytes,
+    previewFiles: files,
+    previewExpandedBytes: expanded,
+  };
+}
 
 const MANIFEST_SCHEMA = "figure-library.provider-source-manifest.v1";
 const SIGNATURE_SCHEMA = "figure-library.provider-source-signature.v1";
@@ -114,6 +179,12 @@ export function signManifest(manifestBytes, seedBase64, expectedKeyId) {
   };
 }
 
+/**
+ * This channel is read by clients up to 0.9.2, which download every preview in one ZIP.
+ * It therefore publishes reduced previews; see `src/preview-reduction.ts`.
+ */
+const LEGACY_PREVIEW_VARIANT = "reduced";
+
 export async function buildOpenFigureFeedPayload(options = {}) {
   const repositoryRoot = path.resolve(options.repositoryRoot ?? DEFAULT_REPOSITORY_ROOT);
   const generatedAt = options.generatedAt ?? "2000-01-01T00:00:00.000Z";
@@ -128,12 +199,14 @@ export async function buildOpenFigureFeedPayload(options = {}) {
       outputRoot: snapshotStaging,
       write: true,
       generatedAt,
+      previewVariant: LEGACY_PREVIEW_VARIANT,
     });
     const second = await buildPersonalModuleCatalog({
       repositoryRoot,
       outputRoot: snapshotStaging,
       write: false,
       generatedAt,
+      previewVariant: LEGACY_PREVIEW_VARIANT,
     });
     if (first.catalogSha256 !== second.catalogSha256) {
       throw new Error("Open Figure Catalog generation is not deterministic");
@@ -148,6 +221,7 @@ export async function buildOpenFigureFeedPayload(options = {}) {
   const zipFirst = Buffer.from(buildPreviewZip(previewFiles));
   const zipSecond = Buffer.from(buildPreviewZip(previewFiles));
   if (!zipFirst.equals(zipSecond)) throw new Error("Open Figure preview ZIP generation is not deterministic");
+  const size = assertFeedPayloadLimits({ catalogBytes, previewsBytes: zipFirst }, options.limits);
   const previous = options.previousCatalog;
   const previousIds = previous?.modules?.map((module) => module.moduleId) ?? [];
   const nextIds = built.catalog.modules.map((module) => module.moduleId);
@@ -170,6 +244,7 @@ export async function buildOpenFigureFeedPayload(options = {}) {
       previewsSha256: sha256(zipFirst),
       moduleCount: built.catalog.modules.length,
       diff,
+      size,
     };
   } finally {
     if (createdStaging) await fs.rm(snapshotStaging, { recursive: true, force: true });
@@ -213,6 +288,8 @@ export async function main(argv = process.argv.slice(2)) {
     const payload = JSON.parse(await fs.readFile(path.join(outputRoot, "payload.json"), "utf8"));
     const catalogBytes = await fs.readFile(path.join(outputRoot, "snapshots", String(payload.sequence), "module-catalog.json"));
     const previewsBytes = await fs.readFile(path.join(outputRoot, "snapshots", String(payload.sequence), "module-previews.zip"));
+    // Checked again on the exact bytes about to be signed, whatever produced them.
+    assertFeedPayloadLimits({ catalogBytes, previewsBytes });
     const manifest = buildSourceManifest({
       sequence: payload.sequence,
       generatedAt: payload.generatedAt,
@@ -258,6 +335,7 @@ export async function main(argv = process.argv.slice(2)) {
       previewsSha256: payload.previewsSha256,
       moduleCount: payload.moduleCount,
       diff: payload.diff,
+      size: payload.size,
     };
     console.log(JSON.stringify(summary, null, 2));
     return summary;
@@ -283,7 +361,7 @@ export async function main(argv = process.argv.slice(2)) {
     tombstones: payload.diff.tombstones,
     authorizedNextKeys: [],
   }));
-  const summary = { unchanged: false, sequence: payload.sequence, catalogSha256: payload.catalogSha256, previewsSha256: payload.previewsSha256, moduleCount: payload.moduleCount, diff: payload.diff };
+  const summary = { unchanged: false, sequence: payload.sequence, catalogSha256: payload.catalogSha256, previewsSha256: payload.previewsSha256, moduleCount: payload.moduleCount, diff: payload.diff, size: payload.size };
   await fs.writeFile(path.join(outputRoot, "result.json"), stableJson(summary));
   console.log(JSON.stringify(summary, null, 2));
   return summary;
