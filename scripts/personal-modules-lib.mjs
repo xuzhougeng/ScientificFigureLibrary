@@ -5,6 +5,7 @@ import path from "node:path";
 import { promisify } from "node:util";
 import { unzipSync, zipSync } from "fflate";
 import { parse as parseYaml, stringify as stringifyYaml } from "yaml";
+import { reducePreviewImage } from "../src/preview-reduction.ts";
 
 const execFile = promisify(execFileCallback);
 
@@ -1000,6 +1001,29 @@ export async function buildPersonalModuleCatalog(options = {}) {
     moduleCatalogEntry(loaded, sourceCommit, archiveCommit, repository, archive),
   );
   entries.sort((left, right) => compare(left.moduleId, right.moduleId));
+  // The legacy feed ships every preview in one size-capped ZIP, so it lists a reduced
+  // rendition of each preview. `files[]`, `archive` and `thumbnail` keep describing the
+  // originals: a materialized template still contains the full-resolution image.
+  const reducedPreviews = new Map();
+  if (options.previewVariant === "reduced") {
+    for (const entry of entries) {
+      const source = modules.find(({ loaded }) => loaded.moduleId === entry.moduleId).loaded;
+      const original = source.files.find((file) => file.path === source.metadata.preview.path)?.data;
+      assert(original, `${entry.moduleId} preview bytes are missing`);
+      const reduced = reducePreviewImage(new Uint8Array(original), entry.preview.mediaType);
+      if (!reduced) continue;
+      const stem = path.posix.basename(entry.preview.path, path.posix.extname(entry.preview.path));
+      entry.preview = {
+        path: `previews/${entry.moduleId}/${stem}.jpg`,
+        bytes: reduced.bytes.byteLength,
+        sha256: sha256(reduced.bytes),
+        mediaType: reduced.mediaType,
+      };
+      reducedPreviews.set(entry.moduleId, Buffer.from(reduced.bytes));
+    }
+  } else {
+    assert(options.previewVariant === undefined || options.previewVariant === "original", "previewVariant must be original or reduced");
+  }
   const catalog = {
     schema: CATALOG_SCHEMA,
     generatedAt: generatedAt(options.generatedAt),
@@ -1036,7 +1060,7 @@ export async function buildPersonalModuleCatalog(options = {}) {
     const preview = source.files.find((file) => file.path === source.metadata.preview.path)?.data;
     const thumbnail = source.files.find((file) => file.path === source.metadata.thumbnail.path)?.data;
     assert(preview && thumbnail, `${entry.moduleId} preview bytes are missing`);
-    expected.set(entry.preview.path, preview);
+    expected.set(entry.preview.path, reducedPreviews.get(entry.moduleId) ?? preview);
     expected.set(entry.thumbnail.path, thumbnail);
   }
   if (options.write) await replaceDirectory(outputRoot, expected);
