@@ -197,7 +197,8 @@ function chips(document: Document, values: string[], maximum = 6) {
   return container;
 }
 
-function previewFailureLabel(status: Candidate["previewStatus"]) {
+function previewFailureLabel(status: Candidate["previewStatus"], candidate?: Candidate) {
+  if (candidate?.searchPreviewAvailable === false && candidate.previewAvailable) return "缩略图暂不可用";
   if (status === "too_large") return "缩略图超过安全传输上限";
   if (status === "unsupported") return "预览格式不受支持";
   if (status === "unreadable") return "预览校验或读取失败";
@@ -329,7 +330,7 @@ function appendPreviewImage(
     return;
   }
   container.append(
-    element(document, "span", "preview-status", previewFailureLabel(status)),
+    element(document, "span", "preview-status", previewFailureLabel(status, candidate)),
   );
 }
 
