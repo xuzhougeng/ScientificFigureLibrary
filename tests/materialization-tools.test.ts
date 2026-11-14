@@ -339,8 +339,8 @@ async function figureYaFixture(root: string) {
   };
 }
 
-async function personalModuleFixture(root: string) {
-  const moduleId = "PersonalMaterializationReceiptFixture".toLocaleLowerCase("en-US");
+async function personalModuleFixture(root: string, count = 1) {
+  const baseModuleId = "PersonalMaterializationReceiptFixture".toLocaleLowerCase("en-US");
   const moduleFiles: Record<string, Uint8Array> = {
     "README.md": strToU8("# Personal module fixture\n"),
     "code/example.R": strToU8("plot(1:3)\n"),
@@ -367,7 +367,7 @@ async function personalModuleFixture(root: string) {
   const sourceCommit = "a".repeat(40);
   const archiveCommit = "b".repeat(40);
   const repository = "jarxunlai/ScientificFigureLibrary-personal";
-  const module: ModuleCatalogEntry = {
+  const buildModule = (moduleId: string): ModuleCatalogEntry => ({
     moduleId,
     title: "个人模块回执测试",
     titleEn: "Personal materialization receipt fixture",
@@ -416,7 +416,11 @@ async function personalModuleFixture(root: string) {
       executionStatus: "passed",
       executionScope: "synthetic_data",
     },
-  };
+  });
+  const modules = Array.from({ length: count }, (_, index) =>
+    buildModule(index === 0 ? baseModuleId : `${baseModuleId}-${index}`),
+  );
+  const module = modules[0]!;
   const catalog: ModuleCatalog = {
     schema: "figure-library.module-catalog.v1",
     generatedAt: "2000-01-01T00:00:00.000Z",
@@ -425,56 +429,60 @@ async function personalModuleFixture(root: string) {
       displayName: "Open Figure Modules",
       repository,
     },
-    modules: [module],
+    modules,
   };
   const assets = path.join(root, "personal-module-assets");
-  await fs.mkdir(path.join(assets, "previews", moduleId), { recursive: true });
   await fs.mkdir(path.join(assets, "thumbs"), { recursive: true });
+  for (const entry of modules) {
+    await fs.mkdir(path.join(assets, "previews", entry.moduleId), { recursive: true });
+    await fs.writeFile(path.join(assets, ...entry.preview.path.split("/")), ONE_PIXEL_PNG);
+    await fs.writeFile(path.join(assets, ...entry.thumbnail.path.split("/")), ONE_PIXEL_PNG);
+  }
   await fs.writeFile(path.join(assets, "module-catalog.json"), `${JSON.stringify(catalog)}\n`);
   await fs.writeFile(
     path.join(assets, "module-preview.manifest.json"),
     `${JSON.stringify({
       schema: "figure-library.module-preview-manifest.v1",
       providerId: PERSONAL_MODULE_PROVIDER_ID,
-      entries: [
-        { moduleId, role: "primary", ...module.preview },
-        { moduleId, role: "thumbnail", ...module.thumbnail },
-      ],
+      entries: modules.flatMap((entry) => [
+        { moduleId: entry.moduleId, role: "primary", ...entry.preview },
+        { moduleId: entry.moduleId, role: "thumbnail", ...entry.thumbnail },
+      ]),
     })}\n`,
   );
-  const sourcePackEntry = {
-    moduleId,
+  const sourcePackEntries = modules.map((entry) => ({
+    moduleId: entry.moduleId,
     sourceRepository: repository,
     sourceCommit,
     archiveRepository: repository,
     archiveCommit,
-    file: module.archive.path,
-    bytes: module.archive.bytes,
-    sha256: module.archive.sha256,
-  };
+    file: entry.archive.path,
+    bytes: entry.archive.bytes,
+    sha256: entry.archive.sha256,
+  }));
   await fs.writeFile(
     path.join(assets, "module-source-pack.manifest.json"),
     `${JSON.stringify({
       schema: "figure-library.module-source-pack.v1",
       providerId: PERSONAL_MODULE_PROVIDER_ID,
       repository,
-      entries: [sourcePackEntry],
+      entries: sourcePackEntries,
     })}\n`,
   );
   await fs.writeFile(path.join(assets, "PERSONAL_MODULES_LICENSE.txt"), "Personal module fixture\n");
-  await fs.writeFile(path.join(assets, ...module.preview.path.split("/")), ONE_PIXEL_PNG);
-  await fs.writeFile(path.join(assets, ...module.thumbnail.path.split("/")), ONE_PIXEL_PNG);
 
   const sourcePack = path.join(root, "personal-module-source-pack");
   await fs.mkdir(path.join(sourcePack, "archives"), { recursive: true });
-  await fs.writeFile(path.join(sourcePack, ...module.archive.path.split("/")), archiveBytes);
+  for (const entry of modules) {
+    await fs.writeFile(path.join(sourcePack, ...entry.archive.path.split("/")), archiveBytes);
+  }
   await fs.writeFile(
     path.join(sourcePack, "module-source-pack.manifest.json"),
     `${JSON.stringify({
       schema: "figure-library.module-source-pack.v1",
       providerId: PERSONAL_MODULE_PROVIDER_ID,
       repository,
-      entries: [sourcePackEntry],
+      entries: sourcePackEntries,
     })}\n`,
   );
   const index = await ModuleCatalogIndex.load(assets, {
@@ -488,7 +496,7 @@ async function personalModuleFixture(root: string) {
     index.catalogSha256,
     "template",
   );
-  return { assets, sourcePack, index, module, catalog, exactSelector, archiveSha256 };
+  return { assets, sourcePack, index, module, modules, catalog, exactSelector, archiveSha256 };
 }
 
 async function isolatedProviderManager(root: string) {
@@ -1089,6 +1097,84 @@ test("FigureYa replay requires an authoritative receipt and a selector matching 
       await corruptedReceipt.server.close();
     }
   } finally {
+    await fs.rm(root, { recursive: true, force: true });
+  }
+});
+
+test("Search page budget exhaustion marks the queue tail pending, not missing, and a warm re-read recovers it", async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "sfl-search-preview-pending-"));
+  const priorLibraryDirectory = process.env.FIGURE_LIBRARY_DIR;
+  try {
+    const libraryRoot = path.join(root, "library");
+    await ensureLibraryRootMarker(libraryRoot);
+    process.env.FIGURE_LIBRARY_DIR = libraryRoot;
+    const fixture = await personalModuleFixture(root, 6);
+    const server = await createServer({
+      personalModuleRoot: fixture.assets,
+      providerSourceManager: await isolatedProviderManager(path.join(root, "runtime")),
+    });
+    const client = new Client({ name: "search-preview-pending-test", version: "0.6.1" });
+    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+    await server.connect(serverTransport);
+    await client.connect(clientTransport);
+    try {
+      const searchArguments = {
+        query: "personal materialization receipt fixture",
+        providerIds: [PERSONAL_MODULE_PROVIDER_ID],
+        limit: 6,
+      };
+      // Controllable clock: every Date.now() call advances the page clock by
+      // 2s, so the 4s page budget is exhausted after the first candidates
+      // start hydrating. The queue tail must come back "pending", never
+      // "missing": the previews exist, they just did not finish in this page.
+      const realDateNow = Date.now;
+      let pageNow = realDateNow();
+      Date.now = () => {
+        pageNow += 2_000;
+        return pageNow;
+      };
+      let first;
+      try {
+        first = await client.callTool({ name: "figure_library_search", arguments: searchArguments });
+      } finally {
+        Date.now = realDateNow;
+      }
+      const firstStructured = record(first.structuredContent);
+      const firstCandidates = firstStructured.candidates as Array<Record<string, unknown>>;
+      assert.equal(firstCandidates.length, 6);
+      const firstStatuses = firstCandidates.map((item) => item.searchPreviewStatus);
+      assert.ok(firstStatuses.includes("ready"), `expected a ready head, got ${firstStatuses.join(",")}`);
+      assert.ok(firstStatuses.includes("pending"), `expected a pending tail, got ${firstStatuses.join(",")}`);
+      assert.equal(
+        firstStatuses.filter((status) => status === "missing").length,
+        0,
+        `no candidate may be reported missing on a timeout: ${firstStatuses.join(",")}`,
+      );
+      // A page timeout leaves the exact-preview state untouched.
+      for (const item of firstCandidates) {
+        if (item.searchPreviewStatus === "pending") {
+          assert.equal(item.previewStatus, undefined);
+          assert.equal(item.previewAvailable, true);
+        }
+      }
+
+      // Warm re-read with the real clock: the same page now fits its budget
+      // and every candidate comes back ready — "pending" is not sticky.
+      const second = await client.callTool({ name: "figure_library_search", arguments: searchArguments });
+      const secondStructured = record(second.structuredContent);
+      const secondCandidates = secondStructured.candidates as Array<Record<string, unknown>>;
+      assert.equal(secondCandidates.length, 6);
+      assert.deepEqual(
+        secondCandidates.map((item) => item.searchPreviewStatus),
+        ["ready", "ready", "ready", "ready", "ready", "ready"],
+      );
+    } finally {
+      await client.close();
+      await server.close();
+    }
+  } finally {
+    if (priorLibraryDirectory === undefined) delete process.env.FIGURE_LIBRARY_DIR;
+    else process.env.FIGURE_LIBRARY_DIR = priorLibraryDirectory;
     await fs.rm(root, { recursive: true, force: true });
   }
 });

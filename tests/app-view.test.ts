@@ -587,6 +587,47 @@ test("unavailable previews still open details but keep exact preview and confirm
   detail.closeButton.click();
 });
 
+test("pending search previews say the thumbnail is still preparing, not that it is missing", () => {
+  const window = createTestWindow();
+  const document = window.document as unknown as Document;
+  const cards = document.createElement("section");
+  const empty = document.createElement("section");
+  const pending = candidate("org.scientificfigurelibrary.local", "pending-0", "missing");
+  // The preview exists; only this page's transport timed out.
+  pending.previewAvailable = true;
+  pending.previewStatus = undefined;
+  pending.searchPreviewAvailable = false;
+  pending.searchPreviewStatus = "pending";
+  renderCandidateCards({
+    document,
+    cards,
+    empty,
+    result: searchResult([pending]),
+    onDetail() {},
+  });
+  assert.equal(cards.querySelectorAll("img").length, 0);
+  assert.match(cards.textContent ?? "", /缩略图准备中，请稍后重试/u);
+  assert.doesNotMatch(cards.textContent ?? "", /预览不可用/u);
+  assert.doesNotMatch(cards.textContent ?? "", /无可用预览/u);
+  assert.equal(cards.querySelectorAll(".card-status-neutral").length, 1);
+  assert.equal(cards.querySelectorAll(".card-status-warning").length, 0);
+
+  const opener = document.createElement("button");
+  document.body.append(opener);
+  const detail = openCandidateDetail({
+    document,
+    candidate: pending,
+    opener,
+    serverToolsAvailable: true,
+    updateModelContextAvailable: true,
+    onRequestExactPreview() {},
+    onRequestAgentReview() {},
+  });
+  // A pending search thumbnail must not block the exact-preview path.
+  assert.equal(detail.exactPreviewButton.disabled, false);
+  detail.closeButton.click();
+});
+
 test("opening a usable detail does not request exact preview until the user clicks", () => {
   const window = createTestWindow();
   const document = window.document as unknown as Document;

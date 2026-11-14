@@ -1366,7 +1366,7 @@ license. See
 
 本地 DMG / Windows ZIP、npm 包（Pi / dsh 安装路径）以及 Wisp / Claude / Codex / Cursor 插件 ZIP 的 FigureYa 与 Open Figure Modules bootstrap 只携带目录元数据和 `preview-downloads.json`，不携带画廊图片（`assets/brand/` 除外），其每个图片身份必须与既有预览 manifest 完全一致。图片来源固定为构建提交中的文件，因此打包要求 `assets/` 与该提交一致、且该提交已推送；不改变 Provider、exact selector 或 Published Release 的身份。下载与其他 HTTPS 操作一样使用 0.9.1 的同用户代理设置；产品不以完全离线使用为目标。
 
-候选可返回 `previewDelivery: "download"`。此模式下 `previewAvailable` 表示存在可获取的固定身份，并不承诺网络可达或已经缓存；当前页图片传输结果由 `searchPreviewAvailable` / `searchPreviewStatus` 表达。搜索不会下载非当前页候选的图片。精确预览只有取得、校验和传输真实图片后才可确认。缩略图下载失败不改变精确图片身份，可重新请求预览。
+候选可返回 `previewDelivery: "download"`。此模式下 `previewAvailable` 表示存在可获取的固定身份，并不承诺网络可达或已经缓存；当前页图片传输结果由 `searchPreviewAvailable` / `searchPreviewStatus` 表达。单页时间预算耗尽时，未完成准备的候选返回 `searchPreviewStatus: "pending"`（暂时未完成、可重试），而不是 `"missing"`（来源图确实不存在）；后续加载或重新搜索会重试 pending 的候选，缓存预热后恢复为 `ready`。搜索不会下载非当前页候选的图片。精确预览只有取得、校验和传输真实图片后才可确认。缩略图下载失败不改变精确图片身份，可重新请求预览。
 
 图片缓存位于用户缓存目录，按 SHA-256 寻址并校验大小和格式。本地客户端可对用户明确选择的一个图库预取该图库清单中的固定预览图；这不会改变搜索只下载当前页、精确预览只下载选中图片的契约。确认后的材料化重验证仅允许读取缓存，不隐式重新下载已确认图片；缓存缺失或损坏需重新预览确认。`allowNetwork` 仍控制模板归档材料化，不能当作此前浏览图片的网络开关。既有 Provider 签名快照更新策略保持独立。
 
