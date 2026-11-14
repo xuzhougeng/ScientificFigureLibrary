@@ -533,6 +533,26 @@ test("legacy candidates without validationState render a conservative three-part
   detail.closeButton.click();
 });
 
+test("thumbnail-only failures do not claim that the exact preview is unavailable", () => {
+  const window = createTestWindow();
+  const document = window.document as unknown as Document;
+  const cards = document.createElement("section");
+  const empty = document.createElement("section");
+  const candidateValue = candidate("io.github.jarxunlai.personal-figures", "thumbnail-failed", "ready");
+  candidateValue.previewAvailable = true;
+  candidateValue.searchPreviewAvailable = false;
+  candidateValue.searchPreviewStatus = "missing";
+  renderCandidateCards({
+    document,
+    cards,
+    empty,
+    result: searchResult([candidateValue]),
+    onDetail() {},
+  });
+  assert.match(cards.textContent ?? "", /缩略图暂不可用/u);
+  assert.doesNotMatch(cards.textContent ?? "", /无可用预览/u);
+});
+
 test("unavailable previews still open details but keep exact preview and confirmation disabled", () => {
   const window = createTestWindow();
   const document = window.document as unknown as Document;
