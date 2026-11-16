@@ -108,8 +108,11 @@ materialize an exact result.
 > described, previewed, or newly materialized, but already materialized
 > projects are not deleted.
 >
-> **Open Figure preview channels (0.9.4 client):** the feed branch carries two
-> signed manifests that share one sequence counter and one byte-identical
+> **Open Figure preview channels (0.9.4 client):** the client and publisher
+> support two signed manifests on the feed branch. The on-demand channel exists
+> only after the content repository's publish workflow copies it; until then the
+> live feed has the bundled channel alone and 0.9.4 clients use it. Both
+> channels share one sequence counter and one byte-identical
 > `module-catalog.json`, so `catalogSha256`, exact selectors and preview
 > confirmation do not depend on the channel.
 > `current/source-manifest.json` (bundled) names `module-previews.zip` with
