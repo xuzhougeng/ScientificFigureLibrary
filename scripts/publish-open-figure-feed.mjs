@@ -60,6 +60,17 @@ export function diffModuleIds(previousIds, nextIds, previousTombstones = []) {
   return { added, withdrawn, tombstones };
 }
 
+// Two signed channels share one sequence counter and one Catalog:
+// - current/ (bundled): every preview and thumbnail in module-previews.zip. Read by clients <= 0.9.3.
+//   It stops advancing (freezes) once that archive would exceed the client limits, so those clients
+//   stay on their last good snapshot instead of failing.
+// - current-on-demand/: thumbnails only in module-thumbnails.zip; every preview and thumbnail is also
+//   committed loose under snapshots/<sequence>/ and fetched per file by clients >= 0.9.4.
+export const BUNDLED_ARCHIVE = "module-previews.zip";
+export const ON_DEMAND_ARCHIVE = "module-thumbnails.zip";
+export const BUNDLED_CHANNEL_DIR = "current";
+export const ON_DEMAND_CHANNEL_DIR = "current-on-demand";
+
 export function buildPreviewZip(files) {
   return zipDeterministic(files, { level: 6 });
 }
@@ -77,7 +88,10 @@ export const CLIENT_PAYLOAD_LIMITS = Object.freeze({
 
 const mib = (bytes) => `${(bytes / (1024 * 1024)).toFixed(1)} MiB`;
 
-export function assertWithinClientLimits({ catalogBytes, previewsBytes, previewFiles }, limits = CLIENT_PAYLOAD_LIMITS) {
+export function assertWithinClientLimits(
+  { catalogBytes, previewsBytes, previewFiles, archiveName = "module-previews.zip" },
+  limits = CLIENT_PAYLOAD_LIMITS,
+) {
   const entries = Object.entries(previewFiles).map(([name, data]) => ({ name, bytes: data.byteLength }));
   const expanded = entries.reduce((sum, entry) => sum + entry.bytes, 0);
   const largest = () => [...entries].sort((a, b) => b.bytes - a.bytes).slice(0, 5)
@@ -87,7 +101,7 @@ export function assertWithinClientLimits({ catalogBytes, previewsBytes, previewF
     problems.push(`catalog is ${mib(catalogBytes.byteLength)}, clients accept at most ${mib(limits.catalogBytes)}`);
   }
   if (previewsBytes.byteLength > limits.previewArchiveBytes) {
-    problems.push(`module-previews.zip is ${mib(previewsBytes.byteLength)}, clients accept at most ${mib(limits.previewArchiveBytes)}`);
+    problems.push(`${archiveName} is ${mib(previewsBytes.byteLength)}, clients accept at most ${mib(limits.previewArchiveBytes)}`);
   }
   if (expanded > limits.previewExpandedBytes) {
     problems.push(`previews expand to ${mib(expanded)}, clients accept at most ${mib(limits.previewExpandedBytes)}`);
@@ -111,6 +125,7 @@ export function buildSourceManifest({
   payloadCommit,
   tombstones = [],
   authorizedNextKeys = [],
+  previewArchive = BUNDLED_ARCHIVE,
 }) {
   return {
     schema: MANIFEST_SCHEMA,
@@ -124,7 +139,7 @@ export function buildSourceManifest({
       mediaType: "application/json",
     },
     previews: {
-      url: officialPayloadUrl(payloadCommit, sequence, "module-previews.zip"),
+      url: officialPayloadUrl(payloadCommit, sequence, previewArchive),
       bytes: previewsBytes.byteLength,
       sha256: sha256(previewsBytes),
       mediaType: "application/zip",
@@ -179,35 +194,65 @@ export async function buildOpenFigureFeedPayload(options = {}) {
     }
     const catalogBytes = Buffer.from(stableJson(first.catalog), "utf8");
     const previewFiles = {};
+    const thumbnailFiles = {};
     const built = first;
     for (const module of built.catalog.modules) {
       previewFiles[module.preview.path] = await fs.readFile(path.join(snapshotStaging, ...module.preview.path.split("/")));
-      previewFiles[module.thumbnail.path] = await fs.readFile(path.join(snapshotStaging, ...module.thumbnail.path.split("/")));
+      const thumbnail = await fs.readFile(path.join(snapshotStaging, ...module.thumbnail.path.split("/")));
+      previewFiles[module.thumbnail.path] = thumbnail;
+      thumbnailFiles[module.thumbnail.path] = thumbnail;
     }
-  const zipFirst = Buffer.from(buildPreviewZip(previewFiles));
-  const zipSecond = Buffer.from(buildPreviewZip(previewFiles));
-  if (!zipFirst.equals(zipSecond)) throw new Error("Open Figure preview ZIP generation is not deterministic");
-  assertWithinClientLimits({ catalogBytes, previewsBytes: zipFirst, previewFiles });
-  const previous = options.previousCatalog;
-  const previousIds = previous?.modules?.map((module) => module.moduleId) ?? [];
-  const nextIds = built.catalog.modules.map((module) => module.moduleId);
-  const diff = diffModuleIds(previousIds, nextIds, options.previousTombstones ?? []);
-  const unchanged = options.previousCatalogBytes &&
-    Buffer.from(options.previousCatalogBytes).equals(catalogBytes) &&
-    options.previousZipBytes &&
-    Buffer.from(options.previousZipBytes).equals(zipFirst) &&
-    canonical(diff.tombstones) === canonical(options.previousTombstones ?? []);
-  const sequence = unchanged
-    ? options.previousSequence
-    : (options.previousSequence ?? 0) + 1;
+    const deterministicZip = (files, label) => {
+      const zipFirst = Buffer.from(buildPreviewZip(files));
+      if (!zipFirst.equals(Buffer.from(buildPreviewZip(files)))) {
+        throw new Error(`Open Figure ${label} ZIP generation is not deterministic`);
+      }
+      return zipFirst;
+    };
+    const bundledBytes = deterministicZip(previewFiles, "preview");
+    const thumbnailsBytes = deterministicZip(thumbnailFiles, "thumbnail");
+    // The on-demand channel is the one every current client can follow, so it must always fit.
+    const limits = options.clientLimits ?? CLIENT_PAYLOAD_LIMITS;
+    assertWithinClientLimits({ catalogBytes, previewsBytes: thumbnailsBytes, previewFiles: thumbnailFiles, archiveName: ON_DEMAND_ARCHIVE }, limits);
+    // Loose files are fetched one at a time, so only the per-file limit applies to them.
+    assertWithinClientLimits({
+      catalogBytes,
+      previewsBytes: new Uint8Array(0),
+      previewFiles,
+    }, { ...limits, previewExpandedBytes: Number.POSITIVE_INFINITY, previewFiles: Number.POSITIVE_INFINITY });
+    let bundledFrozenReason;
+    try {
+      assertWithinClientLimits({ catalogBytes, previewsBytes: bundledBytes, previewFiles, archiveName: BUNDLED_ARCHIVE }, limits);
+    } catch (error) {
+      bundledFrozenReason = error instanceof Error ? error.message : String(error);
+    }
+    const previous = options.previousCatalog;
+    const previousIds = previous?.modules?.map((module) => module.moduleId) ?? [];
+    const nextIds = built.catalog.modules.map((module) => module.moduleId);
+    const diff = diffModuleIds(previousIds, nextIds, options.previousTombstones ?? []);
+    // Every preview identity is inside the Catalog, so an identical Catalog means identical previews.
+    // The first run after this change is never "unchanged": the on-demand channel has to be created.
+    const unchanged = Boolean(
+      options.previousCatalogBytes &&
+      options.previousOnDemandPublished &&
+      Buffer.from(options.previousCatalogBytes).equals(catalogBytes) &&
+      canonical(diff.tombstones) === canonical(options.previousTombstones ?? []),
+    );
+    const sequence = unchanged
+      ? options.previousSequence
+      : (options.previousSequence ?? 0) + 1;
     return {
-      unchanged: Boolean(unchanged),
+      unchanged,
       sequence,
       catalog: built.catalog,
       catalogBytes,
       catalogSha256: sha256(catalogBytes),
-      previewsBytes: zipFirst,
-      previewsSha256: sha256(zipFirst),
+      previewFiles,
+      bundled: bundledFrozenReason
+        ? { frozen: true, reason: bundledFrozenReason }
+        : { frozen: false, bytes: bundledBytes, sha256: sha256(bundledBytes) },
+      thumbnailsBytes,
+      thumbnailsSha256: sha256(thumbnailsBytes),
       moduleCount: built.catalog.modules.length,
       diff,
     };
@@ -216,26 +261,40 @@ export async function buildOpenFigureFeedPayload(options = {}) {
   }
 }
 
-async function readPreviousFeed(feedRoot) {
+async function readChannelManifest(feedRoot, channelDirectory) {
   try {
-    const manifest = JSON.parse(await fs.readFile(path.join(feedRoot, "current", "source-manifest.json"), "utf8"));
-    const catalogUrl = new URL(manifest.catalog.url);
-    const match = catalogUrl.pathname.match(/\/snapshots\/(\d+)\//u);
-    const sequence = Number(match?.[1] ?? manifest.sequence);
-    const catalogBytes = await fs.readFile(path.join(feedRoot, "snapshots", String(sequence), "module-catalog.json"));
-    const zipBytes = await fs.readFile(path.join(feedRoot, "snapshots", String(sequence), "module-previews.zip"));
-    return {
-      manifest,
-      sequence: manifest.sequence,
-      catalogBytes,
-      zipBytes,
-      catalog: JSON.parse(catalogBytes.toString("utf8")),
-      tombstones: manifest.tombstones ?? [],
-    };
+    return JSON.parse(await fs.readFile(path.join(feedRoot, channelDirectory, "source-manifest.json"), "utf8"));
   } catch (error) {
     if (error?.code === "ENOENT") return undefined;
     throw error;
   }
+}
+
+export async function readPreviousFeed(feedRoot) {
+  const bundled = await readChannelManifest(feedRoot, BUNDLED_CHANNEL_DIR);
+  const onDemand = await readChannelManifest(feedRoot, ON_DEMAND_CHANNEL_DIR);
+  // The newest channel is the authority for the Catalog and tombstones; a frozen bundled channel
+  // lags behind it. Both share one sequence counter.
+  const latest = [bundled, onDemand].filter(Boolean).sort((left, right) => right.sequence - left.sequence)[0];
+  if (!latest) return undefined;
+  const catalogBytes = await fs.readFile(path.join(feedRoot, "snapshots", String(latest.sequence), "module-catalog.json"));
+  return {
+    sequence: latest.sequence,
+    bundledSequence: bundled?.sequence,
+    onDemandPublished: Boolean(onDemand) && onDemand.sequence === latest.sequence,
+    catalogBytes,
+    catalog: JSON.parse(catalogBytes.toString("utf8")),
+    tombstones: latest.tombstones ?? [],
+  };
+}
+
+async function writeSignedChannel(outputRoot, channelDirectory, manifest, seed, expectedKeyId) {
+  const manifestBytes = Buffer.from(stableJson(manifest), "utf8");
+  const signed = signManifest(manifestBytes, seed, expectedKeyId);
+  await fs.mkdir(path.join(outputRoot, channelDirectory), { recursive: true });
+  await fs.writeFile(path.join(outputRoot, channelDirectory, "source-manifest.json"), manifestBytes);
+  await fs.writeFile(path.join(outputRoot, channelDirectory, "source-manifest.sig.json"), signed.sidecarBytes);
+  return signed;
 }
 
 export async function main(argv = process.argv.slice(2)) {
@@ -251,27 +310,35 @@ export async function main(argv = process.argv.slice(2)) {
     const seed = process.env.SFL_OPEN_FIGURE_ED25519_PRIVATE_KEY_BASE64?.trim();
     if (!seed) throw new Error("SFL_OPEN_FIGURE_ED25519_PRIVATE_KEY_BASE64 is required for signing");
     const payload = JSON.parse(await fs.readFile(path.join(outputRoot, "payload.json"), "utf8"));
-    const catalogBytes = await fs.readFile(path.join(outputRoot, "snapshots", String(payload.sequence), "module-catalog.json"));
-    const previewsBytes = await fs.readFile(path.join(outputRoot, "snapshots", String(payload.sequence), "module-previews.zip"));
-    const manifest = buildSourceManifest({
+    const snapshotDir = path.join(outputRoot, "snapshots", String(payload.sequence));
+    const catalogBytes = await fs.readFile(path.join(snapshotDir, "module-catalog.json"));
+    const common = {
       sequence: payload.sequence,
       generatedAt: payload.generatedAt,
       catalogBytes,
-      previewsBytes,
       payloadCommit,
       tombstones: payload.tombstones,
       authorizedNextKeys: payload.authorizedNextKeys ?? [],
-    });
-    const manifestBytes = Buffer.from(stableJson(manifest), "utf8");
-    const signed = signManifest(manifestBytes, seed, expectedKeyId);
-    await fs.mkdir(path.join(outputRoot, "current"), { recursive: true });
-    await fs.writeFile(path.join(outputRoot, "current", "source-manifest.json"), manifestBytes);
-    await fs.writeFile(path.join(outputRoot, "current", "source-manifest.sig.json"), signed.sidecarBytes);
+    };
+    const signed = await writeSignedChannel(outputRoot, ON_DEMAND_CHANNEL_DIR, buildSourceManifest({
+      ...common,
+      previewsBytes: await fs.readFile(path.join(snapshotDir, ON_DEMAND_ARCHIVE)),
+      previewArchive: ON_DEMAND_ARCHIVE,
+    }), seed, expectedKeyId);
+    if (!payload.bundledFrozen) {
+      await writeSignedChannel(outputRoot, BUNDLED_CHANNEL_DIR, buildSourceManifest({
+        ...common,
+        previewsBytes: await fs.readFile(path.join(snapshotDir, BUNDLED_ARCHIVE)),
+        previewArchive: BUNDLED_ARCHIVE,
+      }), seed, expectedKeyId);
+    }
     const summary = {
       sequence: payload.sequence,
       payloadCommit,
       catalogSha256: payload.catalogSha256,
-      previewsSha256: payload.previewsSha256,
+      previewsSha256: payload.previewsSha256 ?? null,
+      thumbnailsSha256: payload.thumbnailsSha256,
+      bundledFrozen: payload.bundledFrozen === true,
       moduleCount: payload.moduleCount,
       signingKeyId: signed.keyId,
     };
@@ -283,28 +350,34 @@ export async function main(argv = process.argv.slice(2)) {
     repositoryRoot,
     previousCatalog: previous?.catalog,
     previousCatalogBytes: previous?.catalogBytes,
-    previousZipBytes: previous?.zipBytes,
+    previousOnDemandPublished: previous?.onDemandPublished,
     previousTombstones: previous?.tombstones,
     previousSequence: previous?.sequence,
     generatedAt,
     writeSnapshot: false,
     snapshotStaging: argument("--snapshot-staging", argv),
   });
+  const bundledSummary = payload.bundled.frozen
+    ? { bundledFrozen: true, bundledFrozenAt: previous?.bundledSequence ?? null, bundledFrozenReason: payload.bundled.reason }
+    : { bundledFrozen: false, previewsSha256: payload.bundled.sha256 };
+  const summaryBase = {
+    sequence: payload.sequence,
+    catalogSha256: payload.catalogSha256,
+    thumbnailsSha256: payload.thumbnailsSha256,
+    moduleCount: payload.moduleCount,
+    ...bundledSummary,
+  };
+  if (payload.bundled.frozen) {
+    console.warn(`Bundled channel stays at sequence ${previous?.bundledSequence ?? "none"} for clients up to 0.9.3: ${payload.bundled.reason}`);
+  }
   if (mode === "validate") {
-    const summary = {
-      unchanged: payload.unchanged,
-      sequence: payload.sequence,
-      catalogSha256: payload.catalogSha256,
-      previewsSha256: payload.previewsSha256,
-      moduleCount: payload.moduleCount,
-      diff: payload.diff,
-    };
+    const summary = { unchanged: payload.unchanged, ...summaryBase, diff: payload.diff };
     console.log(JSON.stringify(summary, null, 2));
     return summary;
   }
   if (!outputRoot) throw new Error("publish-prepare requires --output");
   if (payload.unchanged) {
-    const summary = { unchanged: true, sequence: payload.sequence, catalogSha256: payload.catalogSha256, previewsSha256: payload.previewsSha256, moduleCount: payload.moduleCount };
+    const summary = { unchanged: true, ...summaryBase };
     await fs.mkdir(outputRoot, { recursive: true });
     await fs.writeFile(path.join(outputRoot, "result.json"), stableJson(summary));
     console.log(JSON.stringify(summary, null, 2));
@@ -313,17 +386,26 @@ export async function main(argv = process.argv.slice(2)) {
   const snapshotDir = path.join(outputRoot, "snapshots", String(payload.sequence));
   await fs.mkdir(snapshotDir, { recursive: true });
   await fs.writeFile(path.join(snapshotDir, "module-catalog.json"), payload.catalogBytes);
-  await fs.writeFile(path.join(snapshotDir, "module-previews.zip"), payload.previewsBytes);
+  await fs.writeFile(path.join(snapshotDir, ON_DEMAND_ARCHIVE), payload.thumbnailsBytes);
+  if (!payload.bundled.frozen) await fs.writeFile(path.join(snapshotDir, BUNDLED_ARCHIVE), payload.bundled.bytes);
+  // Loose copies at the Catalog paths, fetched per file by on-demand clients. Git stores unchanged
+  // images once however many snapshot directories reference them.
+  for (const [relative, bytes] of Object.entries(payload.previewFiles)) {
+    const target = path.join(snapshotDir, ...relative.split("/"));
+    await fs.mkdir(path.dirname(target), { recursive: true });
+    await fs.writeFile(target, bytes);
+  }
   await fs.writeFile(path.join(outputRoot, "payload.json"), stableJson({
     sequence: payload.sequence,
     generatedAt,
     catalogSha256: payload.catalogSha256,
-    previewsSha256: payload.previewsSha256,
+    ...(payload.bundled.frozen ? { bundledFrozen: true } : { previewsSha256: payload.bundled.sha256 }),
+    thumbnailsSha256: payload.thumbnailsSha256,
     moduleCount: payload.moduleCount,
     tombstones: payload.diff.tombstones,
     authorizedNextKeys: [],
   }));
-  const summary = { unchanged: false, sequence: payload.sequence, catalogSha256: payload.catalogSha256, previewsSha256: payload.previewsSha256, moduleCount: payload.moduleCount, diff: payload.diff };
+  const summary = { unchanged: false, ...summaryBase, diff: payload.diff };
   await fs.writeFile(path.join(outputRoot, "result.json"), stableJson(summary));
   console.log(JSON.stringify(summary, null, 2));
   return summary;

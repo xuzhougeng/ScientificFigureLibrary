@@ -1057,7 +1057,9 @@ export class ModuleCatalogIndex {
 
   async loadPreview(module: ModuleCatalogEntry, role: "primary" | "thumbnail" = "primary", allowDownload = true) {
     const identity = role === "primary" ? module.preview : module.thumbnail;
-    const bytes = this.downloads ? await this.downloads.read(identity.path, allowDownload) : await readRegularContainedFile(this.assetsDir, identity.path);
+    const bytes = this.downloads
+      ? await this.readLocalPreview(identity.path) ?? await this.downloads.read(identity.path, allowDownload)
+      : await readRegularContainedFile(this.assetsDir, identity.path);
     const actual = createHash("sha256").update(bytes).digest("hex");
     if (bytes.byteLength !== identity.bytes || actual !== identity.sha256) {
       throw new Error(`${module.moduleId} ${role} preview differs from its pinned identity`);
@@ -1065,6 +1067,19 @@ export class ModuleCatalogIndex {
     const extension = path.posix.extname(identity.path).toLocaleLowerCase("en-US");
     assertMcpImageBytes({ bytes, mimeType: identity.mediaType, extension });
     return { bytes, mimeType: identity.mediaType, extension };
+  }
+
+  /**
+   * A download-backed snapshot may still ship some images (on-demand Open Figure snapshots keep their
+   * thumbnails locally). Those are read in place; anything absent falls through to the download store.
+   */
+  private async readLocalPreview(relativePath: string) {
+    try {
+      return await readRegularContainedFile(this.assetsDir, relativePath);
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === "ENOENT") return undefined;
+      throw error;
+    }
   }
 
   async primaryPreviewAvailable(module: ModuleCatalogEntry) {

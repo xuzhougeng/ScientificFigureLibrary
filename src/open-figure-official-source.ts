@@ -14,7 +14,6 @@ import {
   OFFICIAL_OPEN_FIGURE_CHANGE_PLAN_SCHEMA,
   OFFICIAL_OPEN_FIGURE_CHANGE_RECEIPT_SCHEMA,
   OFFICIAL_OPEN_FIGURE_CONFIG_SCHEMA,
-  OFFICIAL_OPEN_FIGURE_MANIFEST_URL,
   OFFICIAL_OPEN_FIGURE_NETWORK_BACKOFF_MS,
   OFFICIAL_OPEN_FIGURE_PROVIDER_ID,
   OFFICIAL_OPEN_FIGURE_REFRESH_TTL_MS,
@@ -24,8 +23,12 @@ import {
   autoRefreshEnvOverride,
   officialOpenFigureAutoRefreshAllowed,
   officialOpenFigureBootstrapKey,
+  officialOpenFigureManifestUrl,
   officialOpenFigurePaths,
+  officialOpenFigurePreviewArchiveFile,
+  type OfficialOpenFigurePreviewDelivery,
 } from "./open-figure-official-channel.ts";
+import type { PreviewDownloadOptions } from "./preview-downloads.ts";
 import { processLogError } from "./process-log.ts";
 import {
   diffOfficialCatalogs,
@@ -116,6 +119,8 @@ export interface OfficialOpenFigureSnapshotRefV1 {
   directory: string;
   generatedAt: string | null;
   payloadCommit: string | null;
+  /** Absent on snapshots written before 0.9.4, which were all "bundled". */
+  previewDelivery?: OfficialOpenFigurePreviewDelivery;
 }
 
 export interface OfficialOpenFigureStateV1 {
@@ -126,7 +131,15 @@ export interface OfficialOpenFigureStateV1 {
   activeCatalogSha256: string;
   signingKey: Ed25519PublicKeyIdentity;
   authorizedNextKeys: Ed25519PublicKeyIdentity[];
+  /** Bundled-channel observations. 0.9.3 and earlier read only this list. */
   observedRevisions: Array<{ sequence: number; manifestSha256: string }>;
+  /**
+   * On-demand-channel observations, kept apart because both channels publish the same sequence with
+   * different manifest bytes; mixing them would look like equivocation.
+   */
+  observedOnDemandRevisions?: Array<{ sequence: number; manifestSha256: string }>;
+  /** Channel of the active remote snapshot. Absent means "bundled". */
+  previewDelivery?: OfficialOpenFigurePreviewDelivery;
   tombstones: string[];
   snapshots: OfficialOpenFigureSnapshotRefV1[];
   lastCheckAt: string | null;
@@ -164,6 +177,7 @@ export interface OfficialOpenFigureChangePlanV1 {
   manifestSha256?: string;
   catalogSha256?: string;
   previewsSha256?: string;
+  previewDelivery?: OfficialOpenFigurePreviewDelivery;
   templateCount?: number;
   tombstoneCount?: number;
   payloadCommit?: string;
@@ -220,6 +234,7 @@ export class OfficialOpenFigureSourceManager implements OfficialOpenFigureRuntim
   readonly jitterRatio: number;
   readonly env: NodeJS.Dict<string>;
   readonly bootstrapKey: Ed25519PublicKeyIdentity;
+  readonly previewDownloads: PreviewDownloadOptions;
   #bundled?: ModuleCatalogIndex;
   #current?: ModuleCatalogIndex;
   #state?: OfficialOpenFigureStateV1;
@@ -240,6 +255,8 @@ export class OfficialOpenFigureSourceManager implements OfficialOpenFigureRuntim
     jitterRatio?: number;
     env?: NodeJS.Dict<string>;
     bootstrapPublicKeyBase64?: string;
+    /** Where on-demand snapshots download and cache primary previews; tests pass an isolated cache. */
+    previewDownloads?: PreviewDownloadOptions;
   } = {}) {
     this.paths = options.paths ?? officialOpenFigurePaths({ env: options.env });
     this.bundledRoot = options.bundledRoot ?? DEFAULT_PERSONAL_MODULE_ASSETS_DIR;
@@ -248,6 +265,7 @@ export class OfficialOpenFigureSourceManager implements OfficialOpenFigureRuntim
     this.jitterRatio = options.jitterRatio ?? 0.1;
     this.env = options.env ?? process.env;
     this.bootstrapKey = officialOpenFigureBootstrapKey(options.bootstrapPublicKeyBase64);
+    this.previewDownloads = options.previewDownloads ?? {};
   }
 
   currentIndex() {
@@ -273,6 +291,7 @@ export class OfficialOpenFigureSourceManager implements OfficialOpenFigureRuntim
       expectedProviderId: OFFICIAL_OPEN_FIGURE_PROVIDER_ID,
       expectedRepository: "jarxunlai/ScientificFigureLibrary-personal",
       validatePreviews: false,
+      downloads: this.previewDownloads,
     });
     if (index.catalogSha256 !== catalogSha256) {
       throw new Error("official Open Figure historical snapshot catalog digest mismatch");
@@ -304,6 +323,8 @@ export class OfficialOpenFigureSourceManager implements OfficialOpenFigureRuntim
       lastSuccessAt: this.#state?.lastSuccessAt ?? null,
       nextCheckAt: this.#state?.nextCheckAt ?? null,
       lastError: this.#state?.lastError ?? this.#failClosed ?? null,
+      previewDelivery: this.activeDelivery(),
+      manifestUrl: officialOpenFigureManifestUrl(this.activeDelivery()),
       signingKeyId: this.#state?.signingKey.keyId ?? this.bootstrapKey.keyId,
       bootstrapKeyId: OFFICIAL_OPEN_FIGURE_BOOTSTRAP_KEY_ID,
       tombstoneCount: this.#state?.tombstones.length ?? 0,
@@ -400,7 +421,7 @@ export class OfficialOpenFigureSourceManager implements OfficialOpenFigureRuntim
         providerId: OFFICIAL_OPEN_FIGURE_PROVIDER_ID,
         sourceKind: "official-signed-overlay",
         autoRefresh: input.autoRefresh,
-        manifestUrl: OFFICIAL_OPEN_FIGURE_MANIFEST_URL,
+        manifestUrl: officialOpenFigureManifestUrl(this.activeDelivery()),
         accessUrls: [],
         templateDiff: { added: [], updated: [], withdrawn: [], tombstones: this.#state?.tombstones ?? [] },
         warnings: ["Configure changes only the official Open Figure Modules autoRefresh standing policy."],
@@ -431,7 +452,7 @@ export class OfficialOpenFigureSourceManager implements OfficialOpenFigureRuntim
       action: "update",
       providerId: OFFICIAL_OPEN_FIGURE_PROVIDER_ID,
       sourceKind: "official-signed-overlay",
-      manifestUrl: OFFICIAL_OPEN_FIGURE_MANIFEST_URL,
+      manifestUrl: officialOpenFigureManifestUrl(snapshot.previewDelivery),
       accessUrls: snapshot.accessUrls,
       signingKeyId: snapshot.signingKey.keyId,
       previousSigningKeyId: this.#state?.signingKey.keyId,
@@ -440,6 +461,7 @@ export class OfficialOpenFigureSourceManager implements OfficialOpenFigureRuntim
       manifestSha256: snapshot.manifestSha256,
       catalogSha256: snapshot.catalogSha256,
       previewsSha256: snapshot.previewsArchiveSha256,
+      previewDelivery: snapshot.previewDelivery,
       templateCount: snapshot.catalog.modules.length,
       tombstoneCount: snapshot.tombstones.length,
       payloadCommit: snapshot.payloadCommit,
@@ -568,7 +590,33 @@ export class OfficialOpenFigureSourceManager implements OfficialOpenFigureRuntim
     }
   }
 
+  private activeDelivery(): OfficialOpenFigurePreviewDelivery {
+    return this.#state?.activeOrigin === "remote-lkg" && this.#state.previewDelivery === "on-demand"
+      ? "on-demand"
+      : "bundled";
+  }
+
+  /**
+   * Prefer the on-demand channel. Fall back to the bundled channel only while this client has never
+   * activated an on-demand snapshot and the on-demand manifest is absent (HTTP 404), which is the
+   * case until the publisher starts producing it. Any other failure is reported as-is.
+   */
   private async fetchSnapshot(options: { skipUnchangedPayload?: boolean } = {}) {
+    if (this.activeDelivery() === "on-demand") return this.fetchChannel("on-demand", options);
+    try {
+      return await this.fetchChannel("on-demand", options);
+    } catch (error) {
+      if (!/failed with status 404\b/u.test(error instanceof Error ? error.message : String(error))) throw error;
+    }
+    return this.fetchChannel("bundled", options);
+  }
+
+  private async fetchChannel(
+    delivery: OfficialOpenFigurePreviewDelivery,
+    options: { skipUnchangedPayload?: boolean },
+  ) {
+    const remote = this.#state?.activeOrigin === "remote-lkg";
+    const sameChannel = this.activeDelivery() === delivery;
     const trusted = this.#state
       ? [this.#state.signingKey, ...this.#state.authorizedNextKeys].filter(
           (key, index, values) => values.findIndex((item) => item.keyId === key.keyId) === index,
@@ -576,17 +624,20 @@ export class OfficialOpenFigureSourceManager implements OfficialOpenFigureRuntim
       : [this.bootstrapKey];
     return fetchVerifiedOfficialOpenFigureSnapshot({
       fetcher: this.fetcher,
-      manifestUrl: OFFICIAL_OPEN_FIGURE_MANIFEST_URL,
+      manifestUrl: officialOpenFigureManifestUrl(delivery),
+      previewDelivery: delivery,
       trustedKeys: trusted,
       skipUnchangedPayload: options.skipUnchangedPayload === true,
       previous: {
         catalog: this.#current?.catalog,
         tombstones: this.#state?.tombstones,
-        sequence: this.#state?.activeOrigin === "remote-lkg" ? this.#state.activeSequence ?? undefined : undefined,
-        manifestSha256: this.#state?.activeOrigin === "remote-lkg" ? this.#state.activeManifestSha256 ?? undefined : undefined,
-        signingKey: this.#state?.activeOrigin === "remote-lkg" ? this.#state.signingKey : this.bootstrapKey,
+        // Both channels share one sequence counter, so rollback protection carries across them;
+        // manifest bytes differ per channel, so equivocation is only checked within a channel.
+        sequence: remote ? this.#state!.activeSequence ?? undefined : undefined,
+        manifestSha256: remote && sameChannel ? this.#state!.activeManifestSha256 ?? undefined : undefined,
+        signingKey: remote ? this.#state!.signingKey : this.bootstrapKey,
         authorizedNextKeys: this.#state?.authorizedNextKeys,
-        observed: this.#state?.observedRevisions,
+        observed: delivery === "on-demand" ? this.#state?.observedOnDemandRevisions : this.#state?.observedRevisions,
       },
     });
   }
@@ -607,6 +658,7 @@ export class OfficialOpenFigureSourceManager implements OfficialOpenFigureRuntim
           expectedProviderId: OFFICIAL_OPEN_FIGURE_PROVIDER_ID,
           expectedRepository: "jarxunlai/ScientificFigureLibrary-personal",
           validatePreviews: false,
+          downloads: this.previewDownloads,
         });
         if (index.catalogSha256 !== snapshot.catalogSha256) {
           throw new Error("official Open Figure activated catalog digest mismatch");
@@ -633,7 +685,10 @@ export class OfficialOpenFigureSourceManager implements OfficialOpenFigureRuntim
     await fs.mkdir(path.join(snapshotDirectory, "signed"), { recursive: true });
     await writeImmutableFile(path.join(snapshotDirectory, "signed", "source-manifest.json"), snapshot.manifestBytes);
     await writeImmutableFile(path.join(snapshotDirectory, "signed", "source-manifest.sig.json"), snapshot.signatureSidecarBytes);
-    await writeImmutableFile(path.join(snapshotDirectory, "signed", "module-previews.zip"), snapshot.previewsArchiveBytes);
+    await writeImmutableFile(
+      path.join(snapshotDirectory, "signed", officialOpenFigurePreviewArchiveFile(snapshot.previewDelivery)),
+      snapshot.previewsArchiveBytes,
+    );
     for (const [relative, bytes] of snapshot.snapshotFiles) {
       await writeImmutableFile(path.join(catalogDirectory, ...relative.split("/")), bytes);
     }
@@ -646,6 +701,7 @@ export class OfficialOpenFigureSourceManager implements OfficialOpenFigureRuntim
       directory: catalogDirectory,
       generatedAt: snapshot.manifest.generatedAt,
       payloadCommit: snapshot.payloadCommit,
+      previewDelivery: snapshot.previewDelivery,
       tombstones: snapshot.tombstones,
     };
     await writeImmutableFile(
@@ -659,23 +715,35 @@ export class OfficialOpenFigureSourceManager implements OfficialOpenFigureRuntim
     catalogDirectory: string,
     snapshotBytes: number,
   ): OfficialOpenFigureStateV1 {
-    const snapshots = [...(this.#state?.snapshots ?? [])];
-    if (!snapshots.some((item) => item.catalogSha256 === snapshot.catalogSha256)) {
-      snapshots.push({
-        schema: OFFICIAL_OPEN_FIGURE_SNAPSHOT_STATE_SCHEMA,
-        origin: "remote",
-        sequence: snapshot.manifest.sequence,
-        manifestSha256: snapshot.manifestSha256,
-        catalogSha256: snapshot.catalogSha256,
-        directory: catalogDirectory,
-        generatedAt: snapshot.manifest.generatedAt,
-        payloadCommit: snapshot.payloadCommit,
-      });
-    }
-    const observed = [...(this.#state?.observedRevisions ?? [])];
-    if (!observed.some((item) => item.sequence === snapshot.manifest.sequence && item.manifestSha256 === snapshot.manifestSha256)) {
-      observed.push({ sequence: snapshot.manifest.sequence, manifestSha256: snapshot.manifestSha256 });
-    }
+    const reference: OfficialOpenFigureSnapshotRefV1 = {
+      schema: OFFICIAL_OPEN_FIGURE_SNAPSHOT_STATE_SCHEMA,
+      origin: "remote",
+      sequence: snapshot.manifest.sequence,
+      manifestSha256: snapshot.manifestSha256,
+      catalogSha256: snapshot.catalogSha256,
+      directory: catalogDirectory,
+      generatedAt: snapshot.manifest.generatedAt,
+      payloadCommit: snapshot.payloadCommit,
+      ...(snapshot.previewDelivery === "on-demand" ? { previewDelivery: "on-demand" as const } : {}),
+    };
+    // A remote snapshot with the same Catalog (the same feed sequence seen through the other channel)
+    // is replaced, so the active Catalog always resolves to the directory that was just activated.
+    const snapshots = (this.#state?.snapshots ?? []).filter(
+      (item) => item.origin !== "remote" || item.catalogSha256 !== snapshot.catalogSha256,
+    );
+    if (!snapshots.some((item) => item.catalogSha256 === snapshot.catalogSha256)) snapshots.push(reference);
+    const recordObservation = (list: Array<{ sequence: number; manifestSha256: string }> | undefined) => {
+      const observed = [...(list ?? [])];
+      if (!observed.some((item) => item.sequence === snapshot.manifest.sequence && item.manifestSha256 === snapshot.manifestSha256)) {
+        observed.push({ sequence: snapshot.manifest.sequence, manifestSha256: snapshot.manifestSha256 });
+      }
+      return observed.sort((left, right) => left.sequence - right.sequence);
+    };
+    const onDemand = snapshot.previewDelivery === "on-demand";
+    const observed = onDemand ? [...(this.#state?.observedRevisions ?? [])] : recordObservation(this.#state?.observedRevisions);
+    const observedOnDemand = onDemand
+      ? recordObservation(this.#state?.observedOnDemandRevisions)
+      : this.#state?.observedOnDemandRevisions;
     return {
       schema: OFFICIAL_OPEN_FIGURE_STATE_SCHEMA,
       activeOrigin: "remote-lkg",
@@ -684,7 +752,9 @@ export class OfficialOpenFigureSourceManager implements OfficialOpenFigureRuntim
       activeCatalogSha256: snapshot.catalogSha256,
       signingKey: snapshot.signingKey,
       authorizedNextKeys: snapshot.authorizedNextKeys,
-      observedRevisions: observed.sort((left, right) => left.sequence - right.sequence),
+      observedRevisions: observed,
+      ...(observedOnDemand?.length ? { observedOnDemandRevisions: observedOnDemand } : {}),
+      ...(onDemand ? { previewDelivery: "on-demand" as const } : {}),
       tombstones: [...snapshot.tombstones].sort(compareCanonicalStrings),
       snapshots,
       lastCheckAt: this.#state?.lastCheckAt ?? null,
@@ -742,6 +812,7 @@ export class OfficialOpenFigureSourceManager implements OfficialOpenFigureRuntim
           expectedProviderId: OFFICIAL_OPEN_FIGURE_PROVIDER_ID,
           expectedRepository: "jarxunlai/ScientificFigureLibrary-personal",
           validatePreviews: false,
+          downloads: this.previewDownloads,
         });
         if (index.catalogSha256 !== snapshot.catalogSha256) {
           throw new Error("official Open Figure stored catalog digest mismatch");

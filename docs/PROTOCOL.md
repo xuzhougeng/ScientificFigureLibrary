@@ -108,6 +108,29 @@ materialize an exact result.
 > described, previewed, or newly materialized, but already materialized
 > projects are not deleted.
 >
+> **Open Figure preview channels (0.9.4 client):** the feed branch carries two
+> signed manifests that share one sequence counter and one byte-identical
+> `module-catalog.json`, so `catalogSha256`, exact selectors and preview
+> confirmation do not depend on the channel.
+> `current/source-manifest.json` (bundled) names `module-previews.zip` with
+> every primary preview and thumbnail; 0.9.3 and earlier read only this
+> channel. `current-on-demand/source-manifest.json` names
+> `module-thumbnails.zip` with thumbnails only, and the same snapshot commit
+> also holds every preview and thumbnail as a loose file at its Catalog path
+> under `snapshots/<sequence>/`. A 0.9.4 client prefers the on-demand channel:
+> it stores the thumbnails locally, writes a `preview-downloads.json` whose
+> repository, commit and prefix come only from the signed manifest's payload
+> URLs, and downloads a primary preview when it is first shown, accepting it
+> only if its size and SHA-256 match the signed Catalog. It falls back to the
+> bundled channel only while the on-demand manifest returns HTTP 404 and it has
+> never activated an on-demand snapshot. Rollback protection uses the shared
+> sequence across both channels; equivocation is checked within one channel
+> (`observedRevisions` for bundled, `observedOnDemandRevisions` for on-demand).
+> The publisher signs both channels at each new sequence, but stops advancing
+> the bundled channel once its archive would exceed the client limits
+> (`PROVIDER_SOURCE_PAYLOAD_LIMITS`), so older clients stay on their last good
+> snapshot instead of failing; the thumbnails archive must always fit.
+>
 > **0.6.1 personal module boundary:** default search order is Local Published,
 > FigureYa, Open Figure Modules, then dynamic personal Providers that opted
 > in. Community remains registered with `enabled: true`,

@@ -2535,7 +2535,7 @@ export async function createLibraryService(options: LibraryServiceOptions = {}) 
           frozen: descriptor.frozen === true,
           health: status?.health ?? "degraded",
           ...(templateCount !== undefined ? { templateCount } : {}),
-          ...(official ? { manifestUrl: OFFICIAL_OPEN_FIGURE_MANIFEST_URL, autoRefreshEnabled: details.autoRefreshEnabled === true } : {}),
+          ...(official ? { manifestUrl: typeof details.manifestUrl === "string" ? details.manifestUrl : OFFICIAL_OPEN_FIGURE_MANIFEST_URL, autoRefreshEnabled: details.autoRefreshEnabled === true } : {}),
           ...(status ? { details: status.details } : { errorCode: "library_context_unavailable" }),
         };
       });
