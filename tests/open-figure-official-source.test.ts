@@ -536,4 +536,42 @@ test("failures are classified by where they happen, with local I/O errors left a
   assert.equal(isOfficialOpenFigureIntegrityFailure(new Error("preview ZIP contains an undeclared file")), true);
   const diskFull = Object.assign(new Error("ENOSPC: no space left on device, write"), { code: "ENOSPC", syscall: "write" });
   assert.equal(isOfficialOpenFigureIntegrityFailure(diskFull), false);
+  // Once a snapshot is verified, an untyped failure is local (a held write lock), not a verdict on the feed.
+  const busy = new Error("figure library is write-locked (library_busy) by another process");
+  assert.equal(isOfficialOpenFigureIntegrityFailure(busy, "activate"), false);
+  assert.equal(isOfficialOpenFigureIntegrityFailure(new Error("official Open Figure activated catalog digest mismatch"), "activate"), true);
+});
+
+test("a verified feed that cannot be activated because another process holds the write lock is retried soon", async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "sfl-open-figure-busy-"));
+  const key = testKey();
+  const fixture = await officialFixture({ key, sequence: 1 });
+  const clock = Date.parse("2026-11-19T00:00:00.000Z");
+  const paths = isolatedOfficialPaths(root);
+  const manager = new OfficialOpenFigureSourceManager({
+    paths,
+    bundledRoot: DEFAULT_PERSONAL_MODULE_ASSETS_DIR,
+    fetcher: mockFetcher(fixture.routes),
+    jitterRatio: 0,
+    now: () => clock,
+    env: { NODE_TEST_CONTEXT: "1" },
+    bootstrapPublicKeyBase64: key.publicKey,
+  });
+  await manager.load();
+  // Another SFL process (the local app, a second MCP host) is in the middle of its own activation.
+  await fs.mkdir(paths.lockDirectory, { recursive: true });
+  await manager.refresh({ ignoreTtl: true });
+  const busy = manager.statusDetails() as unknown as RefreshStatus;
+  assert.equal(busy.activeOrigin, "bundled");
+  assert.match(busy.lastError?.message ?? "", /write-locked/u);
+  assert.equal(busy.lastError?.code, "official_open_figure_network_error", "not reported as a problem with the feed");
+  assert.ok(Date.parse(busy.nextCheckAt!) - clock <= 10 * 60 * 1000, busy.nextCheckAt ?? "no next check");
+
+  // When the other process is done, the same feed activates.
+  await fs.rm(paths.lockDirectory, { recursive: true, force: true });
+  await manager.refresh({ ignoreTtl: true });
+  const activated = manager.statusDetails() as unknown as RefreshStatus;
+  assert.equal(activated.lastError, null);
+  assert.equal(activated.activeOrigin, "remote-lkg");
+  manager.dispose();
 });

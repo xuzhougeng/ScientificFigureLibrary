@@ -78,14 +78,20 @@ function isSystemError(error: unknown) {
 
 /**
  * Whether a refresh failed because the published feed itself is unacceptable.
- * Everything that was fetched but then rejected — a manifest over a size limit,
- * a bad signature, a rollback, a ZIP or catalog mismatch — stays rejected until
- * the feed is republished, so retrying on the short network backoff only
- * repeats the failure. The message pattern is kept for errors that carry no type.
+ *
+ * While fetching and verifying, everything that was fetched but then rejected —
+ * a manifest over a size limit, a bad signature, a rollback, a ZIP or catalog
+ * mismatch — stays rejected until the feed is republished, so retrying on the
+ * short network backoff only repeats the failure.
+ *
+ * While activating a verified snapshot, a failure is usually local and
+ * temporary: another SFL process holds the write lock, or the disk is full.
+ * Those keep the short retry; only the known integrity messages count there.
  */
-export function isOfficialOpenFigureIntegrityFailure(error: unknown) {
+export function isOfficialOpenFigureIntegrityFailure(error: unknown, stage: "fetch" | "activate" = "fetch") {
   if (error instanceof OfficialOpenFigureTransportError) return false;
   if (/signature|rollback|equivocation|schema|tombstone|identity|ZIP|catalog/i.test(safeError(error))) return true;
+  if (stage === "activate") return false;
   return !isSystemError(error);
 }
 
@@ -584,8 +590,10 @@ export class OfficialOpenFigureSourceManager implements OfficialOpenFigureRuntim
 
   private async refreshLocked(options: { ignoreTtl?: boolean }) {
     if (!options.ignoreTtl && this.#state?.nextCheckAt && Date.parse(this.#state.nextCheckAt) > this.now()) return;
+    let stage: "fetch" | "activate" = "fetch";
     try {
       const snapshot = await this.fetchSnapshot({ skipUnchangedPayload: true });
+      stage = "activate";
       if (isUnchangedOfficialOpenFigureFetch(snapshot)) {
         await this.touchCheck({ success: true });
         this.#networkFailures = 0;
@@ -601,7 +609,7 @@ export class OfficialOpenFigureSourceManager implements OfficialOpenFigureRuntim
     } catch (error) {
       const message = safeError(error);
       processLogError("Open Figure auto-update failed", error);
-      const integrity = isOfficialOpenFigureIntegrityFailure(error);
+      const integrity = isOfficialOpenFigureIntegrityFailure(error, stage);
       if (integrity) this.#networkFailures = 0;
       else this.#networkFailures += 1;
       await this.touchCheck({
