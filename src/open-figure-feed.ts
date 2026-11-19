@@ -15,8 +15,12 @@ import {
   OFFICIAL_OPEN_FIGURE_REPOSITORY,
   PERSONAL_MODULE_SNAPSHOT_LICENSE,
   officialOpenFigurePayloadUrl,
+  officialOpenFigurePreviewArchiveFile,
+  officialOpenFigureSnapshotPrefix,
   parseOfficialOpenFigurePayloadUrl,
+  type OfficialOpenFigurePreviewDelivery,
 } from "./open-figure-official-channel.ts";
+import { PREVIEW_DOWNLOAD_MANIFEST } from "./preview-downloads.ts";
 import {
   extractExactZipFiles,
   parseProviderSourceManifestBytes,
@@ -96,6 +100,8 @@ export interface VerifiedOfficialOpenFigureSnapshot {
   catalog: ModuleCatalog;
   previewsArchiveBytes: Uint8Array;
   previewsArchiveSha256: string;
+  /** "on-demand": the archive holds thumbnails only and primary previews are fetched per file. */
+  previewDelivery: OfficialOpenFigurePreviewDelivery;
   previewFiles: ExactZipFile[];
   authorizedNextKeys: Ed25519PublicKeyIdentity[];
   tombstones: string[];
@@ -112,6 +118,7 @@ export interface VerifiedOfficialOpenFigureSnapshot {
 
 export function assertOfficialOpenFigureManifest(
   manifest: ProviderSourceManifestV1,
+  previewDelivery: OfficialOpenFigurePreviewDelivery = "bundled",
 ): { payloadCommit: string } {
   if (manifest.providerId !== OFFICIAL_OPEN_FIGURE_PROVIDER_ID) {
     throw new Error(
@@ -123,8 +130,9 @@ export function assertOfficialOpenFigureManifest(
   if (catalogPayload.file !== "module-catalog.json") {
     throw new Error("official Open Figure catalog URL must end with module-catalog.json");
   }
-  if (previewPayload.file !== "module-previews.zip") {
-    throw new Error("official Open Figure preview URL must end with module-previews.zip");
+  const previewFile = officialOpenFigurePreviewArchiveFile(previewDelivery);
+  if (previewPayload.file !== previewFile) {
+    throw new Error(`official Open Figure preview URL must end with ${previewFile}`);
   }
   if (catalogPayload.payloadCommit !== previewPayload.payloadCommit) {
     throw new Error("official Open Figure catalog and preview payload commits must match");
@@ -135,7 +143,7 @@ export function assertOfficialOpenFigureManifest(
   if (
     officialOpenFigurePayloadUrl(catalogPayload.payloadCommit, manifest.sequence, "module-catalog.json") !==
       manifest.catalog.url ||
-    officialOpenFigurePayloadUrl(previewPayload.payloadCommit, manifest.sequence, "module-previews.zip") !==
+    officialOpenFigurePayloadUrl(previewPayload.payloadCommit, manifest.sequence, previewFile) !==
       manifest.previews.url
   ) {
     throw new Error("official Open Figure payload URLs are not canonical");
@@ -152,10 +160,14 @@ export function assertOfficialOpenFigureManifest(
   return { payloadCommit: catalogPayload.payloadCommit };
 }
 
-export function officialPreviewInventory(catalog: ModuleCatalog) {
+export function officialPreviewInventory(
+  catalog: ModuleCatalog,
+  previewDelivery: OfficialOpenFigurePreviewDelivery = "bundled",
+) {
   const expected = new Map<string, { bytes: number; sha256: string; mediaType: string }>();
   for (const module of catalog.modules) {
-    for (const preview of [module.preview, module.thumbnail]) {
+    const archived = previewDelivery === "on-demand" ? [module.thumbnail] : [module.preview, module.thumbnail];
+    for (const preview of archived) {
       const prior = expected.get(preview.path);
       if (prior) throw new Error(`official Open Figure catalog preview path collision: ${preview.path}`);
       expected.set(preview.path, {
@@ -168,8 +180,12 @@ export function officialPreviewInventory(catalog: ModuleCatalog) {
   return expected;
 }
 
-export function verifyOfficialPreviewFiles(catalog: ModuleCatalog, files: ExactZipFile[]) {
-  const expected = officialPreviewInventory(catalog);
+export function verifyOfficialPreviewFiles(
+  catalog: ModuleCatalog,
+  files: ExactZipFile[],
+  previewDelivery: OfficialOpenFigurePreviewDelivery = "bundled",
+) {
+  const expected = officialPreviewInventory(catalog, previewDelivery);
   if (files.length !== expected.size) {
     throw new Error("official Open Figure preview ZIP file count does not match the Catalog");
   }
@@ -191,6 +207,8 @@ export function assembleOfficialCatalogSnapshotFiles(options: {
   catalogBytes: Uint8Array;
   catalog: ModuleCatalog;
   previewFiles: ExactZipFile[];
+  /** Present for on-demand snapshots: every preview identity resolves under this signed payload. */
+  downloads?: { payloadCommit: string; sequence: number };
 }): Map<string, Uint8Array> {
   const previewManifest = {
     schema: MODULE_PREVIEW_MANIFEST_SCHEMA,
@@ -221,6 +239,24 @@ export function assembleOfficialCatalogSnapshotFiles(options: {
     ["module-source-pack.manifest.json", Buffer.from(`${canonicalJson(sourcePackManifest)}\n`, "utf8")],
     ["PERSONAL_MODULES_LICENSE.txt", Buffer.from(PERSONAL_MODULE_SNAPSHOT_LICENSE, "utf8")],
   ]);
+  if (options.downloads) {
+    // Derived only from signed data: the repository is fixed, and the commit and sequence come from
+    // the signed manifest's payload URLs. Each file identity is the signed Catalog's own.
+    const downloadManifest = {
+      schema: "figure-library.preview-downloads.v1",
+      providerId: options.catalog.provider.providerId,
+      repository: OFFICIAL_OPEN_FIGURE_REPOSITORY,
+      commit: options.downloads.payloadCommit,
+      prefix: officialOpenFigureSnapshotPrefix(options.downloads.sequence),
+      files: previewManifest.entries.map(({ path: file, bytes, sha256: digest, mediaType }) => ({
+        path: file,
+        bytes,
+        sha256: digest,
+        mediaType,
+      })),
+    };
+    files.set(PREVIEW_DOWNLOAD_MANIFEST, Buffer.from(`${canonicalJson(downloadManifest)}\n`, "utf8"));
+  }
   for (const file of options.previewFiles) {
     files.set(file.path, file.data);
   }
@@ -334,6 +370,8 @@ export function assertOfficialKeyTransition(options: {
 export async function fetchVerifiedOfficialOpenFigureSnapshot(options: {
   fetcher: SecureProviderSourceFetcher;
   manifestUrl: string;
+  /** Which channel manifestUrl belongs to; it fixes the preview archive the manifest may name. */
+  previewDelivery?: OfficialOpenFigurePreviewDelivery;
   trustedKeys: Ed25519PublicKeyIdentity[];
   skipUnchangedPayload?: boolean;
   previous?: {
@@ -376,7 +414,8 @@ export async function fetchVerifiedOfficialOpenFigureSnapshot(options: {
   }
   verifyEd25519Detached(manifestResponse.bytes, parsedSignature.signature, signingKey);
   const manifest = parseProviderSourceManifestBytes(manifestResponse.bytes);
-  const { payloadCommit } = assertOfficialOpenFigureManifest(manifest);
+  const previewDelivery = options.previewDelivery ?? "bundled";
+  const { payloadCommit } = assertOfficialOpenFigureManifest(manifest, previewDelivery);
   assertOfficialSequenceTransition({
     previousSequence: options.previous?.sequence,
     previousManifestSha256: options.previous?.manifestSha256,
@@ -430,13 +469,13 @@ export async function fetchVerifiedOfficialOpenFigureSnapshot(options: {
     throw new Error("official Open Figure preview archive identity does not match the signed manifest");
   }
   const expected = new Map(
-    [...officialPreviewInventory(catalog)].map(([previewPath, identity]) => [
+    [...officialPreviewInventory(catalog, previewDelivery)].map(([previewPath, identity]) => [
       previewPath,
       { bytes: identity.bytes, sha256: identity.sha256 },
     ]),
   );
   const previewFiles = extractExactZipFiles(previewsResponse.bytes, expected);
-  verifyOfficialPreviewFiles(catalog, previewFiles);
+  verifyOfficialPreviewFiles(catalog, previewFiles, previewDelivery);
   diffOfficialCatalogs({
     previous: options.previous?.catalog,
     next: catalog,
@@ -459,6 +498,7 @@ export async function fetchVerifiedOfficialOpenFigureSnapshot(options: {
     catalog,
     previewsArchiveBytes: previewsResponse.bytes,
     previewsArchiveSha256: sha256(previewsResponse.bytes),
+    previewDelivery,
     previewFiles,
     authorizedNextKeys,
     tombstones: [...manifest.tombstones],
@@ -467,6 +507,7 @@ export async function fetchVerifiedOfficialOpenFigureSnapshot(options: {
       catalogBytes: catalogResponse.bytes,
       catalog,
       previewFiles,
+      ...(previewDelivery === "on-demand" ? { downloads: { payloadCommit, sequence: manifest.sequence } } : {}),
     }),
     payloadUrls: {
       manifest: options.manifestUrl,

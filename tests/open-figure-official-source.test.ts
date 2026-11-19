@@ -12,7 +12,9 @@ import {
 } from "../src/module-catalog.ts";
 import {
   OFFICIAL_OPEN_FIGURE_MANIFEST_URL,
+  OFFICIAL_OPEN_FIGURE_ON_DEMAND_MANIFEST_URL,
   OFFICIAL_OPEN_FIGURE_PROVIDER_ID,
+  OFFICIAL_OPEN_FIGURE_REPOSITORY,
   officialOpenFigurePayloadUrl,
   officialOpenFigurePaths,
   parseOfficialOpenFigurePayloadUrl,
@@ -50,6 +52,11 @@ function testKey() {
   return { privateKey, publicKey: encoded, keyId: ed25519PublicKeyIdentity(encoded).keyId };
 }
 
+function notFound(): RawHttpsResponse {
+  const body = Buffer.from("404: Not Found");
+  return { statusCode: 404, headers: { "content-type": "text/plain", "content-length": String(body.byteLength) }, body };
+}
+
 function response(body: Uint8Array, contentType: string): RawHttpsResponse {
   return {
     statusCode: 200,
@@ -64,7 +71,9 @@ async function officialFixture(options: {
   payloadCommit?: string;
   dropModule?: string;
   tombstones?: string[];
+  delivery?: "bundled" | "on-demand";
 } = {}) {
+  const delivery = options.delivery ?? "bundled";
   const key = options.key ?? testKey();
   const sequence = options.sequence ?? 1;
   const payloadCommit = options.payloadCommit ?? "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
@@ -84,9 +93,17 @@ async function officialFixture(options: {
     files[module.preview.path] = await fs.readFile(path.join(index.assetsDir, ...module.preview.path.split("/")));
     files[module.thumbnail.path] = await fs.readFile(path.join(index.assetsDir, ...module.thumbnail.path.split("/")));
   }
-  const previewsBytes = new Uint8Array(zipSync(files, { level: 0 }));
+  const archived = delivery === "on-demand"
+    ? Object.fromEntries(Object.entries(files).filter(([file]) => file.startsWith("thumbs/")))
+    : files;
+  const previewsBytes = new Uint8Array(zipSync(archived, { level: 0 }));
   const catalogUrl = officialOpenFigurePayloadUrl(payloadCommit, sequence, "module-catalog.json");
-  const previewsUrl = officialOpenFigurePayloadUrl(payloadCommit, sequence, "module-previews.zip");
+  const previewsUrl = officialOpenFigurePayloadUrl(
+    payloadCommit,
+    sequence,
+    delivery === "on-demand" ? "module-thumbnails.zip" : "module-previews.zip",
+  );
+  const manifestUrl = delivery === "on-demand" ? OFFICIAL_OPEN_FIGURE_ON_DEMAND_MANIFEST_URL : OFFICIAL_OPEN_FIGURE_MANIFEST_URL;
   const manifest = {
     schema: PROVIDER_SOURCE_MANIFEST_SCHEMA,
     providerId: OFFICIAL_OPEN_FIGURE_PROVIDER_ID,
@@ -106,19 +123,26 @@ async function officialFixture(options: {
     signatureBase64: sign(null, manifestBytes, key.privateKey).toString("base64"),
   }));
   const routes = new Map<string, RawHttpsResponse>([
-    [OFFICIAL_OPEN_FIGURE_MANIFEST_URL, response(manifestBytes, "text/plain")],
-    [OFFICIAL_OPEN_FIGURE_MANIFEST_URL.replace(/source-manifest\.json$/u, "source-manifest.sig.json"), response(signatureBytes, "text/plain")],
+    [manifestUrl, response(manifestBytes, "text/plain")],
+    [manifestUrl.replace(/source-manifest\.json$/u, "source-manifest.sig.json"), response(signatureBytes, "text/plain")],
     [catalogUrl, response(catalogBytes, "text/plain")],
     [previewsUrl, response(previewsBytes, "application/octet-stream")],
   ]);
-  return { key, catalog, catalogBytes, previewsBytes, manifestBytes, routes, sequence, payloadCommit };
+  const looseUrls = new Map<string, string>();
+  if (delivery === "on-demand") {
+    for (const [file, bytes] of Object.entries(files)) {
+      const url = `https://raw.githubusercontent.com/${OFFICIAL_OPEN_FIGURE_REPOSITORY}/${payloadCommit}/snapshots/${sequence}/${file}`;
+      looseUrls.set(file, url);
+      routes.set(url, response(bytes, "application/octet-stream"));
+    }
+  }
+  return { key, catalog, catalogBytes, previewsBytes, manifestBytes, routes, sequence, payloadCommit, looseUrls };
 }
 
 function mockFetcher(routes: Map<string, RawHttpsResponse>) {
   const request: ProviderSourceHttpsRequest = async (url) => {
     const found = routes.get(url.href);
-    if (!found) throw new Error(`missing fixture route: ${url.href}`);
-    return found;
+    return found ?? notFound();
   };
   return new SecureProviderSourceFetcher({
     lookup: async () => [{ address: "1.1.1.1", family: 4 }],
@@ -244,8 +268,7 @@ test("process start refreshes immediately and later checks skip unchanged payloa
     request: async (url) => {
       hits.push(url.href);
       const found = fixture.routes.get(url.href);
-      if (!found) throw new Error(`missing fixture route: ${url.href}`);
-      return found;
+      return found ?? notFound();
     },
   });
   const paths = isolatedOfficialPaths(root);
@@ -273,8 +296,7 @@ test("process start refreshes immediately and later checks skip unchanged payloa
     request: async (url) => {
       laterHits.push(url.href);
       const found = fixture.routes.get(url.href);
-      if (!found) throw new Error(`missing fixture route: ${url.href}`);
-      return found;
+      return found ?? notFound();
     },
   });
   const second = new OfficialOpenFigureSourceManager({
@@ -293,5 +315,169 @@ test("process start refreshes immediately and later checks skip unchanged payloa
   assert.ok(laterHits.some((url) => url.endsWith("source-manifest.sig.json")));
   assert.equal(laterHits.some((url) => url.endsWith("module-catalog.json")), false);
   assert.equal(laterHits.some((url) => url.endsWith("module-previews.zip")), false);
+  second.dispose();
+});
+
+test("on-demand feed keeps thumbnails local and downloads primary previews by their signed identity", async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "sfl-open-figure-on-demand-"));
+  const key = testKey();
+  const fixture = await officialFixture({ key, sequence: 3, delivery: "on-demand" });
+  const hits: string[] = [];
+  const fetcher = new SecureProviderSourceFetcher({
+    lookup: async () => [{ address: "1.1.1.1", family: 4 }],
+    request: async (url) => {
+      hits.push(url.href);
+      return fixture.routes.get(url.href) ?? notFound();
+    },
+  });
+  const cacheDirectory = path.join(root, "preview-cache");
+  const manager = new OfficialOpenFigureSourceManager({
+    paths: isolatedOfficialPaths(root),
+    bundledRoot: DEFAULT_PERSONAL_MODULE_ASSETS_DIR,
+    fetcher,
+    jitterRatio: 0,
+    env: { NODE_TEST_CONTEXT: "1" },
+    bootstrapPublicKeyBase64: key.publicKey,
+    previewDownloads: { fetcher, cacheDirectory },
+  });
+  await manager.load();
+  await manager.refresh({ ignoreTtl: true });
+  assert.equal(manager.statusDetails().lastError, null);
+  assert.equal(manager.statusDetails().previewDelivery, "on-demand");
+  assert.equal(manager.statusDetails().manifestUrl, OFFICIAL_OPEN_FIGURE_ON_DEMAND_MANIFEST_URL);
+  assert.equal(hits.includes(OFFICIAL_OPEN_FIGURE_MANIFEST_URL), false, "the bundled channel is not needed");
+  assert.equal(hits.some((url) => url.endsWith("/preview.png") || url.includes("/previews/")), false, "nothing downloads eagerly");
+
+  const index = manager.currentIndex();
+  assert.equal(index.catalogSha256, sha256(fixture.catalogBytes));
+  const module = index.catalog.modules[0]!;
+  hits.length = 0;
+  const thumbnail = await index.loadPreview(module, "thumbnail");
+  assert.equal(thumbnail.bytes.byteLength, module.thumbnail.bytes);
+  assert.deepEqual(hits, [], "thumbnails come from the signed archive");
+  const primary = await index.loadPreview(module, "primary");
+  assert.equal(sha256(primary.bytes), module.preview.sha256);
+  assert.deepEqual(hits, [fixture.looseUrls.get(module.preview.path)]);
+  assert.ok((await fs.readdir(cacheDirectory)).includes(`${module.preview.sha256}${path.extname(module.preview.path)}`));
+
+  const reloaded = new OfficialOpenFigureSourceManager({
+    paths: isolatedOfficialPaths(root),
+    bundledRoot: DEFAULT_PERSONAL_MODULE_ASSETS_DIR,
+    fetcher,
+    jitterRatio: 0,
+    env: { NODE_TEST_CONTEXT: "1", SFL_OPEN_FIGURE_AUTO_REFRESH: "0" },
+    bootstrapPublicKeyBase64: key.publicKey,
+    previewDownloads: { fetcher, cacheDirectory },
+  });
+  await reloaded.load();
+  assert.equal(reloaded.statusDetails().previewDelivery, "on-demand");
+  hits.length = 0;
+  await reloaded.currentIndex().loadPreview(module, "primary");
+  assert.deepEqual(hits, [], "a cached primary preview is reused after restart");
+  manager.dispose();
+  reloaded.dispose();
+});
+
+test("on-demand primary preview that differs from the signed Catalog is rejected", async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "sfl-open-figure-on-demand-tamper-"));
+  const key = testKey();
+  const fixture = await officialFixture({ key, sequence: 2, delivery: "on-demand" });
+  const index = await ModuleCatalogIndex.load(DEFAULT_PERSONAL_MODULE_ASSETS_DIR, { validatePreviews: false });
+  const module = index.catalog.modules[0]!;
+  const tampered = new Map(fixture.routes);
+  tampered.set(fixture.looseUrls.get(module.preview.path)!, response(Buffer.from("not the signed preview"), "image/png"));
+  const fetcher = mockFetcher(tampered);
+  const manager = new OfficialOpenFigureSourceManager({
+    paths: isolatedOfficialPaths(root),
+    bundledRoot: DEFAULT_PERSONAL_MODULE_ASSETS_DIR,
+    fetcher,
+    jitterRatio: 0,
+    env: { NODE_TEST_CONTEXT: "1" },
+    bootstrapPublicKeyBase64: key.publicKey,
+    previewDownloads: { fetcher, cacheDirectory: path.join(root, "preview-cache") },
+  });
+  await manager.load();
+  await manager.refresh({ ignoreTtl: true });
+  assert.equal(manager.statusDetails().previewDelivery, "on-demand");
+  await assert.rejects(manager.currentIndex().loadPreview(module, "primary"));
+  manager.dispose();
+});
+
+test("bundled-channel clients move to the on-demand channel at the same feed sequence", async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "sfl-open-figure-migrate-"));
+  const key = testKey();
+  const bundled = await officialFixture({ key, sequence: 4 });
+  const paths = isolatedOfficialPaths(root);
+  const options = {
+    paths,
+    bundledRoot: DEFAULT_PERSONAL_MODULE_ASSETS_DIR,
+    jitterRatio: 0,
+    env: { NODE_TEST_CONTEXT: "1" },
+    bootstrapPublicKeyBase64: key.publicKey,
+  };
+  const first = new OfficialOpenFigureSourceManager({ ...options, fetcher: mockFetcher(bundled.routes) });
+  await first.load();
+  await first.refresh({ ignoreTtl: true });
+  assert.equal(first.statusDetails().lastError, null);
+  assert.equal(first.statusDetails().previewDelivery, "bundled", "falls back while the on-demand manifest is absent");
+  assert.equal(first.statusDetails().activeSequence, 4);
+  first.dispose();
+
+  // The publisher signs both channels at one shared sequence; their manifest bytes differ.
+  const onDemand = await officialFixture({ key, sequence: 4, delivery: "on-demand" });
+  assert.notEqual(sha256(onDemand.manifestBytes), sha256(bundled.manifestBytes));
+  const both = new Map([...bundled.routes, ...onDemand.routes]);
+  const fetcher = mockFetcher(both);
+  const second = new OfficialOpenFigureSourceManager({
+    ...options,
+    fetcher,
+    previewDownloads: { fetcher, cacheDirectory: path.join(root, "preview-cache") },
+  });
+  await second.load();
+  await second.refresh({ ignoreTtl: true });
+  assert.equal(second.statusDetails().lastError, null, "no equivocation across channels");
+  assert.equal(second.statusDetails().previewDelivery, "on-demand");
+  assert.equal(second.statusDetails().activeSequence, 4);
+  const state = JSON.parse(await fs.readFile(paths.stateFile, "utf8"));
+  assert.deepEqual(state.observedRevisions, [{ sequence: 4, manifestSha256: sha256(bundled.manifestBytes) }]);
+  assert.deepEqual(state.observedOnDemandRevisions, [{ sequence: 4, manifestSha256: sha256(onDemand.manifestBytes) }]);
+  assert.equal(state.snapshots.filter((item: { origin: string }) => item.origin === "remote").length, 1);
+  second.dispose();
+
+  // Once on the on-demand channel, a missing on-demand manifest is an error, never a silent downgrade.
+  const third = new OfficialOpenFigureSourceManager({ ...options, fetcher: mockFetcher(bundled.routes) });
+  await third.load();
+  await third.refresh({ ignoreTtl: true });
+  assert.match(String((third.statusDetails().lastError as { message?: string } | null)?.message), /404/u);
+  assert.equal(third.statusDetails().previewDelivery, "on-demand");
+  third.dispose();
+});
+
+test("an older on-demand sequence is a rollback even after a bundled-channel snapshot", async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "sfl-open-figure-rollback-"));
+  const key = testKey();
+  const bundled = await officialFixture({ key, sequence: 5 });
+  const stale = await officialFixture({ key, sequence: 3, delivery: "on-demand" });
+  const options = {
+    paths: isolatedOfficialPaths(root),
+    bundledRoot: DEFAULT_PERSONAL_MODULE_ASSETS_DIR,
+    jitterRatio: 0,
+    env: { NODE_TEST_CONTEXT: "1" },
+    bootstrapPublicKeyBase64: key.publicKey,
+  };
+  const first = new OfficialOpenFigureSourceManager({ ...options, fetcher: mockFetcher(bundled.routes) });
+  await first.load();
+  await first.refresh({ ignoreTtl: true });
+  assert.equal(first.statusDetails().activeSequence, 5);
+  first.dispose();
+  const second = new OfficialOpenFigureSourceManager({
+    ...options,
+    fetcher: mockFetcher(new Map([...bundled.routes, ...stale.routes])),
+  });
+  await second.load();
+  await second.refresh({ ignoreTtl: true });
+  assert.match(String((second.statusDetails().lastError as { message?: string } | null)?.message), /rollback/u);
+  assert.equal(second.statusDetails().activeSequence, 5);
+  assert.equal(second.statusDetails().previewDelivery, "bundled");
   second.dispose();
 });

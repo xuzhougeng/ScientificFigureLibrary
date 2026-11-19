@@ -9,6 +9,28 @@ export const OFFICIAL_OPEN_FIGURE_REPOSITORY =
 export const OFFICIAL_OPEN_FIGURE_FEED_BRANCH = "open-figure-feed" as const;
 export const OFFICIAL_OPEN_FIGURE_MANIFEST_URL =
   "https://raw.githubusercontent.com/jarxunlai/ScientificFigureLibrary-personal/open-figure-feed/current/source-manifest.json" as const;
+/**
+ * Channel for clients that download primary previews on demand. Its signed manifest points at a
+ * thumbnails-only archive; primary previews are loose files in the same commit-pinned snapshot.
+ * Clients up to 0.9.3 never read it, so the bundled channel above can freeze without breaking them.
+ */
+export const OFFICIAL_OPEN_FIGURE_ON_DEMAND_MANIFEST_URL =
+  "https://raw.githubusercontent.com/jarxunlai/ScientificFigureLibrary-personal/open-figure-feed/current-on-demand/source-manifest.json" as const;
+export type OfficialOpenFigurePreviewDelivery = "bundled" | "on-demand";
+export type OfficialOpenFigurePayloadFile = "module-catalog.json" | "module-previews.zip" | "module-thumbnails.zip";
+export function officialOpenFigureManifestUrl(delivery: OfficialOpenFigurePreviewDelivery) {
+  return delivery === "on-demand" ? OFFICIAL_OPEN_FIGURE_ON_DEMAND_MANIFEST_URL : OFFICIAL_OPEN_FIGURE_MANIFEST_URL;
+}
+export function officialOpenFigurePreviewArchiveFile(delivery: OfficialOpenFigurePreviewDelivery) {
+  return delivery === "on-demand" ? "module-thumbnails.zip" as const : "module-previews.zip" as const;
+}
+/** Repository-relative prefix under which an on-demand snapshot keeps its loose preview files. */
+export function officialOpenFigureSnapshotPrefix(sequence: number) {
+  if (!Number.isSafeInteger(sequence) || sequence < 1) {
+    throw new Error("official Open Figure sequence must be a positive integer");
+  }
+  return `snapshots/${sequence}`;
+}
 
 /**
  * Production bootstrap public key. The matching 32-byte seed lives only in the GitHub Environment secret SFL_OPEN_FIGURE_ED25519_PRIVATE_KEY_BASE64 and is never stored in this repository.
@@ -43,7 +65,7 @@ export const PERSONAL_MODULE_SNAPSHOT_LICENSE =
   "Open Figure Modules metadata and generated previews\n\nComplete module archives are not included in the SFL plugin; they remain in the separately maintained personal module repository and are fetched only by an exact selected identity.\n\nEach module's code, content, and documentation license is recorded in module-catalog.json. Do not infer a module license from the SFL project license.\n";
 
 const PAYLOAD_COMMIT = /^[a-f0-9]{40}$/u;
-const PAYLOAD_FILE = /^(?:module-catalog\.json|module-previews\.zip)$/u;
+const PAYLOAD_FILE = /^(?:module-catalog\.json|module-previews\.zip|module-thumbnails\.zip)$/u;
 
 export function officialOpenFigureBootstrapKey(
   publicKeyBase64 = OFFICIAL_OPEN_FIGURE_BOOTSTRAP_PUBLIC_KEY_BASE64,
@@ -60,7 +82,7 @@ export function isOfficialOpenFigureProviderId(value: unknown): value is typeof 
 export function officialOpenFigurePayloadUrl(
   payloadCommit: string,
   sequence: number,
-  file: "module-catalog.json" | "module-previews.zip",
+  file: OfficialOpenFigurePayloadFile,
 ) {
   if (!PAYLOAD_COMMIT.test(payloadCommit)) {
     throw new Error("official Open Figure payload commit must be a lowercase 40-hex SHA");
@@ -77,7 +99,7 @@ export function officialOpenFigurePayloadUrl(
 export function parseOfficialOpenFigurePayloadUrl(value: string): {
   payloadCommit: string;
   sequence: number;
-  file: "module-catalog.json" | "module-previews.zip";
+  file: OfficialOpenFigurePayloadFile;
 } {
   let url: URL;
   try {
@@ -92,7 +114,7 @@ export function parseOfficialOpenFigurePayloadUrl(value: string): {
     throw new Error("official Open Figure payload URL must use raw.githubusercontent.com");
   }
   const match = url.pathname.match(
-    /^\/jarxunlai\/ScientificFigureLibrary-personal\/([a-f0-9]{40})\/snapshots\/([1-9][0-9]*)\/(module-catalog\.json|module-previews\.zip)$/u,
+    /^\/jarxunlai\/ScientificFigureLibrary-personal\/([a-f0-9]{40})\/snapshots\/([1-9][0-9]*)\/(module-catalog\.json|module-previews\.zip|module-thumbnails\.zip)$/u,
   );
   if (!match) {
     throw new Error("official Open Figure payload URL must be commit-pinned under snapshots/<sequence>/");
@@ -100,7 +122,7 @@ export function parseOfficialOpenFigurePayloadUrl(value: string): {
   return {
     payloadCommit: match[1]!,
     sequence: Number(match[2]),
-    file: match[3] as "module-catalog.json" | "module-previews.zip",
+    file: match[3] as OfficialOpenFigurePayloadFile,
   };
 }
 
