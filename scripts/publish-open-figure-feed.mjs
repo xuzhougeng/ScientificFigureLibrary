@@ -64,6 +64,45 @@ export function buildPreviewZip(files) {
   return zipDeterministic(files, { level: 6 });
 }
 
+// Mirrors PROVIDER_SOURCE_PAYLOAD_LIMITS in src/provider-source-fetch.ts (a test keeps them equal).
+// Installed clients reject a manifest outside these limits, so publishing one strands every client
+// on its last snapshot.
+export const CLIENT_PAYLOAD_LIMITS = Object.freeze({
+  catalogBytes: 16 * 1024 * 1024,
+  previewArchiveBytes: 64 * 1024 * 1024,
+  previewExpandedBytes: 128 * 1024 * 1024,
+  previewFileBytes: 64 * 1024 * 1024,
+  previewFiles: 10_000,
+});
+
+const mib = (bytes) => `${(bytes / (1024 * 1024)).toFixed(1)} MiB`;
+
+export function assertWithinClientLimits({ catalogBytes, previewsBytes, previewFiles }, limits = CLIENT_PAYLOAD_LIMITS) {
+  const entries = Object.entries(previewFiles).map(([name, data]) => ({ name, bytes: data.byteLength }));
+  const expanded = entries.reduce((sum, entry) => sum + entry.bytes, 0);
+  const largest = () => [...entries].sort((a, b) => b.bytes - a.bytes).slice(0, 5)
+    .map((entry) => `${entry.name} (${mib(entry.bytes)})`).join(", ");
+  const problems = [];
+  if (catalogBytes.byteLength > limits.catalogBytes) {
+    problems.push(`catalog is ${mib(catalogBytes.byteLength)}, clients accept at most ${mib(limits.catalogBytes)}`);
+  }
+  if (previewsBytes.byteLength > limits.previewArchiveBytes) {
+    problems.push(`module-previews.zip is ${mib(previewsBytes.byteLength)}, clients accept at most ${mib(limits.previewArchiveBytes)}`);
+  }
+  if (expanded > limits.previewExpandedBytes) {
+    problems.push(`previews expand to ${mib(expanded)}, clients accept at most ${mib(limits.previewExpandedBytes)}`);
+  }
+  if (entries.length > limits.previewFiles) {
+    problems.push(`previews contain ${entries.length} files, clients accept at most ${limits.previewFiles}`);
+  }
+  for (const entry of entries) {
+    if (entry.bytes > limits.previewFileBytes) problems.push(`${entry.name} is ${mib(entry.bytes)}, clients accept at most ${mib(limits.previewFileBytes)} per file`);
+  }
+  if (problems.length) {
+    throw new Error(`Open Figure feed would be rejected by installed clients: ${problems.join("; ")}. Largest previews: ${largest()}`);
+  }
+}
+
 export function buildSourceManifest({
   sequence,
   generatedAt,
@@ -148,6 +187,7 @@ export async function buildOpenFigureFeedPayload(options = {}) {
   const zipFirst = Buffer.from(buildPreviewZip(previewFiles));
   const zipSecond = Buffer.from(buildPreviewZip(previewFiles));
   if (!zipFirst.equals(zipSecond)) throw new Error("Open Figure preview ZIP generation is not deterministic");
+  assertWithinClientLimits({ catalogBytes, previewsBytes: zipFirst, previewFiles });
   const previous = options.previousCatalog;
   const previousIds = previous?.modules?.map((module) => module.moduleId) ?? [];
   const nextIds = built.catalog.modules.map((module) => module.moduleId);
