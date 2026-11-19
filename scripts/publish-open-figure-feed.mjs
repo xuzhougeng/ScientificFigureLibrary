@@ -219,7 +219,7 @@ export function signManifest(manifestBytes, seedBase64, expectedKeyId) {
 }
 
 /**
- * This channel is read by clients up to 0.9.2, which download every preview in one ZIP.
+ * This channel is read by every released client, each of which downloads every preview in one ZIP.
  * It therefore publishes reduced previews; see `src/preview-reduction.ts`.
  */
 const LEGACY_PREVIEW_VARIANT = "reduced";

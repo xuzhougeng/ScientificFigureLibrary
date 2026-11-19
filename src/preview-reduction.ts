@@ -1,7 +1,7 @@
 /**
  * Reduced preview renditions for the legacy Open Figure feed.
  *
- * Clients up to 0.9.2 download every preview of an update in one ZIP capped at
+ * Every released client downloads every preview of an update in one ZIP capped at
  * 64 MiB, so that channel carries a smaller rendition of each preview instead
  * of the original. The original stays inside the module archive and is what a
  * user gets when the template is materialized.
