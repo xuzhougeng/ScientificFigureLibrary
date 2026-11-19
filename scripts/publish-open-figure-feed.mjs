@@ -15,6 +15,7 @@ import {
   validatePersonalModules,
   zipDeterministic,
 } from "./personal-modules-lib.mjs";
+import { unzipSync } from "fflate";
 
 const MANIFEST_SCHEMA = "figure-library.provider-source-manifest.v1";
 const SIGNATURE_SCHEMA = "figure-library.provider-source-signature.v1";
@@ -115,6 +116,18 @@ export function assertWithinClientLimits(
   if (problems.length) {
     throw new Error(`Open Figure feed would be rejected by installed clients: ${problems.join("; ")}. Largest previews: ${largest()}`);
   }
+}
+
+/** The sizes a ZIP declares for its own entries, in the shape `assertWithinClientLimits` reads; nothing is decompressed. */
+function archiveEntrySizes(archiveBytes) {
+  const files = {};
+  unzipSync(archiveBytes, {
+    filter: (file) => {
+      files[file.name] = { byteLength: file.originalSize };
+      return false;
+    },
+  });
+  return files;
 }
 
 export function buildSourceManifest({
@@ -320,15 +333,34 @@ export async function main(argv = process.argv.slice(2)) {
       tombstones: payload.tombstones,
       authorizedNextKeys: payload.authorizedNextKeys ?? [],
     };
+    const thumbnailsBytes = await fs.readFile(path.join(snapshotDir, ON_DEMAND_ARCHIVE));
+    const bundledBytes = payload.bundledFrozen ? undefined : await fs.readFile(path.join(snapshotDir, BUNDLED_ARCHIVE));
+    // Signing runs as a later step than the build and reads its input from disk. Check the exact
+    // bytes about to be signed, and check both archives before either channel is written, so an
+    // oversized payload can never leave one signed manifest behind.
+    assertWithinClientLimits({
+      catalogBytes,
+      previewsBytes: thumbnailsBytes,
+      previewFiles: archiveEntrySizes(thumbnailsBytes),
+      archiveName: ON_DEMAND_ARCHIVE,
+    });
+    if (bundledBytes) {
+      assertWithinClientLimits({
+        catalogBytes,
+        previewsBytes: bundledBytes,
+        previewFiles: archiveEntrySizes(bundledBytes),
+        archiveName: BUNDLED_ARCHIVE,
+      });
+    }
     const signed = await writeSignedChannel(outputRoot, ON_DEMAND_CHANNEL_DIR, buildSourceManifest({
       ...common,
-      previewsBytes: await fs.readFile(path.join(snapshotDir, ON_DEMAND_ARCHIVE)),
+      previewsBytes: thumbnailsBytes,
       previewArchive: ON_DEMAND_ARCHIVE,
     }), seed, expectedKeyId);
-    if (!payload.bundledFrozen) {
+    if (bundledBytes) {
       await writeSignedChannel(outputRoot, BUNDLED_CHANNEL_DIR, buildSourceManifest({
         ...common,
-        previewsBytes: await fs.readFile(path.join(snapshotDir, BUNDLED_ARCHIVE)),
+        previewsBytes: bundledBytes,
         previewArchive: BUNDLED_ARCHIVE,
       }), seed, expectedKeyId);
     }

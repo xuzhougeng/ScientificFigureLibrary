@@ -23,7 +23,7 @@ import {
   diffOfficialCatalogs,
   fetchVerifiedOfficialOpenFigureSnapshot,
 } from "../src/open-figure-feed.ts";
-import { OfficialOpenFigureSourceManager } from "../src/open-figure-official-source.ts";
+import { OfficialOpenFigureSourceManager, isOfficialOpenFigureIntegrityFailure } from "../src/open-figure-official-source.ts";
 import {
   PROVIDER_SOURCE_MANIFEST_SCHEMA,
   SecureProviderSourceFetcher,
@@ -72,6 +72,8 @@ async function officialFixture(options: {
   dropModule?: string;
   tombstones?: string[];
   delivery?: "bundled" | "on-demand";
+  /** Declare an archive size other than the real one, as an oversized published feed does. */
+  declaredPreviewBytes?: number;
 } = {}) {
   const delivery = options.delivery ?? "bundled";
   const key = options.key ?? testKey();
@@ -110,7 +112,7 @@ async function officialFixture(options: {
     sequence,
     generatedAt: "2026-09-07T00:00:00.000Z",
     catalog: { url: catalogUrl, bytes: catalogBytes.byteLength, sha256: sha256(catalogBytes), mediaType: "application/json" },
-    previews: { url: previewsUrl, bytes: previewsBytes.byteLength, sha256: sha256(previewsBytes), mediaType: "application/zip" },
+    previews: { url: previewsUrl, bytes: options.declaredPreviewBytes ?? previewsBytes.byteLength, sha256: sha256(previewsBytes), mediaType: "application/zip" },
     authorizedNextKeys: [],
     tombstones: [...(options.tombstones ?? [])].sort(),
   };
@@ -480,4 +482,96 @@ test("an older on-demand sequence is a rollback even after a bundled-channel sna
   assert.equal(second.statusDetails().activeSequence, 5);
   assert.equal(second.statusDetails().previewDelivery, "bundled");
   second.dispose();
+});
+
+/** The fields of `statusDetails()` that describe the outcome of a refresh. */
+interface RefreshStatus {
+  activeOrigin: string;
+  lastError: { code: string; message: string } | null;
+  nextCheckAt: string | null;
+}
+
+test("a feed over the archive size limit is an integrity failure and is not retried on the network backoff", async () => {
+  const key = testKey();
+  const clock = Date.parse("2026-11-19T00:00:00.000Z");
+  const refresh = async (routes: Map<string, RawHttpsResponse>) => {
+    const manager = new OfficialOpenFigureSourceManager({
+      paths: isolatedOfficialPaths(await fs.mkdtemp(path.join(os.tmpdir(), "sfl-open-figure-oversized-"))),
+      bundledRoot: DEFAULT_PERSONAL_MODULE_ASSETS_DIR,
+      fetcher: mockFetcher(routes),
+      jitterRatio: 0,
+      now: () => clock,
+      env: { NODE_TEST_CONTEXT: "1" },
+      bootstrapPublicKeyBase64: key.publicKey,
+    });
+    await manager.load();
+    await manager.refresh({ ignoreTtl: true });
+    const status = manager.statusDetails() as unknown as RefreshStatus;
+    manager.dispose();
+    return status;
+  };
+
+  // A correctly signed manifest that declares an 87 MiB archive, on either channel. The bundled
+  // case also proves the fallback still recognises the on-demand 404 through the transport marker.
+  for (const delivery of ["on-demand", "bundled"] as const) {
+    const fixture = await officialFixture({ key, sequence: 5, delivery, declaredPreviewBytes: 91_482_230 });
+    const rejected = await refresh(fixture.routes);
+    assert.equal(rejected.activeOrigin, "bundled", `${delivery}: the client keeps its previous catalog`);
+    assert.equal(rejected.lastError?.code, "official_open_figure_integrity_error", delivery);
+    assert.match(rejected.lastError?.message ?? "", /no larger than 67108864/u);
+    // An unacceptable feed stays unacceptable until it is republished: wait the normal interval, not minutes.
+    assert.ok(Date.parse(rejected.nextCheckAt!) - clock >= 60 * 60 * 1000, `${delivery}: ${rejected.nextCheckAt}`);
+  }
+
+  // By contrast, a feed that cannot be reached is retried on the short network backoff.
+  const unreachable = await refresh(new Map());
+  assert.equal(unreachable.lastError?.code, "official_open_figure_network_error");
+  assert.match(unreachable.lastError?.message ?? "", /404/u);
+  assert.ok(Date.parse(unreachable.nextCheckAt!) - clock <= 10 * 60 * 1000, unreachable.nextCheckAt ?? "no next check");
+});
+
+test("failures are classified by where they happen, with local I/O errors left as environment problems", () => {
+  assert.equal(isOfficialOpenFigureIntegrityFailure(new Error("manifest previews bytes must be a positive safe integer no larger than 67108864")), true);
+  assert.equal(isOfficialOpenFigureIntegrityFailure(new Error("official Open Figure rollback rejected: 2 < 4")), true);
+  assert.equal(isOfficialOpenFigureIntegrityFailure(new Error("preview ZIP contains an undeclared file")), true);
+  const diskFull = Object.assign(new Error("ENOSPC: no space left on device, write"), { code: "ENOSPC", syscall: "write" });
+  assert.equal(isOfficialOpenFigureIntegrityFailure(diskFull), false);
+  // Once a snapshot is verified, an untyped failure is local (a held write lock), not a verdict on the feed.
+  const busy = new Error("figure library is write-locked (library_busy) by another process");
+  assert.equal(isOfficialOpenFigureIntegrityFailure(busy, "activate"), false);
+  assert.equal(isOfficialOpenFigureIntegrityFailure(new Error("official Open Figure activated catalog digest mismatch"), "activate"), true);
+});
+
+test("a verified feed that cannot be activated because another process holds the write lock is retried soon", async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "sfl-open-figure-busy-"));
+  const key = testKey();
+  const fixture = await officialFixture({ key, sequence: 1 });
+  const clock = Date.parse("2026-11-19T00:00:00.000Z");
+  const paths = isolatedOfficialPaths(root);
+  const manager = new OfficialOpenFigureSourceManager({
+    paths,
+    bundledRoot: DEFAULT_PERSONAL_MODULE_ASSETS_DIR,
+    fetcher: mockFetcher(fixture.routes),
+    jitterRatio: 0,
+    now: () => clock,
+    env: { NODE_TEST_CONTEXT: "1" },
+    bootstrapPublicKeyBase64: key.publicKey,
+  });
+  await manager.load();
+  // Another SFL process (the local app, a second MCP host) is in the middle of its own activation.
+  await fs.mkdir(paths.lockDirectory, { recursive: true });
+  await manager.refresh({ ignoreTtl: true });
+  const busy = manager.statusDetails() as unknown as RefreshStatus;
+  assert.equal(busy.activeOrigin, "bundled");
+  assert.match(busy.lastError?.message ?? "", /write-locked/u);
+  assert.equal(busy.lastError?.code, "official_open_figure_network_error", "not reported as a problem with the feed");
+  assert.ok(Date.parse(busy.nextCheckAt!) - clock <= 10 * 60 * 1000, busy.nextCheckAt ?? "no next check");
+
+  // When the other process is done, the same feed activates.
+  await fs.rm(paths.lockDirectory, { recursive: true, force: true });
+  await manager.refresh({ ignoreTtl: true });
+  const activated = manager.statusDetails() as unknown as RefreshStatus;
+  assert.equal(activated.lastError, null);
+  assert.equal(activated.activeOrigin, "remote-lkg");
+  manager.dispose();
 });
