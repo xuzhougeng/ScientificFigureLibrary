@@ -368,7 +368,7 @@ export function assertOfficialKeyTransition(options: {
 }
 
 export async function fetchVerifiedOfficialOpenFigureSnapshot(options: {
-  fetcher: SecureProviderSourceFetcher;
+  fetcher: Pick<SecureProviderSourceFetcher, "fetch">;
   manifestUrl: string;
   /** Which channel manifestUrl belongs to; it fixes the preview archive the manifest may name. */
   previewDelivery?: OfficialOpenFigurePreviewDelivery;
