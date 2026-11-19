@@ -138,7 +138,7 @@ jobs:
       matrix:
         include:
           - architecture: arm64
-            runner: macos-14
+            runner: macos-15
           - architecture: x64
             runner: macos-15-intel
     runs-on: ${{ matrix.runner }}

@@ -34,6 +34,14 @@ export const MAX_PREVIEW_FILE_BYTES = 64 * 1024 * 1024;
 // 64 MiB single-file safety boundary used by Provider payloads.
 const MAX_PREVIEW_PIXELS = MAX_PREVIEW_FILE_BYTES / 8;
 export const MAX_PREVIEW_FILES = 10_000;
+/** Payload limits every client enforces; feed publishers must stay inside them. */
+export const PROVIDER_SOURCE_PAYLOAD_LIMITS = Object.freeze({
+  catalogBytes: MAX_CATALOG_BYTES,
+  previewArchiveBytes: MAX_PREVIEW_ARCHIVE_BYTES,
+  previewExpandedBytes: MAX_PREVIEW_EXPANDED_BYTES,
+  previewFileBytes: MAX_PREVIEW_FILE_BYTES,
+  previewFiles: MAX_PREVIEW_FILES,
+});
 const DEFAULT_TIMEOUT_MS = 60_000;
 const DEFAULT_REDIRECTS = 3;
 const ED25519_SPKI_PREFIX = Buffer.from("302a300506032b6570032100", "hex");
