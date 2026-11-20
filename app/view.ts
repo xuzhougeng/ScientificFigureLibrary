@@ -46,8 +46,8 @@ export interface Candidate {
   materializable: boolean;
   previewAvailable: boolean;
   searchPreviewAvailable?: boolean;
-  previewStatus?: "ready" | "missing" | "unreadable" | "unsupported" | "too_large";
-  searchPreviewStatus?: "ready" | "missing" | "unreadable" | "unsupported" | "too_large";
+  previewStatus?: "ready" | "missing" | "pending" | "unreadable" | "unsupported" | "too_large";
+  searchPreviewStatus?: "ready" | "missing" | "pending" | "unreadable" | "unsupported" | "too_large";
   previewDataUrl?: string;
   previewUrl?: string;
   previewMimeType?: "image/png" | "image/jpeg" | "image/webp";
@@ -201,11 +201,15 @@ function previewFailureLabel(status: Candidate["previewStatus"]) {
   if (status === "too_large") return "缩略图超过安全传输上限";
   if (status === "unsupported") return "预览格式不受支持";
   if (status === "unreadable") return "预览校验或读取失败";
+  if (status === "pending") return "缩略图准备中，请稍后重试";
   return "无可用预览";
 }
 
 function cardStatus(candidate: Candidate) {
   const previewStatus = candidate.searchPreviewStatus ?? candidate.previewStatus;
+  if (previewStatus === "pending") {
+    return { label: "缩略图准备中", tone: "neutral" as const };
+  }
   if ((previewStatus && previewStatus !== "ready") || candidate.previewAvailable === false) {
     return { label: "预览不可用", tone: "warning" as const };
   }
